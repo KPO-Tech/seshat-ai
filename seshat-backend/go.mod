@@ -150,3 +150,5 @@ require (
 	modernc.org/memory v1.11.0 // indirect
 	modernc.org/sqlite v1.57.0 // indirect
 )
+
+replace github.com/KPO-Tech/seshat => ../../seshat

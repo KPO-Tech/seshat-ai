@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	neturl "net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -140,6 +141,50 @@ func discoverElectronBrowserRemoteControlURL(ctx context.Context) string {
 		return ""
 	}
 	return strings.TrimSpace(payload.WebSocketDebuggerURL)
+}
+
+// resolveElectronBrowserSessionTarget asks the Electron main process (via its
+// small local bridge server - see seshat-desktop/src/main/browser-bridge.ts)
+// to create/reuse the desktop-visible browser tab dedicated to sessionID, and
+// returns its CDP target ID so the SDK's browser session can attach directly
+// to it (see sdk.ClientConfig.BrowserSessionTargetResolver). Returns
+// ok=false whenever the bridge isn't configured or reachable - e.g. dev mode,
+// or a platform without the desktop shell at all - so callers fall back to
+// the SDK's normal incognito-per-session behavior with no special-casing.
+func resolveElectronBrowserSessionTarget(ctx context.Context, sessionID sdk.SessionID) (string, bool) {
+	// Same shared-default-port convention as discoverElectronBrowserRemoteControlURL
+	// above: works out of the box in dev mode (both processes started manually,
+	// neither passing env vars to the other) as long as neither side overrode it.
+	port := strings.TrimSpace(os.Getenv("SESHAT_ELECTRON_BRIDGE_PORT"))
+	if port == "" {
+		port = "9334"
+	}
+	if _, err := strconv.Atoi(port); err != nil {
+		return "", false
+	}
+	reqCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	url := "http://127.0.0.1:" + port + "/session-target?sessionId=" + neturl.QueryEscape(string(sessionID))
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", false
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", false
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", false
+	}
+	var payload struct {
+		TargetID string `json:"target_id"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return "", false
+	}
+	targetID := strings.TrimSpace(payload.TargetID)
+	return targetID, targetID != ""
 }
 
 // BuildApp wires all infrastructure (DB, stores, query runtime, RAG, MCP, skills)
@@ -1018,6 +1063,10 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	if strings.TrimSpace(config.BrowserRemoteControlURL) == "" {
 		runtime.SetBrowserRemoteControlResolver(discoverElectronBrowserRemoteControlURL)
 	}
+	// Unconditional - resolveElectronBrowserSessionTarget itself no-ops
+	// (returns ok=false) whenever SESHAT_ELECTRON_BRIDGE_PORT isn't set, so
+	// this is a no-op outside the desktop app without needing a guard here.
+	runtime.SetBrowserSessionTargetResolver(resolveElectronBrowserSessionTarget)
 	// Shared with api.NewApp below (via AppConfig.TerminalRelay) - the WS
 	// handler there registers a session's Electron relay connection into the
 	// same instance runtime.applyRemoteExecutor reads from per turn.

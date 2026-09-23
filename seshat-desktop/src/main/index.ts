@@ -12,6 +12,7 @@ import { setupAutoUpdater } from './auto-update'
 import { isExternalOpenAllowed } from './url-safety'
 import { applyContentSecurityPolicy } from './content-security-policy'
 import { createBrowserPanel } from './browser-panel'
+import { createBrowserBridgeServer } from './browser-bridge'
 
 function configureRuntimePaths() {
   const runtimeRoot = resolveRuntimeRoot()
@@ -33,12 +34,13 @@ function createWindow() {
     show: false,
     autoHideMenuBar: true,
     frame: false,
-    // Windows 11's DWM rounds a frameless window's corners by default -
-    // this is the dedicated Electron option to opt out and get square
-    // corners on the window itself, independent of any border-radius in
-    // the app's own CSS. No-op on platforms without that compositor
-    // behavior (macOS/Linux), safe to always set.
-    roundedCorners: false,
+    // Windows 11's DWM rounds a frameless window's corners by default; this
+    // is the dedicated Electron option controlling that (no-op on platforms
+    // without the compositor behavior). Kept on deliberately - if the native
+    // WebContentsView (BrowserPanel) ends up square-cornered poking past the
+    // window's rounded edge, that's this setting's effect showing up there,
+    // not a bug in the panel itself.
+    roundedCorners: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       nodeIntegration: false,
@@ -100,6 +102,21 @@ const browserPanel = createBrowserPanel({
   remoteDebugPort,
 })
 
+// Lets seshat-backend ask "give me the visible tab for session X" so an
+// agent's browser_* tool calls can attach to it directly - see
+// browser-bridge.ts and resolveElectronBrowserSessionTarget in
+// seshat-backend. Same shared-default-port convention as remoteDebugPort
+// above: works in dev mode (backend run manually) without needing this env
+// var explicitly set, as long as neither side overrides it.
+const bridgePort = Number.parseInt(process.env.SESHAT_ELECTRON_BRIDGE_PORT || '9334', 10)
+if (Number.isFinite(bridgePort) && bridgePort > 0) {
+  process.env.SESHAT_ELECTRON_BRIDGE_PORT = String(bridgePort)
+}
+const browserBridge = createBrowserBridgeServer({
+  port: bridgePort,
+  resolveSessionTarget: (sessionId) => browserPanel.resolveSessionTarget(sessionId),
+})
+
 app.whenReady().then(async () => {
   Menu.setApplicationMenu(null)
   applyContentSecurityPolicy()
@@ -109,6 +126,7 @@ app.whenReady().then(async () => {
   registerWhisperHandlers(ipcMain)
   registerEnvVarsHandlers(ipcMain)
   browserPanel.registerIpc(ipcMain)
+  browserBridge.start()
 
   // Packaged Electron apps deny every permission request by default when no
   // handler is registered. The voice-input control needs the renderer's
@@ -148,6 +166,7 @@ app.on('window-all-closed', () => {
 })
 
 app.on('will-quit', () => {
+  browserBridge.stop()
   browserPanel.destroy()
   stopWhisperServerProcess()
   void stopBackendSidecar()

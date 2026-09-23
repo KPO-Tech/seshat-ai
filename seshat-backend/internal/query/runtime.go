@@ -53,12 +53,13 @@ type SessionInspector interface {
 
 // SDKRuntime adapts sdk.Client to QueryRuntime + StreamingQueryRuntime + SessionManager.
 type SDKRuntime struct {
-	client          *sdk.Client
-	baseConfig      *sdk.ClientConfig
-	terminalRelay   *TerminalRelay
-	resolveLocalSTT func(ctx context.Context) *sdk.SpeechToTextConfig
-	resolveBrowser  func(ctx context.Context) string
-	mu              sync.RWMutex
+	client                *sdk.Client
+	baseConfig            *sdk.ClientConfig
+	terminalRelay         *TerminalRelay
+	resolveLocalSTT       func(ctx context.Context) *sdk.SpeechToTextConfig
+	resolveBrowser        func(ctx context.Context) string
+	resolveBrowserSession func(ctx context.Context, sessionID sdk.SessionID) (string, bool)
+	mu                    sync.RWMutex
 
 	clientCacheMu sync.Mutex
 	clientCache   map[clientCacheKey]*cachedRuntimeClient
@@ -141,6 +142,17 @@ func (r *SDKRuntime) SetLocalSTTResolver(resolve func(ctx context.Context) *sdk.
 func (r *SDKRuntime) SetBrowserRemoteControlResolver(resolve func(ctx context.Context) string) {
 	r.mu.Lock()
 	r.resolveBrowser = resolve
+	r.mu.Unlock()
+}
+
+// SetBrowserSessionTargetResolver attaches the per-session resolver that lets
+// a session's browser tool calls attach to an existing, desktop-visible CDP
+// tab instead of an invisible incognito one - see
+// sdk.ClientConfig.BrowserSessionTargetResolver for the full rationale. Same
+// setter-not-constructor-param reasoning as SetTerminalRelay above.
+func (r *SDKRuntime) SetBrowserSessionTargetResolver(resolve func(ctx context.Context, sessionID sdk.SessionID) (string, bool)) {
+	r.mu.Lock()
+	r.resolveBrowserSession = resolve
 	r.mu.Unlock()
 }
 
@@ -700,12 +712,16 @@ func (r *SDKRuntime) buildBaseClientConfig(ctx context.Context) *sdk.ClientConfi
 	cfg := cloneClientConfig(r.baseConfig)
 	resolveLocalSTT := r.resolveLocalSTT
 	resolveBrowser := r.resolveBrowser
+	resolveBrowserSession := r.resolveBrowserSession
 	r.mu.RUnlock()
 	if cfg == nil {
 		cfg = sdk.DefaultClientConfig()
 	}
 	if strings.TrimSpace(cfg.BrowserRemoteControlURL) == "" && resolveBrowser != nil {
 		cfg.BrowserRemoteControlURL = strings.TrimSpace(resolveBrowser(ctx))
+	}
+	if resolveBrowserSession != nil {
+		cfg.BrowserSessionTargetResolver = resolveBrowserSession
 	}
 	cfg.SessionStore = r.client.GetSessionStore()
 	cfg.ArtifactStore = r.client.GetArtifactStore()

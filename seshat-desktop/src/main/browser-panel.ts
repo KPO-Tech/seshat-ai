@@ -304,6 +304,25 @@ export function createBrowserPanel({ getWindow, remoteDebugPort }: BrowserPanelO
     throw new Error('Could not resolve built-in browser CDP target.')
   }
 
+  // Ensures a tab exists for contextId (creating one at about:blank if
+  // needed), brings it to the foreground, and resolves its CDP target ID -
+  // the shared core of openUrlForAutomation and resolveSessionTarget below.
+  async function ensureTabTarget(contextId: string): Promise<{ targetId: string; tab: BrowserTab }> {
+    visible = true
+    const ctx = getContext(contextId)
+    let tab = getActiveTab(ctx)
+    if (tab) {
+      bringContextToForeground(contextId)
+      attachActiveView()
+    } else {
+      tab = createTabInternal(contextId, 'about:blank')
+    }
+    await tab.view.webContents.loadURL(targetMarkerUrl(tab.id))
+    const targetId = await resolveCdpTargetId(tab.id)
+    send('seshat:browser:panel-opened', { contextId, state: state(contextId) })
+    return { targetId, tab }
+  }
+
   async function openUrlForAutomation(rawUrl?: string, provider = 'auto', sessionId?: string) {
     const requestedProvider = String(provider || 'auto').trim().toLowerCase()
     if (requestedProvider !== 'auto' && requestedProvider !== 'builtin') {
@@ -314,20 +333,9 @@ export function createBrowserPanel({ getWindow, remoteDebugPort }: BrowserPanelO
     // the shared chat context otherwise, so different conversations never
     // mix tabs/history, matching the per-project isolation above.
     const id = sessionId ? `session:${sessionId}` : AUTOMATION_CONTEXT_ID
-    visible = true
-    const ctx = getContext(id)
-    let tab = getActiveTab(ctx)
-    if (tab) {
-      bringContextToForeground(id)
-      attachActiveView()
-    } else {
-      tab = createTabInternal(id, 'about:blank')
-    }
-    await tab.view.webContents.loadURL(targetMarkerUrl(tab.id))
-    const targetId = await resolveCdpTargetId(tab.id)
+    const { targetId, tab } = await ensureTabTarget(id)
     const url = normalizeBrowserUrl(rawUrl)
     await tab.view.webContents.loadURL(url)
-    send('seshat:browser:panel-opened', { contextId: id, state: state(id) })
     return {
       provider: 'builtin',
       browser_url: cdpBrowserUrl(),
@@ -335,6 +343,15 @@ export function createBrowserPanel({ getWindow, remoteDebugPort }: BrowserPanelO
       tab_id: tab.id,
       url,
     }
+  }
+
+  // Used only by the local bridge server (see registerBridgeServer) so the
+  // Go backend can attach a session's browser tool calls directly to this
+  // tab before its first navigation, instead of racing
+  // openUrlForAutomation's own best-effort URL push from the renderer side.
+  async function resolveSessionTarget(sessionId: string): Promise<string> {
+    const { targetId } = await ensureTabTarget(`session:${sessionId}`)
+    return targetId
   }
 
   function trusted<T>(event: IpcMainInvokeEvent, fn: () => T): T {
@@ -441,6 +458,7 @@ export function createBrowserPanel({ getWindow, remoteDebugPort }: BrowserPanelO
         return state(id)
       }))
     },
+    resolveSessionTarget,
     destroy() {
       visible = false
       for (const id of contexts.keys()) destroyContext(id)
