@@ -401,7 +401,7 @@ export function ChatInput({
               icon={modelIcon ?? (hasModelMenu ? <CheckCorrect size={12} /> : <SettingTwo size={12} />)}
               onClick={handleModelTrigger}
               disabled={modelDisabled}
-              className="h-7 max-w-full rounded-lg bg-[color-mix(in_srgb,var(--color-surface)_74%,var(--color-bg))] px-[9px] py-0 hover:border-[color-mix(in_srgb,var(--color-primary)_24%,var(--color-border-subtle))] hover:bg-[color-mix(in_srgb,var(--color-surface)_88%,var(--color-primary)_5%)]"
+              className="h-7 max-w-full bg-[color-mix(in_srgb,var(--color-surface)_74%,var(--color-bg))] px-[9px] py-0 hover:border-[color-mix(in_srgb,var(--color-primary)_24%,var(--color-border-subtle))] hover:bg-[color-mix(in_srgb,var(--color-surface)_88%,var(--color-primary)_5%)]"
             />
             {openSelector === 'model' && modelOptions && onModelSelect && (
               <SelectorMenu
