@@ -1,10 +1,9 @@
 import { FileWord, FileExcel, FilePpt, FilePdfOne, FileTextOne as FileGeneric } from '@icon-park/react'
 
-// Shown in place of a real thumbnail/text preview when neither is available
-// (no page image, no embedded OOXML thumbnail - see lib/officeThumbnail.ts,
-// not every DOCX/PPTX/XLSX has one - no text extraction) - a per-extension
-// icon reads as "this is a file" instead of an empty/blank tile or a
-// low-signal wall of tiny illegible text.
+// Shown in place of a real preview image for any non-image attachment (PDF
+// page-1 renders are the only other "real preview" case - see
+// attachments/attachmentPreview.ts) - a per-extension icon reads as "this is
+// a file" instead of an empty/blank tile.
 export function AttachmentTypeIcon({ filename, size = 20 }: { filename: string; size?: number }) {
   const ext = filename.split('.').pop()?.toLowerCase() ?? ''
   switch (ext) {

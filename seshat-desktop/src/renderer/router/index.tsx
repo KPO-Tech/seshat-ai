@@ -3,7 +3,7 @@ import { Shell } from '@renderer/components/layout/Shell'
 import { PluginsPage } from '@renderer/components/plugins/PluginsPage'
 import { SchedulingPage } from '@renderer/components/scheduling/SchedulingPage'
 import { SkillsPage } from '@renderer/components/skills/SkillsPage'
-import { Conversation } from '@renderer/pages/Conversation'
+import { ConversationPage } from '@renderer/components/chat/conversation/ConversationPage'
 import { HistoryPage } from '@renderer/pages/history'
 import { Home } from '@renderer/pages/Home'
 import { RoutePlaceholder } from '@renderer/pages/RoutePlaceholder'
@@ -16,7 +16,7 @@ export const router = createHashRouter([
     element: <Shell />,
     children: [
       { index: true, element: <Home /> },
-      { path: 'conversation/:id', element: <Conversation /> },
+      { path: 'conversation/:id', element: <ConversationPage /> },
       { path: 'history', element: <HistoryPage /> },
       { path: 'skills', element: <SkillsPage /> },
       { path: 'plugins', element: <PluginsPage /> },

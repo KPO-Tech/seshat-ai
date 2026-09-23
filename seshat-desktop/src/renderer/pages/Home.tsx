@@ -2,7 +2,8 @@ import { useEffect, useState, useMemo, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { CheckCorrect, FileTextOne, Browser, LightMember } from '@icon-park/react'
 import { ChatTopBar } from '@renderer/components/chat/ChatTopBar'
-import { ChatInput, type ChatAttachment } from '@renderer/components/chat/ChatInput'
+import { ChatInput } from '@renderer/components/chat/composer/ChatInput'
+import { attachmentCategory, isPDFFile, sentAttachment, type ChatAttachment } from '@renderer/components/chat/attachments/attachmentTypes'
 import { ProviderIcon } from '@renderer/components/ui/ProviderIcon'
 import { api, ApiError } from '@renderer/api/client'
 import type { ProviderModel, ProviderSetting } from '@renderer/api/types'
@@ -12,37 +13,6 @@ import { useSessionStore } from '@renderer/stores/session'
 import { useUIStore } from '@renderer/stores/ui'
 import { UNTITLED_SESSION_TITLE } from '@renderer/lib/sessionTitle'
 import { renderPDFPagePreviews } from '@renderer/lib/pdfPreview'
-import { extractOfficeThumbnail } from '@renderer/lib/officeThumbnail'
-
-function attachmentCategory(file: File): ChatAttachment['category'] {
-  if (file.type.startsWith('image/')) return 'images'
-  if (
-    file.type.includes('pdf') ||
-    file.type.includes('document') ||
-    file.type.includes('text') ||
-    /\.(pdf|doc|docx|txt|md|csv|xls|xlsx|ppt|pptx)$/i.test(file.name)
-  ) {
-    return 'documents'
-  }
-  return 'other'
-}
-
-function isPDFFile(file: File): boolean {
-  return file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
-}
-
-// DOCX/XLSX may carry a real embedded thumbnail (docProps/thumbnail.*, see
-// lib/officeThumbnail.ts) - extracted straight from the raw File object
-// client-side, same as PDF page previews below, so the attach card doesn't
-// have to wait on the upload/server round trip to show something better
-// than the tiny raw-text fallback. PPTX is deliberately excluded: a real
-// slide deck's embedded media makes JSZip's synchronous decompression slow
-// enough to freeze the UI for the better part of a minute, for a thumbnail
-// that's usually missing anyway on agent-generated files - the icon
-// fallback in ChatInput/MessageItem is instant and always available.
-function isOfficeZipFile(file: File): boolean {
-  return /\.(docx|xlsx)$/i.test(file.name)
-}
 
 type ModelChoice = {
   id: string
@@ -85,19 +55,6 @@ function isChatProviderUsable(provider: ProviderSetting): boolean {
   if (provider.provider === 'ollama') return true
   if (provider.auth_kind === 'oauth') return provider.connection_status === 'connected'
   return provider.has_api_key || provider.connection_status === 'ready'
-}
-
-function sentAttachment(file: ChatAttachment) {
-  return {
-    id: file.id,
-    filename: file.filename,
-    content_type: file.content_type,
-    size: file.size,
-    category: file.category,
-    local_path: file.local_path,
-    preview_url: file.preview_url,
-    page_preview_urls: file.page_preview_urls,
-  }
 }
 
 export function Home() {
@@ -281,16 +238,6 @@ export function Home() {
             )))
           })
           .catch(() => {})
-      } else if (isOfficeZipFile(file)) {
-        void file.arrayBuffer()
-          .then(extractOfficeThumbnail)
-          .then((url) => {
-            if (!url) return
-            setAttachments((current) => current.map((attachment) => (
-              attachment.id === pendingId ? { ...attachment, preview_url: url } : attachment
-            )))
-          })
-          .catch(() => {})
       }
     }
     setIsUploadingAttachments(true)
@@ -309,11 +256,8 @@ export function Home() {
       for (const [index, file] of selectedFiles.entries()) {
         const pendingId = pending[index]?.id
         let pagePreviews: string[] = []
-        let officeThumbnail: string | null = null
         if (isPDFFile(file)) {
           pagePreviews = (await renderPDFPagePreviews(file, 10).catch(() => [])).map((preview) => preview.dataURL)
-        } else if (isOfficeZipFile(file)) {
-          officeThumbnail = await file.arrayBuffer().then(extractOfficeThumbnail).catch(() => null)
         }
         const form = new FormData()
         form.append('file', file)
@@ -336,7 +280,7 @@ export function Home() {
                 category: item.category,
                 local_path: item.local_path,
                 page_preview_urls: pagePreviews.length > 0 ? pagePreviews : attachment.page_preview_urls,
-                preview_url: pagePreviews[0] ?? officeThumbnail ?? attachment.preview_url,
+                preview_url: pagePreviews[0] ?? attachment.preview_url,
                 upload_status: 'uploaded',
               }
             : attachment
