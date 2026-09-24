@@ -43,6 +43,7 @@ type App struct {
 	doclingStore         *db.DoclingConfigStore
 	rerankerStore        *db.RerankerConfigStore
 	localSTTStore        *db.LocalSTTConfigStore
+	sandboxConfigStore   *db.SandboxConfigStore
 	storageConfigStore   *db.StorageConfigStore
 	dataflowSecrets      *dataflowsecrets.Service
 	// Long-term memory — kept here because extraction is fire-and-forget
@@ -116,6 +117,7 @@ type AppConfig struct {
 	DoclingStore          *db.DoclingConfigStore
 	RerankerStore         *db.RerankerConfigStore
 	LocalSTTStore         *db.LocalSTTConfigStore
+	SandboxConfigStore    *db.SandboxConfigStore
 	StorageConfigStore    *db.StorageConfigStore
 	DataflowSecrets       *dataflowsecrets.Service
 	LongTermExtractor     *longterm.Extractor
@@ -182,6 +184,7 @@ func NewApp(cfg AppConfig) *App {
 		doclingStore:          cfg.DoclingStore,
 		rerankerStore:         cfg.RerankerStore,
 		localSTTStore:         cfg.LocalSTTStore,
+		sandboxConfigStore:    cfg.SandboxConfigStore,
 		storageConfigStore:    cfg.StorageConfigStore,
 		dataflowSecrets:       cfg.DataflowSecrets,
 		longTermExtractor:     cfg.LongTermExtractor,

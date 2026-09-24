@@ -182,6 +182,7 @@ func CreateRouter(config APIConfig, app *App) *http.ServeMux {
 	apiV1.Handle("/settings/reranker", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleRerankerConfig))))
 	apiV1.Handle("/settings/reranker/", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleRerankerConfig))))
 	apiV1.Handle("/settings/local-stt", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleLocalSTTConfig))))
+	apiV1.Handle("/settings/sandbox", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleSandboxConfig))))
 	apiV1.Handle("/settings/dataflow-secrets", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleDataflowSecrets))))
 	apiV1.Handle("/settings/dataflow-secrets/{name}", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleDataflowSecretByName))))
 	apiV1.Handle("/settings/storage", app.requireSettingsWritable(app.authMiddleware(http.HandlerFunc(app.handleStorageConfig))))

@@ -376,6 +376,13 @@ func backendMigrations() []schemaMigration {
 				return db.gormDB.WithContext(ctx).AutoMigrate(&gRerankerConfig{})
 			},
 		},
+		{
+			ID:    "20260923_048_sandbox_config",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(&gSandboxConfig{})
+			},
+		},
 	}
 }
 

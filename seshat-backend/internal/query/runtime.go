@@ -59,6 +59,7 @@ type SDKRuntime struct {
 	resolveLocalSTT       func(ctx context.Context) *sdk.SpeechToTextConfig
 	resolveBrowser        func(ctx context.Context) string
 	resolveBrowserSession func(ctx context.Context, sessionID sdk.SessionID) (string, bool)
+	resolveSandboxMode    func(ctx context.Context) (sdk.SandboxKind, bool)
 	mu                    sync.RWMutex
 
 	clientCacheMu sync.Mutex
@@ -137,6 +138,20 @@ func (r *SDKRuntime) SetTerminalRelay(relay *TerminalRelay) {
 // SetTerminalRelay above.
 func (r *SDKRuntime) SetLocalSTTResolver(resolve func(ctx context.Context) *sdk.SpeechToTextConfig) {
 	r.resolveLocalSTT = resolve
+}
+
+// SetSandboxModeResolver attaches the per-request resolver for Settings >
+// Environment's Docker-vs-local bash sandbox choice (see
+// db.SandboxConfigStore). The resolver returns ok=false only on a genuine
+// read error - "no choice saved yet" is resolved to SandboxKindLocal inside
+// the resolver itself (the desktop default), not signaled as ok=false, so a
+// fresh install gets direct host access without needing the fallback path
+// below to hide that default. ok=false keeps baseConfig's own SandboxKind
+// (set at bootstrap) as a safety net.
+func (r *SDKRuntime) SetSandboxModeResolver(resolve func(ctx context.Context) (sdk.SandboxKind, bool)) {
+	r.mu.Lock()
+	r.resolveSandboxMode = resolve
+	r.mu.Unlock()
 }
 
 func (r *SDKRuntime) SetBrowserRemoteControlResolver(resolve func(ctx context.Context) string) {
@@ -713,6 +728,7 @@ func (r *SDKRuntime) buildBaseClientConfig(ctx context.Context) *sdk.ClientConfi
 	resolveLocalSTT := r.resolveLocalSTT
 	resolveBrowser := r.resolveBrowser
 	resolveBrowserSession := r.resolveBrowserSession
+	resolveSandboxMode := r.resolveSandboxMode
 	r.mu.RUnlock()
 	if cfg == nil {
 		cfg = sdk.DefaultClientConfig()
@@ -722,6 +738,11 @@ func (r *SDKRuntime) buildBaseClientConfig(ctx context.Context) *sdk.ClientConfi
 	}
 	if resolveBrowserSession != nil {
 		cfg.BrowserSessionTargetResolver = resolveBrowserSession
+	}
+	if resolveSandboxMode != nil {
+		if kind, ok := resolveSandboxMode(ctx); ok {
+			cfg.SandboxKind = kind
+		}
 	}
 	cfg.SessionStore = r.client.GetSessionStore()
 	cfg.ArtifactStore = r.client.GetArtifactStore()

@@ -637,6 +637,12 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		return nil, nil, fmt.Errorf("init local stt config store: %w", err)
 	}
 
+	sandboxConfigStore, err := db.NewSandboxConfigStore(database)
+	if err != nil {
+		_ = cleanup()
+		return nil, nil, fmt.Errorf("init sandbox config store: %w", err)
+	}
+
 	userMemoryStore, err := db.NewUserMemoryStore(database)
 	if err != nil {
 		_ = cleanup()
@@ -1102,6 +1108,25 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		}
 	})
 
+	// Settings > Environment lets the user choose Docker-sandboxed vs direct
+	// host execution for the bash tool (see db.SandboxConfigStore) - no
+	// stored choice (a fresh install) resolves to SandboxModeLocal, not the
+	// bootstrap default above: an agent asked to write a document, move a
+	// file, or run/test code the user is working on needs real access to the
+	// user's own machine, not an isolated container that can't see any of
+	// it. ok=false (a genuine store read error) falls through to
+	// queryClientConfig's own SandboxKind above instead.
+	runtime.SetSandboxModeResolver(func(ctx context.Context) (sdk.SandboxKind, bool) {
+		cfg, err := sandboxConfigStore.Get(ctx)
+		if err != nil {
+			return "", false
+		}
+		if cfg == nil || strings.TrimSpace(cfg.Mode) != db.SandboxModeDocker {
+			return sdk.SandboxKindLocal, true
+		}
+		return sdk.SandboxKindDocker, true
+	})
+
 	// resolveDocling lets Settings > Knowledge override, at runtime, which
 	// docling-serve instance to use (self-hosted, on the local network, or
 	// an organization's own) — without needing an env var or a restart.
@@ -1420,6 +1445,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		DoclingStore:          doclingConfigStore,
 		RerankerStore:         rerankerConfigStore,
 		LocalSTTStore:         localSTTConfigStore,
+		SandboxConfigStore:    sandboxConfigStore,
 		StorageConfigStore:    storageConfigStore,
 		DataflowSecrets:       dataflowSecretsService,
 		LongTermExtractor:     longTermExtractor,
