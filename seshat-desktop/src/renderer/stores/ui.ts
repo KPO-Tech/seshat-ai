@@ -4,7 +4,7 @@ import type { RAGSearchResult } from '@renderer/api/types'
 import { useSessionStore } from '@renderer/stores/session'
 
 type Theme = 'light' | 'dark'
-export type RightPanelKind = 'markdown' | 'subagent' | 'browser' | 'agent' | 'knowledge' | 'plan' | 'pdf' | 'artifact' | 'docx' | 'xlsx' | 'pptx'
+export type RightPanelKind = 'markdown' | 'subagent' | 'browser' | 'terminal' | 'computer' | 'files' | 'knowledge' | 'plan' | 'pdf' | 'artifact' | 'docx' | 'xlsx' | 'pptx'
 export type UIPermissionMode = 'onRequest' | 'auto' | 'bypass'
 
 export type RightPanelFields = {
@@ -29,6 +29,10 @@ export type RightPanelFields = {
   sessionId?: string
   subagentToolUseId?: string
   planId?: string
+  // Which tool call the Computer or Files panel should focus on open - set
+  // when a tool row is clicked from the chat transcript instead of
+  // expanding inline (see ToolLineItem.tsx).
+  focusToolId?: string
 }
 
 // `width` is not a per-panel property - it belongs to the column a panel
@@ -37,7 +41,7 @@ export type RightPanelFields = {
 export type RightPanelPayload = Partial<RightPanelFields> & { kind: RightPanelKind; title: string; width?: number }
 
 // A single open panel. `id` is a stable identity key (not random) so
-// re-opening "the same" panel (e.g. Agent Monitor for a session that's
+// re-opening "the same" panel (e.g. Computer for a session that's
 // already open) updates it in place instead of pushing a duplicate.
 export type RightPanelInstance = RightPanelFields & { id: string; openedAt: number }
 
@@ -60,21 +64,21 @@ export function flattenRightPanels(columns: RightPanelColumn[]): RightPanelInsta
 }
 
 // Panels that must never be silently evicted/merged away: a streaming
-// Agent Monitor (losing visibility into an active turn would be worse than
-// losing a read-only panel).
+// Computer or Files panel (losing visibility into an active turn would be
+// worse than losing a read-only panel).
 function isRightPanelPinned(p: RightPanelInstance): boolean {
-  return p.kind === 'agent' && !!p.sessionId && useSessionStore.getState().isSessionStreaming(p.sessionId)
+  return (p.kind === 'computer' || p.kind === 'files') && !!p.sessionId && useSessionStore.getState().isSessionStreaming(p.sessionId)
 }
 
 // "Document" panels (readable content, as opposed to process/monitoring
-// panels like Agent Monitor, a sub-agent trace, or a browser trace) - see
+// panels like Computer, a sub-agent trace, or a browser trace) - see
 // openRightPanel: opening one of these replaces another already-open
 // document if there is one, in place, without touching any non-document
 // panel. Keeps a document's own space "yours" across however many you open
-// in a row, while something like an Agent Monitor a user deliberately kept
+// in a row, while something like Computer a user deliberately kept
 // open stays put instead of being silently evicted to make room.
 const DOCUMENT_PANEL_KINDS: ReadonlySet<RightPanelKind> = new Set(['pdf', 'docx', 'xlsx', 'pptx', 'markdown', 'plan', 'artifact'])
-const READABLE_PANEL_KINDS: ReadonlySet<RightPanelKind> = new Set(['browser', ...DOCUMENT_PANEL_KINDS])
+const READABLE_PANEL_KINDS: ReadonlySet<RightPanelKind> = new Set(['browser', 'terminal', 'files', ...DOCUMENT_PANEL_KINDS])
 
 const RIGHT_PANEL_STACK_LIMIT = 1
 const RIGHT_PANEL_WIDE_COLUMN_LIMIT = 1
@@ -109,12 +113,8 @@ function rightPanelTotalLimit(windowWidth: number): number {
 // from the DOM since this clamp runs inside a store action, not a component.
 const SIDEBAR_WIDTH = 224
 const SIDEBAR_COLLAPSED_WIDTH = 56
-// ChatTopBar's session title shrinks away under pressure before the icon
-// cluster ever does (see its own CSS - .chat-top-left has min-width:0/
-// flex:1 so the title gives up its space first), so this floor doesn't
-// need to reserve room for it - but it still has to keep the chat pane
-// itself readable, not just wide enough for .chat-top-actions' icon
-// cluster (~185px). 460 is the width the chat pane actually renders at
+// The chat pane has to stay readable at this floor, not just wide enough
+// for its narrowest controls. 460 is the width the chat pane actually renders at
 // once the right panel column hits its own static SOLO max (720px) on a
 // normal-sized window - i.e. the reduction a user already sees and finds
 // acceptable day-to-day. Without this floor, shrinking the window all the
@@ -175,7 +175,6 @@ type UIState = {
   lightboxImage: LightboxImage | null
   windowWidth: number
   permissionMode: UIPermissionMode
-  toolExpansion: Record<string, boolean>
   thinkingExpansion: Record<string, boolean>
   // Answers already submitted within a still-open ask_user_question call,
   // keyed by `${toolUseId}:${questionIndex}` - AskUserPanel's own local
@@ -207,7 +206,6 @@ type UIState = {
   applyTheme: () => void
   togglePermissionMode: () => void
   setPermissionMode: (mode: UIPermissionMode) => void
-  setToolExpansion: (toolUseId: string, expanded: boolean) => void
   setThinkingExpansion: (thinkingId: string, expanded: boolean) => void
   setAskUserAnswer: (key: string, value: string) => void
   rememberApproval: (signature: string) => void
@@ -226,7 +224,6 @@ export const useUIStore = create<UIState>()(
       // "onRequest" ("Ask First") is retired from the UI toggle - default to
       // "auto" ("Smart"). See ChatInput.tsx's PERMISSION_CYCLE comment.
       permissionMode: 'auto',
-      toolExpansion: {},
       thinkingExpansion: {},
       askUserAnswers: {},
       rememberedApprovals: {},
@@ -284,21 +281,21 @@ export const useUIStore = create<UIState>()(
         set((s) => {
           const id = buildRightPanelId(panel)
 
-          // Auto-opened Agent Monitor tracks "the conversation you're
+          // Auto-opened Computer panel tracks "the conversation you're
           // currently viewing" - without this, navigating between
-          // conversations silently accumulates monitor panels (each
+          // conversations silently accumulates Computer panels (each
           // conversation's mount effect opens its own, nothing ever closes
           // the previous one) that all look identical since none show which
-          // session they belong to. A monitor for a session that's actively
-          // streaming stays put (isRightPanelPinned) so switching away from
-          // a running turn doesn't lose visibility into it.
+          // session they belong to. A Computer panel for a session that's
+          // actively streaming stays put (isRightPanelPinned) so switching
+          // away from a running turn doesn't lose visibility into it.
           let rightColumns = s.rightColumns
-          if (panel.kind === 'agent' && panel.sessionId) {
+          if (panel.kind === 'computer' && panel.sessionId) {
             rightColumns = rightColumns
               .map((c) => ({
                 ...c,
                 panels: c.panels.filter(
-                  (p) => !(p.kind === 'agent' && p.sessionId !== panel.sessionId && !isRightPanelPinned(p))
+                  (p) => !(p.kind === 'computer' && p.sessionId !== panel.sessionId && !isRightPanelPinned(p))
                 ),
               }))
               .filter((c) => c.panels.length > 0)
@@ -329,7 +326,7 @@ export const useUIStore = create<UIState>()(
           // A new document replaces another already-open document in
           // place (same column/slot, same width - respects a manual
           // resize made in between), leaving every non-document panel
-          // (Agent Monitor, a sub-agent trace, a browser trace, ...)
+          // (Computer, a sub-agent trace, a browser trace, ...)
           // untouched - see DOCUMENT_PANEL_KINDS. Falls through when no
           // document is currently open.
           if (isDocument) {
@@ -397,7 +394,7 @@ export const useUIStore = create<UIState>()(
           // All slots (2 columns x 2 panels) are full - evict from the
           // whole pool, not a specific column: every column is equally full
           // at this point, so any freed slot anywhere is valid room.
-          // Evict the oldest panel that isn't a pinned Agent Monitor (its
+          // Evict the oldest panel that isn't a pinned Computer panel (its
           // session actively streaming a turn); if all of them are pinned,
           // the oldest yields anyway - same tie-break spirit as the
           // 2-panel case, generalized to the full pool.
@@ -483,14 +480,6 @@ export const useUIStore = create<UIState>()(
 
       setPermissionMode: (mode) => set({ permissionMode: mode }),
 
-      setToolExpansion: (toolUseId, expanded) =>
-        set((s) => ({
-          toolExpansion: {
-            ...s.toolExpansion,
-            [toolUseId]: expanded,
-          },
-        })),
-
       setThinkingExpansion: (thinkingId, expanded) =>
         set((s) => ({
           thinkingExpansion: {
@@ -532,7 +521,6 @@ export const useUIStore = create<UIState>()(
         theme: s.theme,
         sidebarCollapsed: s.sidebarCollapsed,
         permissionMode: s.permissionMode,
-        toolExpansion: s.toolExpansion,
         thinkingExpansion: s.thinkingExpansion,
         askUserAnswers: s.askUserAnswers,
         rememberedApprovals: s.rememberedApprovals,

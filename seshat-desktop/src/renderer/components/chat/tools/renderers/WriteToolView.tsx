@@ -8,14 +8,14 @@ import type { ToolViewProps } from '../types'
 // This component still backs the registry entry for other consumers of
 // renderToolBody (e.g. a future non-diff surface), so it's kept correct on
 // its own rather than deleted.
-export function WriteToolView({ tool, result }: ToolViewProps) {
+export function WriteToolView({ tool, result, expanded }: ToolViewProps) {
   const filePath = (tool.input.file_path as string) ?? ''
   const diff = resolveDiffRows(tool)
 
   return (
     <>
       {diff && diff.rows.length > 0 && (
-        <DiffView filePath={filePath} rows={diff.rows} addCount={diff.addCount} delCount={diff.delCount} />
+        <DiffView filePath={filePath} rows={diff.rows} addCount={diff.addCount} delCount={diff.delCount} expanded={expanded} />
       )}
 
       {result?.isError && result.content && (

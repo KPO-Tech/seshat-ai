@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { Copy, Down, Time, CheckOne } from '@icon-park/react'
+import { Copy, Down, Time, CheckOne, Redo } from '@icon-park/react'
 import { MarkdownView } from '@renderer/components/MarkdownView'
 import { NexusLogo } from '@renderer/components/NexusLogo'
 import { useUIStore } from '@renderer/stores/ui'
@@ -8,6 +8,7 @@ import { PermissionCard } from '../tools/PermissionCard'
 import { AgentCardsRow } from '../tools/AgentToolView'
 import { QuietToolGroup } from '../tools/QuietToolGroup'
 import { THINKING_MARKDOWN_CLASS } from '../tools/thinkingMarkdownClass'
+import { thinkingPreview } from './thinkingPreview'
 import { breaksGroup } from '../tools/quietGroupPhrase'
 import { isGroupable } from '../tools/toolDisplay'
 import { AttachmentThumb } from '../attachments/AttachmentThumb'
@@ -21,10 +22,10 @@ function cx(...classes: Array<string | false | null | undefined>) {
 // Tools that never appear as chat tool blocks - each has its own dedicated
 // surface elsewhere so an inline line here would just be a redundant second
 // copy of the same information:
-// - mode-switching tools: silent, handled by the Agent Monitor panel
+// - mode-switching tools: silent, handled by the Computer panel
 // - task_create/task_update/task_list: the live task list with per-item
-//   status already lives in the Agent Monitor panel (auto-opened on
-//   task_create - see Conversation.tsx), which is a far more useful view
+//   status already lives in the Computer panel (auto-opened on
+//   task_create - see useConversationPanels.ts), which is a far more useful view
 //   than a growing wall of "Create Task"/"Update Task" lines for every
 //   single item
 const HIDDEN_TOOLS = new Set([
@@ -80,27 +81,43 @@ function ThinkingBlock({
   const storedExpansion = useUIStore((s) => s.thinkingExpansion[thinkingId])
   const expanded = storedExpansion ?? revealThinking
   const setThinkingExpansion = useUIStore((s) => s.setThinkingExpansion)
+  const preview = expanded ? '' : thinkingPreview(thinking)
   return (
-    <div>
-      <button
-        className={cx(
-          'flex min-h-10 w-full cursor-pointer items-center gap-2 border border-app-border-subtle bg-[color-mix(in_srgb,var(--color-surface-elevated)_58%,var(--color-bg))] px-2.5 py-[7px] text-left text-app-text-secondary transition-colors duration-150 hover:border-[color-mix(in_srgb,var(--color-accent)_20%,var(--color-border-subtle))] hover:bg-[color-mix(in_srgb,var(--color-surface-elevated)_74%,var(--color-bg))] hover:text-app-text',
-          expanded ? 'rounded-t-md' : 'rounded-md',
-        )}
-        type="button"
+    <div className="flex flex-col">
+      {/* Deliberately plain - no border/background box like a tool row. Just
+          a quiet, italic line that expands into italic body text; the goal
+          is "normal text that happens to fold", not another card. */}
+      <div
+        className="group inline-flex min-h-0 w-full cursor-pointer items-center gap-1.5 rounded px-1 py-1 text-left text-[11.5px] italic leading-snug text-app-text-muted transition-colors duration-150 hover:text-app-text-secondary"
+        role="button"
+        tabIndex={0}
         onClick={() => setThinkingExpansion(thinkingId, !expanded)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setThinkingExpansion(thinkingId, !expanded) } }}
         aria-expanded={expanded}
       >
-        <span className={cx('order-3 ml-auto inline-flex opacity-55 transition-transform duration-150', expanded && 'rotate-180')}>
+        <span className="inline-flex size-3.5 shrink-0 items-center justify-center not-italic text-app-text-muted">
+          <Time size={11} />
+        </span>
+        <span className="flex-none">Thinking</span>
+        {preview && (
+          <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap opacity-70">
+            — {preview}
+          </span>
+        )}
+        <button
+          type="button"
+          className="ml-auto inline-flex size-[18px] shrink-0 cursor-pointer items-center justify-center rounded border-0 bg-transparent not-italic text-app-text-muted opacity-0 transition duration-150 hover:bg-[var(--color-hover)] hover:text-app-text group-hover:opacity-100"
+          aria-label="Copy"
+          onClick={(e) => { e.stopPropagation(); void navigator.clipboard.writeText(thinking) }}
+        >
+          <Copy size={10} />
+        </button>
+        <span className={cx('inline-flex shrink-0 items-center not-italic opacity-45 transition-transform duration-150', expanded && 'rotate-180')}>
           <Down size={10} />
         </span>
-        <span className="inline-flex items-center justify-center text-app-text-muted">
-          <Time size={12} />
-        </span>
-        <span className="text-[12px] font-[650] not-italic text-inherit">Thinking</span>
-      </button>
+      </div>
       {expanded && (
-        <div className="rounded-b-md border border-t-0 border-app-border-subtle bg-[color-mix(in_srgb,var(--color-bg)_72%,white)] pb-[10px] pl-[39px] pr-3 pt-[9px] text-[11px] not-italic leading-[1.55] text-app-text-muted">
+        <div className="py-1 pl-[19px] pr-1 text-[12px] italic leading-[1.6] text-app-text-secondary">
           {/* Reasoning-model summaries (Codex/gpt-5's own reasoning_summary
               text) come back with the model's own markdown structure - a
               bold lead-in line, sometimes a blockquote - which otherwise
@@ -119,6 +136,12 @@ function ThinkingBlock({
 type Props = {
   message: Message
   sessionId?: string
+  // True only for the very first message in the whole conversation - each
+  // message is virtualized inside its own row wrapper (see MessageList.tsx),
+  // so every MessageItem is its wrapper's :first-child; a `first:` CSS
+  // variant here would match every message, not just the conversation's
+  // first one, and silently override the margin below on all of them.
+  isFirst?: boolean
   compact?: boolean
   revealThinking?: boolean
   autoExpandTools?: boolean
@@ -260,7 +283,7 @@ function CompletionFlash() {
   )
 }
 
-export const MessageItem = memo(function MessageItem({ message, sessionId, compact = false, revealThinking = false, autoExpandTools = false, liveActivity, justCompleted = false, onApproveTool, onDenyTool, onSubmitToolPrompt, onRetryMessage }: Props) {
+export const MessageItem = memo(function MessageItem({ message, sessionId, isFirst = false, compact = false, revealThinking = false, autoExpandTools = false, liveActivity, justCompleted = false, onApproveTool, onDenyTool, onSubmitToolPrompt, onRetryMessage }: Props) {
   const isUser = message.role === 'user'
   const attachments = messageAttachments(message)
   if (isToolResultOnly(message)) return null
@@ -286,8 +309,8 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
   return (
     <div
       className={cx(
-        'group flex w-full items-start gap-3 first:mt-0',
-        compact ? 'mt-2' : 'mt-[22px]',
+        'group flex w-full items-start gap-3',
+        isFirst ? 'mt-0' : compact ? 'mt-2' : 'mt-9',
         isUser && 'flex-row-reverse',
       )}
     >
@@ -392,7 +415,7 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
         {!liveActivity && justCompleted && <CompletionFlash />}
 
         {copyText && !hasVisibleTool && (
-          <div className={cx('mt-0.5 flex items-center gap-[7px] opacity-0 transition-opacity duration-200 group-hover:opacity-100', isUser && 'flex-row-reverse')}>
+          <div className={cx('-mt-1 flex items-center gap-[7px] opacity-0 transition-opacity duration-200 group-hover:opacity-100', isUser && 'flex-row-reverse')}>
             <button
               className="flex cursor-pointer items-center rounded-app-xs border-0 bg-transparent p-0.5 text-app-text-muted hover:bg-[var(--color-hover)] hover:text-app-text-secondary"
               aria-label="Copy"
@@ -403,6 +426,21 @@ export const MessageItem = memo(function MessageItem({ message, sessionId, compa
             >
               <Copy size={11} />
             </button>
+            {/* User messages only - re-sends the same text as a new prompt,
+                same path the "Failed to send · Retry" link already uses
+                below, just available on every message instead of only a
+                failed one. */}
+            {isUser && onRetryMessage && (
+              <button
+                className="flex cursor-pointer items-center rounded-app-xs border-0 bg-transparent p-0.5 text-app-text-muted hover:bg-[var(--color-hover)] hover:text-app-text-secondary"
+                aria-label="Retry"
+                title="Send this message again"
+                type="button"
+                onClick={() => onRetryMessage(copyText)}
+              >
+                <Redo size={11} />
+              </button>
+            )}
           </div>
         )}
       </div>

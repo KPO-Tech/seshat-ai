@@ -204,13 +204,19 @@ export function DiffView({
   rows,
   addCount,
   delCount,
+  expanded,
 }: {
   filePath?: string
   rows: DiffRow[]
   addCount: number
   delCount: number
+  // Full-page inside Computer/Files: the host already shows the filename in
+  // its own header, so this drops its own filename row (keeps the +/- stat,
+  // the one thing that row said the host doesn't already) and its 360px cap.
+  expanded?: boolean
 }) {
   const language = filePath ? languageForPath(filePath) : undefined
+  const showFilenameRow = Boolean(filePath) && !expanded
 
   const copyText = rows
     .map((r) => `${r.type === 'add' ? '+' : r.type === 'del' ? '-' : ' '} ${r.text}`)
@@ -218,7 +224,7 @@ export function DiffView({
 
   return (
     <div className="flex flex-col">
-      {filePath && (
+      {showFilenameRow && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-t-lg border border-b-0 border-app-border-subtle bg-[rgba(255,255,255,0.03)] px-[9px] py-1.5">
           <span className="min-w-0 flex-1 truncate font-['JetBrains_Mono','Fira_Code',monospace] text-[11px] text-app-text-muted" title={filePath}>{filePath}</span>
           <span className="flex items-center gap-1.5 font-['JetBrains_Mono','Fira_Code',monospace] text-[10px] font-bold">
@@ -227,10 +233,17 @@ export function DiffView({
           </span>
         </div>
       )}
+      {expanded && (
+        <div className="flex items-center justify-end gap-1.5 pb-1.5 font-['JetBrains_Mono','Fira_Code',monospace] text-[10px] font-bold">
+          <span className="text-[#6ee7b7]">+{addCount}</span>
+          <span className="text-[#fca5a5]">−{delCount}</span>
+        </div>
+      )}
       <div
         className={cx(
-          'group relative max-h-[360px] overflow-auto rounded-lg border border-app-border-subtle bg-[rgba(0,0,0,0.2)] font-[\'JetBrains_Mono\',\'Fira_Code\',monospace] text-[11.5px] leading-[1.55]',
-          filePath && 'rounded-t-none border-t-0',
+          'group relative overflow-auto font-[\'JetBrains_Mono\',\'Fira_Code\',monospace] text-[11.5px] leading-[1.55]',
+          expanded ? 'rounded-none border-0 bg-transparent' : 'rounded-lg border border-app-border-subtle bg-[rgba(0,0,0,0.2)] max-h-[360px]',
+          showFilenameRow && 'rounded-t-none border-t-0',
           SCROLL_THIN,
         )}
       >
@@ -256,7 +269,7 @@ export function DiffView({
             <span className="w-3.5 shrink-0 select-none text-center font-bold" aria-hidden>
               {row.type === 'add' ? '+' : row.type === 'del' ? '−' : ' '}
             </span>
-            <span className="min-w-0 flex-1 whitespace-pre-wrap break-all pl-[3px] text-app-text-secondary">
+            <span className={cx('min-w-0 flex-1 pl-[3px] text-app-text-secondary', expanded ? 'whitespace-pre' : 'whitespace-pre-wrap break-all')}>
               {language ? (
                 <SyntaxHighlighter
                   language={language}

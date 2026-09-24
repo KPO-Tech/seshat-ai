@@ -7,7 +7,7 @@ import { ErrorPre } from './common'
 import { DiffView, resolveDiffRows } from './DiffView'
 import { fmtDuration, parseAskUserAnswers, resolveAskUserQuestions } from './helpers'
 import { summarizeQuietGroup, toolResultSubtitle, toolStatus } from './quietGroupPhrase'
-import { categoryIcon, isEditTool, isWriteTool, renderToolBody, toolLabel } from './toolDisplay'
+import { categoryIcon, isEditTool, isFileTool, isWriteTool, renderToolBody, toolLabel } from './toolDisplay'
 import type { ToolBlockProps } from './types'
 
 function cx(...classes: Array<string | false | null | undefined>) {
@@ -37,21 +37,26 @@ export function ToolLineItem({ tool, sessionId, autoExpand = false, onSubmitProm
   autoExpand?: boolean
   onSubmitPrompt?: ToolBlockProps['onSubmitPrompt']
 }) {
+  // web_search/web_fetch/read_url/read_document_url used to render here too,
+  // but are now silent (see toolDisplay.tsx) and never reach this component.
+  // bash stays here (unlike those) since it still needs to auto-expand
+  // inline on running/error - but it gets the same static-label + detail
+  // split as the other preview tools instead of one long sentence, just
+  // without their bigger card (isBigRow below).
   const isPreviewTool =
-    tool.name === 'web_search' ||
-    tool.name === 'web_fetch' ||
-    tool.name === 'read_url' ||
-    tool.name === 'read_document_url' ||
     tool.name === 'bash' ||
     tool.name === 'ask_user_question' ||
     tool.name === 'mcp' ||
     tool.name.startsWith('mcp__')
-  const setToolExpansion = useUIStore((s) => s.setToolExpansion)
+  const isBigRow = isPreviewTool && tool.name !== 'bash'
+  const openRightPanel = useUIStore((s) => s.openRightPanel)
   const status = toolStatus(tool)
   const isRunning = status === 'running' || status === 'pending'
   const isError = status === 'failed'
   const isCompleted = status === 'completed'
-  const expanded = useUIStore((s) => s.toolExpansion[tool.id] ?? (autoExpand || isRunning || isError))
+  // Only ever true while live/erroring - clicking a row opens the tool's
+  // own panel instead of toggling this in place (see toggle() below).
+  const expanded = autoExpand || isRunning || isError
   const label = isPreviewTool ? toolLabel(tool.name) : summarizeQuietGroup([tool])
   const detail = isPreviewTool ? previewDetail(tool) : ''
   const meta = isPreviewTool ? previewMeta(tool) : ''
@@ -64,8 +69,27 @@ export function ToolLineItem({ tool, sessionId, autoExpand = false, onSubmitProm
   const subtitle = isDiffTool && status !== 'failed' ? null : toolResultSubtitle(tool)
   const copyText = tool._result?.content || JSON.stringify(tool.input, null, 2)
 
+  // Clicking a tool row now opens its own live panel instead of expanding
+  // inline - bash and browser_* already have dedicated panels (Terminal,
+  // Browser), read/write/edit open in Files (see FilesPanel.tsx), everything
+  // else (web_search/web_fetch, mcp, ...) opens in Computer, focused on this
+  // exact tool call. Sub-agent tools never reach this component - they
+  // render as AgentCardsRow instead (see MessageItem.tsx) - so no case is
+  // needed for them here.
   function toggle() {
-    setToolExpansion(tool.id, !expanded)
+    if (tool.name === 'bash') {
+      openRightPanel({ kind: 'terminal', title: 'Terminal', sessionId, focusToolId: tool.id })
+      return
+    }
+    if (tool.name.startsWith('browser_')) {
+      openRightPanel({ kind: 'browser', title: 'Browser', sessionId })
+      return
+    }
+    if (isFileTool(tool.name)) {
+      openRightPanel({ kind: 'files', title: 'Files', sessionId, focusToolId: tool.id })
+      return
+    }
+    openRightPanel({ kind: 'computer', title: 'Computer', sessionId, focusToolId: tool.id })
   }
 
   return (
@@ -74,9 +98,13 @@ export function ToolLineItem({ tool, sessionId, autoExpand = false, onSubmitProm
           row itself is a div with button semantics instead. */}
       <div
         className={cx(
-          'group inline-flex min-h-0 w-full cursor-pointer items-center gap-1.5 border border-app-border-subtle px-2 py-1.5 text-left text-[10.5px] leading-snug text-app-text-muted transition-colors duration-150 hover:border-[color-mix(in_srgb,var(--color-accent)_20%,var(--color-border-subtle))] hover:bg-app-surface-elevated hover:text-app-text-secondary',
-          isPreviewTool ? 'min-h-10 bg-app-surface-elevated' : 'bg-app-surface',
-          expanded ? 'rounded-t-md' : 'rounded-md',
+          // No border, no resting background - a flat row like
+          // SilentToolView's (List Directory, Read, ...), not a boxed card.
+          // Its expanded body below keeps its own full border/corners
+          // (HeaderCard, DiffView already supply that) instead of the row
+          // and body pretending to share one continuous outline.
+          'group inline-flex min-h-0 w-full cursor-pointer items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-[10.5px] leading-snug text-app-text-muted transition-colors duration-150 hover:bg-[color-mix(in_srgb,var(--color-surface)_42%,transparent)] hover:text-app-text-secondary',
+          isBigRow && 'min-h-10',
         )}
         role="button"
         tabIndex={0}
@@ -119,7 +147,7 @@ export function ToolLineItem({ tool, sessionId, autoExpand = false, onSubmitProm
           See BashToolView/WebSearchToolView for the two that were missing
           that section until this pass. */}
       {expanded && (
-        <div className="[&>.tb-hcard:first-child]:rounded-b-md [&>.tb-hcard:first-child]:rounded-t-none [&>.tb-hcard:first-child]:border-t-0">
+        <div className="pt-1">
           {isDiffTool ? (
             <DiffContent tool={tool} />
           ) : (
@@ -131,13 +159,23 @@ export function ToolLineItem({ tool, sessionId, autoExpand = false, onSubmitProm
   )
 }
 
+// "Does tool._message read like a real backend-authored sentence" (e.g.
+// "Found full AcceptInvitation implementation") vs. a bare echoed value (a
+// file path, a short pattern) that shouldn't stand in for the detail text.
+function looksLikeSentence(message: string): boolean {
+  const trimmed = message.trim()
+  return trimmed.length >= 12 && trimmed.includes(' ')
+}
+
 function previewDetail(tool: ToolUseBlock): string {
-  if (tool.name === 'web_search') {
-    return typeof tool.input.query === 'string' ? tool.input.query : ''
-  }
   if (tool.name === 'bash') {
+    // description is the tool call's own input (a required field) - the
+    // authoritative, model-authored summary of intent. _message is a
+    // separate runtime progress string that isn't always present; the raw
+    // command is the last resort, since a long one reads poorly collapsed
+    // into one line.
     if (typeof tool.input.description === 'string' && tool.input.description) return tool.input.description
-    if (tool._message) return tool._message
+    if (tool._message && looksLikeSentence(tool._message)) return tool._message
     return typeof tool.input.command === 'string' ? tool.input.command : ''
   }
   if (tool.name === 'ask_user_question') {
@@ -160,13 +198,7 @@ function previewDetail(tool: ToolUseBlock): string {
     if (parsed.tool) return parsed.tool
     return typeof tool.input.tool === 'string' ? tool.input.tool : ''
   }
-  const url = typeof tool.input.url === 'string' ? tool.input.url : ''
-  if (!url) return ''
-  try {
-    return new URL(url).hostname
-  } catch {
-    return url
-  }
+  return ''
 }
 
 function previewMeta(tool: ToolUseBlock): string {

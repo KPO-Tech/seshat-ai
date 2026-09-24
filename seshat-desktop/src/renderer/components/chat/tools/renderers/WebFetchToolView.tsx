@@ -1,35 +1,29 @@
-import { CodeBox, HCARD_HEADER_LINK_CSS, HCARD_HEADER_STAT_CSS, HeaderCard } from '../common'
+import { useState } from 'react'
+import { CodeBox, HCARD_HEADER_STAT_CSS, HeaderCard, ProseBox } from '../common'
 import type { ToolViewProps } from '../types'
 import { openInAppBrowser, shouldOpenInAppBrowser } from '@renderer/lib/openInAppBrowser'
 
-export function WebFetchToolView({ tool, result, sessionId }: ToolViewProps) {
+const FAVICON_CSS = 'inline-flex size-[15px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--color-surface)_74%,var(--color-bg))]'
+const HOSTNAME_LINK_CSS = 'min-w-0 shrink truncate text-app-text no-underline hover:text-[var(--color-accent)] hover:underline'
+
+export function WebFetchToolView({ tool, result, sessionId, expanded }: ToolViewProps) {
   const url = (tool.input.url as string) ?? ''
   const prompt = (tool.input.prompt as string) ?? ''
-  let hostname = url
-  try {
-    if (url) hostname = new URL(url).hostname
-  } catch {
-    // not a valid absolute URL - fall back to showing it verbatim
-  }
+  const hostname = domainLabel(url)
 
   const parsed = parseFetchResult(result?.content ?? '')
   const status = parsed.status || (result?.isError ? 'Error' : '')
   const size = formatBytes(parsed.sizeBytes)
   const duration = parsed.time || (result?.durationMs != null ? `${result.durationMs}ms` : '')
-  const mode = parsed.mode
-  const stat = [status, mode, size, duration].filter(Boolean).join(' · ')
+  const stat = [status, parsed.mode, size, duration].filter(Boolean).join(' · ')
   const sourceUrl = parsed.fetchedFrom || url
-  const payload = JSON.stringify({
-    prompt,
-    extraction: parsed.content,
-  }, null, 2)
 
   if (result?.isError) {
     return (
       <HeaderCard
         header={
           <>
-            <span title={url}>{hostname || 'Web Fetch'}</span>
+            <span className="truncate">{hostname || 'Web Fetch'}</span>
             {stat && <span className={HCARD_HEADER_STAT_CSS}>{stat}</span>}
           </>
         }
@@ -39,13 +33,18 @@ export function WebFetchToolView({ tool, result, sessionId }: ToolViewProps) {
     )
   }
 
+  // The header used to be one giant clickable URL spanning the whole strip -
+  // a favicon-sized hostname link plus a stat, matching every other
+  // HeaderCard's header, leaves the actual space for the extracted content
+  // below instead of the source address.
   return (
     <HeaderCard
       header={
         <>
+          <Favicon domain={hostname} />
           {sourceUrl ? (
             <a
-              className={HCARD_HEADER_LINK_CSS}
+              className={HOSTNAME_LINK_CSS}
               href={sourceUrl}
               target="_blank"
               rel="noreferrer"
@@ -55,20 +54,51 @@ export function WebFetchToolView({ tool, result, sessionId }: ToolViewProps) {
                 openInAppBrowser(sourceUrl, sessionId)
               }}
             >
-              {sourceUrl}
+              {hostname || sourceUrl}
             </a>
           ) : (
-            <span>Web Fetch</span>
+            <span className="truncate">Web Fetch</span>
           )}
           {stat && <span className={HCARD_HEADER_STAT_CSS}>{stat}</span>}
         </>
       }
     >
-      <div className="flex flex-col">
-        {payload && <CodeBox content={payload} language="json" bare />}
+      <div className="flex flex-col gap-1.5 px-2.5 py-2">
+        {prompt && <p className="m-0 text-[10.5px] italic leading-[1.4] text-app-text-muted">&ldquo;{prompt}&rdquo;</p>}
+        {parsed.content ? (
+          <ProseBox content={parsed.content} copyable bare expanded={expanded} />
+        ) : (
+          <div className="flex flex-col items-center gap-2 px-4 py-8 text-center text-app-text-muted">
+            <span className="text-[11.5px]">No content extracted.</span>
+          </div>
+        )}
       </div>
     </HeaderCard>
   )
+}
+
+function Favicon({ domain }: { domain: string }) {
+  const [failed, setFailed] = useState(false)
+  if (!domain || failed) return null
+  return (
+    <span className={FAVICON_CSS} aria-hidden="true">
+      <img
+        className="block size-full object-cover"
+        src={`https://icons.duckduckgo.com/ip3/${domain}.ico`}
+        alt=""
+        loading="lazy"
+        onError={() => setFailed(true)}
+      />
+    </span>
+  )
+}
+
+function domainLabel(url: string): string {
+  try {
+    return url ? new URL(url).hostname.replace(/^www\./, '') : ''
+  } catch {
+    return url
+  }
 }
 
 function parseFetchResult(content: string) {

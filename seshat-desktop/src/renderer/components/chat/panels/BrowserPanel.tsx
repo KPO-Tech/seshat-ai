@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AddOne, Browser, Close, Left, LoadingOne, Refresh, Right } from '@icon-park/react'
+import { AddOne, Close, Globe, Left, LoadingOne, Refresh, Right } from '@icon-park/react'
 
 // contextId scopes tabs/history to a single browsing session: the shared chat
 // panel, or each project/session-specific Browser tab.
@@ -90,7 +90,7 @@ export function BrowserPanel({ url, contextId = 'chat' }: { url?: string; contex
               ].join(' ')}
               onClick={() => void browserApi?.switchTab(contextId, tab.id).then(setState)}
             >
-              {tab.status === 'loading' ? <LoadingOne className="animate-spin" size={11} /> : <Browser size={11} />}
+              {tab.status === 'loading' ? <LoadingOne className="animate-spin" size={11} /> : <Globe size={11} />}
               <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{tab.label}</span>
               {tabs.length > 1 && (
                 <span
@@ -138,7 +138,7 @@ export function BrowserPanel({ url, contextId = 'chat' }: { url?: string; contex
       <div className="relative min-h-[260px] flex-1 overflow-hidden bg-white" ref={viewportRef}>
         {!browserApi && (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-[var(--font-size-sm)] text-app-text-muted">
-            <Browser size={18} />
+            <Globe size={18} />
             <span>Embedded browser is only available in the desktop app.</span>
           </div>
         )}

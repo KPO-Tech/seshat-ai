@@ -1,7 +1,6 @@
 import { useEffect, useState, useMemo, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
-import { CheckCorrect, FileTextOne, Browser, LightMember } from '@icon-park/react'
-import { ChatTopBar } from '@renderer/components/chat/ChatTopBar'
+import { CheckCorrect, FileTextOne, Globe, LightMember } from '@icon-park/react'
 import { ChatInput } from '@renderer/components/chat/composer/ChatInput'
 import { attachmentCategory, isPDFFile, sentAttachment, type ChatAttachment } from '@renderer/components/chat/attachments/attachmentTypes'
 import { ProviderIcon } from '@renderer/components/ui/ProviderIcon'
@@ -13,6 +12,7 @@ import { useSessionStore } from '@renderer/stores/session'
 import { useUIStore } from '@renderer/stores/ui'
 import { UNTITLED_SESSION_TITLE } from '@renderer/lib/sessionTitle'
 import { renderPDFPagePreviews } from '@renderer/lib/pdfPreview'
+import { modelAlias } from '@renderer/lib/modelAlias'
 
 type ModelChoice = {
   id: string
@@ -64,8 +64,6 @@ export function Home() {
   const providers = useProvidersStore((s) => s.providers)
   const addSession = useSessionStore((s) => s.addSession)
   const permissionMode = useUIStore((s) => s.permissionMode)
-  const togglePermissionMode = useUIStore((s) => s.togglePermissionMode)
-  const setPermissionMode = useUIStore((s) => s.setPermissionMode)
   const [inputValue, setInputValue] = useState('')
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null)
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null)
@@ -160,14 +158,20 @@ export function Home() {
   }, [chatProviders, modelsByProvider])
 
   // Auto-select the default (or first) model across every usable provider,
-  // matching the in-conversation composer.
+  // matching the in-conversation composer. Waits until every provider's
+  // model catalog has finished loading (loadingModelProviderIds empty) -
+  // otherwise allModelChoices only reflects whichever provider's fetch
+  // happened to resolve first, and this could lock onto a non-default model
+  // from that provider before the real default (possibly in a slower
+  // provider's catalog) has even arrived.
   useEffect(() => {
     if (allModelChoices.length === 0) return
     if (selectedModelChoice) return
+    if (loadingModelProviderIds.length > 0) return
     const def = allModelChoices.find((choice) => choice.model.is_default) ?? allModelChoices[0]
     setSelectedProviderId(def.providerId)
     setSelectedModelId(def.model.model_id)
-  }, [allModelChoices, selectedModelChoice])
+  }, [allModelChoices, selectedModelChoice, loadingModelProviderIds])
 
   useEffect(() => {
     if (!selectedModelId || allModelChoices.length === 0) return
@@ -383,15 +387,6 @@ export function Home() {
     <div className="home-root">
       <style>{HOME_CSS}</style>
 
-      {/* Top Bar */}
-      <div className="home-top-bar">
-        <ChatTopBar
-          permissionMode={permissionMode}
-          onTogglePermission={togglePermissionMode}
-          onPermissionModeSelect={setPermissionMode}
-        />
-      </div>
-
       {/* Main Content */}
       <div className="home-center">
         <h1 className="home-greeting">Hi, what's your plan for today?</h1>
@@ -410,13 +405,13 @@ export function Home() {
             onRemoveAttachment={handleRemoveAttachment}
             isUploadingAttachments={isUploadingAttachments}
             attachmentError={attachmentError}
-            modelLabel={
+            modelLabel={modelAlias(
               selectedModelChoice?.model.display_name ||
               selectedModelChoice?.model.model_id ||
               selectedModel?.display_name ||
               selectedModel?.model_id ||
               'Model'
-            }
+            )}
             modelIcon={
               selectedModelChoice
                 ? <ProviderIcon provider={selectedModelChoice.providerKind} size={13} />
@@ -426,7 +421,7 @@ export function Home() {
               allModelChoices.length > 0
                 ? allModelChoices.map((choice) => ({
                     id: choice.id,
-                    label: choice.model.display_name || choice.model.model_id,
+                    label: modelAlias(choice.model.display_name || choice.model.model_id),
                     description: providerDisplayName(choice.providerName, choice.providerKind),
                     icon: <ProviderIcon provider={choice.providerKind} size={17} />,
                     prefix: providerInitials(choice.providerName, choice.providerKind),
@@ -435,6 +430,7 @@ export function Home() {
             }
             selectedModelId={selectedModelChoiceId}
             onModelSelect={handleModelSelect}
+            modelMenuPlacement="down"
             modelDisabled={
               isCreatingSession ||
               (loadingModelProviderIds.length > 0 && allModelChoices.length === 0)
@@ -461,7 +457,7 @@ export function Home() {
         <div className="home-quick-actions">
           <QuickAction icon={<CheckCorrect size={14} />} label="Create a task" onClick={() => setInputValue('Create a task to ')} />
           <QuickAction icon={<FileTextOne size={14} />} label="Summarize a file" onClick={() => setInputValue('Summarize the file at ')} />
-          <QuickAction icon={<Browser size={14} />} label="Search the web" onClick={() => setInputValue('Search the web for ')} />
+          <QuickAction icon={<Globe size={14} />} label="Search the web" onClick={() => setInputValue('Search the web for ')} />
           <QuickAction icon={<LightMember size={14} />} label="Brainstorm ideas" onClick={() => setInputValue('Help me brainstorm ideas for ')} />
         </div>
       </div>
@@ -485,10 +481,6 @@ const HOME_CSS = `
   flex-direction: column;
   background-color: var(--color-bg);
   overflow-y: auto;
-}
-
-.home-top-bar {
-  padding: var(--space-6) 18px;
 }
 
 .home-center {

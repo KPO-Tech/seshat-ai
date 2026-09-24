@@ -1,5 +1,5 @@
 import {
-  Terminal, Globe, FileTextOne, Robot, Browser, PlugOne,
+  Terminal, Globe, FileTextOne, Robot, PlugOne,
   MindMapping, Notebook, Calculator, Comment, Calendar,
 } from '@icon-park/react'
 import type { ToolPromptRequest, ToolStatus, ToolUseBlock } from '@renderer/api/types'
@@ -34,12 +34,41 @@ export function languageForPath(filePath: string): string | undefined {
   return EXT_LANGUAGE[ext]
 }
 
+// A read tool's result.content is never the file's raw bytes - it's a
+// "File: <path>\nLines: N-M of T\n\n" header followed by every line prefixed
+// with its own cat -n style "  N→" number (see AddLineNumbers/
+// FormatTextWithLineNumbers, seshat/internal/tools/files/read/utils.go -
+// FormatTextWithLineNumbers is always called with compact=false, so the
+// prefix is space-padded to at least 4 chars, not bare "N→"). Fine as plain
+// text (an extra redundant number next to CodeBox's own gutter is only a
+// minor eyesore), catastrophic as markdown: those are single '\n's, which
+// markdown collapses into spaces, so the whole file renders as one run-on
+// paragraph. Recovers the file's actual text - and its real starting line
+// number, straight from the header - for both display paths to share.
+const READ_TOOL_HEADER_RE = /^File: [^\n]*\nLines: (\d+)-\d+ of \d+(?: \(truncated\))?\n\n/
+const READ_TOOL_LINE_PREFIX_RE = /^\s*\d+→/
+
+export function parseReadToolContent(raw: string): { text: string; startLine?: number } {
+  const header = READ_TOOL_HEADER_RE.exec(raw)
+  if (!header) return { text: raw }
+  const startLine = Number(header[1])
+  const text = raw
+    .slice(header[0].length)
+    .split('\n')
+    .map((line) => line.replace(READ_TOOL_LINE_PREFIX_RE, ''))
+    .join('\n')
+    // The formatter trails every content line (including the last) with its
+    // own \n, which would otherwise show as one extra trailing blank line.
+    .replace(/\n$/, '')
+  return { text, startLine: Number.isFinite(startLine) ? startLine : undefined }
+}
+
 export function toolIcon(name: string) {
   if (name === 'bash') return <Terminal size={11} />
   if (name === 'ask_user_question') return <FileTextOne size={11} />
   if (['task_create', 'task_update', 'task_list'].includes(name)) return <FileTextOne size={11} />
   if (name === 'web_search' || name === 'web_fetch') return <Globe size={11} />
-  if (name.startsWith('browser_')) return <Browser size={11} />
+  if (name.startsWith('browser_')) return <Globe size={11} />
   if (name.startsWith('mcp__') || name === 'mcp') return <PlugOne size={11} />
   if (name === 'agent') return <Robot size={11} />
   if (name.startsWith('memory_')) return <MindMapping size={11} />

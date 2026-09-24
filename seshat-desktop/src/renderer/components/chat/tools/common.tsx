@@ -24,7 +24,7 @@ export const HCARD_HEADER_STAT_CSS = 'ml-auto shrink-0 pl-2 text-[10px] font-med
 // Shared by GlobToolView and ListDirectoryToolView - both always render
 // their file list nested inside a HeaderCard, so no border/background of
 // its own (that's the card's).
-export const FILE_LIST_CSS = 'flex max-h-[240px] flex-col gap-px overflow-y-auto overflow-x-hidden [scrollbar-width:thin]'
+export const FILE_LIST_CSS = 'flex max-h-[240px] flex-col gap-0.5 overflow-y-auto overflow-x-hidden [scrollbar-width:thin]'
 export const FILE_ITEM_CSS = 'truncate rounded-[5px] px-2 py-[3px] font-[\'JetBrains_Mono\',\'Fira_Code\',monospace] text-[12px] text-app-text-secondary transition-colors duration-100 hover:bg-[rgba(255,255,255,0.04)]'
 export const FILEPATH_CSS = 'truncate font-[\'JetBrains_Mono\',\'Fira_Code\',monospace] text-[12px] font-semibold text-app-text'
 
@@ -68,7 +68,7 @@ export function HeaderCard({ header, children }: { header: ReactNode; children: 
     // `tb-hcard` carries no CSS of its own anymore - kept as a bare marker
     // class so ToolLineItem's `[&>.tb-hcard:first-child]:…` can still flatten
     // this card's top corners when it's the first thing in an expanded body.
-    <div className="tb-hcard overflow-hidden rounded-md border border-app-border-subtle bg-[color-mix(in_srgb,var(--color-bg)_72%,white)]">
+    <div className="tb-hcard overflow-hidden rounded-md border border-app-border-subtle bg-[color-mix(in_srgb,var(--color-bg)_72%,var(--color-surface))]">
       <div className="flex items-center gap-1.5 overflow-hidden whitespace-nowrap border-b border-app-border-subtle bg-[color-mix(in_srgb,var(--color-surface-elevated)_70%,var(--color-bg))] px-2.5 py-[7px] text-[12px] font-[650] text-app-text">
         {header}
       </div>
@@ -85,6 +85,7 @@ export function CodeBox({
   lineNumbers,
   startingLineNumber = 1,
   bare,
+  expanded,
 }: {
   content: string
   variant?: 'error'
@@ -104,6 +105,10 @@ export function CodeBox({
   // HeaderCard, which already supplies the one border the two together
   // should have. A standalone CodeBox never sets this.
   bare?: boolean
+  // Full-page inside Computer/Files (a dedicated file view, plenty of room,
+  // its own scroll) rather than a compact inline chat card: no 220px soft
+  // cap, the content just fills its container.
+  expanded?: boolean
 }) {
   const isError = variant === 'error'
   return (
@@ -119,8 +124,8 @@ export function CodeBox({
         <SyntaxHighlighter
           language={language}
           style={vscDarkPlus as any}
-          customStyle={CODE_HIGHLIGHT_STYLE}
-          codeTagProps={{ style: CODE_HIGHLIGHT_CODE_STYLE }}
+          customStyle={expanded ? CODE_HIGHLIGHT_STYLE_EXPANDED : CODE_HIGHLIGHT_STYLE}
+          codeTagProps={{ style: expanded ? CODE_HIGHLIGHT_CODE_STYLE_EXPANDED : CODE_HIGHLIGHT_CODE_STYLE }}
           className={SCROLL_THIN}
           showLineNumbers={lineNumbers}
           startingLineNumber={startingLineNumber}
@@ -129,7 +134,7 @@ export function CodeBox({
           {content}
         </SyntaxHighlighter>
       ) : (
-        <pre className={cx('m-0 max-h-[220px] overflow-y-auto whitespace-pre-wrap break-all px-[9px] py-2 font-mono text-[11px] leading-[1.5] text-app-text-secondary', isError && 'text-[#fca5a5]')}>
+        <pre className={cx('m-0 overflow-auto px-[9px] py-2 font-mono text-[11px] leading-[1.5] text-app-text-secondary', expanded ? 'max-h-none whitespace-pre' : 'max-h-[220px] whitespace-pre-wrap break-all', isError && 'text-[#fca5a5]')}>
           {content}
         </pre>
       )}
@@ -151,7 +156,7 @@ export function CodeBox({
 // markdown doc, a validation report) rather than code - normal line-height
 // and no monospace, so it reads like text instead of looking like a code
 // dump that happens to contain sentences.
-export function ProseBox({ content, copyable, bare }: { content: string; copyable?: boolean; bare?: boolean }) {
+export function ProseBox({ content, copyable, bare, expanded }: { content: string; copyable?: boolean; bare?: boolean; expanded?: boolean }) {
   return (
     <div
       className={cx(
@@ -159,7 +164,9 @@ export function ProseBox({ content, copyable, bare }: { content: string; copyabl
         bare ? 'rounded-none border-0 bg-transparent' : 'rounded-lg border border-app-border-subtle bg-[rgba(0,0,0,0.2)]',
       )}
     >
-      <div className={cx('max-h-[320px] overflow-y-auto whitespace-pre-wrap break-words px-2.5 py-[9px] text-[12px] leading-[1.6] text-app-text-secondary', SCROLL_THIN)}>{content}</div>
+      {/* Full-page inside Computer's Screen: no soft cap, there's room and
+          its own scroll. Compact inline chat card: capped, same as before. */}
+      <div className={cx(expanded ? 'overflow-y-auto' : 'max-h-[320px] overflow-y-auto', 'whitespace-pre-wrap break-words px-2.5 py-[9px] text-[12px] leading-[1.6] text-app-text-secondary', SCROLL_THIN)}>{content}</div>
       {/* Note: pre-existing quirk carried over from the CSS version - this
           button has no hover-reveal wired to .tb-prose (only .tb-code had
           it), so it renders permanently at opacity-0. Left unchanged here;
@@ -202,12 +209,25 @@ const CODE_HIGHLIGHT_STYLE: CSSProperties = {
   overflowX: 'auto',
 }
 
+const CODE_HIGHLIGHT_STYLE_EXPANDED: CSSProperties = {
+  ...CODE_HIGHLIGHT_STYLE,
+  maxHeight: undefined,
+}
+
 // Long lines wrap instead of scrolling horizontally out of view - the
 // scroll from customStyle above is a safety net for a single unbreakable
-// token, not the normal case.
+// token, not the normal case. Fine for a compact inline chat card; wrong for
+// a full-page file view, where a wide line (a markdown table row, a long
+// code line) forcibly wrapped into a narrow column shreds it into
+// unreadable fragments instead of just scrolling sideways like a real code
+// editor - CODE_HIGHLIGHT_CODE_STYLE_EXPANDED below is that case.
 const CODE_HIGHLIGHT_CODE_STYLE: CSSProperties = {
   whiteSpace: 'pre-wrap',
   wordBreak: 'break-word',
+}
+
+const CODE_HIGHLIGHT_CODE_STYLE_EXPANDED: CSSProperties = {
+  whiteSpace: 'pre',
 }
 
 const LINE_NUMBER_STYLE: CSSProperties = {

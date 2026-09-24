@@ -8,7 +8,7 @@ import { useUIStore } from '@renderer/stores/ui'
 import { RecentSessions } from './RecentSessions'
 import { SidebarFooterMenu } from './SidebarFooterMenu'
 import { SidebarItem } from './SidebarItem'
-import { resolveProjectContextPath, selectRecentSessions } from './projectContext'
+import { resolveProjectContextPath, selectRecentSessions } from '@renderer/lib/projects'
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ')

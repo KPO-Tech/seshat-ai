@@ -10,6 +10,7 @@ import { RightPanelHost } from './RightPanelHost'
 import { Sidebar } from './sidebar/Sidebar'
 import { ThemeToggleButton } from './ThemeToggleButton'
 import { Titlebar } from './Titlebar'
+import { TitlebarSessionControls } from './TitlebarSessionControls'
 
 export function Shell() {
   const collapsed = useUIStore((state) => state.sidebarCollapsed)
@@ -73,10 +74,11 @@ export function Shell() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-[var(--surface-root)] text-[var(--text-primary)]">
       <Titlebar
-        right={<ThemeToggleButton />}
+        right={<TitlebarSessionControls conversationId={conversationId} />}
         onHome={() => navigate('/')}
         onBack={() => navigate(-1)}
         onForward={() => navigate(1)}
+        afterNav={<ThemeToggleButton />}
         left={
           <button
             className="flex size-8 cursor-pointer items-center justify-center rounded-[5px] border-0 bg-transparent text-[var(--text-secondary)] transition-colors duration-150 hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"

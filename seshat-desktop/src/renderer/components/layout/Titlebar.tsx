@@ -5,6 +5,10 @@ import { WindowCloseIcon, WindowMaximizeIcon, WindowMinimizeIcon } from '@render
 
 type Props = {
   left?: ReactNode
+  // Renders right after the Home/Back/Forward group - for controls that
+  // only make sense alongside navigation (e.g. the active conversation's
+  // panel toggles), as opposed to `left`, which renders before it.
+  afterNav?: ReactNode
   center?: ReactNode
   right?: ReactNode
   // Navigation is optional so the auth screens can render a bare titlebar.
@@ -21,7 +25,7 @@ const systemButtonClass = 'flex h-[34px] w-[42px] cursor-pointer items-center ju
 
 // The app runs frameless, so every screen needs its own drag region and
 // minimize / maximize / close.
-export function Titlebar({ left, center = 'SeshatOS', right, onHome, onBack, onForward }: Props) {
+export function Titlebar({ left, afterNav, center = 'SeshatOS', right, onHome, onBack, onForward }: Props) {
   const hasNavigation = Boolean(onHome || onBack || onForward)
 
   return (
@@ -38,6 +42,7 @@ export function Titlebar({ left, center = 'SeshatOS', right, onHome, onBack, onF
             <button className={navButtonClass} onClick={onForward} aria-label="Forward" type="button"><Right size={14} /></button>
           </div>
         )}
+        {afterNav}
       </div>
 
       {center && (
@@ -48,12 +53,7 @@ export function Titlebar({ left, center = 'SeshatOS', right, onHome, onBack, onF
       )}
 
       <div className="flex items-center gap-1" style={noDragStyle}>
-        {right && (
-          <>
-            <div className="flex items-center">{right}</div>
-            <div className="mx-1 h-[18px] w-px bg-[var(--border-soft)]" aria-hidden="true" />
-          </>
-        )}
+        {right && <div className="flex items-center">{right}</div>}
         <button className={systemButtonClass} onClick={() => void window.nexus?.window.minimize()} aria-label="Minimize" type="button">
           <WindowMinimizeIcon />
         </button>

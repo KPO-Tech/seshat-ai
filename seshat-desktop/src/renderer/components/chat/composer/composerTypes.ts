@@ -21,9 +21,12 @@ export type ChatInputProps = {
   onRemoveAttachment?: (id: string) => void
   isUploadingAttachments?: boolean
   attachmentError?: string | null
-  // Relocated here from ChatTopBar - Provider/Model live next to where the
-  // user actually types. Everything else (mode, permission, agent monitor)
-  // stays in ChatTopBar's top-right cluster.
+  // Relocated here from the now-removed ChatTopBar - Provider/Model/mode
+  // live next to where the user actually types. Permission mode and the
+  // panel toggles (Computer/Browser/Terminal) live in the titlebar now
+  // (see TitlebarSessionControls), since they aren't specific to typing.
+  executionMode?: 'execute' | 'plan' | 'pair_programming'
+  onExecutionModeChange?: (mode: 'execute' | 'plan') => void
   providerLabel?: string
   modelLabel?: string
   modelIcon?: ReactNode
@@ -39,4 +42,8 @@ export type ChatInputProps = {
   modelDisabled?: boolean
   modelError?: string | null
   onModelRetry?: () => void
+  // 'up' fits a bottom-anchored composer (ConversationPage). Home's composer
+  // sits vertically centered on the screen, so its menu should drop down
+  // instead of covering the greeting text above it.
+  modelMenuPlacement?: 'up' | 'down'
 }

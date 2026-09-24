@@ -64,6 +64,24 @@ type TerminalEvent = {
   signal?: string | null
 }
 
+// terminal-relay is separate from `terminal` above: `terminal` is a
+// general-purpose interactive shell session (not yet wired to any UI);
+// terminal-relay carries the agent's own bash-tool commands per session,
+// bridged to seshat-backend's TerminalRelay so the user watches them run
+// live - see main/ipc/terminal-relay.ts.
+type TerminalRelayEvent = {
+  sessionId: string
+  type: string
+  commandId?: string
+  command?: string
+  cwd?: string
+  stream?: 'stdout' | 'stderr'
+  data?: string
+  message?: string
+  exitCode?: number
+  durationMs?: number
+}
+
 const nexusBridge = {
   getVersion: () => ipcRenderer.invoke('app:version'),
   openPath: (p: string) => ipcRenderer.invoke('system:open-path', p),
@@ -75,6 +93,12 @@ const nexusBridge = {
     ipcRenderer.invoke('project:has-context-file', projectPath),
   projectPathExists: (projectPath: string): Promise<boolean> =>
     ipcRenderer.invoke('project:path-exists', projectPath),
+  fs: {
+    listDirectory: (directoryPath: string): Promise<Array<{ name: string; isDirectory: boolean }>> =>
+      ipcRenderer.invoke('fs:list-directory', directoryPath),
+    readTextFile: (filePath: string): Promise<string> =>
+      ipcRenderer.invoke('fs:read-text-file', filePath),
+  },
   openExternal: (url: string) => ipcRenderer.invoke('system:open-external', url),
   selectFile: (opts?: Electron.OpenDialogOptions) => ipcRenderer.invoke('system:select-file', opts),
   saveFile: (defaultName: string, content: string): Promise<{ canceled: boolean; filePath?: string }> =>
@@ -195,6 +219,20 @@ const nexusBridge = {
       }
       ipcRenderer.on('terminal:event', handler)
       return () => ipcRenderer.removeListener('terminal:event', handler)
+    },
+  },
+  terminalRelay: {
+    connect: (sessionId: string): Promise<{ ok: boolean; connected: boolean }> =>
+      ipcRenderer.invoke('terminal-relay:connect', sessionId),
+    disconnect: (sessionId: string): Promise<void> => ipcRenderer.invoke('terminal-relay:disconnect', sessionId),
+    status: (sessionId: string): Promise<{ connected: boolean }> => ipcRenderer.invoke('terminal-relay:status', sessionId),
+    onEvent: (sessionId: string, listener: (event: TerminalRelayEvent) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, payload: TerminalRelayEvent) => {
+        if (payload.sessionId !== sessionId) return
+        listener(payload)
+      }
+      ipcRenderer.on('terminal-relay:event', handler)
+      return () => ipcRenderer.removeListener('terminal-relay:event', handler)
     },
   },
   updates: {

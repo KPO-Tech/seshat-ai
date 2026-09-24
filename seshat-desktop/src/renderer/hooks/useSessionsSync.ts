@@ -11,6 +11,7 @@ type SessionSummary = {
   provider_setting_id?: string
   model_id?: string
   source?: string
+  project_path?: string
 }
 
 // Loads the session list once so the sidebar's Recents and the search modal
@@ -31,7 +32,8 @@ export function useSessionsSync() {
             updatedAt: new Date((session.updated_at ?? session.created_at ?? 0) * 1000).toISOString(),
             providerSettingId: session.provider_setting_id,
             modelId: session.model_id,
-            source: session.source
+            source: session.source,
+            projectPath: session.project_path || undefined,
           })
         }
       })

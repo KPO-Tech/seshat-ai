@@ -223,7 +223,7 @@ export function handleRuntimeEvent(
           startedAt: previous?.startedAt ?? now,
           endedAt: now,
         }
-        // Immediately reflect mode transitions in the Agent Monitor when the
+        // Immediately reflect mode transitions in the Computer panel when the
         // mode tool completes, without waiting for the next turn.started event.
         const modeUpdate: Partial<import('@renderer/stores/session').AgentState> = {
           activeTool: null,

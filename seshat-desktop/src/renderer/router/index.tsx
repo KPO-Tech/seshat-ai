@@ -6,6 +6,8 @@ import { SkillsPage } from '@renderer/components/skills/SkillsPage'
 import { ConversationPage } from '@renderer/components/chat/conversation/ConversationPage'
 import { HistoryPage } from '@renderer/pages/history'
 import { Home } from '@renderer/pages/Home'
+import { ProjectsPage } from '@renderer/pages/projects'
+import { ProjectDetailPage } from '@renderer/pages/projects/detail'
 import { RoutePlaceholder } from '@renderer/pages/RoutePlaceholder'
 
 // Authentication is handled in App.tsx (this router only mounts once signed
@@ -22,8 +24,8 @@ export const router = createHashRouter([
       { path: 'plugins', element: <PluginsPage /> },
       { path: 'scheduling', element: <SchedulingPage /> },
       { path: 'store', element: <RoutePlaceholder title="Store" /> },
-      { path: 'projects', element: <RoutePlaceholder title="Projects" /> },
-      { path: 'projects/:projectId', element: <RoutePlaceholder title="Project" /> },
+      { path: 'projects', element: <ProjectsPage /> },
+      { path: 'projects/:projectId', element: <ProjectDetailPage /> },
       { path: 'admin/*', element: <RoutePlaceholder title="Admin" /> }
     ]
   },

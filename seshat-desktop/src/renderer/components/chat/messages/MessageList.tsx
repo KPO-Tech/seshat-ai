@@ -65,6 +65,7 @@ export function MessageList({
               <MessageItem
                 message={msg}
                 sessionId={sessionId}
+                isFirst={i === 0}
                 compact={msg.role === 'assistant' && i > 0 && messages[i - 1]?.role === 'assistant'}
                 revealThinking={revealThinking}
                 autoExpandTools={autoExpandTools}

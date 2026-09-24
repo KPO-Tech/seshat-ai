@@ -8,6 +8,10 @@ interface Window {
     readFileDataURL: (p: string) => Promise<string>
     hasProjectContextFile: (projectPath: string) => Promise<boolean>
     projectPathExists: (projectPath: string) => Promise<boolean>
+    fs: {
+      listDirectory: (directoryPath: string) => Promise<Array<{ name: string; isDirectory: boolean }>>
+      readTextFile: (filePath: string) => Promise<string>
+    }
     openExternal: (url: string) => Promise<void>
     selectFile: (opts?: Electron.OpenDialogOptions) => Promise<Electron.OpenDialogReturnValue>
     saveFile: (defaultName: string, content: string) => Promise<{ canceled: boolean; filePath?: string }>
@@ -89,6 +93,12 @@ interface Window {
       stop: (id: string) => Promise<void>
       onEvent: (id: string, listener: (event: TerminalEvent) => void) => () => void
     }
+    terminalRelay?: {
+      connect: (sessionId: string) => Promise<{ ok: boolean; connected: boolean }>
+      disconnect: (sessionId: string) => Promise<void>
+      status: (sessionId: string) => Promise<{ connected: boolean }>
+      onEvent: (sessionId: string, listener: (event: TerminalRelayEvent) => void) => () => void
+    }
     updates?: {
       checkNow: () => Promise<{ ok: boolean; error?: string }>
       quitAndInstall: () => Promise<void>
@@ -123,4 +133,17 @@ type TerminalEvent = {
   pid?: number
   code?: number | null
   signal?: string | null
+}
+
+type TerminalRelayEvent = {
+  sessionId: string
+  type: string
+  commandId?: string
+  command?: string
+  cwd?: string
+  stream?: 'stdout' | 'stderr'
+  data?: string
+  message?: string
+  exitCode?: number
+  durationMs?: number
 }

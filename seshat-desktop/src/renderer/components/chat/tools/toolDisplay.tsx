@@ -1,5 +1,5 @@
 import type { ComponentType, ReactNode } from 'react'
-import { FileTextOne, Write, Edit as EditIcon, Search, Terminal, Tool, Time } from '@icon-park/react'
+import { FileTextOne, Write, Edit as EditIcon, Search, Terminal, Tool } from '@icon-park/react'
 import type { ToolUseBlock } from '@renderer/api/types'
 import type { ToolViewProps, ToolBlockProps } from './types'
 import { basename } from './helpers'
@@ -92,14 +92,6 @@ function editStats(tool: ToolUseBlock): { added: number; removed: number } | nul
   return null
 }
 
-// "Does tool._message read like a real backend-authored sentence" (e.g.
-// "Found full AcceptInvitation implementation") vs. a bare echoed value (a
-// file path, a short pattern) that shouldn't stand in for the label.
-function looksLikeSentence(message: string): boolean {
-  const trimmed = message.trim()
-  return trimmed.length >= 12 && trimmed.includes(' ')
-}
-
 function fileEditSoloLabel(verb: 'Edited' | 'Wrote') {
   return (tool: ToolUseBlock): string | null => {
     const filePath = str(tool, 'file_path')
@@ -111,22 +103,15 @@ function fileEditSoloLabel(verb: 'Edited' | 'Wrote') {
 }
 
 const TOOL_REGISTRY: Record<string, ToolDisplayEntry> = {
+  // Sober row (a plain "Bash" label + a command/description detail, no
+  // "N lines" subtitle) but still inline-foldable on running/error, unlike
+  // the fully silent read/write/list_directory - see ToolLineItem.tsx's
+  // isPreviewTool/isBigRow split for how "Bash" + detail is drawn without
+  // the bigger card ask_user_question/mcp still get.
   bash: {
     label: 'Bash',
     category: 'bash',
     render: BashToolView,
-    soloLabel: (tool) => {
-      // description is the tool call's own input (a required field) - the
-      // authoritative, model-authored summary of intent. _message is a
-      // separate runtime progress string that isn't always present; the
-      // raw command is the last resort, since a long one reads poorly
-      // collapsed into one line.
-      const description = str(tool, 'description')
-      if (description) return `Bash — ${description}`
-      if (tool._message && looksLikeSentence(tool._message)) return `Bash — ${tool._message}`
-      const command = str(tool, 'command')
-      return command ? `Bash: ${command}` : null
-    },
   },
 
   ask_user_question: { label: 'Ask User', groupable: false, render: AskUserToolView },
@@ -148,7 +133,7 @@ const TOOL_REGISTRY: Record<string, ToolDisplayEntry> = {
   glob: { label: 'Glob', category: 'search', render: GlobToolView, soloLabel: (t) => { const p = str(t, 'pattern'); return p ? `Glob: ${p}` : null } },
   grep: { label: 'Grep', category: 'search', render: GrepToolView, soloLabel: (t) => { const p = str(t, 'pattern'); return p ? `Grep: ${p}` : null } },
 
-  // Task plumbing - the live task list/status lives in the Agent Monitor
+  // Task plumbing - the live task list/status lives in the Computer
   // panel (auto-opened on task_create), not inline in the chat. These three
   // are filtered out before they ever reach this registry (see HIDDEN_TOOLS
   // in MessageItem.tsx) - no `render` here, there'd be nothing left to
@@ -161,10 +146,10 @@ const TOOL_REGISTRY: Record<string, ToolDisplayEntry> = {
   task_stop: { label: 'Stop Task', silent: true, snippet: (t) => str(t, 'taskId') || str(t, 'task_id') || str(t, 'id') },
   task_output: { label: 'Task Output', silent: true, snippet: (t) => str(t, 'taskId') || str(t, 'task_id') || str(t, 'id') },
 
-  web_search: { label: 'Web Search', groupable: false, render: WebSearchToolView, soloLabel: (t) => { const q = str(t, 'query'); return q ? `Web Search: ${q}` : null } },
-  web_fetch: { label: 'Web Fetch', groupable: false, render: WebFetchToolView, soloLabel: webFetchSoloLabel },
-  read_document_url: { label: 'Web Fetch', groupable: false, render: WebFetchToolView, soloLabel: webFetchSoloLabel },
-  read_url: { label: 'Web Fetch', groupable: false, render: WebFetchToolView, soloLabel: webFetchSoloLabel },
+  web_search: { label: 'Web Search', groupable: false, silent: true, render: WebSearchToolView, snippet: (t) => str(t, 'query'), soloLabel: (t) => { const q = str(t, 'query'); return q ? `Web Search: ${q}` : null } },
+  web_fetch: { label: 'Web Fetch', groupable: false, silent: true, render: WebFetchToolView, snippet: (t) => str(t, 'url'), soloLabel: webFetchSoloLabel },
+  read_document_url: { label: 'Web Fetch', groupable: false, silent: true, render: WebFetchToolView, snippet: (t) => str(t, 'url'), soloLabel: webFetchSoloLabel },
+  read_url: { label: 'Web Fetch', groupable: false, silent: true, render: WebFetchToolView, snippet: (t) => str(t, 'url'), soloLabel: webFetchSoloLabel },
 
   generate_image: { label: 'Generate Image', groupable: false, render: ImageGenToolView },
   text_to_speech: { label: 'Text To Speech', groupable: false, render: TtsToolView },
@@ -373,7 +358,7 @@ function getEntry(name: string): ToolDisplayEntry | undefined {
 }
 
 // Tools that never surface as their own chat row (mode-switches folded into
-// the Agent Monitor panel, or task_create/update/list superseded by its live
+// the Computer panel, or task_create/update/list superseded by its live
 // task list there — see HIDDEN_TOOLS in MessageItem.tsx) are left out of the
 // catalog too: they aren't something a user would ever allow/disallow.
 const CATALOG_EXCLUDED = new Set([
@@ -422,12 +407,6 @@ export function categoryIcon(name: string): ReactNode {
   return CATEGORY_ICON[toolCategory(name)]
 }
 
-// Thinking rows aren't a tool_use at all (no name to look up a category
-// for), so this is a standalone export rather than a CATEGORY_ICON entry.
-export function thinkingIcon(): ReactNode {
-  return <Time size={12} />
-}
-
 export function isSilentTool(name: string): boolean {
   return getEntry(name)?.silent ?? DEFAULTS.silent
 }
@@ -450,6 +429,14 @@ export function isEditTool(name: string): boolean {
 
 export function isWriteTool(name: string): boolean {
   return toolCategory(name) === 'write'
+}
+
+// read/write/edit are the only categories whose content is "a file" - see
+// FilesPanel.tsx, which is where a click on one of these opens instead of
+// Computer (everything else keeps opening there).
+export function isFileTool(name: string): boolean {
+  const category = toolCategory(name)
+  return category === 'read' || category === 'write' || category === 'edit'
 }
 
 export function toolSnippet(tool: ToolUseBlock): string {

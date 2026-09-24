@@ -1,9 +1,10 @@
 import { useRef } from 'react'
-import { Book, Browser, Code, DocDetail, FilePdf, FileTextOne, Robot, FileWord, FileExcel } from '@icon-park/react'
+import { Book, Code, Computer, DocDetail, FilePdf, FileTextOne, Globe, Robot, FileWord, FileExcel, Terminal } from '@icon-park/react'
 import { MarkdownView } from '@renderer/components/MarkdownView'
 import { useUIStore } from '@renderer/stores/ui'
 import { useSessionStore } from '@renderer/stores/session'
-import { AgentWorkspacePanel } from '@renderer/components/chat/panels/AgentWorkspacePanel'
+import { ComputerPanel } from '@renderer/components/chat/panels/ComputerPanel'
+import { FilesPanel } from '@renderer/components/chat/panels/FilesPanel'
 import { SubagentPanel } from '@renderer/components/chat/panels/SubagentPanel'
 import { PlanEditorPanel } from '@renderer/components/chat/panels/PlanEditorPanel'
 import { PDFViewerPanel } from '@renderer/components/chat/panels/PDFViewerPanel'
@@ -12,6 +13,7 @@ import { DocxPreviewPanel } from '@renderer/components/chat/panels/DocxPreviewPa
 import { XlsxPreviewPanel } from '@renderer/components/chat/panels/XlsxPreviewPanel'
 import { PptxPreviewPanel } from '@renderer/components/chat/panels/PptxPreviewPanel'
 import { BrowserPanel } from '@renderer/components/chat/panels/BrowserPanel'
+import { TerminalPanel } from '@renderer/components/chat/panels/TerminalPanel'
 import { EmptyState } from '@renderer/components/chat/panels/EmptyState'
 import { KnowledgePanel } from '@renderer/components/chat/panels/KnowledgePanel'
 import { flattenRightPanels } from '@renderer/stores/ui'
@@ -147,6 +149,23 @@ function PanelFrame({
     )
   }
 
+  // Files owns its whole header (burger to toggle the tree, the open file's
+  // name/badge, maximize/close all on one row) instead of the generic frame
+  // below plus a second inner header - see FilesPanel.tsx.
+  if (panel.kind === 'files') {
+    return (
+      <aside className="flex min-h-0 flex-1 flex-col overflow-hidden bg-app-surface">
+        <FilesPanel
+          sessionId={panel.sessionId ?? ''}
+          focusToolId={panel.focusToolId}
+          isMaximized={isMaximized}
+          onClose={onClose}
+          onToggleMaximize={onToggleMaximize}
+        />
+      </aside>
+    )
+  }
+
   return (
     <aside className="flex min-h-0 flex-1 flex-col overflow-hidden bg-app-surface">
       <div className="flex min-h-[46px] shrink-0 items-center justify-between gap-2 border-b border-app-border-subtle px-3 py-2">
@@ -175,11 +194,15 @@ function PanelFrame({
 function renderPanelIcon(kind: RightPanelKind) {
   switch (kind) {
     case 'browser':
-      return <Browser size={11} />
+      return <Globe size={11} />
+    case 'terminal':
+      return <Terminal size={11} />
     case 'subagent':
       return <Robot size={11} />
-    case 'agent':
-      return <Robot size={11} />
+    case 'computer':
+      return <Computer size={11} />
+    case 'files':
+      return <FileTextOne size={11} />
     case 'knowledge':
       return <Book size={11} />
     case 'plan':
@@ -201,8 +224,8 @@ function renderPanelIcon(kind: RightPanelKind) {
 
 function renderPanelBody(panel: RightPanelInstance) {
   switch (panel.kind) {
-    case 'agent':
-      return <AgentWorkspacePanel sessionId={panel.sessionId ?? ''} />
+    case 'computer':
+      return <ComputerPanel sessionId={panel.sessionId ?? ''} focusToolId={panel.focusToolId} />
     case 'markdown':
       if (!panel.markdown) {
         return (
@@ -219,6 +242,8 @@ function renderPanelBody(panel: RightPanelInstance) {
       )
     case 'browser':
       return <BrowserPanel url={panel.browserUrl} contextId={panel.sessionId ? `session:${panel.sessionId}` : 'chat'} />
+    case 'terminal':
+      return <TerminalPanel sessionId={panel.sessionId} focusToolId={panel.focusToolId} />
     case 'knowledge':
       return <KnowledgePanel results={panel.knowledgeResults ?? []} />
     case 'subagent':

@@ -1,11 +1,10 @@
 import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router'
+import { useParams } from 'react-router'
 import { useSessionStore, EMPTY_STREAMING, DEFAULT_AGENT_STATE } from '@renderer/stores/session'
 import { useUIStore } from '@renderer/stores/ui'
 import { isRenderableMessage } from '../messages/MessageItem'
 import { ConversationComposer } from '../composer/ConversationComposer'
 import { useDraftAttachments } from '../composer/useDraftAttachments'
-import { useConversationActions } from './useConversationActions'
 import { useConversationModes } from './useConversationModes'
 import { useConversationPanels } from './useConversationPanels'
 import { ConversationPendingPanels } from './ConversationPendingPanels'
@@ -13,32 +12,25 @@ import { useConversationRuntimeActions } from './useConversationRuntimeActions'
 import { useConversationScroll } from './useConversationScroll'
 import { useConversationSessionLoad } from './useConversationSessionLoad'
 import { useConversationModels } from './useConversationModels'
-import { ConversationHeader } from './ConversationHeader'
 import { ConversationEmpty } from './ConversationEmpty'
 import { useLiveActivityForAgent } from '../messages/liveActivity'
 import { MessageList } from '../messages/MessageList'
 import { useToast, ToastStack } from '@renderer/components/ui/Toast'
 import { useChat } from '@renderer/hooks/useChat'
-import { UNTITLED_SESSION_TITLE } from '@renderer/lib/sessionTitle'
 
 export function ConversationPage() {
   const { id } = useParams()
-  const navigate = useNavigate()
   const sessions = useSessionStore((s) => s.sessions)
   const updateSession = useSessionStore((s) => s.updateSession)
   const streaming = useSessionStore((s) => (id ? s.streamingBySession[id] : null) ?? EMPTY_STREAMING)
   const session = sessions.find((s) => s.id === id)
   const openRightPanel = useUIStore((s) => s.openRightPanel)
-  const closeRightPanel = useUIStore((s) => s.closeRightPanel)
-  const monitorOpen = useUIStore((s) =>
-    s.rightColumns.some((c) => c.panels.some((p) => p.kind === 'agent' && p.sessionId === id))
+  const computerOpen = useUIStore((s) =>
+    s.rightColumns.some((c) => c.panels.some((p) => p.kind === 'computer' && p.sessionId === id))
   )
-  const browserOpen = useUIStore((s) =>
-    s.rightColumns.some((c) => c.panels.some((p) => p.kind === 'browser' && p.sessionId === id))
+  const filesOpen = useUIStore((s) =>
+    s.rightColumns.some((c) => c.panels.some((p) => p.kind === 'files' && p.sessionId === id))
   )
-  const permissionMode = useUIStore((s) => s.permissionMode)
-  const togglePermissionMode = useUIStore((s) => s.togglePermissionMode)
-  const setPermissionMode = useUIStore((s) => s.setPermissionMode)
 
   const {
     allModelChoices,
@@ -53,12 +45,10 @@ export function ConversationPage() {
   } = useConversationModels({ sessionId: id, session, updateSession })
 
   const {
-    handlePermissionModeSelect,
     handleExecutionModeSelect,
     handleProjectChange,
   } = useConversationModes({
     sessionId: id,
-    setPermissionMode,
     updateSession,
   })
 
@@ -100,28 +90,13 @@ export function ConversationPage() {
       setTimeout(() => setJustCompleted(false), 1500)
     },
   })
-  const {
-    toggleMonitor,
-    toggleBrowser,
-    handleDelete,
-    handleExport,
-    handleShare,
-  } = useConversationActions({
-    sessionId: id,
-    session,
-    monitorOpen,
-    browserOpen,
-    openRightPanel,
-    closeRightPanel,
-    navigateHome: () => navigate('/'),
-  })
 
   useConversationPanels({
     sessionId: id,
     agentState,
     streaming,
-    monitorOpen,
-    browserOpen,
+    computerOpen,
+    filesOpen,
     isPlanPending,
     pendingPlan,
     openRightPanel,
@@ -171,22 +146,6 @@ export function ConversationPage() {
     <div className="conv-root">
       <style>{CONV_CSS}</style>
       <ToastStack toasts={toasts} />
-
-      <ConversationHeader
-        title={session.title || UNTITLED_SESSION_TITLE}
-        executionMode={agentState.executionMode}
-        onExecutionModeChange={handleExecutionModeSelect}
-        monitorOpen={monitorOpen}
-        onToggleMonitor={toggleMonitor}
-        browserOpen={browserOpen}
-        onToggleBrowser={toggleBrowser}
-        permissionMode={permissionMode}
-        onTogglePermission={togglePermissionMode}
-        onPermissionModeSelect={handlePermissionModeSelect}
-        onExport={handleExport}
-        onShare={handleShare}
-        onDelete={handleDelete}
-      />
 
       <MessageList
         sessionId={id}
@@ -244,6 +203,8 @@ export function ConversationPage() {
         modelLoadError={modelLoadError}
         handleModelSelect={handleModelSelect}
         handleModelRetry={handleModelRetry}
+        executionMode={agentState.executionMode}
+        onExecutionModeChange={handleExecutionModeSelect}
       />
     </div>
   )
@@ -257,13 +218,6 @@ const CONV_CSS = `
   background-color: color-mix(in srgb, var(--color-bg) 68%, var(--color-surface));
   min-height: 0;
   overflow: hidden;
-}
-
-.conv-top-bar {
-  padding: 5px 16px;
-  flex-shrink: 0;
-  border-bottom: 1px solid var(--color-border-subtle);
-  background: color-mix(in srgb, var(--color-bg) 78%, var(--color-surface));
 }
 
 .conv-messages {
@@ -288,6 +242,14 @@ const CONV_CSS = `
   margin: 0 auto;
   padding: 0 18px;
   box-sizing: border-box;
+  /* Without this, MessageItem's own margin-top collapses straight through
+     this wrapper (no border/vertical padding blocks it) - since this row is
+     absolutely positioned by the virtualizer via a computed transform, that
+     collapsed margin has nowhere to go: it's invisible AND excluded from
+     this row's measured height, so the next row's offset doesn't account
+     for it either. flow-root establishes a block formatting context so the
+     margin renders (and gets measured) inside this box instead. */
+  display: flow-root;
 }
 
 .conv-input-area {

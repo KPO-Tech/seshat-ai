@@ -2,6 +2,7 @@ import { ProviderIcon } from '@renderer/components/ui/ProviderIcon'
 import { ChatInput } from './ChatInput'
 import type { ChatAttachment } from '@renderer/components/chat/attachments/attachmentTypes'
 import { providerDisplayName, providerInitials, type ModelChoice } from '@renderer/components/chat/conversation/useConversationModels'
+import { modelAlias } from '@renderer/lib/modelAlias'
 
 type SendMessageOptions = {
   corpusId?: string | null
@@ -42,6 +43,8 @@ type ConversationComposerProps = {
   modelLoadError: string | null
   handleModelSelect: (choiceId: string) => void
   handleModelRetry: () => void
+  executionMode?: 'execute' | 'plan' | 'pair_programming'
+  onExecutionModeChange?: (mode: 'execute' | 'plan') => void
 }
 
 export function ConversationComposer({
@@ -74,6 +77,8 @@ export function ConversationComposer({
   modelLoadError,
   handleModelSelect,
   handleModelRetry,
+  executionMode,
+  onExecutionModeChange,
 }: ConversationComposerProps) {
   return (
     <div className="conv-input-area">
@@ -114,7 +119,7 @@ export function ConversationComposer({
           modelLabel={
             modelLoadError
               ? 'Models unavailable'
-              : selectedModelChoice?.model.display_name || selectedModelChoice?.model.model_id || sessionModelLabel || 'Model'
+              : modelAlias(selectedModelChoice?.model.display_name || selectedModelChoice?.model.model_id || sessionModelLabel || 'Model')
           }
           modelIcon={
             selectedModelChoice
@@ -123,7 +128,7 @@ export function ConversationComposer({
           }
           modelOptions={!modelLoadError ? allModelChoices.map((choice) => ({
             id: choice.id,
-            label: choice.model.display_name || choice.model.model_id,
+            label: modelAlias(choice.model.display_name || choice.model.model_id),
             description: providerDisplayName(choice.providerName, choice.providerKind),
             icon: <ProviderIcon provider={choice.providerKind} size={17} />,
             prefix: providerInitials(choice.providerName, choice.providerKind),
@@ -133,6 +138,8 @@ export function ConversationComposer({
           modelDisabled={loadingModelProviderIds.length > 0 && allModelChoices.length === 0}
           modelError={modelLoadError}
           onModelRetry={handleModelRetry}
+          executionMode={executionMode}
+          onExecutionModeChange={onExecutionModeChange}
         />
       </div>
     </div>

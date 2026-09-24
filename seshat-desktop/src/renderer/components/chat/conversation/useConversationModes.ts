@@ -1,26 +1,20 @@
 import { useCallback } from 'react'
 import { api } from '@renderer/api/client'
 import { useSessionStore, type ChatSession } from '@renderer/stores/session'
-import type { UIPermissionMode } from '@renderer/stores/ui'
 
 type UseConversationModesArgs = {
   sessionId?: string
-  setPermissionMode: (mode: UIPermissionMode) => void
   updateSession: (id: string, patch: Partial<ChatSession>) => void
 }
 
+// Permission mode selection now lives in TitlebarSessionControls (it moved
+// out of the per-conversation composer into the titlebar, since it's a
+// global setting, not something specific to one conversation) - this hook
+// keeps only the modes that are genuinely session-scoped.
 export function useConversationModes({
   sessionId,
-  setPermissionMode,
   updateSession,
 }: UseConversationModesArgs) {
-  const handlePermissionModeSelect = useCallback((mode: UIPermissionMode) => {
-    setPermissionMode(mode)
-    if (sessionId) {
-      void api.patch(`/sessions/${sessionId}`, { permission_mode: mode }).catch(() => {})
-    }
-  }, [sessionId, setPermissionMode])
-
   const handleExecutionModeSelect = useCallback((mode: 'execute' | 'plan') => {
     if (!sessionId) return
     useSessionStore.getState().updateAgentState(sessionId, { executionMode: mode })
@@ -34,7 +28,6 @@ export function useConversationModes({
   }, [sessionId, updateSession])
 
   return {
-    handlePermissionModeSelect,
     handleExecutionModeSelect,
     handleProjectChange,
   }

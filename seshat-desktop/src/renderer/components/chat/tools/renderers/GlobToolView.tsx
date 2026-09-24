@@ -8,8 +8,12 @@ export function GlobToolView({ tool, result }: ToolViewProps) {
   // is the error message text (e.g. "ripgrep not found\nOr run: ..."),
   // which used to get split into lines and shown as fake "2 matches"
   // alongside the real Error section right below it.
+  // The backend's own message is "Found N file(s) in Xms\n<path>\n<path>...":
+  // a summary line first, then one path per line (seshat/internal/tools/files/glob/utils.go,
+  // formatGlobResult) - drop that first line, it isn't a file and was
+  // rendering as a bogus extra match.
   const files = result?.content && !result.isError
-    ? result.content.split('\n').map((f) => f.trim()).filter(Boolean)
+    ? result.content.split('\n').slice(1).map((f) => f.trim()).filter(Boolean)
     : []
 
   if (result?.isError && result.content) {

@@ -1,6 +1,7 @@
 import { app, BrowserWindow, Menu, shell, ipcMain, globalShortcut, dialog, session } from 'electron'
 import { join } from 'path'
 import { registerSystemHandlers } from './ipc/system'
+import { registerFilesystemHandlers } from './ipc/filesystem'
 import { registerSecureStoreHandlers } from './ipc/secure-store'
 import { registerBackendHandlers } from './ipc/backend'
 import { registerWhisperHandlers } from './ipc/whisper'
@@ -13,6 +14,7 @@ import { isExternalOpenAllowed } from './url-safety'
 import { applyContentSecurityPolicy } from './content-security-policy'
 import { createBrowserPanel } from './browser-panel'
 import { createBrowserBridgeServer } from './browser-bridge'
+import { registerTerminalRelayHandlers, stopAllTerminalRelays } from './ipc/terminal-relay'
 
 function configureRuntimePaths() {
   const runtimeRoot = resolveRuntimeRoot()
@@ -121,12 +123,14 @@ app.whenReady().then(async () => {
   Menu.setApplicationMenu(null)
   applyContentSecurityPolicy()
   registerSystemHandlers(ipcMain)
+  registerFilesystemHandlers(ipcMain)
   registerSecureStoreHandlers(ipcMain)
   registerBackendHandlers(ipcMain)
   registerWhisperHandlers(ipcMain)
   registerEnvVarsHandlers(ipcMain)
   browserPanel.registerIpc(ipcMain)
   browserBridge.start()
+  registerTerminalRelayHandlers(ipcMain)
 
   // Packaged Electron apps deny every permission request by default when no
   // handler is registered. The voice-input control needs the renderer's
@@ -168,6 +172,7 @@ app.on('window-all-closed', () => {
 app.on('will-quit', () => {
   browserBridge.stop()
   browserPanel.destroy()
+  stopAllTerminalRelays()
   stopWhisperServerProcess()
   void stopBackendSidecar()
 })

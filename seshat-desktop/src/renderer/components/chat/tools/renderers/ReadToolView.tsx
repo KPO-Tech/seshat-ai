@@ -1,5 +1,5 @@
 import { CodeBox, ErrorPre, HCARD_HEADER_STAT_CSS, HeaderCard, Section } from '../common'
-import { languageForPath, basename } from '../helpers'
+import { languageForPath, basename, parseReadToolContent } from '../helpers'
 import type { ToolViewProps } from '../types'
 
 function rangeLabel(offset?: number, limit?: number): string {
@@ -9,7 +9,7 @@ function rangeLabel(offset?: number, limit?: number): string {
   return ''
 }
 
-export function ReadToolView({ tool, result }: ToolViewProps) {
+export function ReadToolView({ tool, result, expanded }: ToolViewProps) {
   const filePath = (tool.input.file_path as string) ?? ''
   const offset = tool.input.offset as number | undefined
   const limit = tool.input.limit as number | undefined
@@ -25,6 +25,27 @@ export function ReadToolView({ tool, result }: ToolViewProps) {
 
   if (!result?.content) return null
 
+  const parsed = parseReadToolContent(result.content)
+
+  const code = (
+    <CodeBox
+      content={parsed.text}
+      copyable
+      language={languageForPath(filePath)}
+      lineNumbers
+      startingLineNumber={parsed.startLine ?? (offset != null ? offset + 1 : 1)}
+      bare={!expanded}
+      expanded={expanded}
+    />
+  )
+
+  // Full-page inside Computer/Files: the host already shows the filename in
+  // its own header (Files' merged title row, Computer's focused-tool strip)
+  // - a second HeaderCard repeating it here just for a "lines x-y" stat was
+  // three copies of the same filename on screen at once, and its 220px cap
+  // was fighting the whole point of a dedicated full-page file view.
+  if (expanded) return code
+
   return (
     <HeaderCard
       header={
@@ -34,14 +55,7 @@ export function ReadToolView({ tool, result }: ToolViewProps) {
         </>
       }
     >
-      <CodeBox
-        content={result.content}
-        copyable
-        language={languageForPath(filePath)}
-        lineNumbers
-        startingLineNumber={offset != null ? offset + 1 : 1}
-        bare
-      />
+      {code}
     </HeaderCard>
   )
 }

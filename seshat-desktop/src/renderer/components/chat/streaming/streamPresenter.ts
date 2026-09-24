@@ -143,7 +143,13 @@ export class StreamPresenter {
   private tickTrickle = () => {
     this.trickleTimer = null
     for (const [index, queued] of this.queues) {
-      const take = Math.min(Math.floor(Math.random() * 3) + 1, queued.length)
+      // Proportional to the backlog, not flat - a short queue still trickles
+      // a couple characters at a time (feels smooth), but a queue that fell
+      // behind the live stream (delta arrival faster than a flat drain rate
+      // could ever keep up with) catches up in a handful of ticks instead of
+      // growing without bound until the next flush() dumps the whole backlog
+      // in one visible jump.
+      const take = Math.min(queued.length, Math.max(2, Math.ceil(queued.length * 0.2)) + Math.floor(Math.random() * 2))
       const targetBlock = this.target[index]
       if (!targetBlock || (targetBlock.type !== 'text' && targetBlock.type !== 'thinking')) {
         this.queues.delete(index)

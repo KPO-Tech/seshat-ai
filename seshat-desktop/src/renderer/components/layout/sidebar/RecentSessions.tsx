@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { Delete, Down, Edit, History, Right } from '@icon-park/react'
+import { CheckOne, Delete, Down, Edit, FileTextOne, History, MoreOne, Right, Share } from '@icon-park/react'
 import { api } from '@renderer/api/client'
 import { deleteSession } from '@renderer/lib/deleteSession'
+import { conversationFileName, serializeConversationMarkdown } from '@renderer/lib/conversationExport'
 import { UNTITLED_SESSION_TITLE } from '@renderer/lib/sessionTitle'
 import { useSessionStore, type ChatSession } from '@renderer/stores/session'
 
@@ -23,11 +24,13 @@ type Props = {
 export function RecentSessions({ sessions, onOpenSession, onOpenHistory }: Props) {
   const activeId = useSessionStore((state) => state.activeId)
   const updateSession = useSessionStore((state) => state.updateSession)
+  const agentStates = useSessionStore((state) => state.agentStates)
   const navigate = useNavigate()
   const [open, setOpen] = useState(true)
   const [menuSessionId, setMenuSessionId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   useEffect(() => {
     function closeMenu(event: MouseEvent) {
@@ -45,6 +48,26 @@ export function RecentSessions({ sessions, onOpenSession, onOpenHistory }: Props
       if (activeId === session.id) navigate('/')
     } catch {
       // The row stays; nothing else to do here.
+    }
+  }
+
+  async function handleExport(session: ChatSession) {
+    setMenuSessionId(null)
+    const markdown = serializeConversationMarkdown(session)
+    await window.nexus?.saveFile?.(conversationFileName(session), markdown).catch(() => {})
+  }
+
+  async function handleShare(session: ChatSession) {
+    const markdown = serializeConversationMarkdown(session)
+    try {
+      await navigator.clipboard.writeText(markdown)
+      setCopiedId(session.id)
+      setTimeout(() => {
+        setCopiedId((current) => (current === session.id ? null : current))
+        setMenuSessionId((current) => (current === session.id ? null : current))
+      }, 1200)
+    } catch {
+      // No feedback shown on failure; the menu stays open so the user can retry.
     }
   }
 
@@ -75,7 +98,7 @@ export function RecentSessions({ sessions, onOpenSession, onOpenHistory }: Props
           onClick={() => setOpen(!open)}
           type="button"
         >
-          <span>Recents</span>
+          <span>Tasks</span>
           {open ? <Down size={12} /> : <Right size={12} />}
         </button>
         <button
@@ -89,12 +112,14 @@ export function RecentSessions({ sessions, onOpenSession, onOpenHistory }: Props
       </div>
 
       {open && (
-        <div className="flex flex-col gap-0.5 overflow-visible pl-2 pr-1">
+        <div className="mt-1 flex flex-col gap-0.5 overflow-visible pl-2 pr-0.5">
           {sessions.map((session) => {
             const active = session.id === activeId
             const menuOpen = menuSessionId === session.id
+            const agentState = agentStates[session.id]
+            const isBusy = Boolean(agentState?.isThinking || agentState?.activeTool)
             return (
-              <div key={session.id} className={cx('group relative flex items-center gap-1 overflow-visible rounded-lg p-px', active && 'bg-[var(--surface-hover)]')}>
+              <div key={session.id} className={cx('group relative flex items-center overflow-visible rounded-md p-px', active && 'bg-[var(--surface-hover)]')}>
                 {editingId === session.id ? (
                   <input
                     className="w-full min-w-0 rounded-[7px] border border-[var(--accent-primary)]/30 bg-[var(--surface-hover)] px-2 py-[5px] text-[12px] text-[var(--text-primary)] outline-none"
@@ -116,19 +141,28 @@ export function RecentSessions({ sessions, onOpenSession, onOpenHistory }: Props
                   <>
                     <button
                       className={cx(
-                        'block min-w-0 flex-1 cursor-pointer rounded-[7px] border-0 bg-transparent px-2 py-[5px] text-left text-[12px] text-[var(--text-secondary)] transition-colors duration-150 hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]',
+                        'flex min-w-0 flex-1 cursor-pointer items-center gap-1 rounded-[6px] border-0 bg-transparent px-1.5 py-[3px] text-left text-[11px] leading-none text-[var(--text-secondary)] transition-colors duration-150 hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]',
                         active && 'font-semibold'
                       )}
                       onClick={() => onOpenSession(session.id)}
                       type="button"
                     >
-                      <span className="block overflow-hidden text-ellipsis whitespace-nowrap">{session.title || UNTITLED_SESSION_TITLE}</span>
+                      <span
+                        className={cx(
+                          'size-[5px] shrink-0 rounded-full border transition-colors duration-150',
+                          isBusy
+                            ? 'animate-pulse border-[var(--color-accent)] bg-[var(--color-accent)]'
+                            : 'border-[var(--text-muted)] bg-transparent',
+                        )}
+                        aria-hidden="true"
+                      />
+                      <span className="min-w-0 flex-1 overflow-hidden whitespace-nowrap [-webkit-mask-image:linear-gradient(to_right,black_85%,transparent_100%)] [mask-image:linear-gradient(to_right,black_85%,transparent_100%)]">{session.title || UNTITLED_SESSION_TITLE}</span>
                     </button>
                     <div className="sb-recent-menu-wrap relative shrink-0">
                       <button
                         className={cx(
-                          'flex size-[22px] cursor-pointer items-center justify-center rounded-[7px] border-0 bg-transparent text-[var(--text-muted)] opacity-0 transition duration-150 hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] group-hover:opacity-100',
-                          menuOpen && 'bg-[var(--surface-hover)] text-[var(--text-primary)] opacity-100'
+                          'flex size-4 cursor-pointer items-center justify-center border-0 bg-transparent text-[var(--text-muted)] opacity-0 transition duration-150 hover:text-[var(--text-primary)] group-hover:opacity-100',
+                          menuOpen && 'text-[var(--text-primary)] opacity-100'
                         )}
                         type="button"
                         aria-label="Chat options"
@@ -137,13 +171,21 @@ export function RecentSessions({ sessions, onOpenSession, onOpenHistory }: Props
                           setMenuSessionId((current) => (current === session.id ? null : session.id))
                         }}
                       >
-                        <span className="-translate-y-px text-[14px] leading-none" aria-hidden="true">...</span>
+                        <MoreOne size={12} />
                       </button>
                       {menuOpen && (
                         <div className="absolute right-0 top-[calc(100%+6px)] z-30 flex min-w-[156px] flex-col gap-0.5 rounded-xl border border-[var(--border-soft)] bg-[var(--surface-menu)] p-1.5 shadow-[0_14px_28px_rgba(0,0,0,0.24)]">
                           <button className={cx(menuButtonClass, 'text-[var(--text-primary)]')} type="button" onClick={() => startRename(session.id, session.title)}>
                             <Edit size={12} />
                             <span>Rename</span>
+                          </button>
+                          <button className={cx(menuButtonClass, 'text-[var(--text-primary)]')} type="button" onClick={() => { void handleExport(session) }}>
+                            <FileTextOne size={12} />
+                            <span>Export as Markdown</span>
+                          </button>
+                          <button className={cx(menuButtonClass, 'text-[var(--text-primary)]')} type="button" onClick={() => { void handleShare(session) }}>
+                            {copiedId === session.id ? <CheckOne size={12} className="text-app-success" /> : <Share size={12} />}
+                            <span>{copiedId === session.id ? 'Copied' : 'Copy as Markdown'}</span>
                           </button>
                           <button className={cx(menuButtonClass, 'text-[var(--accent-danger)]')} type="button" onClick={() => { void handleDelete(session) }}>
                             <Delete size={12} />

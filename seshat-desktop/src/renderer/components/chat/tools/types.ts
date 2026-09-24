@@ -14,6 +14,10 @@ export type ToolViewProps = {
   result: ToolUseBlock['_result']
   status: ToolStatus
   sessionId?: string
+  // Set when rendered full-page inside Computer's Screen (plenty of room,
+  // its own scroll) rather than as a compact inline chat card - a view can
+  // use this to skip truncation/soft caps it applies in the chat transcript.
+  expanded?: boolean
 }
 
 export type AskUserOption = {

@@ -328,9 +328,9 @@ export function PlanEditorPanel({ planId, sessionId, pendingPermission, rawConte
         void sendMessage('The plan has been approved. Proceed with implementation: call exit_plan_mode, then execute the plan.')
       }
 
-      // Agent Monitor is opt-in only - approving just closes this panel and
-      // lets the agent resume; it doesn't open Agent Monitor on the user's
-      // behalf (see Conversation.tsx's toggleMonitor for the explicit path).
+      // Computer is opt-in only - approving just closes this panel and
+      // lets the agent resume; it doesn't open Computer on the user's
+      // behalf (see TitlebarSessionControls's toggleComputer for the explicit path).
       closeRightPanel(buildRightPanelId({ kind: 'plan', sessionId, planId }))
     } catch (err) {
       setActionError(`Couldn't approve the plan: ${errorMessage(err)}. Nothing was sent — try again.`)

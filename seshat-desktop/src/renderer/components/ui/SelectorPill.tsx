@@ -11,7 +11,7 @@ function cx(...classes: Array<string | false | null | undefined>) {
 // className, since Tailwind can't shrink-to-fit content in a dropdown that
 // also needs a floor width.
 export const SELECTOR_MENU_CLASS =
-  'absolute left-0 top-[calc(100%+6px)] z-30 flex max-h-[min(252px,calc(100vh-190px))] min-w-[140px] max-w-[min(320px,calc(100vw-32px))] flex-col gap-0 overflow-y-auto rounded-none border border-app-border-subtle bg-[color-mix(in_srgb,var(--color-surface)_96%,var(--color-bg))] p-1 shadow-[0_18px_48px_rgba(31,27,23,0.17)] [scrollbar-color:color-mix(in_srgb,var(--color-text-muted)_28%,transparent)_transparent] [scrollbar-width:thin]'
+  'absolute left-0 top-[calc(100%+6px)] z-30 flex max-h-[min(252px,calc(100vh-190px))] min-w-[140px] max-w-[min(320px,calc(100vw-32px))] flex-col gap-0 overflow-y-auto rounded-app-md border border-app-border-subtle bg-[color-mix(in_srgb,var(--color-surface)_96%,var(--color-bg))] p-1 shadow-[0_18px_48px_rgba(31,27,23,0.17)] [scrollbar-color:color-mix(in_srgb,var(--color-text-muted)_28%,transparent)_transparent] [scrollbar-width:thin]'
 
 export const SELECTOR_MENU_ITEM_CLASS =
   'flex min-h-[30px] w-full min-w-0 cursor-pointer items-center justify-between gap-[7px] rounded-none border border-transparent bg-transparent px-[7px] py-1.5 text-left text-[var(--font-size-sm)] text-app-text hover:border-app-border-subtle hover:bg-[color-mix(in_srgb,var(--color-surface-elevated)_48%,var(--color-surface))] disabled:cursor-default disabled:opacity-60 disabled:hover:bg-transparent'
@@ -23,14 +23,22 @@ type Props = {
   icon?: ReactNode
   onClick?: () => void
   disabled?: boolean
+  // True while this pill's own dropdown is open - keeps it visually engaged
+  // even when the mouse isn't hovering it anymore (e.g. moved down into the
+  // menu). Bare (no border/fill) at rest otherwise, so it reads as light as
+  // the icon-only buttons next to it (attach, project, knowledge base).
+  active?: boolean
   className?: string
 }
 
-export function SelectorPill({ label, icon, onClick, disabled = false, className }: Props) {
+export function SelectorPill({ label, icon, onClick, disabled = false, active = false, className }: Props) {
   return (
     <button
       className={cx(
-        'flex max-w-[220px] cursor-pointer items-center gap-3 whitespace-nowrap rounded-full border border-app-border-subtle bg-app-surface px-4 py-2 transition-all duration-150 hover:border-app-border hover:bg-[var(--color-hover)] disabled:cursor-default disabled:opacity-70 disabled:hover:border-app-border-subtle disabled:hover:bg-app-surface',
+        'flex max-w-[220px] cursor-pointer items-center gap-3 whitespace-nowrap rounded-app-md border px-4 py-2 transition-all duration-150 disabled:cursor-default disabled:opacity-70 disabled:hover:border-transparent disabled:hover:bg-transparent',
+        active
+          ? 'border-app-border bg-[var(--color-hover)]'
+          : 'border-transparent bg-transparent hover:border-app-border-subtle hover:bg-app-surface',
         className,
       )}
       onClick={onClick}
@@ -92,6 +100,17 @@ export function SelectorMenu({
           onClick={() => !option.disabled && onSelect(option.id)}
           type="button"
         >
+          <span
+            className={cx(
+              'flex size-[13px] shrink-0 items-center justify-center rounded-[3px] border',
+              option.id === selectedId
+                ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white'
+                : 'border-app-border-subtle bg-transparent',
+            )}
+            aria-hidden="true"
+          >
+            {option.id === selectedId && <CheckCorrect size={8} />}
+          </span>
           {option.icon ? (
             <span className="inline-flex size-[17px] shrink-0 items-center justify-center rounded-none [&_svg]:block [&_svg]:size-[17px]" aria-hidden="true">
               {option.icon}
@@ -109,7 +128,6 @@ export function SelectorMenu({
               {option.description}
             </span>
           )}
-          {option.id === selectedId && <CheckCorrect size={12} />}
         </button>
       ))}
     </div>

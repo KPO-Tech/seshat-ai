@@ -12,6 +12,9 @@ import { WindowCloseIcon } from '@renderer/components/ui/WindowControlIcon'
 
 type SkillOption = { Name: string; DisplayName: string; Description: string; Source: string; UserInvocable?: boolean; IsHidden?: boolean }
 
+const EXECUTION_CYCLE: Array<'execute' | 'plan'> = ['execute', 'plan']
+const EXECUTION_LABEL: Record<'execute' | 'plan', string> = { execute: 'Execute', plan: 'Plan' }
+
 export function ChatInput({
   value,
   onChange,
@@ -46,6 +49,9 @@ export function ChatInput({
   modelDisabled = false,
   modelError,
   onModelRetry,
+  modelMenuPlacement = 'up',
+  executionMode,
+  onExecutionModeChange,
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const selectorsRef = useRef<HTMLDivElement>(null)
@@ -401,11 +407,12 @@ export function ChatInput({
               icon={modelIcon ?? (hasModelMenu ? <CheckCorrect size={12} /> : <SettingTwo size={12} />)}
               onClick={handleModelTrigger}
               disabled={modelDisabled}
-              className="h-7 max-w-full bg-[color-mix(in_srgb,var(--color-surface)_74%,var(--color-bg))] px-[9px] py-0 hover:border-[color-mix(in_srgb,var(--color-primary)_24%,var(--color-border-subtle))] hover:bg-[color-mix(in_srgb,var(--color-surface)_88%,var(--color-primary)_5%)]"
+              active={openSelector === 'model'}
+              className="h-7 max-w-full !gap-1.5 !px-[9px] !py-0"
             />
             {openSelector === 'model' && modelOptions && onModelSelect && (
               <SelectorMenu
-                placement="up"
+                placement={modelMenuPlacement}
                 className="min-w-[330px]"
                 options={modelOptions}
                 selectedId={selectedModelId}
@@ -416,6 +423,23 @@ export function ChatInput({
               />
             )}
           </div>
+          {onExecutionModeChange && (
+            <button
+              className={cx(
+                'flex h-7 shrink-0 cursor-pointer items-center gap-[5px] rounded-app-md border-0 bg-transparent px-2 text-[11px] font-semibold transition-colors duration-150 hover:bg-[var(--color-hover)]',
+                executionMode === 'plan' ? 'text-[#60a5fa]' : 'text-[var(--color-primary)]',
+              )}
+              onClick={() => {
+                const current = executionMode === 'plan' ? 'plan' : 'execute'
+                const currentIndex = EXECUTION_CYCLE.indexOf(current)
+                onExecutionModeChange(EXECUTION_CYCLE[(currentIndex + 1) % EXECUTION_CYCLE.length])
+              }}
+              type="button"
+            >
+              <span className={cx('size-[5px] shrink-0 rounded-full', executionMode === 'plan' ? 'bg-[#60a5fa]' : 'bg-[var(--color-primary)]')} />
+              <span>{EXECUTION_LABEL[executionMode === 'plan' ? 'plan' : 'execute']}</span>
+            </button>
+          )}
           {showInlineStatus && isStreaming && (
             <div className="flex min-w-0 max-w-[320px] items-center gap-[7px] text-[12px] text-app-text-secondary" aria-live="polite">
               <LoadingOne size={14} className="animate-[spin_0.9s_linear_infinite]" />
@@ -432,6 +456,7 @@ export function ChatInput({
                 icon={<Browser size={12} />}
                 onClick={handleProviderTrigger}
                 disabled={providerDisabled}
+                active={openSelector === 'provider'}
               />
               {openSelector === 'provider' && providerOptions && onProviderSelect && (
                 <SelectorMenu
