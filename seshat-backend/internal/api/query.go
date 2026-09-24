@@ -442,15 +442,6 @@ func (app *App) handleQueryStream(w http.ResponseWriter, r *http.Request) {
 			}
 		}()
 	}
-	if title, err := app.backend.Query.EnsureInitialSessionTitle(r.Context(), principal, streamInput.SessionID, req.Prompt); err == nil && title != "" {
-		data, err := json.Marshal(map[string]string{
-			"session_id": streamInput.SessionID,
-			"title":      title,
-		})
-		if err == nil {
-			writeSSE("session_titled", data)
-		}
-	}
 	// Inject the event emitter and the user's sub-agent depth preference.
 	baseCtx := app.enrichContextWithAgentPrefs(r.Context(), principal)
 	streamCtx, streamSpan := otel.Tracer("seshat").Start(baseCtx, "query.stream",
