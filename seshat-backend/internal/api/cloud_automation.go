@@ -28,6 +28,15 @@ func (a *App) handleAutomationStatus(w http.ResponseWriter, r *http.Request) {
 		writeBackendError(w, bkerr.Internal(err.Error(), err))
 		return
 	}
+	// First status check while disconnected on an organization-connected
+	// backend: try a silent self-registration, which only actually takes
+	// effect if the organization has no device at all yet - see
+	// AutoRegisterFirstDevice's own doc comment.
+	if !status.Connected && a.connectedServerURL != "" {
+		if principal, ok := authPrincipalFromContext(r.Context()); ok {
+			status = a.cloudAutomation.AutoRegisterFirstDevice(r.Context(), principal.User.ID, a.connectedServerURL, principal.AuthSession.ID, principal.OrganizationID())
+		}
+	}
 	writeJSON(w, http.StatusOK, status)
 }
 

@@ -102,6 +102,48 @@ func (s *Service) RegisterAndConnect(ctx context.Context, userID, serverURL, use
 	return s.Connect(ctx, userID, serverURL, result.Token)
 }
 
+// AutoRegisterFirstDevice silently registers this machine as the
+// organization's automation device the moment its status is checked while
+// disconnected - but only when the organization has no device registered
+// anywhere yet. Once one exists (this machine or another), this never fires
+// again for that organization: moving automation to a different machine
+// stays the explicit, user-initiated RegisterAndConnect/Connect path, so a
+// second desktop signing into the same account can't silently steal
+// execution away from wherever it's already set up. Errors are swallowed -
+// this runs as a side effect of an ordinary status check, not a user action,
+// so a failed attempt just leaves the status disconnected, same as if this
+// didn't exist; the explicit "Register device" button is still there.
+func (s *Service) AutoRegisterFirstDevice(ctx context.Context, userID, serverURL, userToken, organizationID string) *Status {
+	fallback := func() *Status {
+		status, err := s.Status(ctx)
+		if err != nil {
+			return &Status{Connected: false, Policies: map[string]bool{}}
+		}
+		return status
+	}
+
+	if existing := fallback(); existing.Connected {
+		return existing
+	}
+	serverURL = strings.TrimSpace(serverURL)
+	userToken = strings.TrimSpace(userToken)
+	organizationID = strings.TrimSpace(organizationID)
+	if serverURL == "" || userToken == "" || organizationID == "" {
+		return fallback()
+	}
+
+	devices, err := NewJobsClient(serverURL).ListOrgDevices(ctx, userToken, organizationID)
+	if err != nil || len(devices) > 0 {
+		return fallback()
+	}
+
+	status, err := s.RegisterAndConnect(ctx, userID, serverURL, userToken, organizationID, "")
+	if err != nil {
+		return fallback()
+	}
+	return status
+}
+
 func (s *Service) Disconnect(ctx context.Context) error {
 	if s.policies != nil {
 		if err := s.policies.Clear(ctx); err != nil {
