@@ -91,7 +91,7 @@ UI_PKG_MGR := $(shell $(SHELL) -c 'command -v bun >/dev/null 2>&1 && echo bun ||
         logs logs-last logs-docling \
         deploy-env deploy-up deploy-up-core deploy-up-docs deploy-up-knowledge deploy-up-search deploy-up-s3 deploy-up-full deploy-up-tls deploy-smoke-core \
         deploy-build deploy-pull deploy-down deploy-logs deploy-ps \
-        clean clean-all
+        clean clean-all clean-tmp
 
 .DEFAULT_GOAL := help
 
@@ -440,3 +440,18 @@ clean-all: clean ## Remove Go build cache, UI node_modules + dist
 	go clean -cache
 	rm -rf $(UI_DIR)/node_modules $(UI_DIR)/dist $(UI_DIR)/out
 	@printf "\033[32m[clean]\033[0m done.\n"
+
+# Regenerable cache/temp clutter only (pycache, test caches, editor/OS
+# cruft, TS build info) - never node_modules, .venv, dist, or anything a
+# rebuild/reinstall is needed to get back, unlike clean-all above. Safe to
+# run anytime; every one of these files is recreated automatically the next
+# time its own tool runs.
+CLEAN_TMP_PRUNE := \( -path '*/node_modules' -o -path '*/.git' -o -name '.venv' \) -prune
+
+clean-tmp: ## Remove Python/Go/Node cache and temp clutter (pycache, .pytest_cache, .tsbuildinfo, ...)
+	@printf "\033[32m[clean-tmp]\033[0m sweeping cache/temp clutter...\n"
+	@find $(ROOT) $(CLEAN_TMP_PRUNE) -o -type d \( -name '__pycache__' -o -name '.pytest_cache' -o -name '.mypy_cache' -o -name '.ruff_cache' -o -name '*.egg-info' -o -name '.turbo' \) -print -exec rm -rf {} + 2>/dev/null; \
+	 find $(ROOT) $(CLEAN_TMP_PRUNE) -o -type f \( -name '*.pyc' -o -name '*.pyo' -o -name '.DS_Store' -o -name 'Thumbs.db' -o -name '*.tsbuildinfo' \) -print -delete 2>/dev/null; \
+	 find $(BACKEND_DIR) $(SERVER_DIR) -maxdepth 1 -type f \( -name 'debug' -o -name '__debug_bin*' -o -name '*.test' \) -print -delete 2>/dev/null; \
+	 true
+	@printf "\033[32m[clean-tmp]\033[0m done.\n"
