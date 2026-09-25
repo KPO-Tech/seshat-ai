@@ -5,8 +5,9 @@ import { useUIStore } from '@renderer/stores/ui'
 import type { ToolUseBlock } from '@renderer/api/types'
 import { ErrorPre } from './common'
 import { DiffView, resolveDiffRows } from './DiffView'
-import { fmtDuration, parseAskUserAnswers, resolveAskUserQuestions } from './helpers'
+import { basename, fmtDuration, parseAskUserAnswers, resolveAskUserQuestions } from './helpers'
 import { summarizeQuietGroup, toolResultSubtitle, toolStatus } from './quietGroupPhrase'
+import { isPastedTextFilename } from '@renderer/components/chat/composer/pastedTextFilename'
 import { categoryIcon, isEditTool, isFileTool, isWriteTool, renderToolBody, toolLabel } from './toolDisplay'
 import type { ToolBlockProps } from './types'
 
@@ -86,6 +87,10 @@ export function ToolLineItem({ tool, sessionId, autoExpand = false, onSubmitProm
       return
     }
     if (isFileTool(tool.name)) {
+      const filePath = typeof tool.input.file_path === 'string' ? tool.input.file_path : ''
+      // The user's own pasted-text attachment isn't "a file" worth a Files
+      // tab - see SilentToolView's identical guard on Read.
+      if (isPastedTextFilename(basename(filePath))) return
       openRightPanel({ kind: 'files', title: 'Files', sessionId, focusToolId: tool.id })
       return
     }

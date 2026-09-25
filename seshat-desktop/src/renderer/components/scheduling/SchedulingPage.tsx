@@ -12,9 +12,10 @@ import { RunHistoryModal } from './RunHistoryModal'
 import { ScheduleCalendarTab } from './ScheduleCalendarTab'
 import { ScheduleFormModal } from './ScheduleFormModal'
 import { ScheduleTasksTab } from './ScheduleTasksTab'
+import { ScheduleTemplatesTab } from './ScheduleTemplatesTab'
 import { templateToDraft, type ScheduleDraft, type ScheduleTemplate } from './scheduleTemplates'
 
-type Tab = 'calendar' | 'tasks'
+type Tab = 'calendar' | 'tasks' | 'templates'
 
 // `editingJob` doubles as the modal's open/closed flag: undefined means
 // closed, null means "create new", an AutomationJob means "edit this one" -
@@ -118,6 +119,7 @@ export function SchedulingPage() {
           <div className="mt-5 flex shrink-0 gap-4 border-b border-[var(--border-soft)]">
             <TabButton active={tab === 'calendar'} onClick={() => setTab('calendar')}>Calendar</TabButton>
             <TabButton active={tab === 'tasks'} onClick={() => setTab('tasks')}>Tasks</TabButton>
+            <TabButton active={tab === 'templates'} onClick={() => setTab('templates')}>Templates</TabButton>
           </div>
 
           {error && (
@@ -129,7 +131,7 @@ export function SchedulingPage() {
           <div className="mt-5 flex min-h-0 flex-1 flex-col pb-6">
             {tab === 'calendar' ? (
               <ScheduleCalendarTab jobs={jobs} onOpenJob={setEditingJob} />
-            ) : (
+            ) : tab === 'tasks' ? (
               <ScheduleTasksTab
                 jobs={jobs}
                 busyId={busyId}
@@ -137,8 +139,9 @@ export function SchedulingPage() {
                 onToggle={(job) => void handleToggle(job)}
                 onRunNow={(job) => void handleRunNow(job)}
                 onShowRuns={setHistoryJob}
-                onUseTemplate={startFromTemplate}
               />
+            ) : (
+              <ScheduleTemplatesTab onUse={startFromTemplate} />
             )}
           </div>
         </>

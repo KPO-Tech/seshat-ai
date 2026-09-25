@@ -10,7 +10,7 @@ import { QuietToolGroup } from '../tools/QuietToolGroup'
 import { THINKING_MARKDOWN_CLASS } from '../tools/thinkingMarkdownClass'
 import { thinkingPreview } from './thinkingPreview'
 import { breaksGroup } from '../tools/quietGroupPhrase'
-import { isGroupable } from '../tools/toolDisplay'
+import { isAgentTool, isGroupable } from '../tools/toolDisplay'
 import { AttachmentThumb } from '../attachments/AttachmentThumb'
 import type { Message, ToolUseBlock, ToolStatus } from '@renderer/api/types'
 import type { ChatAttachment, StreamingBlock } from '@renderer/stores/session'
@@ -156,8 +156,6 @@ type Props = {
   onRetryMessage?: (text: string) => void
 }
 
-const AGENT_TOOLS = new Set(['agent', 'spawn_agent'])
-
 export type QuietGroupItem =
   | { kind: 'tool'; tool: ToolUseBlock }
   | { kind: 'thinking'; thinkingId: string; thinking: string }
@@ -185,13 +183,13 @@ export function groupBlocks(blocks: GroupableBlock[], messageId: string): Render
   while (i < blocks.length) {
     const block = blocks[i]
 
-    if (block.type === 'tool_use' && AGENT_TOOLS.has(block.name)) {
+    if (block.type === 'tool_use' && isAgentTool(block.name)) {
       const group: ToolUseBlock[] = [block]
       let j = i + 1
       while (
         j < blocks.length &&
         blocks[j].type === 'tool_use' &&
-        AGENT_TOOLS.has((blocks[j] as ToolUseBlock).name)
+        isAgentTool((blocks[j] as ToolUseBlock).name)
       ) {
         group.push(blocks[j] as ToolUseBlock)
         j++

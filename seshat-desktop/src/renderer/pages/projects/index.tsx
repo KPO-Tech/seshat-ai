@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { Edit, Folder, FolderPlus, Search, Delete } from '@icon-park/react'
 import { useSessionStore } from '@renderer/stores/session'
-import { addProject, listProjects, projectIdForPath, removeProject, renameProject, type ProjectSummary } from '@renderer/lib/projects'
+import { addProject, listProjects, removeProject, renameProject, type ProjectSummary } from '@renderer/lib/projects'
 
 function fmtActivity(iso: string | null): string {
   if (!iso) return 'No activity yet'
@@ -71,239 +71,106 @@ export function ProjectsPage() {
   }
 
   return (
-    <div className="proj-root">
-      <style>{CSS}</style>
-
-      <header className="proj-topbar">
-        <span className="proj-topbar-title">Projects</span>
-
-        <div className="proj-search">
-          <Search size={12} />
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search projects..." />
-        </div>
-
-        <button className="proj-new-btn" onClick={() => void handleNewProject()}>
-          <FolderPlus size={13} /> New project
+    <section className="flex min-h-0 flex-1 flex-col overflow-hidden px-8 pt-4">
+      <div className="flex shrink-0 items-center justify-between">
+        <h1 className="text-[18px] font-semibold text-[var(--text-primary)]">Projects</h1>
+        <button
+          type="button"
+          onClick={() => void handleNewProject()}
+          className="flex h-7 items-center gap-1.5 rounded-lg border border-[var(--border-soft)] px-3 text-[12px] font-semibold text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]"
+        >
+          <FolderPlus size={13} />
+          New project
         </button>
-      </header>
-
-      <div className="proj-body">
-        <div className="proj-container">
-          {filtered.length === 0 ? (
-            <div className="proj-empty">
-              <Folder size={22} />
-              <h2>{projects.length === 0 ? 'No projects yet' : 'No matches'}</h2>
-              <p>
-                {projects.length === 0
-                  ? 'Add a folder, or pick one from the composer next time you start a chat.'
-                  : 'Try a different search term.'}
-              </p>
-            </div>
-          ) : (
-            <div className="proj-grid">
-              {filtered.map((project) => (
-                <div key={project.id} className="proj-card">
-                  {deletingId === project.id ? (
-                    <div className="proj-card-confirm">
-                      <span className="proj-card-confirm-text">Remove this project?</span>
-                      <div className="proj-card-confirm-actions">
-                        <button className="proj-confirm-cancel" onClick={() => setDeletingId(null)}>Cancel</button>
-                        <button className="proj-confirm-delete" onClick={() => handleRemove(project.id)}>Remove</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="proj-card-actions">
-                      <button className="proj-icon-btn" aria-label="Rename" onClick={() => startRename(project)}>
-                        <Edit size={12} />
-                      </button>
-                      <button className="proj-icon-btn proj-icon-btn--danger" aria-label="Remove" onClick={() => setDeletingId(project.id)}>
-                        <Delete size={12} />
-                      </button>
-                    </div>
-                  )}
-
-                  {/* A real <button> can't contain the rename <input> (nested
-                      interactive elements are invalid HTML), so this is a div
-                      with button semantics instead - same pattern used for
-                      ToolLineItem/ThinkingBlock's rows. */}
-                  <div
-                    className="proj-card-main"
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => navigate(`/projects/${encodeURIComponent(project.id)}`)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/projects/${encodeURIComponent(project.id)}`) } }}
-                  >
-                    <span className="proj-card-icon"><Folder size={24} /></span>
-                    {editingId === project.id ? (
-                      <input
-                        className="proj-rename"
-                        value={editingName}
-                        autoFocus
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={(e) => setEditingName(e.target.value)}
-                        onBlur={() => commitRename(project)}
-                        onKeyDown={(e) => {
-                          e.stopPropagation()
-                          if (e.key === 'Enter') { e.preventDefault(); commitRename(project) }
-                          else if (e.key === 'Escape') setEditingId(null)
-                        }}
-                      />
-                    ) : (
-                      <span className="proj-card-name">{project.name}</span>
-                    )}
-                    <span className="proj-card-path">{project.rootPath}</span>
-                    <span className="proj-card-meta">
-                      {project.sessionCount} session{project.sessionCount === 1 ? '' : 's'} · {fmtActivity(project.lastActiveAt)}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
-    </div>
+
+      <div className="relative mt-3 shrink-0">
+        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"><Search size={16} /></span>
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search projects"
+          className="h-9 w-full rounded-lg border border-[var(--border-soft)] bg-[var(--surface-panel)] pl-9 pr-3 text-[13px] text-[var(--text-primary)] outline-none focus:border-[var(--accent-primary)]"
+        />
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-1 pb-16 text-center">
+          <Folder size={22} className="mb-1 text-[var(--text-muted)]" />
+          <h2 className="text-[14px] font-semibold text-[var(--text-primary)]">{projects.length === 0 ? 'No projects yet' : 'No matches'}</h2>
+          <p className="max-w-[320px] text-[12px] leading-[1.6] text-[var(--text-muted)]">
+            {projects.length === 0
+              ? 'Add a folder, or pick one from the composer next time you start a chat.'
+              : 'Try a different search term.'}
+          </p>
+        </div>
+      ) : (
+        <div className="no-scrollbar mt-4 min-h-0 flex-1 overflow-y-auto pb-8">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(230px,1fr))] gap-2.5">
+            {filtered.map((project) => (
+              <div key={project.id} className="group relative rounded-xl border border-[var(--border-soft)] bg-[var(--surface-panel)] transition-colors hover:bg-[var(--surface-muted)]">
+                {deletingId === project.id ? (
+                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-xl bg-[var(--surface-panel)] p-3 text-center">
+                    <span className="text-[12px] text-[var(--text-primary)]">Remove this project?</span>
+                    <div className="flex items-center gap-1.5">
+                      <button type="button" onClick={() => setDeletingId(null)} className="cursor-pointer rounded-md border border-[var(--border-soft)] bg-transparent px-2.5 py-1 text-[11px] font-semibold text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]">
+                        Cancel
+                      </button>
+                      <button type="button" onClick={() => handleRemove(project.id)} className="cursor-pointer rounded-md border border-[var(--accent-danger)]/30 bg-[var(--accent-danger)]/10 px-2.5 py-1 text-[11px] font-semibold text-[var(--accent-danger)]">
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="absolute right-2 top-2 z-10 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                    <button type="button" aria-label="Rename" onClick={() => startRename(project)} className="flex size-6 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]">
+                      <Edit size={12} />
+                    </button>
+                    <button type="button" aria-label="Remove" onClick={() => setDeletingId(project.id)} className="flex size-6 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--accent-danger)]">
+                      <Delete size={12} />
+                    </button>
+                  </div>
+                )}
+
+                {/* A real <button> can't contain the rename <input> (nested
+                    interactive elements are invalid HTML), so this is a div
+                    with button semantics instead - same pattern used for
+                    ToolLineItem/ThinkingBlock's rows. */}
+                <div
+                  className="flex flex-col items-start p-3 text-left"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate(`/projects/${encodeURIComponent(project.id)}`)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/projects/${encodeURIComponent(project.id)}`) } }}
+                >
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-muted)] text-[var(--text-secondary)]"><Folder size={16} /></span>
+                  {editingId === project.id ? (
+                    <input
+                      className="mt-2.5 w-full rounded-md border border-[var(--accent-primary)] bg-[var(--surface-root)] px-2 py-1 text-[13px] font-semibold text-[var(--text-primary)] outline-none"
+                      value={editingName}
+                      autoFocus
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => setEditingName(e.target.value)}
+                      onBlur={() => commitRename(project)}
+                      onKeyDown={(e) => {
+                        e.stopPropagation()
+                        if (e.key === 'Enter') { e.preventDefault(); commitRename(project) }
+                        else if (e.key === 'Escape') setEditingId(null)
+                      }}
+                    />
+                  ) : (
+                    <span className="mt-2.5 w-full truncate text-[13px] font-semibold text-[var(--text-primary)]">{project.name}</span>
+                  )}
+                  <span className="w-full truncate font-mono text-[10.5px] text-[var(--text-muted)]">{project.rootPath}</span>
+                  <span className="mt-2.5 text-[11px] text-[var(--text-muted)]">
+                    {project.sessionCount} session{project.sessionCount === 1 ? '' : 's'} - {fmtActivity(project.lastActiveAt)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
   )
 }
-
-const CSS = `
-.proj-root {
-  display: flex; flex-direction: column;
-  width: 100%; height: 100%;
-  background: var(--color-surface);
-  color: var(--color-text);
-  overflow: hidden;
-}
-
-.proj-topbar {
-  display: flex; align-items: center; gap: 6px;
-  padding: 0 17px; height: 52px; flex-shrink: 0;
-  background: var(--color-bg);
-  border-bottom: 1px solid var(--color-border-subtle);
-}
-.proj-topbar-title { font-size: 13px; font-weight: 700; white-space: nowrap; }
-
-.proj-search {
-  margin-left: 16px;
-  display: flex; align-items: center; gap: 6px;
-  padding: 5px 9px; border-radius: 8px;
-  border: 1px solid var(--color-border-subtle);
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  flex: 1;
-  max-width: 320px;
-}
-.proj-search input {
-  border: none; background: transparent; outline: none;
-  color: var(--color-text); font-size: 11px; width: 100%;
-}
-
-.proj-new-btn {
-  margin-left: auto;
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 11px; border-radius: 7px;
-  border: 1px solid rgba(239, 124, 47, 0.3);
-  background: rgba(239, 124, 47, 0.1); color: var(--color-primary);
-  font-size: 11px; font-weight: 700; cursor: pointer;
-  flex-shrink: 0;
-}
-.proj-new-btn:hover { background: rgba(239, 124, 47, 0.16); }
-
-.proj-body { flex: 1; overflow-y: auto; padding: 32px 24px 60px; }
-.proj-container { max-width: 860px; margin: 0 auto; width: 100%; }
-
-.proj-empty {
-  display: flex; flex-direction: column; align-items: center; text-align: center;
-  gap: 8px; max-width: 380px; margin: 60px auto 0; color: var(--color-text-muted);
-}
-.proj-empty h2 { font-size: 14px; font-weight: 700; color: var(--color-text); margin: 4px 0 0; }
-.proj-empty p { font-size: 11px; line-height: 1.6; margin: 0; }
-
-.proj-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 14px;
-}
-
-.proj-card {
-  position: relative;
-  border: 1px solid var(--color-border-subtle); border-radius: 14px;
-  background: var(--color-bg);
-  transition: border-color 0.15s;
-}
-.proj-card:hover { border-color: color-mix(in srgb, var(--color-primary) 30%, var(--color-border-subtle)); }
-
-.proj-card-main {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
-  width: 100%; cursor: pointer;
-  padding: 18px 16px 15px;
-  text-align: left;
-  border-radius: 14px;
-}
-
-.proj-card-icon {
-  display: flex; align-items: center; justify-content: center;
-  width: 46px; height: 46px; border-radius: 12px;
-  background: rgba(239, 124, 47, 0.12); color: var(--color-primary);
-  margin-bottom: 10px;
-}
-
-.proj-card-name {
-  font-size: 14px; font-weight: 700; color: var(--color-text);
-  width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.proj-card-path {
-  width: 100%;
-  font-size: 10.5px; color: var(--color-text-muted); font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.proj-card-meta {
-  margin-top: 7px;
-  font-size: 10.5px; color: var(--color-text-muted);
-}
-
-.proj-rename {
-  width: 100%;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(239, 124, 47, 0.22);
-  color: var(--color-text);
-  border-radius: 8px;
-  padding: 5px 8px;
-  font-size: 13px;
-  font-weight: 700;
-  outline: none;
-}
-
-.proj-card-actions {
-  position: absolute; top: 10px; right: 10px; z-index: 1;
-  display: flex; align-items: center; gap: 3px;
-  opacity: 0; transition: opacity 0.15s;
-}
-.proj-card:hover .proj-card-actions { opacity: 1; }
-.proj-icon-btn {
-  width: 24px; height: 24px; border-radius: 6px; border: 1px solid var(--color-border-subtle);
-  background: var(--color-surface); color: var(--color-text-muted);
-  display: flex; align-items: center; justify-content: center; cursor: pointer;
-}
-.proj-icon-btn:hover { background: var(--color-hover); color: var(--color-text); }
-.proj-icon-btn--danger:hover { background: rgba(var(--color-error-rgb), 0.1); color: var(--color-error); }
-
-.proj-card-confirm {
-  position: absolute; inset: 0; z-index: 1;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
-  padding: 16px;
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--color-bg) 90%, black);
-  text-align: center;
-}
-.proj-card-confirm-text { font-size: 11.5px; color: var(--color-text); }
-.proj-card-confirm-actions { display: flex; align-items: center; gap: 6px; }
-.proj-confirm-cancel {
-  background: transparent; border: 1px solid var(--color-border-subtle); color: var(--color-text-muted);
-  padding: 4px 10px; border-radius: 6px; font-size: 10px; cursor: pointer; white-space: nowrap;
-}
-.proj-confirm-delete {
-  background: rgba(var(--color-error-rgb), 0.12); border: 1px solid rgba(var(--color-error-rgb), 0.3); color: var(--color-error);
-  padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 600; cursor: pointer; white-space: nowrap;
-}
-`

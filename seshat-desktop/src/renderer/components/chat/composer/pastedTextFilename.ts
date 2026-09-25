@@ -13,3 +13,13 @@ export function nextPastedTextFilename(existing: { filename: string }[]): string
   while (used.has(`${base} ${n}.txt`)) n++
   return `${base} ${n}.txt`
 }
+
+const PASTED_TEXT_FILENAME_RE = /^Pasted text( \d+)?\.txt$/
+
+// A Read of one of these is the agent re-reading context the user already
+// sees as the attachment chip on their own message - not a real project
+// file, so it doesn't belong in the Files panel (see SilentToolView/
+// ToolLineItem's own click handlers, the only callers of this).
+export function isPastedTextFilename(filename: string): boolean {
+  return PASTED_TEXT_FILENAME_RE.test(filename)
+}

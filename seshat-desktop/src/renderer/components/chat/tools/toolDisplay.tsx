@@ -439,6 +439,14 @@ export function isFileTool(name: string): boolean {
   return category === 'read' || category === 'write' || category === 'edit'
 }
 
+// agent/spawn_agent dispatch a sub-agent - their own progress belongs to the
+// SubagentPanel (opened by clicking the agent card), not Computer.
+const AGENT_TOOLS = new Set(['agent', 'spawn_agent'])
+
+export function isAgentTool(name: string): boolean {
+  return AGENT_TOOLS.has(name)
+}
+
 export function toolSnippet(tool: ToolUseBlock): string {
   return getEntry(tool.name)?.snippet?.(tool) ?? ''
 }

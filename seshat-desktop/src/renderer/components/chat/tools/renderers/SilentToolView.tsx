@@ -3,6 +3,8 @@ import type { ToolStatus } from '@renderer/api/types'
 import { useUIStore } from '@renderer/stores/ui'
 import { useSessionStore } from '@renderer/stores/session'
 import { PlanArtifactCard } from '@renderer/components/chat/messages/PlanArtifactCard'
+import { isPastedTextFilename } from '@renderer/components/chat/composer/pastedTextFilename'
+import { basename } from '../helpers'
 import { categoryIcon, hasCustomRender, isFileTool, toolLabel } from '../toolDisplay'
 
 function cx(...classes: Array<string | false | null | undefined>) {
@@ -67,13 +69,19 @@ export function SilentToolView({ tool, result, status, snippet, sessionId }: Pro
 
   const label = isSubmitPlan ? planName : toolLabel(tool.name)
 
+  // A Read of the user's own pasted-text attachment isn't "a file" worth a
+  // Files tab - the content is already right there as the attachment chip on
+  // their message. Nothing to open, so this tool call just isn't clickable.
+  const filePath = typeof tool.input.file_path === 'string' ? tool.input.file_path : ''
+  const isPastedFile = isFileTool(tool.name) && isPastedTextFilename(basename(filePath))
+
   // A silent tool with its own dedicated renderer (read, list_directory, …)
   // stays worth opening even when it succeeded, not only on error - a
   // pure-confirmation tool with no renderer (create_directory, …) stays
   // non-clickable either way, since GenericToolView's raw Input/Output split
   // is the only thing there'd be to show.
   const hasRender = hasCustomRender(tool.name)
-  const expandable = isError || hasRender
+  const expandable = !isPastedFile && (isError || hasRender)
 
   function handleClick() {
     if (canOpenPlan) {

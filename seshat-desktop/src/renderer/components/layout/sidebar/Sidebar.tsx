@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router'
 import { ApplicationOne, Browser, Plus, Puzzle, Search, Time, Workbench } from '@icon-park/react'
 import { useSettingsMenu } from '@renderer/hooks/useSettingsMenu'
 import { SearchModal } from '@renderer/components/layout/SearchModal'
+import { deleteSession } from '@renderer/lib/deleteSession'
 import { useSessionStore } from '@renderer/stores/session'
 import { useUIStore } from '@renderer/stores/ui'
 import { RecentSessions } from './RecentSessions'
@@ -58,6 +59,21 @@ export function Sidebar() {
     navigate(`/conversation/${id}`)
   }
 
+  // Scoped to whatever Tasks is currently showing - Home's own conversations
+  // when there's no project context, or just the open project's - never
+  // every session everywhere.
+  async function deleteAllInScope() {
+    const scoped = selectRecentSessions(sessions, projectContextPath, Number.MAX_SAFE_INTEGER)
+    if (scoped.length === 0) return
+    const scopeLabel = projectContextPath ? 'this project' : 'Home'
+    if (!window.confirm(`Delete all ${scoped.length} conversation${scoped.length === 1 ? '' : 's'} in ${scopeLabel}? This cannot be undone.`)) return
+    await Promise.all(scoped.map((s) => deleteSession(s.id).catch(() => {})))
+    if (activeId && scoped.some((s) => s.id === activeId)) {
+      setActive(null)
+      navigate('/')
+    }
+  }
+
   const item = (path: string) => pathname === path || pathname.startsWith(`${path}/`)
 
   return (
@@ -83,7 +99,7 @@ export function Sidebar() {
         </div>
 
         <div className="flex flex-1 flex-col gap-2.5 overflow-y-auto px-2.5 py-2">
-          {!collapsed && <RecentSessions sessions={recentSessions} onOpenSession={openSession} onOpenHistory={() => navigate('/history')} />}
+          {!collapsed && <RecentSessions sessions={recentSessions} onOpenSession={openSession} onDeleteAll={() => void deleteAllInScope()} />}
         </div>
 
         <SidebarFooterMenu collapsed={collapsed} />

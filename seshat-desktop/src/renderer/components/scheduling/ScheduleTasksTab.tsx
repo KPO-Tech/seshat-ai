@@ -2,8 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import type { AutomationJob } from '@renderer/components/config/automation/automationTypes'
 import { jobScheduleSummary } from './scheduleRecurrence'
 import { CopyableUrl, webhookUrl } from './WebhookFields'
-import { ScheduleTemplateGallery } from './ScheduleTemplateGallery'
-import type { ScheduleTemplate } from './scheduleTemplates'
 
 export function ScheduleTasksTab({
   jobs,
@@ -11,8 +9,7 @@ export function ScheduleTasksTab({
   onEdit,
   onToggle,
   onRunNow,
-  onShowRuns,
-  onUseTemplate
+  onShowRuns
 }: {
   jobs: AutomationJob[]
   busyId: string | null
@@ -20,15 +17,11 @@ export function ScheduleTasksTab({
   onToggle: (job: AutomationJob) => void
   onRunNow: (job: AutomationJob) => void
   onShowRuns: (job: AutomationJob) => void
-  onUseTemplate: (template: ScheduleTemplate) => void
 }) {
   if (jobs.length === 0) {
     return (
-      <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto pb-8">
+      <div className="flex flex-1 items-center justify-center pb-16">
         <p className="text-[13px] font-semibold text-[var(--text-muted)]">No scheduled tasks yet. Start from a template, or create your own with New schedule.</p>
-        <div className="mt-4">
-          <ScheduleTemplateGallery onUse={onUseTemplate} />
-        </div>
       </div>
     )
   }
@@ -47,11 +40,6 @@ export function ScheduleTasksTab({
             onShowRuns={() => onShowRuns(job)}
           />
         ))}
-      </div>
-
-      <h3 className="mb-3 text-[13px] font-semibold text-[var(--text-primary)]">Start from a template</h3>
-      <div className="pb-8">
-        <ScheduleTemplateGallery onUse={onUseTemplate} />
       </div>
     </div>
   )

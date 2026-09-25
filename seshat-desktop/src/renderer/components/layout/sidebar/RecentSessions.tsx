@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { CheckOne, Delete, Down, Edit, FileTextOne, History, MoreOne, Right, Share } from '@icon-park/react'
+import { CheckOne, Delete, Down, Edit, FileTextOne, MoreOne, Right, Share } from '@icon-park/react'
 import { api } from '@renderer/api/client'
 import { deleteSession } from '@renderer/lib/deleteSession'
 import { conversationFileName, serializeConversationMarkdown } from '@renderer/lib/conversationExport'
@@ -16,12 +16,15 @@ const menuButtonClass = 'flex w-full cursor-pointer items-center gap-1.5 whitesp
 type Props = {
   sessions: ChatSession[]
   onOpenSession: (id: string) => void
-  onOpenHistory: () => void
+  onDeleteAll: () => void
 }
 
-// Recents block of the sidebar: the list, per-chat rename / delete menu and the
-// link to the full history.
-export function RecentSessions({ sessions, onOpenSession, onOpenHistory }: Props) {
+// Recents block of the sidebar: the list, per-chat rename / delete menu, and
+// a bulk-delete for whatever's currently listed here (Home's own tasks, or
+// just the open project's, per Sidebar's own scoping - never every session
+// everywhere, which is what the old dedicated History page's "Delete all"
+// did instead, deleting project conversations along with everything else).
+export function RecentSessions({ sessions, onOpenSession, onDeleteAll }: Props) {
   const activeId = useSessionStore((state) => state.activeId)
   const updateSession = useSessionStore((state) => state.updateSession)
   const agentStates = useSessionStore((state) => state.agentStates)
@@ -102,12 +105,14 @@ export function RecentSessions({ sessions, onOpenSession, onOpenHistory }: Props
           {open ? <Down size={12} /> : <Right size={12} />}
         </button>
         <button
-          className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-[5px] border-0 bg-transparent text-[var(--text-muted)] transition-colors duration-150 hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
+          className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-[5px] border-0 bg-transparent text-[var(--text-muted)] transition-colors duration-150 hover:bg-[var(--surface-hover)] hover:text-[var(--accent-danger)] disabled:pointer-events-none disabled:opacity-40"
           type="button"
-          aria-label="Chat history"
-          onClick={onOpenHistory}
+          aria-label="Delete all"
+          title="Delete all"
+          disabled={sessions.length === 0}
+          onClick={onDeleteAll}
         >
-          <History size={13} />
+          <Delete size={13} />
         </button>
       </div>
 

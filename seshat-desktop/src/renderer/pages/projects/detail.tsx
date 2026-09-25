@@ -18,8 +18,7 @@ function fmtDate(iso?: string): string {
     : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined })
 }
 
-// One project's own sessions - same row shape as HistoryPage, scoped to
-// this project's path instead of every session. No message preview: synced
+// One project's own sessions, scoped to this project's path. No message preview: synced
 // sessions carry empty `messages` until actually opened (useSessionsSync),
 // so there's nothing real to show here beyond title and time.
 export function ProjectDetailPage() {

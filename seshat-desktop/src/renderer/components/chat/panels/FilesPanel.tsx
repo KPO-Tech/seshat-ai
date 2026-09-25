@@ -104,8 +104,18 @@ export function FilesPanel({
   }
 
   function openToolTab(tool: ToolUseBlock) {
-    const id = `tool:${tool.id}`
-    setTabs((prev) => (prev.some((t) => t.id === id) ? prev : [...prev, { id, kind: 'tool', tool }]))
+    // Keyed by file path (falling back to the tool id when there isn't one)
+    // rather than by the tool call itself - a chunked read of a big file
+    // dispatches several Read calls for the same path, and each one should
+    // refresh the same tab instead of stacking a new one next to it.
+    const filePath = typeof tool.input.file_path === 'string' ? tool.input.file_path : ''
+    const id = filePath ? `file:${filePath}` : `tool:${tool.id}`
+    setTabs((prev) => {
+      if (prev.some((t) => t.id === id)) {
+        return prev.map((t) => (t.id === id ? { id, kind: 'tool', tool } : t))
+      }
+      return [...prev, { id, kind: 'tool', tool }]
+    })
     setActiveTabId(id)
   }
 

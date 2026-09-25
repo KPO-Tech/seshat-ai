@@ -20,6 +20,8 @@ export function Shell() {
 
   const isConversation = pathname.startsWith('/conversation/')
   const conversationId = pathname.match(/^\/conversation\/([^/]+)/)?.[1] ?? null
+  const isChatHome = pathname === '/'
+  const isAdminRoute = pathname.startsWith('/admin')
   const previousConversationIdRef = useRef<string | null>(conversationId)
 
   useSessionsSync()
@@ -74,30 +76,38 @@ export function Shell() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-[var(--surface-root)] text-[var(--text-primary)]">
       <Titlebar
-        right={<TitlebarSessionControls conversationId={conversationId} />}
+        right={(isChatHome || isConversation) ? <TitlebarSessionControls conversationId={conversationId} /> : undefined}
         onHome={() => navigate('/')}
         onBack={() => navigate(-1)}
         onForward={() => navigate(1)}
         afterNav={<ThemeToggleButton />}
         left={
-          <button
-            className="flex size-8 cursor-pointer items-center justify-center rounded-[5px] border-0 bg-transparent text-[var(--text-secondary)] transition-colors duration-150 hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
-            onClick={toggleSidebar}
-            aria-label="Toggle sidebar"
-            type="button"
-          >
-            <InternalExpansion size={15} />
-          </button>
+          isAdminRoute ? undefined : (
+            <button
+              className="flex size-8 cursor-pointer items-center justify-center rounded-[5px] border-0 bg-transparent text-[var(--text-secondary)] transition-colors duration-150 hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
+              onClick={toggleSidebar}
+              aria-label="Toggle sidebar"
+              type="button"
+            >
+              <InternalExpansion size={15} />
+            </button>
+          )
         }
       />
 
       <div className="relative flex flex-1 overflow-hidden">
-        <Sidebar />
+        {/* Admin is its own immersive platform, not another sidebar
+            destination - no trace of the chat sidebar, collapsed or not. */}
+        {!isAdminRoute && <Sidebar />}
         <main
-          className={[
-            'relative flex flex-1 overflow-hidden transition-[padding-left] duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]',
-            collapsed ? 'pl-[var(--sidebar-collapsed-width)]' : 'pl-[var(--sidebar-width)]'
-          ].join(' ')}
+          className={
+            isAdminRoute
+              ? 'relative flex flex-1 overflow-hidden'
+              : [
+                  'relative flex flex-1 overflow-hidden transition-[padding-left] duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]',
+                  collapsed ? 'pl-[var(--sidebar-collapsed-width)]' : 'pl-[var(--sidebar-width)]'
+                ].join(' ')
+          }
         >
           <div className="flex h-full min-w-0 flex-1 overflow-hidden">
             <ErrorBoundary>

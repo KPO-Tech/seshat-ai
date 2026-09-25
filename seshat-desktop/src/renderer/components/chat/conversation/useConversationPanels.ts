@@ -4,7 +4,7 @@ import type { AgentState, StreamingBlock } from '@renderer/stores/session'
 import type { RightPanelKind, RightPanelPayload } from '@renderer/stores/ui'
 import { currentSandboxMode } from '@renderer/components/config/environment/sandboxApi'
 import { useTerminalStore } from '@renderer/stores/terminal'
-import { isFileTool } from '@renderer/components/chat/tools/toolDisplay'
+import { isAgentTool, isFileTool } from '@renderer/components/chat/tools/toolDisplay'
 
 const WEB_INFO_TOOLS = new Set(['web_search', 'web_fetch', 'read_url', 'read_document_url'])
 
@@ -14,7 +14,17 @@ function categoryForTool(toolName: string | undefined): ToolPanelCategory | null
   if (!toolName) return null
   if (toolName === 'bash') return 'terminal'
   if (toolName.startsWith('browser_')) return 'browser'
-  if (isFileTool(toolName)) return 'files'
+  // agent/spawn_agent has its own SubagentPanel (opened by clicking the
+  // agent card) - it isn't Computer's content, so don't steal focus back to
+  // Computer every time the outer agent dispatches or re-dispatches one.
+  if (isAgentTool(toolName)) return null
+  // Files opens only on an explicit click (ToolLineItem/SilentToolView's own
+  // toggle/handleClick), unlike Computer/Terminal/Browser which show
+  // genuinely live activity worth auto-following - a Read the user never
+  // asked to see (routine context-gathering, often several per turn)
+  // shouldn't keep stealing focus from whatever panel they're actually
+  // looking at.
+  if (isFileTool(toolName)) return null
   return 'computer'
 }
 
