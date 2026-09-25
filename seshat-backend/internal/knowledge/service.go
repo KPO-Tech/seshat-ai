@@ -819,7 +819,12 @@ func (s *Service) extractTextWithDocling(ctx context.Context, data []byte, conte
 			doclingClient = s.resolveDoclingClient(ctx)
 		}
 		if ext == ".pdf" {
-			if result, ok, err := pdfsmart.Convert(ctx, data, doclingClient); err == nil && ok {
+			// VisionFallback{} disables seshat's new vision-LLM fallback
+			// stage (github.com/KPO-Tech/seshat v1.2.52) - no PageRenderer/
+			// VisionTranscriber wired up here yet, so behavior is unchanged
+			// from before that stage existed. See its own doc comment in
+			// pkg/pdfsmart if this ever gets wired up for real.
+			if result, ok, err := pdfsmart.Convert(ctx, data, doclingClient, pdfsmart.VisionFallback{}); err == nil && ok {
 				return result.Markdown
 			}
 		}

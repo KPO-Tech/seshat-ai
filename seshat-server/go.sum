@@ -18,8 +18,8 @@ github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.8.1 h1:gkBLVmB3Z/HnGP/Jo
 github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.8.1/go.mod h1:e3/1P5K+jIUi9JevDRklq/tFeTvbBb75bNAjU4xd31w=
 github.com/AzureAD/microsoft-authentication-library-for-go v1.8.0 h1:Nljr4q1GRA/5vCrMONS+g4u4LRHNgOXVSh3O43J2CnI=
 github.com/AzureAD/microsoft-authentication-library-for-go v1.8.0/go.mod h1:Y33QHnf0FfdVewFFISOGe20mkZbxX4H839o955/PoeI=
-github.com/KPO-Tech/seshat v1.2.51 h1:Y5ZMoCzXUViRi4uecjfG2U2AKK9yA3dqdg+1L3ZMvoE=
-github.com/KPO-Tech/seshat v1.2.51/go.mod h1:raSkcpGP4LH78a+aZiv5dlIkSNKm++1FtYBZvoqnGGQ=
+github.com/KPO-Tech/seshat v1.2.52 h1:gqDpmLymfzCCtyVA6GplPYOb7PSssv8rUztY8c4RgaU=
+github.com/KPO-Tech/seshat v1.2.52/go.mod h1:cTjiFmH6n79k+xDz/1aNSb094vhYI/XDNgUaXV29mb8=
 github.com/Knetic/govaluate v3.0.0+incompatible h1:7o6+MAPhYTCF0+fdvoz1xDedhRb4f6s9Tn1Tt7/WTEg=
 github.com/Knetic/govaluate v3.0.0+incompatible/go.mod h1:r7JcOSlj0wfOMncg0iLm8Leh48TZaKVeNIfJntJ2wa0=
 github.com/Masterminds/semver/v3 v3.5.0 h1:kQceYJfbupGfZOKZQg0kou0DgAKhzDg2NZPAwZ/2OOE=

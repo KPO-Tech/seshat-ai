@@ -59,6 +59,8 @@ github.com/KPO-Tech/seshat v1.2.50 h1:N9evpUD/xHlZNpeeQw9u0hMg3qB6wjiNpeYDb/fF2M
 github.com/KPO-Tech/seshat v1.2.50/go.mod h1:raSkcpGP4LH78a+aZiv5dlIkSNKm++1FtYBZvoqnGGQ=
 github.com/KPO-Tech/seshat v1.2.51 h1:Y5ZMoCzXUViRi4uecjfG2U2AKK9yA3dqdg+1L3ZMvoE=
 github.com/KPO-Tech/seshat v1.2.51/go.mod h1:raSkcpGP4LH78a+aZiv5dlIkSNKm++1FtYBZvoqnGGQ=
+github.com/KPO-Tech/seshat v1.2.52 h1:gqDpmLymfzCCtyVA6GplPYOb7PSssv8rUztY8c4RgaU=
+github.com/KPO-Tech/seshat v1.2.52/go.mod h1:cTjiFmH6n79k+xDz/1aNSb094vhYI/XDNgUaXV29mb8=
 github.com/Knetic/govaluate v3.0.0+incompatible h1:7o6+MAPhYTCF0+fdvoz1xDedhRb4f6s9Tn1Tt7/WTEg=
 github.com/Knetic/govaluate v3.0.0+incompatible/go.mod h1:r7JcOSlj0wfOMncg0iLm8Leh48TZaKVeNIfJntJ2wa0=
 github.com/PuerkitoBio/goquery v1.12.0 h1:pAcL4g3WRXekcB9AU/y1mbKez2dbY2AajVhtkO8RIBo=
