@@ -394,6 +394,43 @@ func TestEnsureInitialSessionTitleUpdatesUntitledSession(t *testing.T) {
 
 // ─── UpdateSessionMetadata provider/model switching ───────────────────────────
 
+func TestEnsureInitialSessionTitleUpdatesSDKUntitledSession(t *testing.T) {
+	ctx := context.Background()
+	database, err := db.Open(ctx, db.DefaultSQLiteConfig(filepath.Join(t.TempDir(), "sessions.db")))
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	ownership, err := db.NewSessionOwnershipStore(database)
+	if err != nil {
+		t.Fatalf("new ownership store: %v", err)
+	}
+	principal := &backendauth.Principal{User: backendauth.User{ID: "user-42"}}
+	if _, err := ownership.Create(ctx, db.CreateSessionOwnershipParams{
+		SessionID: "sess-1",
+		UserID:    principal.User.ID,
+		Title:     "untitled_session_7",
+	}); err != nil {
+		t.Fatalf("create ownership: %v", err)
+	}
+
+	svc := NewService(ServiceConfig{Ownership: ownership})
+	title, err := svc.EnsureInitialSessionTitle(ctx, principal, "sess-1", "analyse mon cv et propose un titre")
+	if err != nil {
+		t.Fatalf("ensure title: %v", err)
+	}
+	if title != "Analyse mon cv et propose un titre" {
+		t.Fatalf("unexpected title %q", title)
+	}
+	row, err := ownership.GetBySessionID(ctx, "sess-1")
+	if err != nil {
+		t.Fatalf("get ownership: %v", err)
+	}
+	if row.Title != title {
+		t.Fatalf("expected persisted title %q, got %q", title, row.Title)
+	}
+}
+
 func newTestOwnershipStore(t *testing.T) *db.SessionOwnershipStore {
 	t.Helper()
 	database, err := db.Open(context.Background(), db.DefaultSQLiteConfig(filepath.Join(t.TempDir(), "test.db")))

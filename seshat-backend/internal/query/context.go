@@ -214,18 +214,46 @@ func buildAttachmentContext(ctx context.Context, principal *backendauth.Principa
 				if meta.MarkdownPath != "" {
 					status = "converted"
 				} else {
-					status = "not_available_or_failed"
+					status = "failed"
 				}
 			}
 			sb.WriteString(fmt.Sprintf(" document_reader_status=%q", status))
 			if meta.DocumentReadEngine != "" {
 				sb.WriteString(fmt.Sprintf(" document_reader_engine=%q", meta.DocumentReadEngine))
 			}
+			if meta.DocumentReadPages > 0 {
+				sb.WriteString(fmt.Sprintf(" document_pages=%d", meta.DocumentReadPages))
+			}
+			if meta.DocumentReadImages > 0 {
+				sb.WriteString(fmt.Sprintf(" extracted_images=%d visual_content=\"likely\"", meta.DocumentReadImages))
+			}
+			if len(meta.DocumentReadVisualPages) > 0 {
+				sb.WriteString(fmt.Sprintf(" visual_pages=%q", formatPageList(meta.DocumentReadVisualPages)))
+			}
 		}
 		sb.WriteString(" />\n")
 	}
+	if written > 0 {
+		sb.WriteString("\nFor scientific, slide, scanned, or diagram-heavy documents, the markdown/text extraction may omit visual relationships, equations, figures, axes, arrows, or image-only content. If the answer depends on diagrams or page layout, say that visual inspection is required instead of pretending the markdown is complete.\n")
+	}
 
 	return strings.TrimSpace(sb.String())
+}
+
+func formatPageList(pages []int) string {
+	if len(pages) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, len(pages))
+	seen := make(map[int]bool, len(pages))
+	for _, page := range pages {
+		if page <= 0 || seen[page] {
+			continue
+		}
+		seen[page] = true
+		parts = append(parts, fmt.Sprintf("%d", page))
+	}
+	return strings.Join(parts, ",")
 }
 
 // isConvertibleDocumentCandidate reports whether this attachment is a format

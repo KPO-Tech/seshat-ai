@@ -422,10 +422,16 @@ func TestReadResultCacheRoundTrip(t *testing.T) {
 	store := storage.NewArtifactStore(provider)
 
 	want := ReadResult{
-		Filename: "report.pdf",
-		SHA256:   strings.Repeat("a", 64),
-		Status:   StatusReady,
-		Engine:   EngineLocalBasic,
+		Filename:  "report.pdf",
+		SHA256:    strings.Repeat("a", 64),
+		Status:    StatusReady,
+		Engine:    EngineLocalBasic,
+		PageCount: 2,
+		Pages: []PageReadResult{{
+			Page:     1,
+			Source:   "native",
+			HasImage: true,
+		}},
 		Markdown: "# Report",
 		Text:     "# Report",
 	}
@@ -444,6 +450,36 @@ func TestReadResultCacheRoundTrip(t *testing.T) {
 	}
 	if got.Text != want.Text || got.Engine != want.Engine || got.SHA256 != want.SHA256 {
 		t.Fatalf("unexpected cached result: %#v", got)
+	}
+	if got.PageCount != 2 || len(got.Pages) != 1 || got.Pages[0].Source != "native" || !got.Pages[0].HasImage {
+		t.Fatalf("unexpected cached page metadata: %#v", got)
+	}
+}
+
+func TestReadFailureCacheRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	provider, err := storage.NewLocalProviderWithConfig(storage.Config{
+		Provider:  storage.ProviderLocal,
+		LocalPath: t.TempDir(),
+	})
+	if err != nil {
+		t.Fatalf("NewLocalProviderWithConfig: %v", err)
+	}
+	store := storage.NewArtifactStore(provider)
+
+	if err := SaveReadFailure(context.Background(), store, "file_123", "ocr runtime unavailable"); err != nil {
+		t.Fatalf("SaveReadFailure: %v", err)
+	}
+	got, ok, err := LoadReadFailure(context.Background(), store, "file_123")
+	if err != nil {
+		t.Fatalf("LoadReadFailure: %v", err)
+	}
+	if !ok {
+		t.Fatal("expected cached read failure")
+	}
+	if got.SourceFileID != "file_123" || got.Error != "ocr runtime unavailable" || got.UpdatedAt.IsZero() {
+		t.Fatalf("unexpected cached read failure: %#v", got)
 	}
 }
 

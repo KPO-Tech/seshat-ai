@@ -1,8 +1,8 @@
-import { useEffect, useState, useMemo, type ReactNode } from 'react'
+import { useEffect, useState, useMemo, type Dispatch, type ReactNode, type SetStateAction } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { CheckCorrect, FileTextOne, Globe, LightMember } from '@icon-park/react'
 import { ChatInput } from '@renderer/components/chat/composer/ChatInput'
-import { attachmentCategory, isPDFFile, sentAttachment, type ChatAttachment } from '@renderer/components/chat/attachments/attachmentTypes'
+import { attachmentCategory, isDocumentReadProcessing, isPDFFile, sentAttachment, type ChatAttachment, type DocumentReadStatus } from '@renderer/components/chat/attachments/attachmentTypes'
 import { ProviderIcon } from '@renderer/components/ui/ProviderIcon'
 import { api, ApiError } from '@renderer/api/client'
 import type { ProviderModel, ProviderSetting } from '@renderer/api/types'
@@ -20,6 +20,27 @@ type ModelChoice = {
   providerName: string
   providerKind: string
   model: ProviderModel
+}
+
+type UploadedFileResponse = {
+  id: string
+  filename: string
+  content_type?: string
+  size?: number
+  category?: 'images' | 'documents' | 'other'
+  local_path?: string
+  document_read_status?: DocumentReadStatus
+  document_read_engine?: string
+  document_read_pages?: number
+  document_read_images?: number
+  document_read_visual_pages?: number[]
+}
+
+const DOCUMENT_READ_POLL_DELAY_MS = 2000
+const DOCUMENT_READ_POLL_ATTEMPTS = 900
+
+function wait(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms))
 }
 
 function modelChoiceId(providerId: string, modelId: string): string {
@@ -261,16 +282,7 @@ export function Home() {
         const pendingId = pending[index]?.id
         const form = new FormData()
         form.append('file', file)
-        const item = await api.upload<{
-          id: string
-          filename: string
-          content_type?: string
-          size?: number
-          category?: 'images' | 'documents' | 'other'
-          local_path?: string
-          document_read_status?: 'converted' | 'not_available_or_failed'
-          document_read_engine?: string
-        }>(`/sessions/${id}/files`, form)
+        const item = await api.upload<UploadedFileResponse>(`/sessions/${id}/files`, form)
         setAttachments((current) => current.map((attachment) => (
           attachment.id === pendingId
             ? {
@@ -283,12 +295,18 @@ export function Home() {
                 local_path: item.local_path,
                 document_read_status: item.document_read_status,
                 document_read_engine: item.document_read_engine,
+                document_read_pages: item.document_read_pages,
+                document_read_images: item.document_read_images,
+                document_read_visual_pages: item.document_read_visual_pages,
                 page_preview_urls: attachment.page_preview_urls,
                 preview_url: attachment.preview_url,
                 upload_status: 'uploaded',
               }
             : attachment
         )))
+        if (item.document_read_status === 'processing') {
+          void pollDocumentReadStatus(item.id, setAttachments)
+        }
       }
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Failed to attach files.'
@@ -317,6 +335,10 @@ export function Home() {
   async function handleSend(promptOverride?: string) {
     if (attachments.some((file) => file.upload_status === 'uploading')) {
       setAttachmentError('Wait for attachments to finish uploading before sending.')
+      return
+    }
+    if (attachments.some(isDocumentReadProcessing)) {
+      setAttachmentError('Wait for document reading to finish before sending.')
       return
     }
     const prompt = (promptOverride ?? inputValue).trim() || (attachments.length > 0 ? 'Please analyze the attached file(s).' : '')
@@ -472,6 +494,34 @@ function QuickAction({ icon, label, onClick }: { icon: ReactNode; label: string;
       <span className="qa-label">{label}</span>
     </button>
   )
+}
+
+async function pollDocumentReadStatus(
+  fileId: string,
+  setAttachments: Dispatch<SetStateAction<ChatAttachment[]>>
+) {
+  for (let attempt = 0; attempt < DOCUMENT_READ_POLL_ATTEMPTS; attempt += 1) {
+    await wait(DOCUMENT_READ_POLL_DELAY_MS)
+    try {
+      const item = await api.get<UploadedFileResponse>(`/files/${fileId}`)
+      setAttachments((current) => current.map((attachment) => (
+        attachment.id === fileId
+          ? {
+              ...attachment,
+              document_read_status: item.document_read_status,
+              document_read_engine: item.document_read_engine,
+              document_read_pages: item.document_read_pages,
+              document_read_images: item.document_read_images,
+              document_read_visual_pages: item.document_read_visual_pages,
+              local_path: item.local_path ?? attachment.local_path,
+            }
+          : attachment
+      )))
+      if (item.document_read_status !== 'processing') return
+    } catch {
+      return
+    }
+  }
 }
 
 const HOME_CSS = `

@@ -317,40 +317,46 @@ func (app *App) handleSessionFiles(w http.ResponseWriter, r *http.Request, princ
 // --- response helpers ---
 
 type fileResponse struct {
-	ID                 string `json:"id"`
-	UserID             string `json:"user_id"`
-	WorkspaceID        string `json:"workspace_id,omitempty"`
-	SessionID          string `json:"session_id,omitempty"`
-	Category           string `json:"category,omitempty"`
-	LocalPath          string `json:"local_path,omitempty"`
-	MarkdownPath       string `json:"markdown_path,omitempty"`
-	DocumentReadStatus string `json:"document_read_status,omitempty"`
-	DocumentReadEngine string `json:"document_read_engine,omitempty"`
-	Filename           string `json:"filename"`
-	ContentType        string `json:"content_type"`
-	Size               int64  `json:"size"`
-	SHA256             string `json:"sha256,omitempty"`
-	CreatedAt          int64  `json:"created_at"`
-	UpdatedAt          int64  `json:"updated_at"`
+	ID                      string `json:"id"`
+	UserID                  string `json:"user_id"`
+	WorkspaceID             string `json:"workspace_id,omitempty"`
+	SessionID               string `json:"session_id,omitempty"`
+	Category                string `json:"category,omitempty"`
+	LocalPath               string `json:"local_path,omitempty"`
+	MarkdownPath            string `json:"markdown_path,omitempty"`
+	DocumentReadStatus      string `json:"document_read_status,omitempty"`
+	DocumentReadEngine      string `json:"document_read_engine,omitempty"`
+	DocumentReadPages       int    `json:"document_read_pages,omitempty"`
+	DocumentReadImages      int    `json:"document_read_images,omitempty"`
+	DocumentReadVisualPages []int  `json:"document_read_visual_pages,omitempty"`
+	Filename                string `json:"filename"`
+	ContentType             string `json:"content_type"`
+	Size                    int64  `json:"size"`
+	SHA256                  string `json:"sha256,omitempty"`
+	CreatedAt               int64  `json:"created_at"`
+	UpdatedAt               int64  `json:"updated_at"`
 }
 
 func toFileResponse(f backendfiles.File) fileResponse {
 	return fileResponse{
-		ID:                 f.ID,
-		UserID:             f.UserID,
-		WorkspaceID:        f.WorkspaceID,
-		SessionID:          f.SessionID,
-		Category:           f.Category,
-		LocalPath:          f.LocalPath,
-		MarkdownPath:       f.MarkdownPath,
-		DocumentReadStatus: f.DocumentReadStatus,
-		DocumentReadEngine: f.DocumentReadEngine,
-		Filename:           f.Filename,
-		ContentType:        f.ContentType,
-		Size:               f.Size,
-		SHA256:             f.SHA256,
-		CreatedAt:          f.CreatedAt.Unix(),
-		UpdatedAt:          f.UpdatedAt.Unix(),
+		ID:                      f.ID,
+		UserID:                  f.UserID,
+		WorkspaceID:             f.WorkspaceID,
+		SessionID:               f.SessionID,
+		Category:                f.Category,
+		LocalPath:               f.LocalPath,
+		MarkdownPath:            f.MarkdownPath,
+		DocumentReadStatus:      f.DocumentReadStatus,
+		DocumentReadEngine:      f.DocumentReadEngine,
+		DocumentReadPages:       f.DocumentReadPages,
+		DocumentReadImages:      f.DocumentReadImages,
+		DocumentReadVisualPages: f.DocumentReadVisualPages,
+		Filename:                f.Filename,
+		ContentType:             f.ContentType,
+		Size:                    f.Size,
+		SHA256:                  f.SHA256,
+		CreatedAt:               f.CreatedAt.Unix(),
+		UpdatedAt:               f.UpdatedAt.Unix(),
 	}
 }
 

@@ -69,9 +69,11 @@ const (
 
 // Result is the outcome of a successful conversion.
 type Result struct {
-	Markdown string
-	Images   []documentreader.ExtractedImage
-	Source   Source
+	Markdown  string
+	Images    []documentreader.ExtractedImage
+	PageCount int
+	Pages     []PageReadResult
+	Source    Source
 }
 
 // Convert turns filePath's content into markdown. It tries native extraction
@@ -123,7 +125,7 @@ func Convert(ctx context.Context, filePath string, externalConverter documentrea
 	if textquality.IsGarbledText(conversion.Markdown) {
 		return Result{}, false, nil
 	}
-	return Result{Markdown: conversion.Markdown, Images: conversion.Images, Source: SourceExternal}, true, nil
+	return Result{Markdown: conversion.Markdown, Images: conversion.Images, PageCount: conversion.PageCount, Source: SourceExternal}, true, nil
 }
 
 // ConvertBytes is Convert's counterpart for callers that only have the raw
@@ -164,7 +166,7 @@ func ConvertBytes(ctx context.Context, data []byte, filename string, externalCon
 	if textquality.IsGarbledText(conversion.Markdown) {
 		return Result{}, false, nil
 	}
-	return Result{Markdown: conversion.Markdown, Images: conversion.Images, Source: SourceExternal}, true, nil
+	return Result{Markdown: conversion.Markdown, Images: conversion.Images, PageCount: conversion.PageCount, Source: SourceExternal}, true, nil
 }
 
 func convertPDFSmart(ctx context.Context, data []byte, externalConverter documentreader.Converter) (Result, bool, error) {
@@ -181,7 +183,15 @@ func convertPDFSmart(ctx context.Context, data []byte, externalConverter documen
 	} else if onlyPDFSmartSource(smart, pdfsmart.PageSourceDocling) {
 		source = SourceExternal
 	}
-	return Result{Markdown: smart.Markdown, Source: source}, true, nil
+	pages := make([]PageReadResult, 0, len(smart.Pages))
+	for _, page := range smart.Pages {
+		pages = append(pages, PageReadResult{
+			Page:     page.Page,
+			Source:   string(page.Source),
+			HasImage: page.HasEmbeddedImage,
+		})
+	}
+	return Result{Markdown: smart.Markdown, PageCount: len(smart.Pages), Pages: pages, Source: source}, true, nil
 }
 
 func onlyPDFSmartSource(result pdfsmart.Result, source pdfsmart.PageSource) bool {

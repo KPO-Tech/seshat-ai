@@ -889,16 +889,20 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 
 	titleBroker := backendquery.NewTitleBroker()
 	defaultModel := appconfig.ParseModelIdentifier(config.Model)
+	titleModel := appconfig.ParseModelIdentifier(config.TitleModel)
 	queryClientConfig := &sdk.ClientConfig{
-		APIKey:            config.APIKey,
-		Model:             defaultModel,
-		PermissionMode:    sdk.PermissionModeNever,
-		MaxTokens:         backendquery.InteractiveMaxTokensForModel(defaultModel),
-		AutoCompact:       true,
-		PersistSessions:   true,
-		EnableMonitoring:  true,
-		SessionSQLitePath: appconfig.EffectiveSessionDBPath(config),
-		WorkingDir:        workingDir,
+		APIKey:              config.APIKey,
+		Model:               defaultModel,
+		TitleModel:          titleModel,
+		TitleProviderConfig: titleProviderConfigFromAppConfig(config, titleModel),
+		LocalTitle:          localTitleConfigFromAppConfig(config),
+		PermissionMode:      sdk.PermissionModeNever,
+		MaxTokens:           backendquery.InteractiveMaxTokensForModel(defaultModel),
+		AutoCompact:         true,
+		PersistSessions:     true,
+		EnableMonitoring:    true,
+		SessionSQLitePath:   appconfig.EffectiveSessionDBPath(config),
+		WorkingDir:          workingDir,
 		// Desktop default: try Docker sandboxing for bash tool execution,
 		// with a sane zero-value SandboxDocker config. RequireSandbox stays
 		// false (the zero value) — the SDK itself documents that refusing to
@@ -918,6 +922,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		PlanStore:               &dbPlanStoreAdapter{store: planDocumentStore},
 		LongTermMemory:          longTermMemStore,
 		DocumentConverter:       documentreading.NewProcessorConverter(resolveDocumentConverter),
+		DocumentPageRenderer:    documentreading.NewNativeDocPageRenderer(),
 		AutomationServiceURL:    strings.TrimSpace(config.AutomationServiceURL),
 		AutomationAPIKey:        strings.TrimSpace(os.Getenv("AUTOMATION_API_KEY")),
 		ImageGeneration:         defaultImageGenerationConfig(ctx, capabilityLinkStore, settingStore),
@@ -1630,6 +1635,53 @@ func defaultSpeechToTextConfig(ctx context.Context, linkStore *db.CapabilityLink
 		return &sdk.SpeechToTextConfig{Provider: "openai", APIKey: key}
 	}
 	return nil
+}
+
+func titleProviderConfigFromAppConfig(config appconfig.Config, titleModel sdk.ModelIdentifier) *providers.Config {
+	if strings.TrimSpace(titleModel.Model) == "" || titleModel.Provider == "" {
+		return nil
+	}
+	if strings.TrimSpace(config.TitleModelBaseURL) == "" && strings.TrimSpace(config.TitleModelAPIKey) == "" {
+		return nil
+	}
+	return &providers.Config{
+		Provider: titleModel.Provider,
+		BaseURL:  strings.TrimSpace(config.TitleModelBaseURL),
+		APIKey:   strings.TrimSpace(config.TitleModelAPIKey),
+	}
+}
+
+func localTitleConfigFromAppConfig(config appconfig.Config) *sdk.LocalTitleConfig {
+	if !config.TitleLocalEnabled {
+		return nil
+	}
+	timeout := parseDurationOrDefault(config.TitleLocalTimeout, 30*time.Second)
+	return &sdk.LocalTitleConfig{
+		Enabled:        true,
+		Runtime:        strings.TrimSpace(config.TitleLocalRuntime),
+		ExecutablePath: strings.TrimSpace(config.TitleLocalExe),
+		ModelPath:      strings.TrimSpace(config.TitleLocalModel),
+		HFRepo:         strings.TrimSpace(config.TitleLocalHFRepo),
+		HFFile:         strings.TrimSpace(config.TitleLocalHFFile),
+		CacheDir:       strings.TrimSpace(config.TitleLocalCache),
+		Args:           splitTitleLocalArgs(config.TitleLocalArgs),
+		Timeout:        timeout,
+	}
+}
+
+func splitTitleLocalArgs(raw string) []string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+	parts := strings.Split(raw, " ")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if trimmed := strings.TrimSpace(part); trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out
 }
 
 // resolveCloudJobModel maps a cloud job's model_override ("provider:model",

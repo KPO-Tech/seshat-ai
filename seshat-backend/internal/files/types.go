@@ -11,14 +11,21 @@ type File struct {
 	Category     string `json:"category,omitempty"`
 	LocalPath    string `json:"local_path,omitempty"`
 	MarkdownPath string `json:"markdown_path,omitempty"` // set when document conversion succeeded
-	// DocumentReadStatus summarizes whether a normalized document read result
-	// is available for previews, chat tools or Knowledge ingestion.
+	// DocumentReadStatus is empty for non-convertible files, or one of
+	// processing, converted, failed for files that need a normalized read
+	// result for previews, chat tools or Knowledge ingestion.
 	DocumentReadStatus string `json:"document_read_status,omitempty"`
 	DocumentReadEngine string `json:"document_read_engine,omitempty"`
-	Filename           string `json:"filename"`
-	ContentType        string `json:"content_type"`
-	Size               int64  `json:"size"`
-	SHA256             string `json:"sha256,omitempty"`
+	DocumentReadPages  int    `json:"document_read_pages,omitempty"`
+	DocumentReadImages int    `json:"document_read_images,omitempty"`
+	// DocumentReadVisualPages lists 1-indexed pages with detected visual
+	// content. Today this is populated from embedded PDF images; future layout
+	// detectors can add diagram/table-heavy pages here too.
+	DocumentReadVisualPages []int  `json:"document_read_visual_pages,omitempty"`
+	Filename                string `json:"filename"`
+	ContentType             string `json:"content_type"`
+	Size                    int64  `json:"size"`
+	SHA256                  string `json:"sha256,omitempty"`
 	// UserMessageIndex, when set, is the 0-based position of this file's
 	// owning user message within its session's transcript. See
 	// db.File.UserMessageIndex.

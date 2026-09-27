@@ -873,11 +873,12 @@ func (s *Service) EnsureInitialSessionTitle(ctx context.Context, principal *back
 }
 
 func isUntitledSessionTitle(title string) bool {
-	switch strings.ToLower(strings.TrimSpace(title)) {
+	normalized := strings.ToLower(strings.TrimSpace(title))
+	switch normalized {
 	case "", "untitled conversation", "new chat":
 		return true
 	default:
-		return false
+		return strings.HasPrefix(normalized, "untitled_session_")
 	}
 }
 

@@ -61,11 +61,19 @@ type ReadResult struct {
 	SHA256       string
 	Status       string
 	Engine       string
+	PageCount    int
+	Pages        []PageReadResult
 	Markdown     string
 	Text         string
 	Images       []documentreader.ExtractedImage
 	Warnings     []string
 	Errors       []string
+}
+
+type PageReadResult struct {
+	Page     int    `json:"page"`
+	Source   string `json:"source,omitempty"`
+	HasImage bool   `json:"has_image,omitempty"`
 }
 
 const (
@@ -161,8 +169,9 @@ func (c *ProcessorConverter) ConvertURL(ctx context.Context, docURL string) (*do
 
 func readResultToConversion(result ReadResult) *documentreader.ConversionResult {
 	return &documentreader.ConversionResult{
-		Markdown: result.Markdown,
-		Images:   result.Images,
+		Markdown:  result.Markdown,
+		Images:    result.Images,
+		PageCount: result.PageCount,
 	}
 }
 
@@ -231,6 +240,8 @@ func applyConversion(result *ReadResult, converted Result) {
 	result.Markdown = converted.Markdown
 	result.Text = converted.Markdown
 	result.Images = converted.Images
+	result.PageCount = converted.PageCount
+	result.Pages = converted.Pages
 }
 
 // ExtractPlainText returns text for plain-text-like blobs only. It rejects

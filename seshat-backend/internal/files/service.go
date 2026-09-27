@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -242,18 +243,44 @@ func (s *Service) enrichDocumentReadMetadata(ctx context.Context, f *File) *File
 	if f == nil {
 		return nil
 	}
+	convertible := documentreading.AllConvertibleExtensions[strings.ToLower(filepath.Ext(f.Filename))]
 	if f.MarkdownPath != "" {
 		f.DocumentReadStatus = "converted"
 	}
 	if result, ok, err := documentreading.LoadReadResult(ctx, s.store, f.ID); err == nil && ok {
 		f.DocumentReadStatus = "converted"
 		f.DocumentReadEngine = result.Engine
+		f.DocumentReadPages = result.PageCount
+		f.DocumentReadImages = len(result.Images)
+		f.DocumentReadVisualPages = visualPagesFromReadResult(result)
 		return f
 	}
-	if f.DocumentReadStatus == "" && documentreading.AllConvertibleExtensions[strings.ToLower(filepath.Ext(f.Filename))] {
-		f.DocumentReadStatus = "not_available_or_failed"
+	if !convertible || f.DocumentReadStatus != "" {
+		return f
+	}
+	if _, ok, err := documentreading.LoadReadFailure(ctx, s.store, f.ID); err == nil && ok {
+		f.DocumentReadStatus = "failed"
+		return f
+	}
+	if time.Since(f.UpdatedAt) <= sessionDocumentReadTimeout+time.Minute {
+		f.DocumentReadStatus = "processing"
+	} else {
+		f.DocumentReadStatus = "failed"
 	}
 	return f
+}
+
+func visualPagesFromReadResult(result documentreading.ReadResult) []int {
+	pages := make([]int, 0)
+	seen := make(map[int]bool)
+	for _, page := range result.Pages {
+		if page.Page <= 0 || !page.HasImage || seen[page.Page] {
+			continue
+		}
+		seen[page.Page] = true
+		pages = append(pages, page.Page)
+	}
+	return pages
 }
 
 // resolveWorkspacePath joins a workspace-relative path (always
@@ -490,29 +517,43 @@ func (s *Service) convertSessionFileAsync(fileID, workspacePath, destPath, filen
 			processor = documentreading.NewProcessor(s.resolveDocumentConverter)
 		}
 		result, ok, err := processor.ReadFile(ctx, documentreading.ReadInput{
-			Filename:    filename,
-			ContentType: contentType,
-			FilePath:    destPath,
-			Data:        data,
-			SHA256:      sha256Hash,
+			SourceFileID: fileID,
+			Filename:     filename,
+			ContentType:  contentType,
+			FilePath:     destPath,
+			Data:         data,
+			SHA256:       sha256Hash,
 		})
 		if err != nil {
 			log.Printf("[files] document read failed for %s (%s): %v", filename, fileID, err)
+			s.saveSessionFileReadFailure(ctx, fileID, err.Error())
 			return
 		}
 		if !ok {
+			s.saveSessionFileReadFailure(ctx, fileID, "document reader returned no result")
 			return
 		}
 		mdPath := strings.TrimSuffix(destPath, filepath.Ext(destPath)) + ".md"
 		if writeErr := os.WriteFile(mdPath, []byte(result.Markdown), 0o600); writeErr != nil {
 			log.Printf("[files] write markdown sidecar failed for %s (%s): %v", filename, fileID, writeErr)
+			s.saveSessionFileReadFailure(ctx, fileID, writeErr.Error())
 			return
+		}
+		sidecar := documentreading.NewReadSidecar(result)
+		if sidecarBody, sidecarErr := json.MarshalIndent(sidecar, "", "  "); sidecarErr == nil {
+			sidecarPath := strings.TrimSuffix(destPath, filepath.Ext(destPath)) + ".document.json"
+			if writeErr := os.WriteFile(sidecarPath, sidecarBody, 0o600); writeErr != nil {
+				log.Printf("[files] write document sidecar failed for %s (%s): %v", filename, fileID, writeErr)
+			}
 		}
 		if workspacePath != "" {
 			if rel, relErr := filepath.Rel(workspacePath, mdPath); relErr == nil {
 				if setErr := s.files.SetMarkdownPath(ctx, fileID, rel); setErr != nil {
 					log.Printf("[files] set markdown path failed for %s (%s): %v", filename, fileID, setErr)
+					s.saveSessionFileReadFailure(ctx, fileID, setErr.Error())
 				}
+			} else {
+				s.saveSessionFileReadFailure(ctx, fileID, relErr.Error())
 			}
 		}
 		for _, img := range result.Images {
@@ -526,6 +567,15 @@ func (s *Service) convertSessionFileAsync(fileID, workspacePath, destPath, filen
 			_ = documentreading.SaveReadResult(ctx, s.store, fileID, result)
 		}
 	}()
+}
+
+func (s *Service) saveSessionFileReadFailure(ctx context.Context, fileID, message string) {
+	if s == nil || s.store == nil {
+		return
+	}
+	if err := documentreading.SaveReadFailure(ctx, s.store, fileID, message); err != nil {
+		log.Printf("[files] store document read failure failed for %s: %v", fileID, err)
+	}
 }
 
 // ListSessionFiles returns all active files attached to a session.

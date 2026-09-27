@@ -8,6 +8,7 @@ import (
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/documentreading"
+	"github.com/KPO-Tech/seshat/pkg/documentreader"
 	"github.com/KPO-Tech/seshat/pkg/storage"
 )
 
@@ -62,11 +63,21 @@ func TestReadMarkdownFallsBackToCachedReadResult(t *testing.T) {
 		t.Fatalf("create file: %v", err)
 	}
 	if err := documentreading.SaveReadResult(ctx, store, file.ID, documentreading.ReadResult{
-		Filename: "scan.png",
-		Status:   documentreading.StatusReady,
-		Engine:   documentreading.EngineExternal,
+		Filename:  "scan.png",
+		Status:    documentreading.StatusReady,
+		Engine:    documentreading.EngineExternal,
+		PageCount: 1,
+		Pages: []documentreading.PageReadResult{{
+			Page:     1,
+			Source:   "external",
+			HasImage: true,
+		}},
 		Markdown: "Cached OCR markdown",
 		Text:     "Cached OCR markdown",
+		Images: []documentreader.ExtractedImage{{
+			Filename: "scan-figure-1.png",
+			MimeType: "image/png",
+		}},
 	}); err != nil {
 		t.Fatalf("SaveReadResult: %v", err)
 	}
@@ -83,6 +94,12 @@ func TestReadMarkdownFallsBackToCachedReadResult(t *testing.T) {
 	}
 	if gotFile.DocumentReadStatus != "converted" || gotFile.DocumentReadEngine != documentreading.EngineExternal {
 		t.Fatalf("unexpected document read metadata: status=%q engine=%q", gotFile.DocumentReadStatus, gotFile.DocumentReadEngine)
+	}
+	if gotFile.DocumentReadPages != 1 || gotFile.DocumentReadImages != 1 {
+		t.Fatalf("unexpected document read counters: pages=%d images=%d", gotFile.DocumentReadPages, gotFile.DocumentReadImages)
+	}
+	if len(gotFile.DocumentReadVisualPages) != 1 || gotFile.DocumentReadVisualPages[0] != 1 {
+		t.Fatalf("unexpected visual pages: %#v", gotFile.DocumentReadVisualPages)
 	}
 }
 
@@ -124,5 +141,62 @@ func TestReadMarkdownFallsBackToCacheWhenSidecarMissing(t *testing.T) {
 	}
 	if markdown != "Cached PDF markdown" {
 		t.Fatalf("unexpected markdown: %q", markdown)
+	}
+}
+
+func TestEnrichDocumentReadMetadataMarksFreshConvertibleFileProcessing(t *testing.T) {
+	ctx := context.Background()
+	database := openTestDB(t)
+	store := newTestArtifactStore(t)
+	fileStore, err := db.NewFileStore(database)
+	if err != nil {
+		t.Fatalf("NewFileStore: %v", err)
+	}
+	svc := NewService(fileStore, store)
+
+	file, err := fileStore.Create(ctx, db.CreateFileParams{
+		UserID:      "user-1",
+		Filename:    "report.pdf",
+		ContentType: "application/pdf",
+		Size:        4,
+		StorageKey:  "files/report.pdf",
+	})
+	if err != nil {
+		t.Fatalf("create file: %v", err)
+	}
+
+	got := svc.enrichDocumentReadMetadata(ctx, fileFromDB(*file))
+	if got.DocumentReadStatus != "processing" {
+		t.Fatalf("expected processing status, got %q", got.DocumentReadStatus)
+	}
+}
+
+func TestEnrichDocumentReadMetadataMarksCachedFailureFailed(t *testing.T) {
+	ctx := context.Background()
+	database := openTestDB(t)
+	store := newTestArtifactStore(t)
+	fileStore, err := db.NewFileStore(database)
+	if err != nil {
+		t.Fatalf("NewFileStore: %v", err)
+	}
+	svc := NewService(fileStore, store)
+
+	file, err := fileStore.Create(ctx, db.CreateFileParams{
+		UserID:      "user-1",
+		Filename:    "report.pdf",
+		ContentType: "application/pdf",
+		Size:        4,
+		StorageKey:  "files/report.pdf",
+	})
+	if err != nil {
+		t.Fatalf("create file: %v", err)
+	}
+	if err := documentreading.SaveReadFailure(ctx, store, file.ID, "reader failed"); err != nil {
+		t.Fatalf("SaveReadFailure: %v", err)
+	}
+
+	got := svc.enrichDocumentReadMetadata(ctx, fileFromDB(*file))
+	if got.DocumentReadStatus != "failed" {
+		t.Fatalf("expected failed status, got %q", got.DocumentReadStatus)
 	}
 }

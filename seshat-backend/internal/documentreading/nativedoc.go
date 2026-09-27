@@ -12,6 +12,7 @@ import (
 
 	"github.com/KPO-Tech/seshat/pkg/documentreader"
 	"github.com/KPO-Tech/seshat/pkg/nativedoc"
+	"github.com/KPO-Tech/seshat/pkg/pdfsmart"
 	"github.com/KPO-Tech/seshat/pkg/runtimepath"
 )
 
@@ -168,6 +169,27 @@ func NewNativeDocConverter() documentreader.Converter {
 		return nil
 	}
 	return nativedoc.New(NativeDocModelsDir())
+}
+
+type NativeDocPageRenderer struct{}
+
+func NewNativeDocPageRenderer() pdfsmart.PageRenderer {
+	return NativeDocPageRenderer{}
+}
+
+func (NativeDocPageRenderer) RenderPage(ctx context.Context, data []byte, pageNum int) ([]byte, error) {
+	if !nativeDocCompiled() {
+		return nil, ErrNativeDocNotCompiled
+	}
+	if !NativeDocModelsAvailable() {
+		return nil, fmt.Errorf("%w in %s", ErrNativeDocModelsMissing, NativeDocModelsDir())
+	}
+	if !nativedoc.Initialized() {
+		if err := nativedoc.InitORT(); err != nil {
+			return nil, err
+		}
+	}
+	return nativedoc.New(NativeDocModelsDir()).RenderPage(ctx, data, pageNum)
 }
 
 func nativeDocAvailable(ctx context.Context, converter documentreader.Converter) bool {
