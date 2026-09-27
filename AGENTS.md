@@ -17,7 +17,6 @@ The repository contains these sub-projects. This file's build/test/layering rule
 | `seshat-ui/` | TypeScript / Electron | desktop client that consumes the local API — being superseded by `seshat-desktop/`, see its own `AGENTS.md` |
 | `seshat-desktop/` | TypeScript / Electron | the active desktop client rebuild, see its own `AGENTS.md` |
 | `seshat-console/` | TypeScript / Vite+React | web admin console for `seshat-server`, see `seshat-console/README.md` |
-| `seshat-core/` | Go | shared business logic used identically by `seshat-backend` and `seshat-server`, see `seshat-core/AGENTS.md` |
 | `website/` | — | public marketing site, see `website/README.md` |
 | `deploy/` | — | Docker Compose deployment for the `seshat-server`/`seshat-console` cloud stack, see `deploy/README.md` |
 

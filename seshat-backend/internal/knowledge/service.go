@@ -3,30 +3,26 @@ package knowledge
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"strings"
 	"time"
-	"unicode"
-	"unicode/utf8"
 
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/docconvert"
-	"github.com/KPO-Tech/seshat/pkg/docling"
-	"github.com/KPO-Tech/seshat/pkg/pdfsmart"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/documentreading"
+	"github.com/KPO-Tech/seshat/pkg/documentreader"
 	"github.com/KPO-Tech/seshat/pkg/rag"
 	"github.com/KPO-Tech/seshat/pkg/storage"
-	"github.com/KPO-Tech/seshat/pkg/textquality"
 )
 
 type Service struct {
-	corpora              *db.CorpusStore
-	files                *db.FileStore
-	jobs                 *db.KnowledgeIngestionJobStore
-	artifacts            storage.ArtifactStore
-	rag                  *rag.Service
-	resolveDoclingClient func(ctx context.Context) *docling.Client
+	corpora                  *db.CorpusStore
+	files                    *db.FileStore
+	jobs                     *db.KnowledgeIngestionJobStore
+	artifacts                storage.ArtifactStore
+	rag                      *rag.Service
+	resolveDocumentConverter func(ctx context.Context) documentreader.Converter
+	documentProcessor        *documentreading.Processor
 }
 
 func NewService(
@@ -45,14 +41,11 @@ func NewService(
 	}
 }
 
-// WithDocling attaches a resolver that returns the docling client to use for
-// binary files (PDF, DOCX, PPTX, XLSX, audio, images), converted to markdown
-// before chunking and embedding — re-evaluated on every call rather than
-// cached, since the user can change which docling-serve instance to use at
-// runtime (Settings > Knowledge), see
-// internal/config/bootstrap.go's resolveDocling closure.
-func (s *Service) WithDocling(resolve func(ctx context.Context) *docling.Client) *Service {
-	s.resolveDoclingClient = resolve
+// WithDocumentReader attaches a resolver that returns the document converter
+// to use for binary files before chunking and embedding.
+func (s *Service) WithDocumentReader(resolve func(ctx context.Context) documentreader.Converter) *Service {
+	s.resolveDocumentConverter = resolve
+	s.documentProcessor = documentreading.NewProcessor(resolve)
 	return s
 }
 
@@ -616,17 +609,21 @@ func (s *Service) ingestFile(ctx context.Context, corpusID string, fileRecord *d
 		return nil, 0, bkerr.Internal(fmt.Sprintf("read file blob: %s", err.Error()), err)
 	}
 
-	text := s.extractTextWithDocling(ctx, data, fileRecord.ContentType, fileRecord.Filename)
+	result, ok := s.readDocumentResultForFile(ctx, data, fileRecord)
+	text := result.Text
 	if strings.TrimSpace(text) == "" {
 		_ = s.corpora.UpdateFileStatus(ctx, corpusID, fileRecord.ID, db.CorpusFileStatusFailed, 0)
 		return nil, 0, bkerr.InvalidInput("file has no extractable text content", nil)
+	}
+	if ok {
+		_ = documentreading.SaveReadResult(ctx, s.artifacts, fileRecord.ID, result)
 	}
 
 	scopeID := workspaceID
 	if scopeID == "" {
 		scopeID = ownerID
 	}
-	return s.ingestText(ctx, corpusID, fileRecord.ID, fileRecord.Filename, text, scopeID, nil)
+	return s.ingestText(ctx, corpusID, fileRecord.ID, fileRecord.Filename, text, data, scopeID, nil)
 }
 
 // ingestText is the common core shared by ingestFile (text extracted from an
@@ -636,7 +633,7 @@ func (s *Service) ingestFile(ctx context.Context, corpusID string, fileRecord *d
 // rag's deterministic artifact key: either a real db.File.ID or a synthetic
 // connector-sourced identifier (e.g. "gdrive-{driveFileID}") — corpus_files
 // has no foreign key on it, so a synthetic ID is safe.
-func (s *Service) ingestText(ctx context.Context, corpusID, fileID, filename, text string, scopeID string, scopeIDs []string) (*CorpusFile, int, error) {
+func (s *Service) ingestText(ctx context.Context, corpusID, fileID, filename, text string, data []byte, scopeID string, scopeIDs []string) (*CorpusFile, int, error) {
 	// Record the previous chunk count so we can compute a delta and clean up stale vectors
 	// when a re-ingest produces fewer chunks than the previous run.
 	oldChunkCount := 0
@@ -649,6 +646,7 @@ func (s *Service) ingestText(ctx context.Context, corpusID, fileID, filename, te
 		FileID:   fileID, // deterministic artifact key — prevents duplicate vectors on re-ingest
 		Filename: filename,
 		Text:     text,
+		Data:     data,
 		ScopeID:  scopeID,
 		ScopeIDs: scopeIDs,
 	})
@@ -729,7 +727,7 @@ func (s *Service) IngestExternal(ctx context.Context, principal *backendauth.Pri
 		Status:   db.CorpusFileStatusPending,
 	})
 
-	cf, _, err := s.ingestText(ctx, params.CorpusID, params.ExternalID, params.Filename, params.Text, "", scopeIDs)
+	cf, _, err := s.ingestText(ctx, params.CorpusID, params.ExternalID, params.Filename, params.Text, nil, "", scopeIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -782,7 +780,7 @@ func (s *Service) checkFileAccess(principal *backendauth.Principal, fileRecord *
 	return nil
 }
 
-// ExtractText is extractTextWithDocling exported for callers outside this
+// ExtractText is extractTextWithDocumentReader exported for callers outside this
 // package - specifically Knowledge connectors (e.g. internal/knowledge/gdrive)
 // that download a binary file's raw bytes and need the exact same
 // extraction quality an uploaded file gets, rather than treating raw
@@ -790,76 +788,59 @@ func (s *Service) checkFileAccess(principal *backendauth.Principal, fileRecord *
 // helps/roadmap.md Phase 1's Google Drive connector for how this gap was
 // found via a real end-to-end test).
 func (s *Service) ExtractText(ctx context.Context, data []byte, contentType, filename string) string {
-	return s.extractTextWithDocling(ctx, data, contentType, filename)
+	return s.extractTextWithDocumentReader(ctx, data, contentType, filename)
 }
 
-// extractTextWithDocling always routes binary formats (DOCX/PPTX/XLSX, PDF,
-// scans, audio, images) through docling, then falls back to plain-text
-// extraction for everything else. Deliberately skips docconvert's
-// native-first shortcut: a corpus document lives in the knowledge base
-// permanently and gets searched forever, so a page docling would have
-// caught (a table, a diagram, a scan) but a cheap per-page text-density
-// check missed is a silent, permanent loss - not worth the speed. That
-// tradeoff is fine for the ephemeral chat-attachment path (internal/files),
-// which still uses docconvert's native-first Convert/ConvertBytes.
-//
-// PDFs get one exception: pdfsmart.Convert first, which extracts natively
-// page by page and only sends the individual pages that actually need it
-// (an embedded image, or a sparse/garbled native text layer) through
-// docling - not the whole document. Its own safety contract makes this
-// exactly as safe as sending the whole document: ok is false if even one
-// page that needed docling couldn't get usable text from it, in which
-// case this falls through to the existing whole-document path below
-// rather than accept a partial result.
-func (s *Service) extractTextWithDocling(ctx context.Context, data []byte, contentType, filename string) string {
-	ext := strings.ToLower(filepath.Ext(filename))
-	if docconvert.AllConvertibleExtensions[ext] {
-		var doclingClient *docling.Client
-		if s.resolveDoclingClient != nil {
-			doclingClient = s.resolveDoclingClient(ctx)
-		}
-		if ext == ".pdf" {
-			// VisionFallback{} disables seshat's new vision-LLM fallback
-			// stage (github.com/KPO-Tech/seshat v1.2.52) - no PageRenderer/
-			// VisionTranscriber wired up here yet, so behavior is unchanged
-			// from before that stage existed. See its own doc comment in
-			// pkg/pdfsmart if this ever gets wired up for real.
-			if result, ok, err := pdfsmart.Convert(ctx, data, doclingClient, pdfsmart.VisionFallback{}); err == nil && ok {
-				return result.Markdown
-			}
-		}
-		if doclingClient != nil && doclingClient.IsAvailable(ctx) {
-			if conversion, err := doclingClient.ConvertBytes(ctx, data, filename); err == nil &&
-				strings.TrimSpace(conversion.Markdown) != "" && !textquality.IsGarbledText(conversion.Markdown) {
-				return conversion.Markdown
-			}
-		}
-		// Docling unavailable, produced nothing, or produced text that
-		// looks like broken extraction (see textquality.IsGarbledText) —
-		// fall through to plain-text extraction as a last resort, which
-		// for a binary format will itself correctly reject the raw bytes
-		// and fail the ingestion job rather than index garbage.
+// extractTextWithDocumentReader uses the configured document reader policy
+// for rich formats, then falls back to plain-text extraction for everything
+// else. The policy is local-first by default and only uses an external reader
+// when it is configured.
+func (s *Service) extractTextWithDocumentReader(ctx context.Context, data []byte, contentType, filename string) string {
+	result, ok := s.readDocumentResult(ctx, documentreading.ReadInput{
+		Filename:    filename,
+		ContentType: contentType,
+		Data:        data,
+	})
+	if ok {
+		return result.Text
 	}
-	return extractText(data, contentType, filename)
+	return ""
+}
+
+func (s *Service) readDocumentResultForFile(ctx context.Context, data []byte, fileRecord *db.File) (documentreading.ReadResult, bool) {
+	if fileRecord == nil {
+		return s.readDocumentResult(ctx, documentreading.ReadInput{Data: data})
+	}
+	if cached, ok, err := documentreading.LoadReadResult(ctx, s.artifacts, fileRecord.ID); err == nil && ok {
+		if cached.SHA256 == "" || fileRecord.SHA256 == "" || strings.EqualFold(cached.SHA256, fileRecord.SHA256) {
+			return cached, true
+		}
+	}
+	return s.readDocumentResult(ctx, documentreading.ReadInput{
+		SourceFileID: fileRecord.ID,
+		Filename:     fileRecord.Filename,
+		ContentType:  fileRecord.ContentType,
+		Data:         data,
+		SHA256:       fileRecord.SHA256,
+	})
+}
+
+func (s *Service) readDocumentResult(ctx context.Context, input documentreading.ReadInput) (documentreading.ReadResult, bool) {
+	processor := s.documentProcessor
+	if processor == nil {
+		processor = documentreading.NewProcessor(s.resolveDocumentConverter)
+	}
+	if result, ok, err := processor.ReadBytes(ctx, input); err == nil && ok {
+		return result, true
+	}
+	return documentreading.ReadResult{}, false
 }
 
 // extractText attempts to extract UTF-8 text from the blob.
 // For plain text content types it returns the raw bytes; otherwise it tries
 // a best-effort conversion.
 func extractText(data []byte, contentType, _ string) string {
-	ct := strings.ToLower(strings.TrimSpace(contentType))
-	if strings.HasPrefix(ct, "text/") ||
-		ct == "application/json" ||
-		ct == "application/xml" ||
-		ct == "application/x-yaml" {
-		return string(data)
-	}
-	// Best-effort: assume UTF-8 printable content (Markdown, code files, etc.)
-	text := string(data)
-	if isPrintable(text) {
-		return text
-	}
-	return ""
+	return documentreading.ExtractPlainText(data, contentType)
 }
 
 // isPrintable reports whether s looks like real text rather than binary
@@ -873,18 +854,7 @@ func extractText(data []byte, contentType, _ string) string {
 // job failing. The printable-character ratio on top catches the rarer
 // case of valid-but-not-really-text UTF-8 (e.g. mostly control characters).
 func isPrintable(s string) bool {
-	if len(s) == 0 || !utf8.ValidString(s) {
-		return false
-	}
-	printable := 0
-	total := 0
-	for _, r := range s {
-		total++
-		if unicode.IsPrint(r) || r == '\n' || r == '\r' || r == '\t' {
-			printable++
-		}
-	}
-	return float64(printable)/float64(total) > 0.8
+	return documentreading.IsPrintableText(s)
 }
 
 func corpusFromDB(r db.Corpus) *Corpus {

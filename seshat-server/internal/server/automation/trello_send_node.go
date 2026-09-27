@@ -27,7 +27,7 @@ import (
 // StaticSecretResolver/the connected-account schema only stores one
 // secret string, so the connect form asks for "API Key:Token" and this
 // node splits on the first colon rather than the backend schema growing a
-// second field for one kind out of eight. No seshat-core/trello package
+// second field for one kind out of eight. No shared package trello package
 // exists yet, so this hand-rolls the one request it needs directly. Reads
 // job context (owner_id, organization_id) from its own input, same
 // constraint as GmailSendNode - see its doc comment.

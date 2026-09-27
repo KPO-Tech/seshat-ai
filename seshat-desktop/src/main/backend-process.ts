@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from 'child_process'
-import { createWriteStream } from 'fs'
+import { createWriteStream, existsSync } from 'fs'
 import { join } from 'path'
 import { app } from 'electron'
 import { setDynamicBackendOrigin } from './runtime'
@@ -19,6 +19,10 @@ function resolveBackendBinaryPath() {
   return join(process.resourcesPath, 'backend', backendBinaryName())
 }
 
+function resolveBackendDir() {
+  return join(process.resourcesPath, 'backend')
+}
+
 /**
  * Starts the bundled seshat-backend sidecar and waits for it to report the
  * port it actually bound to (it falls back to an OS-assigned free port if
@@ -34,6 +38,7 @@ export async function startBackendSidecar(): Promise<void> {
     return
   }
 
+  const backendDir = resolveBackendDir()
   const binaryPath = resolveBackendBinaryPath()
   const logPath = join(app.getPath('logs'), 'backend-sidecar.log')
   const logStream = createWriteStream(logPath, { flags: 'a' })
@@ -43,6 +48,20 @@ export async function startBackendSidecar(): Promise<void> {
   // deliberate choice than an ambient shell var. See env-vars-manager.ts.
   const envVarOverrides = await resolveEnvVarOverrides()
   const env = { ...process.env, ...envVarOverrides }
+  if (process.platform === 'win32') {
+    env.PATH = `${backendDir};${env.PATH || ''}`
+    const onnxRuntimePath = join(backendDir, 'onnxruntime.dll')
+    if (!env.SESHAT_NATIVEDOC_ONNXRUNTIME_PATH && existsSync(onnxRuntimePath)) {
+      env.SESHAT_NATIVEDOC_ONNXRUNTIME_PATH = onnxRuntimePath
+    }
+  } else if (process.platform === 'linux') {
+    env.LD_LIBRARY_PATH = `${backendDir}${env.LD_LIBRARY_PATH ? `:${env.LD_LIBRARY_PATH}` : ''}`
+  } else if (process.platform === 'darwin') {
+    env.DYLD_LIBRARY_PATH = `${backendDir}${env.DYLD_LIBRARY_PATH ? `:${env.DYLD_LIBRARY_PATH}` : ''}`
+  }
+  if (!env.SESHAT_NATIVEDOC_AUTO_INIT && existsSync(join(backendDir, '.nativedoc-enabled'))) {
+    env.SESHAT_NATIVEDOC_AUTO_INIT = '1'
+  }
   if (!env.SESHAT_BROWSER_REMOTE_CONTROL_URL) {
     const browserControlURL = await resolveElectronBrowserControlURL()
     if (browserControlURL) {

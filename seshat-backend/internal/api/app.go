@@ -31,7 +31,7 @@ type App struct {
 	// list/validate local chat providers as reuse candidates - everything
 	// else that needs full provider CRUD/OAuth goes through the abstracted
 	// backend.Settings service instead (see internal/settings.Provider),
-	// which also supports connected/cloud mode. Capability links and Docling
+	// which also supports connected/cloud mode. Capability links and the document reader
 	// are genuinely local-device-only concepts (no organization equivalent
 	// exists on seshat-server for either), so those two are deliberately the
 	// raw local store, not an abstraction. embedderStore is NOT one of these
@@ -40,7 +40,11 @@ type App struct {
 	// per-organization EmbedderSetting instead once paired - this field is
 	// only ever touched directly for the standalone/local path.
 	providerSettingStore *db.ProviderSettingStore
-	doclingStore         *db.DoclingConfigStore
+	documentReaderStore  *db.DocumentReaderConfigStore
+	documentReaderDiagMu sync.Mutex
+	documentReaderDiag   *documentReaderDiagnostic
+	nativeDocDownloadMu  sync.Mutex
+	nativeDocDownload    *nativeDocDownloadState
 	rerankerStore        *db.RerankerConfigStore
 	localSTTStore        *db.LocalSTTConfigStore
 	sandboxConfigStore   *db.SandboxConfigStore
@@ -114,7 +118,7 @@ type AppConfig struct {
 	EmbedderStore         *db.EmbedderConfigStore
 	CapabilityLinkStore   *db.CapabilityLinkStore
 	ProviderSettingStore  *db.ProviderSettingStore
-	DoclingStore          *db.DoclingConfigStore
+	DocumentReaderStore   *db.DocumentReaderConfigStore
 	RerankerStore         *db.RerankerConfigStore
 	LocalSTTStore         *db.LocalSTTConfigStore
 	SandboxConfigStore    *db.SandboxConfigStore
@@ -181,7 +185,7 @@ func NewApp(cfg AppConfig) *App {
 		embedderStore:         cfg.EmbedderStore,
 		capabilityLinkStore:   cfg.CapabilityLinkStore,
 		providerSettingStore:  cfg.ProviderSettingStore,
-		doclingStore:          cfg.DoclingStore,
+		documentReaderStore:   cfg.DocumentReaderStore,
 		rerankerStore:         cfg.RerankerStore,
 		localSTTStore:         cfg.LocalSTTStore,
 		sandboxConfigStore:    cfg.SandboxConfigStore,

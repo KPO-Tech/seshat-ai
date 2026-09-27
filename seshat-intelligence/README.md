@@ -9,6 +9,35 @@ real-time WebSocket workload has too different an operational profile to
 share a process with batch/CPU-bound work like document conversion; it gets
 its own service later.
 
+## Responsibility boundary
+
+`seshat-intelligence` owns Python-native, model-heavy capabilities that are
+awkward or inefficient to run directly in the Go backend: OCR, layout analysis,
+table structure, provider-specific document conversion, hybrid document
+chunking, and later specialized inference workloads such as advanced audio,
+enrichment, scraping, HuggingFace models, or training/evaluation loops.
+
+It does not own product orchestration. `seshat-backend` remains responsible for
+local user settings, agent tools, upload workflows, RAG ingestion orchestration,
+fallback policy, and deciding whether a local reader or this external service
+should run first. `seshat` remains the shared Go library surface: neutral
+interfaces, local lightweight extraction, SDK tools, and RAG primitives.
+`seshat-server` is the enterprise/multi-tenant control plane for organizations,
+quotas, shared infrastructure, policy, and fleet-level operations.
+
+The intended document-reading policy is:
+
+- local Seshat readers are the default path;
+- this service is used only when explicitly configured;
+- if a caller opts into external priority, this service runs first and the local
+  reader remains a fallback;
+- otherwise the local reader runs first and this service is the fallback for
+  OCR/layout/provider-heavy cases.
+
+That boundary is deliberate. This service may internally use Docling, Marker,
+DeepDoc/RAGFlow-style components, or future custom providers, but callers should
+depend on it as "document intelligence", not on any specific provider name.
+
 ## documents
 
 Conversion runs through a `DocumentProvider` (`providers/base.py`), a small

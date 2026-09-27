@@ -3,7 +3,6 @@ import {
   ApartmentOutlined,
   ApiOutlined,
   AppstoreOutlined,
-  CompassOutlined,
   DashboardOutlined,
   DatabaseOutlined,
   ExperimentOutlined,
@@ -180,13 +179,6 @@ export function getOrganizationNavItems(organizationId: string): NavItem[] {
       matchPrefix: `/orgs/${organizationId}/integrations/`,
       icon: <AppstoreOutlined />,
     },
-    {
-      key: 'org-prospecting',
-      label: 'Prospecting',
-      path: `/orgs/${organizationId}/prospecting/sweeps`,
-      matchPrefix: `/orgs/${organizationId}/prospecting/`,
-      icon: <CompassOutlined />,
-    },
   ]
 }
 
@@ -196,8 +188,8 @@ export interface OrganizationNavGroup {
 }
 
 // Rebuilt from scratch 2026-09-03, not just relabeled - the old shape
-// (Connectors under Knowledge, MCP Servers hidden inside AI Config,
-// Prospecting under Integrations) mixed several unrelated themes together.
+// (Connectors under Knowledge, MCP Servers hidden inside AI Config)
+// mixed several unrelated themes together.
 // Preferences deliberately sits outside any labeled group (kept as a plain
 // item after the groups instead) - a catch-all settings page doesn't
 // belong to a theme the way the others do, and forcing it into one would
@@ -217,7 +209,7 @@ export const organizationNavGroups: OrganizationNavGroup[] = [
   { label: 'Organization', keys: ['org-overview', 'org-team', 'org-activity'] },
   { label: 'AI Core', keys: ['org-providers', 'org-knowledge', 'org-mcp-servers', 'org-agents'] },
   { label: 'Automation', keys: ['org-automation'] },
-  { label: 'Integrations', keys: ['org-connectors', 'org-integrations', 'org-prospecting'] },
+  { label: 'Integrations', keys: ['org-connectors', 'org-integrations'] },
 ]
 
 export function getSecondaryNavItems(pathname: string, organizationId: string | null): SecondaryNavItem[] {
@@ -439,23 +431,6 @@ export function getSecondaryNavItems(pathname: string, organizationId: string | 
         label: 'Corpora',
         path: `/orgs/${organizationId}/knowledge/corpora`,
         matchPrefix: `/orgs/${organizationId}/knowledge/corpora`,
-      },
-    ]
-  }
-
-  if (pathname.startsWith(`/orgs/${organizationId}/prospecting/`)) {
-    return [
-      {
-        key: 'org-prospecting-sweeps',
-        label: 'Sweeps',
-        path: `/orgs/${organizationId}/prospecting/sweeps`,
-        matchPrefix: `/orgs/${organizationId}/prospecting/sweeps`,
-      },
-      {
-        key: 'org-prospecting-settings',
-        label: 'Settings',
-        path: `/orgs/${organizationId}/prospecting/settings`,
-        matchPrefix: `/orgs/${organizationId}/prospecting/settings`,
       },
     ]
   }

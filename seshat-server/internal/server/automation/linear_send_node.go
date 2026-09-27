@@ -17,7 +17,7 @@ import (
 // Deliberately not part of the generic pkg/dataflow SDK - same reasoning
 // as GmailPollNode, it needs a seshat-ai connector account.
 //
-// Linear's API is GraphQL-only (no REST surface) - no seshat-core/linear
+// Linear's API is GraphQL-only (no REST surface) - no shared package linear
 // package exists yet, so this hand-rolls the one mutation it needs
 // directly via a plain HTTP POST, the same "no generated SDK vendored"
 // call fetchLinearIdentity (oauth.go) already makes for the identity

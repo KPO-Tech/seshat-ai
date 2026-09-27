@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/documentreading"
 	backendsettings "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/settings"
 	"github.com/KPO-Tech/seshat/pkg/sdk"
 )
@@ -22,14 +23,29 @@ type systemStatusResponse struct {
 	// SandboxKind is which of the two backends above is actually active:
 	// "docker", "landlock", or "" when neither is.
 	SandboxKind string `json:"sandbox_kind,omitempty"`
-	// DoclingConfigured/LocalSTTConfigured report whether the optional
+	// DocumentReaderConfigured/LocalSTTConfigured report whether the optional
 	// binary-document-conversion and local-speech-to-text backends are set
 	// up on this install — both degrade gracefully when unset (plain-text
-	// fallback for docling, no voice input for local STT), but the app
+	// fallback for document reading, no voice input for local STT), but the app
 	// should say so explicitly rather than silently drop the capability.
 	// See helps/audit-2026-08-10.md §Phase 2 for why this was added.
-	DoclingConfigured  bool `json:"docling_configured"`
-	LocalSTTConfigured bool `json:"local_stt_configured"`
+	DocumentReaderConfigured            bool   `json:"document_reader_configured"`
+	DocumentConversionAvailable         bool   `json:"document_conversion_available"`
+	DocumentLocalBasicAvailable         bool   `json:"document_local_basic_available"`
+	DocumentPDFSmartAvailable           bool   `json:"document_pdfsmart_available"`
+	DocumentNativeDocCompiled           bool   `json:"document_nativedoc_compiled"`
+	DocumentNativeDocRuntimeInitialized bool   `json:"document_nativedoc_runtime_initialized"`
+	DocumentNativeDocModelsAvailable    bool   `json:"document_nativedoc_models_available"`
+	DocumentNativeDocReady              bool   `json:"document_nativedoc_ready"`
+	DocumentVisionFallbackConfigured    bool   `json:"document_vision_fallback_configured"`
+	DocumentExternalConfigured          bool   `json:"document_external_configured"`
+	DocumentHybridChunkingConfigured    bool   `json:"document_hybrid_chunking_configured"`
+	DocumentReaderReachable             *bool  `json:"document_reader_reachable,omitempty"`
+	DocumentReaderTestedAt              int64  `json:"document_reader_tested_at,omitempty"`
+	DocumentExternalConversionAvailable *bool  `json:"document_external_conversion_available,omitempty"`
+	DocumentExternalConversionError     string `json:"document_external_conversion_error,omitempty"`
+	DocumentHybridChunkingError         string `json:"document_hybrid_chunking_error,omitempty"`
+	LocalSTTConfigured                  bool   `json:"local_stt_configured"`
 	// ImageGenerationConfigured mirrors internal/config/bootstrap.go's
 	// defaultImageGenerationConfig resolution order (capability link first,
 	// then OPENAI_API_KEY/GOOGLE_API_KEY) without importing that package
@@ -51,10 +67,14 @@ func (a *App) handleSystemStatus(w http.ResponseWriter, r *http.Request) {
 		sandboxKind = "landlock"
 		sandboxConfined = true
 	}
-	doclingConfigured := false
-	if a.doclingStore != nil {
-		if cfg, err := a.doclingStore.Get(r.Context()); err == nil && cfg != nil {
-			doclingConfigured = cfg.Enabled && strings.TrimSpace(cfg.BaseURL) != ""
+	documentReaderConfigured := false
+	documentExternalConfigured := false
+	documentReaderBaseURL := ""
+	if a.documentReaderStore != nil {
+		if cfg, err := a.documentReaderStore.Get(r.Context()); err == nil && cfg != nil {
+			documentReaderConfigured = cfg.Enabled && strings.TrimSpace(cfg.BaseURL) != ""
+			documentExternalConfigured = documentReaderConfigured
+			documentReaderBaseURL = cfg.BaseURL
 		}
 	}
 	localSTTConfigured := false
@@ -63,12 +83,35 @@ func (a *App) handleSystemStatus(w http.ResponseWriter, r *http.Request) {
 			localSTTConfigured = cfg.Enabled && strings.TrimSpace(cfg.BaseURL) != ""
 		}
 	}
+	documentCapabilities := documentreading.DetectCapabilities()
 	resp := systemStatusResponse{
-		SandboxConfined:           sandboxConfined,
-		SandboxKind:               sandboxKind,
-		DoclingConfigured:         doclingConfigured,
-		LocalSTTConfigured:        localSTTConfigured,
-		ImageGenerationConfigured: a.imageGenerationConfigured(r.Context()),
+		SandboxConfined:                     sandboxConfined,
+		SandboxKind:                         sandboxKind,
+		DocumentReaderConfigured:            documentReaderConfigured,
+		DocumentConversionAvailable:         true,
+		DocumentLocalBasicAvailable:         documentCapabilities.LocalBasicAvailable,
+		DocumentPDFSmartAvailable:           documentCapabilities.PDFSmartAvailable,
+		DocumentNativeDocCompiled:           documentCapabilities.NativeDocCompiled,
+		DocumentNativeDocRuntimeInitialized: documentCapabilities.NativeDocRuntimeInitialized,
+		DocumentNativeDocModelsAvailable:    documentCapabilities.NativeDocModelsAvailable,
+		DocumentNativeDocReady:              documentCapabilities.NativeDocReady,
+		DocumentVisionFallbackConfigured:    documentCapabilities.VisionFallbackConfigured,
+		DocumentExternalConfigured:          documentExternalConfigured,
+		DocumentHybridChunkingConfigured:    documentExternalConfigured,
+		LocalSTTConfigured:                  localSTTConfigured,
+		ImageGenerationConfigured:           a.imageGenerationConfigured(r.Context()),
+	}
+	if documentExternalConfigured {
+		if diagnostic, ok := a.documentReaderDiagnosticFor(documentReaderBaseURL); ok {
+			resp.DocumentReaderReachable = boolPtr(diagnostic.Reachable)
+			resp.DocumentExternalConversionAvailable = boolPtr(diagnostic.ConversionAvailable)
+			resp.DocumentExternalConversionError = diagnostic.ConversionError
+			resp.DocumentHybridChunkingConfigured = diagnostic.HybridChunkingAvailable
+			resp.DocumentHybridChunkingError = diagnostic.HybridChunkingError
+			if !diagnostic.TestedAt.IsZero() {
+				resp.DocumentReaderTestedAt = diagnostic.TestedAt.Unix()
+			}
+		}
 	}
 	if a.connectedServerURL == "" {
 		resp.Mode = "standalone"
@@ -93,4 +136,8 @@ func (a *App) imageGenerationConfigured(ctx context.Context) bool {
 		}
 	}
 	return strings.TrimSpace(os.Getenv("OPENAI_API_KEY")) != "" || strings.TrimSpace(os.Getenv("GOOGLE_API_KEY")) != ""
+}
+
+func boolPtr(value bool) *bool {
+	return &value
 }

@@ -3,8 +3,7 @@
 # depends on @seshat/connector-catalog via "file:../shared/connector-catalog"
 # (an unpublished, monorepo-only workspace-less package shared with
 # seshat-ui — see shared/connector-catalog/index.ts), so shared/ has to be
-# present in the build context too, the same reason seshat-server's build
-# needs seshat-core/ (see ../seshat-server/Dockerfile).
+# present in the build context too.
 
 FROM node:22-bookworm-slim AS builder
 

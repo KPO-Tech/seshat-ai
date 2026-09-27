@@ -259,10 +259,6 @@ export function Home() {
       }
       for (const [index, file] of selectedFiles.entries()) {
         const pendingId = pending[index]?.id
-        let pagePreviews: string[] = []
-        if (isPDFFile(file)) {
-          pagePreviews = (await renderPDFPagePreviews(file, 10).catch(() => [])).map((preview) => preview.dataURL)
-        }
         const form = new FormData()
         form.append('file', file)
         const item = await api.upload<{
@@ -272,6 +268,8 @@ export function Home() {
           size?: number
           category?: 'images' | 'documents' | 'other'
           local_path?: string
+          document_read_status?: 'converted' | 'not_available_or_failed'
+          document_read_engine?: string
         }>(`/sessions/${id}/files`, form)
         setAttachments((current) => current.map((attachment) => (
           attachment.id === pendingId
@@ -283,8 +281,10 @@ export function Home() {
                 size: item.size,
                 category: item.category,
                 local_path: item.local_path,
-                page_preview_urls: pagePreviews.length > 0 ? pagePreviews : attachment.page_preview_urls,
-                preview_url: pagePreviews[0] ?? attachment.preview_url,
+                document_read_status: item.document_read_status,
+                document_read_engine: item.document_read_engine,
+                page_preview_urls: attachment.page_preview_urls,
+                preview_url: attachment.preview_url,
                 upload_status: 'uploaded',
               }
             : attachment

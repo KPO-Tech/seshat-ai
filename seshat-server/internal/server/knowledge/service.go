@@ -18,7 +18,7 @@ import (
 
 	"gorm.io/gorm"
 
-	sdkdocling "github.com/KPO-Tech/seshat/pkg/docling"
+	sdkdocumentreader "github.com/KPO-Tech/seshat/pkg/documentreader"
 	sdkrag "github.com/KPO-Tech/seshat/pkg/rag"
 	sdkembedder "github.com/KPO-Tech/seshat/pkg/rag/embedder"
 	sdkreranker "github.com/KPO-Tech/seshat/pkg/rag/reranker"
@@ -85,13 +85,13 @@ const (
 // yet, same as seshat-backend's knowledge service does when no embedder is
 // set at all.
 type Service struct {
-	db            *sdb.DB
-	iam           *iam.Service
-	artifacts     sdkstorage.ArtifactStore
-	vectors       sdkvector.Store
-	doclingClient *sdkdocling.Client // nil = no binary-format conversion
-	chunker       sdkrag.Chunker
-	chunkProfile  sdkrag.ChunkProfile
+	db             *sdb.DB
+	iam            *iam.Service
+	artifacts      sdkstorage.ArtifactStore
+	vectors        sdkvector.Store
+	documentReader sdkdocumentreader.HybridChunker // nil = no binary-format conversion
+	chunker        sdkrag.Chunker
+	chunkProfile   sdkrag.ChunkProfile
 }
 
 func New(database *sdb.DB, iamService *iam.Service, artifacts sdkstorage.ArtifactStore, vectors sdkvector.Store) *Service {
@@ -105,8 +105,8 @@ func (s *Service) WithChunkProfile(profile sdkrag.ChunkProfile) *Service {
 		profile = sdkrag.DefaultChunkProfile()
 	}
 	s.chunkProfile = profile
-	if s.doclingClient != nil {
-		return s.WithDocling(s.doclingClient)
+	if s.documentReader != nil {
+		return s.WithDocumentReader(s.documentReader)
 	}
 	return s
 }
@@ -116,10 +116,10 @@ func (s *Service) WithChunkProfile(profile sdkrag.ChunkProfile) *Service {
 // embedding, the same as seshat-backend's knowledge service. Returns s for
 // chaining. Passing nil leaves docling disabled (the default) — plain-text/
 // markdown/JSON files still ingest fine either way.
-func (s *Service) WithDocling(client *sdkdocling.Client) *Service {
-	s.doclingClient = client
+func (s *Service) WithDocumentReader(reader sdkdocumentreader.HybridChunker) *Service {
+	s.documentReader = reader
 	s.chunker = nil
-	if client != nil {
+	if reader != nil {
 		mergePeers := true
 		useMarkdownTables := true
 		includeRawText := true
@@ -128,13 +128,13 @@ func (s *Service) WithDocling(client *sdkdocling.Client) *Service {
 			profile = sdkrag.DefaultChunkProfile()
 		}
 		s.chunkProfile = profile
-		doclingChunker := sdkrag.NewDoclingChunkerForProfile(client, profile, sdkdocling.ChunkOptions{
+		documentChunker := sdkrag.NewHybridDocumentChunkerForProfile(reader, profile, sdkdocumentreader.ChunkOptions{
 			MergePeers:        &mergePeers,
 			UseMarkdownTables: &useMarkdownTables,
 			IncludeRawText:    &includeRawText,
 		})
-		doclingChunker.FailOnError = true
-		var chunker sdkrag.DocumentChunker = qualityGuardDocumentChunker{inner: doclingChunker}
+		documentChunker.FailOnError = true
+		var chunker sdkrag.DocumentChunker = qualityGuardDocumentChunker{inner: documentChunker}
 		if s.artifacts != nil {
 			chunker = sdkrag.NewCachedDocumentChunker(chunker, sdkrag.NewArtifactChunkCache(s.artifacts))
 		}

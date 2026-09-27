@@ -1,29 +1,32 @@
 import { api } from '@renderer/api/client'
-import type { Corpus, DoclingConfig, EmbedderConfig, RerankerConfig, StorageStatus, TestResult } from './knowledgeTypes'
+import type { Corpus, DocumentReaderConfig, EmbedderConfig, NativeDocDownloadResult, NativeDocInitResult, NativeDocStatusResult, RerankerConfig, StorageStatus, SystemStatus, TestResult } from './knowledgeTypes'
 
 export type KnowledgeSnapshot = {
   corpora: Corpus[]
   embedder: EmbedderConfig | null
   reranker: RerankerConfig | null
-  docling: DoclingConfig | null
+  documentReader: DocumentReaderConfig | null
   storage: StorageStatus | null
+  system: SystemStatus | null
 }
 
 export async function fetchKnowledgeSnapshot(): Promise<KnowledgeSnapshot> {
-  const [corporaData, embedder, reranker, docling, storage] = await Promise.all([
+  const [corporaData, embedder, reranker, documentReader, storage, system] = await Promise.all([
     api.get<{ corpora: Corpus[]; count: number }>('/corpora').catch(() => ({ corpora: [], count: 0 })),
     api.get<EmbedderConfig>('/settings/embedder').catch(() => null),
     api.get<RerankerConfig>('/settings/reranker').catch(() => null),
-    api.get<DoclingConfig>('/settings/docling').catch(() => null),
-    api.get<StorageStatus>('/settings/storage').catch(() => null)
+    api.get<DocumentReaderConfig>('/settings/document-reader').catch(() => null),
+    api.get<StorageStatus>('/settings/storage').catch(() => null),
+    api.get<SystemStatus>('/system/status').catch(() => null)
   ])
 
   return {
     corpora: corporaData?.corpora ?? [],
     embedder,
     reranker,
-    docling,
-    storage
+    documentReader,
+    storage,
+    system
   }
 }
 
@@ -71,10 +74,22 @@ export function detectRerankerModel(config: { base_url: string }) {
   return api.post<{ model: string; error: string | null }>('/settings/reranker/detect-model', config)
 }
 
-export function saveDoclingConfig(config: { base_url: string; enabled: boolean }) {
-  return api.put<DoclingConfig>('/settings/docling', config)
+export function saveDocumentReaderConfig(config: { base_url: string; enabled: boolean; prefer_external: boolean }) {
+  return api.put<DocumentReaderConfig>('/settings/document-reader', config)
 }
 
-export function testDoclingConfig(config: { base_url: string }) {
-  return api.post<TestResult>('/settings/docling/test', config)
+export function testDocumentReaderConfig(config: { base_url: string }) {
+  return api.post<TestResult>('/settings/document-reader/test', config)
+}
+
+export function initializeNativeDocumentReader() {
+  return api.post<NativeDocInitResult>('/settings/document-reader/native/init', {})
+}
+
+export function fetchNativeDocumentReaderStatus() {
+  return api.get<NativeDocStatusResult>('/settings/document-reader/native/status')
+}
+
+export function downloadNativeDocumentReaderModels() {
+  return api.post<NativeDocDownloadResult>('/settings/document-reader/native/download', {})
 }

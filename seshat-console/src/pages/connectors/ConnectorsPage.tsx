@@ -391,7 +391,7 @@ function SyncHistoryModal({ account, onClose }: { account: ConnectorAccount | nu
 // Each provider renders as a compact summary row (name/kind, a Configured/
 // Not configured Tag, Configure/Edit) with the Client ID/secret form living
 // in a Drawer that only opens for the row being edited - same collapsed-
-// row-plus-drawer pattern as Embedder/Prospecting Settings, replacing 8
+// row-plus-drawer pattern as Embedder Settings, replacing 8
 // always-open Client ID/secret forms stacked in one modal.
 // Card grid mirroring seshat-ui's AdminConnectorsView.tsx (pv-* classes,
 // PROVIDERS_CSS) - a fixed catalog of kinds, each either configured or

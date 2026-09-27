@@ -18,7 +18,7 @@ import (
 // can access. Deliberately not part of the generic pkg/dataflow SDK - same
 // reasoning as GmailPollNode, it needs a seshat-ai connector account.
 //
-// No seshat-core/github package exists yet, so this hand-rolls the one
+// No shared github package exists yet, so this hand-rolls the one
 // request it needs directly - the first representative GitHub action, not
 // exhaustive API coverage. GitHub requires a User-Agent header on every
 // API request (verified against GitHub's REST API docs before writing

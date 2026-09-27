@@ -20,7 +20,7 @@ import (
 // (StaticSecretResolver), not ConnectorTokenResolver - Stripe authenticates
 // with a single secret key, no OAuth2 flow, no refresh.
 //
-// No seshat-core/stripe package exists yet, so this hand-rolls the one
+// No shared stripe package exists yet, so this hand-rolls the one
 // request it needs directly - the first representative Stripe action, not
 // exhaustive API coverage. Stripe's API is form-encoded
 // (application/x-www-form-urlencoded), NOT JSON - do not "fix" this to a

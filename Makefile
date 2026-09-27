@@ -34,9 +34,16 @@ ifeq ($(OS),Windows_NT)
   ifneq ($(GIT_ROOT_WIN),)
     SHELL := $(GIT_ROOT_WIN)/bin/sh.exe
     .SHELLFLAGS := -c
+    BASH := $(GIT_ROOT_WIN)/bin/bash.exe
     export PATH := $(GIT_ROOT_WIN)/usr/bin;$(PATH)
   endif
+  ifneq ($(wildcard C:/msys64/mingw64/bin/gcc.exe),)
+    export PATH := C:/msys64/mingw64/bin;$(PATH)
+  else ifneq ($(wildcard $(subst \,/,$(LOCALAPPDATA))/Programs/MSYS2/mingw64/bin/gcc.exe),)
+    export PATH := $(subst \,/,$(LOCALAPPDATA))/Programs/MSYS2/mingw64/bin;$(PATH)
+  endif
 endif
+BASH ?= bash
 
 # CURDIR is a Make built-in (no subprocess needed) - equivalent to `pwd` but
 # works even before the SHELL override above takes effect for $(shell ...).
@@ -105,10 +112,26 @@ help: ## Show available targets
 
 # Dev lifecycle
 
+install-cgo-windows: ## Install MSYS2/MinGW-w64 GCC for nativedoc CGO builds on Windows
+	powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(ROOT)/scripts/install-windows-cgo.ps1"
+
 dev: stop ui-install ## Start local backend + Electron UI
 	@printf "\033[32m[nexus]\033[0m starting local backend...\n"
 	@printf "\033[32m[nexus]\033[0m starting Electron UI...\n"
 	@(cd $(BACKEND_DIR) && go run $(BACKEND_CMD)) & \
+	BACKEND_PID=$$!; \
+	trap 'kill $$BACKEND_PID 2>/dev/null || true' EXIT INT TERM; \
+	cd $(UI_DIR) && $(UI_PKG_MGR) run start
+
+dev-native: stop ui-install ## Start local backend with nativedoc CGO + Electron UI
+	@printf "\033[32m[nexus]\033[0m preparing nativedoc CGO dependencies...\n"
+	@printf "\033[32m[nexus]\033[0m starting local backend with native OCR support...\n"
+	@printf "\033[32m[nexus]\033[0m starting Electron UI...\n"
+	@NATIVEDOC_ENV="$$(mktemp)"; \
+	"$(BASH)" "$(ROOT)/scripts/setup-nativedoc-cgo.sh" > "$$NATIVEDOC_ENV"; \
+	. "$$NATIVEDOC_ENV"; \
+	rm -f "$$NATIVEDOC_ENV"; \
+	(cd $(BACKEND_DIR) && SESHAT_NATIVEDOC_AUTO_INIT=1 CGO_ENABLED=1 go run -tags "$$NATIVEDOC_BUILD_TAGS" $(BACKEND_CMD)) & \
 	BACKEND_PID=$$!; \
 	trap 'kill $$BACKEND_PID 2>/dev/null || true' EXIT INT TERM; \
 	cd $(UI_DIR) && $(UI_PKG_MGR) run start
@@ -158,8 +181,17 @@ build: ## Compile the local backend binary -> seshat-backend/bin/seshat-api
 	@cd $(BACKEND_DIR) && go build -o ./bin/$(BACKEND_BIN) $(BACKEND_CMD)
 	@printf "\033[32m[go]\033[0m binary ready: %s\n" $(BACKEND_BIN_PATH)
 
+build-native: ## Compile local backend with nativedoc CGO support
+	@printf "\033[32m[go]\033[0m preparing nativedoc CGO dependencies...\n"
+	@mkdir -p $(BACKEND_BIN_DIR)
+	@cd $(BACKEND_DIR) && eval "$$("$(BASH)" $(ROOT)/scripts/setup-nativedoc-cgo.sh)" && CGO_ENABLED=1 go build -tags "$$NATIVEDOC_BUILD_TAGS" -o ./bin/$(BACKEND_BIN) $(BACKEND_CMD)
+	@printf "\033[32m[go]\033[0m nativedoc binary ready: %s\n" $(BACKEND_BIN_PATH)
+
 run: ## Run the local backend only (no UI), reads .env.dev / .env
 	@cd $(BACKEND_DIR) && go run $(BACKEND_CMD)
+
+run-native: ## Run the local backend with nativedoc CGO support
+	@cd $(BACKEND_DIR) && eval "$$("$(BASH)" $(ROOT)/scripts/setup-nativedoc-cgo.sh)" && SESHAT_NATIVEDOC_AUTO_INIT=1 CGO_ENABLED=1 go run -tags "$$NATIVEDOC_BUILD_TAGS" $(BACKEND_CMD)
 
 build-server: ## Compile the cloud server binary -> seshat-server/bin/seshat-server
 	@printf "\033[32m[go]\033[0m building %s...\n" $(SERVER_BIN)
@@ -307,6 +339,10 @@ ui-package-win: desktop-package-win ## Alias for desktop-package-win
 
 ui-package-linux: desktop-package-linux ## Alias for desktop-package-linux
 
+ui-package-win-native: desktop-package-win-native ## Alias for desktop-package-win-native
+
+ui-package-linux-native: desktop-package-linux-native ## Alias for desktop-package-linux-native
+
 desktop-install: ## Install desktop Electron dependencies
 	@if [ ! -d "$(UI_DIR)/node_modules" ] || [ ! -f "$(UI_DIR)/node_modules/electron/path.txt" ]; then \
 	  printf "\033[32m[desktop]\033[0m installing dependencies with %s...\n" $(UI_PKG_MGR); \
@@ -331,9 +367,17 @@ desktop-package-win: desktop-install ## Package a Windows .exe installer (run on
 	cd $(UI_DIR) && $(UI_PKG_MGR) run package:win
 	@printf "\033[32m[desktop]\033[0m installer ready: %s\n" "$(UI_DIR)/dist"
 
+desktop-package-win-native: desktop-install ## Package Windows installer with nativedoc CGO sidecar
+	cd $(UI_DIR) && $(UI_PKG_MGR) run package:win:nativedoc
+	@printf "\033[32m[desktop]\033[0m nativedoc installer ready: %s\n" "$(UI_DIR)/dist"
+
 desktop-package-linux: desktop-install ## Package a Linux AppImage + .deb (run on Linux)
 	cd $(UI_DIR) && $(UI_PKG_MGR) run package:linux
 	@printf "\033[32m[desktop]\033[0m artifacts ready: %s\n" "$(UI_DIR)/dist"
+
+desktop-package-linux-native: desktop-install ## Package Linux artifacts with nativedoc CGO sidecar
+	cd $(UI_DIR) && $(UI_PKG_MGR) run package:linux:nativedoc
+	@printf "\033[32m[desktop]\033[0m nativedoc artifacts ready: %s\n" "$(UI_DIR)/dist"
 
 console-install: ## Install admin console dependencies
 	@if [ ! -d "$(CONSOLE_DIR)/node_modules" ]; then \

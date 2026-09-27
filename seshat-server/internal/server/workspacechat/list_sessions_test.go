@@ -71,8 +71,7 @@ func TestListSessionsReturnsSummariesAcrossMembers(t *testing.T) {
 	env.chat.persistTurn(context.Background(), env.adminPrincipal, StreamChatParams{SessionID: "sess-admin", OrganizationID: env.orgID, Message: "Admin question"}, "Admin answer", nil)
 	env.chat.persistTurn(context.Background(), member, StreamChatParams{SessionID: "sess-member", OrganizationID: env.orgID, Message: "Member question"}, "Member answer", nil)
 	// A real time gap, not just relying on insertion order - sqlite's
-	// second-level timestamp precision otherwise makes ordering flaky, same
-	// pitfall already hit and fixed for prospecting's own ListSweeps test.
+	// second-level timestamp precision otherwise makes ordering flaky.
 	time.Sleep(1100 * time.Millisecond)
 	env.chat.persistTurn(context.Background(), env.adminPrincipal, StreamChatParams{SessionID: "sess-admin", OrganizationID: env.orgID, Message: "Follow-up"}, "Follow-up answer", nil)
 

@@ -22,7 +22,7 @@ import (
 //
 // Verified against Postmark's docs before writing this, not assumed: the
 // auth header is "X-Postmark-Server-Token" (not a Bearer Authorization
-// header like SendGrid). No seshat-core/postmark package exists yet, so
+// header like SendGrid). No shared postmark package exists yet, so
 // this hand-rolls the one request it needs directly. Reads job context
 // (owner_id, organization_id) from its own input, same constraint as
 // GmailSendNode - see its doc comment.

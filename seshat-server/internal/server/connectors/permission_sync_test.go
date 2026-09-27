@@ -31,7 +31,7 @@ func (f *fakePermissionRefresher) RefreshPermissions(_ context.Context, _ syncSe
 // linked to that account for a later permission-only pass to target.
 func setUpAccountWithSyncedFiles(t *testing.T, env testEnv, items []syncItem) (*ConnectorAccount, string) {
 	t.Helper()
-	env.knowledge.WithDocling(nil)
+	env.knowledge.WithDocumentReader(nil)
 	corpus, err := env.knowledge.CreateCorpus(context.Background(), env.adminPrincipal, knowledge.CreateCorpusParams{
 		OrganizationID: env.orgID, Name: "Synced Docs",
 	})

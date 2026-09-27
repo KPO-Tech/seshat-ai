@@ -18,7 +18,7 @@ import (
 // Calendar account. Deliberately not part of the generic pkg/dataflow SDK -
 // same reasoning as GmailPollNode, it needs a seshat-ai connector account.
 //
-// No seshat-core/gcalendar package exists yet, so this hand-rolls the one
+// No shared gcalendar package exists yet, so this hand-rolls the one
 // request it needs directly (the Calendar API v3 events.insert endpoint) -
 // the first representative Calendar action, not exhaustive API coverage.
 // start/end are passed straight through as RFC3339 datetimes (the caller's

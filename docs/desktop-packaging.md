@@ -59,6 +59,29 @@ Local Windows builds are unsigned by default (`signAndEditExecutable=false`) so
 they do not require code-signing certificates or symlink privileges. CI release
 builds can re-enable signing once a certificate is available.
 
+Because the default bundled backend is built with `CGO_ENABLED=0`, optional
+native document OCR (`nativedoc`, built behind `cgo && nativedoc`) is not
+available in the default packaged desktop sidecar. DeepDoc model files can
+still be downloaded and detected, but local native OCR only becomes runnable
+from a backend built with CGO and the `nativedoc` build tag, or from a future
+external intelligence service.
+
+For a nativedoc-enabled Windows package, run:
+
+```powershell
+npm run package:win:nativedoc
+# or from the repo root:
+make desktop-package-win-native
+```
+
+This uses `scripts/setup-nativedoc-cgo.sh` to fetch pdfium/pdf_oxide/
+onnxruntime, compiles the sidecar with `CGO_ENABLED=1 -tags nativedoc`, and
+copies `pdfium.dll` and `onnxruntime.dll` next to the backend executable. The
+machine doing the build still needs a working Windows C compiler on `PATH`
+(MSYS2 MinGW-w64 GCC is the tested route). The installer should not silently
+install compiler toolchains on end-user machines; release CI should build and
+ship the native sidecar and its runtime DLLs instead.
+
 The packaged app stores runtime data under the configured Seshat runtime root,
 defaulting to the user's home config directory.
 
@@ -76,7 +99,21 @@ This builds:
 - Electron renderer/main bundles
 - AppImage and `.deb` artifacts under `dist/`
 
-The sidecar build forces `GOOS=linux`, `GOARCH=amd64`, and `CGO_ENABLED=0`.
+The default sidecar build forces `GOOS=linux`, `GOARCH=amd64`, and
+`CGO_ENABLED=0`. That has the same consequence as Windows: optional `nativedoc`
+OCR is not compiled into the packaged desktop backend by default.
+
+For a nativedoc-enabled Linux package, run:
+
+```sh
+npm run package:linux:nativedoc
+# or from the repo root:
+make desktop-package-linux-native
+```
+
+This compiles the sidecar with CGO, copies `libpdfium.so` into the backend
+resource directory, and the Electron sidecar launcher prepends that directory
+to `LD_LIBRARY_PATH` before spawning the backend.
 
 For Linux packaging, build on Linux or in a Linux CI/container. Windows cannot
 reliably produce native `.deb`/AppImage artifacts without the Linux packaging

@@ -27,7 +27,7 @@ import (
 // path, not the credential - domain isn't secret (it's the org's own
 // verified sending domain, same visibility as a "from" address), so it's a
 // node parameter, not folded into the connected account's one secret
-// field. No seshat-core/mailgun package exists yet, so this hand-rolls the
+// field. No shared mailgun package exists yet, so this hand-rolls the
 // one request it needs directly. Reads job context (owner_id,
 // organization_id) from its own input, same constraint as GmailSendNode -
 // see its doc comment.

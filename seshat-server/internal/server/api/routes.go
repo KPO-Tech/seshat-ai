@@ -302,18 +302,6 @@ func (app *App) routes() http.Handler {
 	mux.Handle("DELETE /api/v1/reranker-settings", app.authMiddleware(http.HandlerFunc(app.handleRerankerSettings)))
 	mux.Handle("POST /api/v1/reranker-settings/detect-model", app.authMiddleware(http.HandlerFunc(app.handleRerankerSettingsDetectModel)))
 
-	// Prospecting — organization-scoped business-discovery sweeps (Google
-	// Places + French company-registry enrichment, see internal/server/
-	// prospecting's package doc). Team data, not per-user like
-	// seshat-backend's local equivalent: any member with prospecting.manage
-	// can continue a sweep a teammate started. Settings follow the same
-	// organization_id-query-param convention as embedder-settings above.
-	mux.Handle("GET /api/v1/prospecting/sweeps", app.authMiddleware(http.HandlerFunc(app.handleProspectingSweeps)))
-	mux.Handle("POST /api/v1/prospecting/sweeps", app.authMiddleware(http.HandlerFunc(app.handleProspectingSweeps)))
-	mux.Handle("GET /api/v1/prospecting/sweeps/{sweepID}/businesses", app.authMiddleware(http.HandlerFunc(app.handleProspectingBusinesses)))
-	mux.Handle("GET /api/v1/prospecting/settings", app.authMiddleware(http.HandlerFunc(app.handleProspectingSettings)))
-	mux.Handle("PUT /api/v1/prospecting/settings", app.authMiddleware(http.HandlerFunc(app.handleProspectingSettings)))
-
 	mux.Handle("GET /api/v1/organization-preferences", app.authMiddleware(http.HandlerFunc(app.handleOrganizationPreferences)))
 	mux.Handle("PUT /api/v1/organization-preferences", app.authMiddleware(http.HandlerFunc(app.handleOrganizationPreferences)))
 	mux.Handle("DELETE /api/v1/organization-preferences", app.authMiddleware(http.HandlerFunc(app.handleOrganizationPreferences)))

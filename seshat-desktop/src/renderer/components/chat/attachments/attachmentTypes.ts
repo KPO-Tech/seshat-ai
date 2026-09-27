@@ -9,6 +9,8 @@ export type ChatAttachment = {
   size?: number
   category?: 'images' | 'documents' | 'other'
   local_path?: string
+  document_read_status?: 'converted' | 'not_available_or_failed'
+  document_read_engine?: string
   preview_url?: string
   page_preview_urls?: string[]
   upload_status?: 'uploading' | 'uploaded' | 'failed'
@@ -40,6 +42,8 @@ export function sentAttachment(file: ChatAttachment) {
     size: file.size,
     category: file.category,
     local_path: file.local_path,
+    document_read_status: file.document_read_status,
+    document_read_engine: file.document_read_engine,
     preview_url: file.preview_url,
     page_preview_urls: file.page_preview_urls,
   }

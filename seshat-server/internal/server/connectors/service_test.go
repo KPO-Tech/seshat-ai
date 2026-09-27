@@ -27,7 +27,7 @@ func (f *fakeConnector) Sync(ctx context.Context, account syncAccount, secret sy
 
 func TestCreateS3AccountSyncIngestsIntoCorpus(t *testing.T) {
 	env := newTestEnv(t)
-	env.knowledge.WithDocling(nil) // plain-text extraction only, no docling needed for this test
+	env.knowledge.WithDocumentReader(nil) // plain-text extraction only, no document reader needed for this test
 
 	corpus, err := env.knowledge.CreateCorpus(context.Background(), env.adminPrincipal, knowledge.CreateCorpusParams{
 		OrganizationID: env.orgID, Name: "Vendor Docs",
@@ -151,7 +151,7 @@ func TestCreateS3AccountSyncIngestsIntoCorpus(t *testing.T) {
 
 func TestConnectorSyncPassesSourceBytesAndContentTypeToKnowledge(t *testing.T) {
 	env := newTestEnv(t)
-	env.knowledge.WithDocling(nil)
+	env.knowledge.WithDocumentReader(nil)
 
 	corpus, err := env.knowledge.CreateCorpus(context.Background(), env.adminPrincipal, knowledge.CreateCorpusParams{
 		OrganizationID: env.orgID, Name: "Binary Vendor Docs",

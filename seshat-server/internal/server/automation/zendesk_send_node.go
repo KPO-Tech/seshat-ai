@@ -17,7 +17,7 @@ import (
 // Deliberately not part of the generic pkg/dataflow SDK - same reasoning
 // as GmailPollNode, it needs a seshat-ai connector account.
 //
-// No seshat-core/zendesk package exists yet, so this hand-rolls the one
+// No shared zendesk package exists yet, so this hand-rolls the one
 // request it needs directly - the first representative Zendesk action, not
 // exhaustive API coverage. Zendesk's API host is per-account (a subdomain
 // registered once at the org level - see connectors.zendeskKind's doc

@@ -3,7 +3,6 @@ module github.com/EngineerProjects/seshat-ai/seshat-server
 go 1.26.6
 
 require (
-	github.com/EngineerProjects/seshat-ai/seshat-core v0.0.0-00010101000000-000000000000
 	github.com/KPO-Tech/seshat v1.2.52
 	github.com/coreos/go-oidc/v3 v3.20.0
 	github.com/crewjam/saml v0.5.1
@@ -175,5 +174,3 @@ require (
 	modernc.org/memory v1.11.0 // indirect
 	modernc.org/sqlite v1.57.0 // indirect
 )
-
-replace github.com/EngineerProjects/seshat-ai/seshat-core => ../seshat-core

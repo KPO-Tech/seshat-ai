@@ -2,6 +2,8 @@ package knowledge_test
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -11,7 +13,9 @@ import (
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/documentreading"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge"
+	"github.com/KPO-Tech/seshat/pkg/documentreader"
 	"github.com/KPO-Tech/seshat/pkg/rag"
 	"github.com/KPO-Tech/seshat/pkg/storage"
 	"github.com/KPO-Tech/seshat/pkg/vector"
@@ -29,6 +33,43 @@ func (fakeEmbedder) EmbedTexts(_ context.Context, texts []string) ([][]float32, 
 		out[i] = []float32{1, 0, 0}
 	}
 	return out, nil
+}
+
+type fakeHybridReader struct{}
+
+func (fakeHybridReader) IsAvailable(context.Context) bool { return true }
+
+func (fakeHybridReader) ConvertFile(context.Context, string) (*documentreader.ConversionResult, error) {
+	return &documentreader.ConversionResult{Markdown: "converted document text"}, nil
+}
+
+func (fakeHybridReader) ConvertBytes(context.Context, []byte, string) (*documentreader.ConversionResult, error) {
+	return &documentreader.ConversionResult{Markdown: "converted document text"}, nil
+}
+
+func (fakeHybridReader) ConvertURL(context.Context, string) (*documentreader.ConversionResult, error) {
+	return &documentreader.ConversionResult{Markdown: "converted document text"}, nil
+}
+
+func (fakeHybridReader) ChunkHybridBytes(context.Context, []byte, string, documentreader.ChunkOptions) ([]documentreader.Chunk, error) {
+	return []documentreader.Chunk{{
+		Filename:    "report.pdf",
+		ChunkIndex:  0,
+		Text:        "hybrid chunk about revenue",
+		PageNumbers: []int{3},
+	}}, nil
+}
+
+type fakeFailingHybridReader struct {
+	fakeHybridReader
+}
+
+func (fakeFailingHybridReader) ConvertBytes(context.Context, []byte, string) (*documentreader.ConversionResult, error) {
+	return &documentreader.ConversionResult{Markdown: "# Revenue\n\nFallback chunk about revenue."}, nil
+}
+
+func (fakeFailingHybridReader) ChunkHybridBytes(context.Context, []byte, string, documentreader.ChunkOptions) ([]documentreader.Chunk, error) {
+	return nil, fmt.Errorf("hybrid chunking failed")
 }
 
 func openTestDB(t *testing.T) *db.DB {
@@ -52,6 +93,13 @@ func newTestArtifactStore(t *testing.T) storage.ArtifactStore {
 	return storage.NewArtifactStore(p)
 }
 
+func readDocumentFixture(t *testing.T, name string) []byte {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join("..", "documentreading", "testdata", name))
+	require.NoError(t, err, "read document fixture")
+	return data
+}
+
 func newTestService(t *testing.T, database *db.DB, artifacts storage.ArtifactStore) *knowledge.Service {
 	t.Helper()
 	corpusStore, err := db.NewCorpusStore(database)
@@ -65,6 +113,27 @@ func newTestService(t *testing.T, database *db.DB, artifacts storage.ArtifactSto
 	ragSvc := rag.NewService(artifacts, vs, fakeEmbedder{}, nil)
 
 	return knowledge.NewService(corpusStore, fileStore, jobStore, artifacts, ragSvc)
+}
+
+func newTestServiceWithDocumentReader(t *testing.T, database *db.DB, artifacts storage.ArtifactStore, reader documentreader.Converter) *knowledge.Service {
+	t.Helper()
+	corpusStore, err := db.NewCorpusStore(database)
+	require.NoError(t, err)
+	fileStore, err := db.NewFileStore(database)
+	require.NoError(t, err)
+	jobStore, err := db.NewKnowledgeIngestionJobStore(database)
+	require.NoError(t, err)
+
+	resolve := func(context.Context) documentreader.Converter {
+		return documentreading.NewPolicyConverter(reader, false)
+	}
+	chunker := rag.NewHybridDocumentChunkerForProfile(
+		documentreading.NewDynamicHybridChunker(resolve),
+		rag.ChunkProfile{Name: rag.ChunkProfileStructured, MaxTokens: 1024, OverlapTokens: 128},
+		documentreader.ChunkOptions{},
+	)
+	ragSvc := rag.NewService(artifacts, vector.NewMemoryStore(), fakeEmbedder{}, chunker)
+	return knowledge.NewService(corpusStore, fileStore, jobStore, artifacts, ragSvc).WithDocumentReader(resolve)
 }
 
 // testPrincipal constructs a minimal authenticated user for service calls.
@@ -220,6 +289,143 @@ func TestService_ProcessNextIngestionJob_CompletesJob(t *testing.T) {
 	require.Len(t, files, 1)
 	require.Equal(t, db.CorpusFileStatusIngested, files[0].Status)
 	require.Greater(t, files[0].ChunkCount, 0)
+}
+
+func TestService_ProcessNextIngestionJob_UsesCachedDocumentReadResult(t *testing.T) {
+	ctx := context.Background()
+	database := openTestDB(t)
+	artifacts := newTestArtifactStore(t)
+	svc := newTestService(t, database, artifacts)
+	principal := testPrincipal("user-cache")
+
+	corpus, err := svc.CreateCorpus(ctx, principal, knowledge.CreateCorpusParams{Name: "cached-docs"})
+	require.NoError(t, err)
+
+	key := "files/user-cache/scan.png"
+	binary := []byte{0x89, 0x50, 0x4e, 0x47, 0x00, 0xff}
+	_, err = artifacts.Put(ctx, key, binary, "image/png")
+	require.NoError(t, err)
+
+	fileStore, err := db.NewFileStore(database)
+	require.NoError(t, err)
+	f, err := fileStore.Create(ctx, db.CreateFileParams{
+		UserID:      principal.User.ID,
+		Filename:    "scan.png",
+		ContentType: "image/png",
+		Size:        int64(len(binary)),
+		StorageKey:  key,
+	})
+	require.NoError(t, err)
+	require.NoError(t, documentreading.SaveReadResult(ctx, artifacts, f.ID, documentreading.ReadResult{
+		Filename: "scan.png",
+		Status:   documentreading.StatusReady,
+		Engine:   documentreading.EngineExternal,
+		Markdown: "Cached OCR text from upload.",
+		Text:     "Cached OCR text from upload.",
+	}))
+
+	_, err = svc.AttachFile(ctx, principal, corpus.ID, f.ID)
+	require.NoError(t, err)
+
+	processed, err := svc.ProcessNextIngestionJob(ctx)
+	require.NoError(t, err)
+	require.True(t, processed)
+
+	jobs, err := svc.ListIngestionJobs(ctx, principal, corpus.ID)
+	require.NoError(t, err)
+	require.Len(t, jobs, 1)
+	require.Equal(t, db.IngestionJobStatusCompleted, jobs[0].Status)
+	require.Greater(t, jobs[0].ChunkCount, 0)
+}
+
+func TestService_ProcessNextIngestionJob_UsesHybridDocumentChunkMetadata(t *testing.T) {
+	ctx := context.Background()
+	database := openTestDB(t)
+	artifacts := newTestArtifactStore(t)
+	svc := newTestServiceWithDocumentReader(t, database, artifacts, fakeHybridReader{})
+	principal := testPrincipal("user-hybrid")
+
+	corpus, err := svc.CreateCorpus(ctx, principal, knowledge.CreateCorpusParams{Name: "hybrid-docs"})
+	require.NoError(t, err)
+
+	key := "files/user-hybrid/report.pdf"
+	data := readDocumentFixture(t, "scanned.pdf")
+	_, err = artifacts.Put(ctx, key, data, "application/pdf")
+	require.NoError(t, err)
+
+	fileStore, err := db.NewFileStore(database)
+	require.NoError(t, err)
+	f, err := fileStore.Create(ctx, db.CreateFileParams{
+		UserID:      principal.User.ID,
+		Filename:    "report.pdf",
+		ContentType: "application/pdf",
+		Size:        int64(len(data)),
+		StorageKey:  key,
+	})
+	require.NoError(t, err)
+
+	_, err = svc.AttachFile(ctx, principal, corpus.ID, f.ID)
+	require.NoError(t, err)
+
+	processed, err := svc.ProcessNextIngestionJob(ctx)
+	require.NoError(t, err)
+	require.True(t, processed)
+
+	resp, err := svc.Search(ctx, principal, knowledge.SearchParams{
+		CorpusID: corpus.ID,
+		Query:    "revenue",
+		TopK:     5,
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, resp.Results)
+	require.Equal(t, "document_hybrid", resp.Results[0].Metadata["chunker"])
+	require.Equal(t, "[3]", resp.Results[0].Metadata["page_numbers"])
+	require.Equal(t, "structured", resp.Results[0].Metadata["chunk_profile"])
+}
+
+func TestService_ProcessNextIngestionJob_FallsBackWhenHybridChunkingFails(t *testing.T) {
+	ctx := context.Background()
+	database := openTestDB(t)
+	artifacts := newTestArtifactStore(t)
+	svc := newTestServiceWithDocumentReader(t, database, artifacts, fakeFailingHybridReader{})
+	principal := testPrincipal("user-hybrid-fallback")
+
+	corpus, err := svc.CreateCorpus(ctx, principal, knowledge.CreateCorpusParams{Name: "hybrid-fallback-docs"})
+	require.NoError(t, err)
+
+	key := "files/user-hybrid-fallback/report.pdf"
+	data := readDocumentFixture(t, "scanned.pdf")
+	_, err = artifacts.Put(ctx, key, data, "application/pdf")
+	require.NoError(t, err)
+
+	fileStore, err := db.NewFileStore(database)
+	require.NoError(t, err)
+	f, err := fileStore.Create(ctx, db.CreateFileParams{
+		UserID:      principal.User.ID,
+		Filename:    "report.pdf",
+		ContentType: "application/pdf",
+		Size:        int64(len(data)),
+		StorageKey:  key,
+	})
+	require.NoError(t, err)
+
+	_, err = svc.AttachFile(ctx, principal, corpus.ID, f.ID)
+	require.NoError(t, err)
+
+	processed, err := svc.ProcessNextIngestionJob(ctx)
+	require.NoError(t, err)
+	require.True(t, processed)
+
+	resp, err := svc.Search(ctx, principal, knowledge.SearchParams{
+		CorpusID: corpus.ID,
+		Query:    "revenue",
+		TopK:     5,
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, resp.Results)
+	require.Contains(t, resp.Results[0].Text, "Fallback chunk about revenue")
+	require.NotEqual(t, "document_hybrid", resp.Results[0].Metadata["chunker"])
+	require.Empty(t, resp.Results[0].Metadata["page_numbers"])
 }
 
 func TestService_ProcessNextIngestionJob_NoJobs(t *testing.T) {

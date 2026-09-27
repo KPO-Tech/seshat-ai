@@ -20,7 +20,7 @@ import (
 // SendGrid authenticates with a single API key, no OAuth2 flow, no
 // refresh.
 //
-// No seshat-core/sendgrid package exists yet, so this hand-rolls the one
+// No shared sendgrid package exists yet, so this hand-rolls the one
 // request it needs directly - the first representative SendGrid action,
 // not exhaustive API coverage. Reads job context (owner_id,
 // organization_id) from its own input, same constraint as GmailSendNode -

@@ -85,7 +85,7 @@ func (p *Principal) HasRole(roleName string) bool {
 }
 
 func (p *Principal) CanViewOrganization(organizationID string) bool {
-	if p.HasRole("admin") {
+	if p.HasRole("admin") || p.HasRole("owner") {
 		return true
 	}
 	for _, m := range p.WorkspaceMemberships {
@@ -97,7 +97,7 @@ func (p *Principal) CanViewOrganization(organizationID string) bool {
 }
 
 func (p *Principal) CanViewWorkspace(workspaceID string) bool {
-	if p.HasRole("admin") {
+	if p.HasRole("admin") || p.HasRole("owner") {
 		return true
 	}
 	for _, m := range p.WorkspaceMemberships {
@@ -152,8 +152,8 @@ func EnsureAdmin(principal *Principal) error {
 	if err := EnsureAuthenticated(principal); err != nil {
 		return err
 	}
-	if !principal.HasRole("admin") {
-		return bkerr.Forbidden(`role "admin" required`, nil)
+	if !principal.HasRole("admin") && !principal.HasRole("owner") {
+		return bkerr.Forbidden(`role "admin" or "owner" required`, nil)
 	}
 	return nil
 }

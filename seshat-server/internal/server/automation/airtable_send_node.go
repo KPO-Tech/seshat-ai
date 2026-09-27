@@ -21,7 +21,7 @@ import (
 // ConnectorTokenResolver - Airtable authenticates with a single Personal
 // Access Token, no OAuth2 flow, no refresh.
 //
-// No seshat-core/airtable package exists yet, so this hand-rolls the one
+// No shared airtable package exists yet, so this hand-rolls the one
 // request it needs directly - the first representative Airtable action,
 // not exhaustive API coverage. fields is passed straight through as a
 // JSON object (each field name/value already whatever type Airtable's

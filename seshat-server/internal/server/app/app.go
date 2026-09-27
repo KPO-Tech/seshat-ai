@@ -9,7 +9,6 @@ import (
 	dataflowexpr "github.com/KPO-Tech/seshat/pkg/dataflow/expr"
 	dataflownodes "github.com/KPO-Tech/seshat/pkg/dataflow/nodes"
 	dataflowdatabase "github.com/KPO-Tech/seshat/pkg/dataflow/nodes/database"
-	sdkdocling "github.com/KPO-Tech/seshat/pkg/docling"
 	sdkstorage "github.com/KPO-Tech/seshat/pkg/storage"
 	sdkvector "github.com/KPO-Tech/seshat/pkg/vector"
 
@@ -29,7 +28,6 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/mcpregistry"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/memories"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/preferences"
-	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/prospecting"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/quotas"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/scim"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/skillregistry"
@@ -46,7 +44,6 @@ type App struct {
 	IngestionRunner      *knowledge.Runner
 	Connectors           *connectors.Service
 	ConnectorSyncRunner  *connectors.Runner
-	Prospecting          *prospecting.Service
 	Preferences          *preferences.Service
 	SkillRegistry        *skillregistry.Service
 	WebSearchSettings    *websearchsettings.Service
@@ -136,7 +133,11 @@ func New(cfg serverconfig.Config) (*App, error) {
 		// the outcome. This must always stay comfortably larger so this
 		// client is never the one that gives up first.
 		const doclingIngestTimeout = 35 * time.Minute
-		knowledgeService = knowledgeService.WithDocling(sdkdocling.NewClient(cfg.DoclingURL, sdkdocling.WithTimeout(doclingIngestTimeout)))
+		reader, err := knowledge.NewDoclingCompatibleReader(cfg.DoclingURL, doclingIngestTimeout)
+		if err != nil {
+			return nil, fmt.Errorf("configure document reader: %w", err)
+		}
+		knowledgeService = knowledgeService.WithDocumentReader(reader)
 	}
 	// Lets cloud-targeted job execution enable rag_search/rag_ingest,
 	// scoped per organization — see automation.Service.RAGResolver.
@@ -244,7 +245,6 @@ func New(cfg serverconfig.Config) (*App, error) {
 		IngestionRunner:      knowledge.NewRunner(knowledgeService, knowledge.RunnerConfig{PollInterval: cfg.IngestionPollInterval, MaxPollInterval: cfg.IngestionMaxPollInterval}),
 		Connectors:           connectorsService,
 		ConnectorSyncRunner:  connectors.NewRunner(connectorsService, connectors.RunnerConfig{PollInterval: cfg.IngestionPollInterval, MaxPollInterval: cfg.IngestionMaxPollInterval}),
-		Prospecting:          prospecting.New(database, iamService),
 		Preferences:          preferences.New(database, iamService),
 		SkillRegistry:        skillRegistryService,
 		WebSearchSettings:    webSearchService,

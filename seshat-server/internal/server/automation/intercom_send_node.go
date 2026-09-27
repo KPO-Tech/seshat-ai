@@ -17,7 +17,7 @@ import (
 // Deliberately not part of the generic pkg/dataflow SDK - same reasoning
 // as GmailPollNode, it needs a seshat-ai connector account.
 //
-// No seshat-core/intercom package exists yet, so this hand-rolls the one
+// No shared intercom package exists yet, so this hand-rolls the one
 // request it needs directly - the first representative Intercom action,
 // not exhaustive API coverage. role defaults to "user" (an identified
 // contact tied to a real end user), the more broadly useful default over

@@ -49,7 +49,7 @@ Exemples d'applications possibles :
 - Skills ;
 - Connectors ;
 - Admin Console ;
-- futurs agents spécialisés comme Accounting Agent ou Prospecting Agent.
+- futurs agents specialises comme Accounting Agent.
 
 Cette liste mélange volontairement plusieurs niveaux de maturité. Certaines applications existent déjà partiellement ou fortement. Certaines sont en cours de consolidation. D'autres ne sont pas encore commencées et ne doivent pas être promises comme livrables immédiats.
 

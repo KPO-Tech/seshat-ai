@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	sdkdocling "github.com/KPO-Tech/seshat/pkg/docling"
 	sdkstorage "github.com/KPO-Tech/seshat/pkg/storage"
 	sdkvector "github.com/KPO-Tech/seshat/pkg/vector"
 
@@ -192,5 +191,9 @@ func startFakeDoclingServer(t *testing.T, markdownContent string) *httptest.Serv
 func (env testEnv) configureDocling(t *testing.T, markdownContent string) {
 	t.Helper()
 	server := startFakeDoclingServer(t, markdownContent)
-	env.knowledge.WithDocling(sdkdocling.NewClient(server.URL))
+	reader, err := NewDoclingCompatibleReader(server.URL, time.Minute)
+	if err != nil {
+		t.Fatalf("configure document reader: %v", err)
+	}
+	env.knowledge.WithDocumentReader(reader)
 }

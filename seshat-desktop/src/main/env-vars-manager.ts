@@ -6,9 +6,9 @@ import { getSecret, setSecret, deleteSecret } from './ipc/secure-store'
 // rather than being required for the app to run at all. This list is
 // deliberately scoped to *credentials* a local user would paste in here;
 // infra knobs the backend also reads from the environment (SESHAT_API_PORT,
-// SESHAT_VECTOR_DIM, PROSPECTING_PLACES_DAILY_CAP, ...) don't belong in a
+// SESHAT_VECTOR_DIM, ...) don't belong in a
 // "your API keys" UI and aren't listed.
-export type EnvVarGroup = 'gmail' | 'prospecting' | 'automation' | 'multimodal'
+export type EnvVarGroup = 'gmail' | 'automation' | 'multimodal'
 
 export type EnvVarDef = {
   key: string
@@ -43,14 +43,6 @@ export const ENV_VAR_CATALOG: EnvVarDef[] = [
     description: 'Paired with the Client ID above, from the same OAuth client.',
     group: 'gmail',
     groupLabel: 'Gmail',
-    helpUrl: 'https://console.cloud.google.com/apis/credentials',
-  },
-  {
-    key: 'GOOGLE_PLACES_API_KEY',
-    label: 'Places API Key',
-    description: 'Powers the prospecting sweep tool (business discovery via Google Places).',
-    group: 'prospecting',
-    groupLabel: 'Prospecting',
     helpUrl: 'https://console.cloud.google.com/apis/credentials',
   },
   {

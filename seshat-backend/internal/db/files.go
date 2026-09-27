@@ -24,7 +24,7 @@ type File struct {
 	SessionID    string // empty if not session-scoped
 	Category     string // "images", "documents", "audio", "other" — set for session uploads
 	LocalPath    string // workspace-relative path (e.g. uploads/images/photo.jpg) — set for session uploads
-	MarkdownPath string // workspace-relative path to the docling-converted .md file (empty if not converted)
+	MarkdownPath string // workspace-relative path to the document-reader .md file (empty if not converted)
 	Filename     string
 	ContentType  string
 	Size         int64
@@ -181,6 +181,26 @@ func (s *FileStore) GetByID(ctx context.Context, id string) (*File, error) {
 	}
 	f := fileFromGorm(row)
 	return &f, nil
+}
+
+func (s *FileStore) SetMarkdownPath(ctx context.Context, id string, markdownPath string) error {
+	markdownPath = strings.TrimSpace(markdownPath)
+	if strings.TrimSpace(id) == "" {
+		return fmt.Errorf("file id is required")
+	}
+	if markdownPath == "" {
+		return fmt.Errorf("markdown path is required")
+	}
+	if err := s.db.GormDB().WithContext(ctx).
+		Model(&gFile{}).
+		Where("id = ? AND status = ?", id, FileStatusActive).
+		Updates(map[string]any{
+			"markdown_path":   markdownPath,
+			"updated_at_unix": time.Now().UTC().Unix(),
+		}).Error; err != nil {
+		return fmt.Errorf("set file markdown path: %w", err)
+	}
+	return nil
 }
 
 func (s *FileStore) ListByUserID(ctx context.Context, userID string) ([]File, error) {

@@ -35,7 +35,7 @@ func (f *rateLimitedFakeConnector) RefreshPermissions(ctx context.Context, secre
 
 func TestProcessContentSyncJobHonorsRateLimitDelayAndLeavesAccountHealthy(t *testing.T) {
 	env := newTestEnv(t)
-	env.knowledge.WithDocling(nil)
+	env.knowledge.WithDocumentReader(nil)
 	corpus, err := env.knowledge.CreateCorpus(context.Background(), env.adminPrincipal, knowledge.CreateCorpusParams{
 		OrganizationID: env.orgID, Name: "Rate Limited Docs",
 	})

@@ -11,8 +11,6 @@ used by GitLab and OpenWork:
   * Content under `seshat-server/` and `seshat-console/` is intended to be
     licensed under the Seshat Cloud Source-Available License defined in
     `seshat-server/LICENSE` (DRAFT - not final, not lawyer-reviewed).
-  * Content under `seshat-core/` is intended to be licensed under the Apache
-    License 2.0, defined in `seshat-core/LICENSE`.
   * All third-party components keep their own original license.
   * Everything else in this repository - including `seshat-backend/` and
     `seshat-ui/` - remains under the GNU Affero General Public License v3.0,

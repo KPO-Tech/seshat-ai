@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Reduce, Add, Left, Right, LoadingOne } from '@icon-park/react'
 import { api, ApiError } from '@renderer/api/client'
 import { loadPdfViewerModule, pdfjsLib } from '@renderer/lib/pdfInteractiveViewer'
+import { createPDFWorkerPort } from '@renderer/lib/pdfWorker'
 import 'pdfjs-dist/web/pdf_viewer.css'
 
 function cx(...classes: Array<string | false | null | undefined>) {
@@ -16,11 +17,43 @@ type Props = {
 type LayoutMode = 'pages' | 'width'
 type PdfViewerModule = Awaited<ReturnType<typeof loadPdfViewerModule>>
 type PdfViewerInstance = InstanceType<PdfViewerModule['PDFViewer']>
+type PdfDocument = Awaited<ReturnType<typeof pdfjsLib.getDocument>['promise']>
 
-// Matches pdf.js's own default rangeChunkSize - the size of the very first
-// fetch, used both to seed PDFDataRangeTransport's initialData and (via that
-// response's Content-Range) learn the document's real total length.
 const INITIAL_RANGE_CHUNK = 65536
+const FULL_LOAD_LIMIT = 16 * 1024 * 1024
+const PDF_OPEN_TIMEOUT_MS = 20_000
+
+type FileMetadata = {
+  size?: number
+}
+
+function dataURLToBytes(dataUrl: string): Uint8Array {
+  const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1)
+  return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`)), ms)
+  })
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timeoutId) clearTimeout(timeoutId)
+  })
+}
+
+async function loadPDFDocument(
+  params: Parameters<typeof pdfjsLib.getDocument>[0],
+  label: string,
+): Promise<PdfDocument> {
+  const task = pdfjsLib.getDocument(params)
+  try {
+    return await withTimeout(task.promise, PDF_OPEN_TIMEOUT_MS, label)
+  } catch (err) {
+    void task.destroy().catch(() => {})
+    throw err
+  }
+}
 
 function applyPDFLayout(
   viewer: PdfViewerInstance | null,
@@ -60,12 +93,17 @@ export function PDFViewerPanel({ fileId, filename }: Props) {
 
   useEffect(() => {
     let cancelled = false
-    let pdfDocument: Awaited<ReturnType<typeof pdfjsLib.getDocument>['promise']> | null = null
+    let pdfDocument: PdfDocument | null = null
+    let pdfWorker: InstanceType<typeof pdfjsLib.PDFWorker> | null = null
     let eventBus: InstanceType<Awaited<ReturnType<typeof loadPdfViewerModule>>['EventBus']> | null = null
 
     async function open() {
       if (!containerRef.current || !viewerRef.current) return
       try {
+        pdfWorker = pdfjsLib.PDFWorker.create({
+          name: `seshat-pdf-viewer-${fileId}`,
+          port: createPDFWorkerPort(),
+        })
         const { PDFViewer, PDFLinkService, EventBus, ScrollMode, SpreadMode } = await loadPdfViewerModule()
         if (cancelled) return
 
@@ -94,35 +132,47 @@ export function PDFViewerPanel({ fileId, filename }: Props) {
           if (!cancelled) setPageNumber(e.pageNumber)
         })
 
-        const path = `/files/${fileId}/content`
-        const initial = await api.getFileRange(path, 0, INITIAL_RANGE_CHUNK - 1)
+        const metadata = await withTimeout(api.get<FileMetadata>(`/files/${fileId}`), PDF_OPEN_TIMEOUT_MS, 'PDF metadata')
         if (cancelled) return
 
-        // A custom range transport (rather than getDocument({ url })) so
-        // every byte still flows through the app's own IPC bridge - the
-        // renderer has no direct network access by design (see
-        // content-security-policy.ts's connect-src 'self') - while still
-        // letting pdf.js fetch only the ranges it actually needs instead of
-        // waiting for the whole file, then render as soon as it has enough.
-        const transport = new pdfjsLib.PDFDataRangeTransport(initial.totalLength, new Uint8Array(initial.data))
-        transport.requestDataRange = (begin: number, end: number) => {
-          void (async () => {
-            try {
-              const chunk = await api.getFileRange(path, begin, end - 1)
-              if (cancelled) return
-              transport.onDataRange(begin, new Uint8Array(chunk.data))
-            } catch {
-              // pdf.js has no per-range error channel - a chunk failing
-              // mid-document (a transient network hiccup, say) just stops
-              // that range from ever arriving rather than tearing down a
-              // document that may already be partially rendered and usable.
-            }
-          })()
+        const path = `/files/${fileId}/content`
+        if (!metadata.size || metadata.size <= FULL_LOAD_LIMIT) {
+          const dataUrl = await withTimeout(api.getFileDataURL(path), PDF_OPEN_TIMEOUT_MS, 'PDF download')
+          if (cancelled) return
+          pdfDocument = await loadPDFDocument({ data: dataURLToBytes(dataUrl), worker: pdfWorker }, 'PDF render')
+        } else {
+          const initial = await withTimeout(
+            api.getFileRange(path, 0, INITIAL_RANGE_CHUNK - 1),
+            PDF_OPEN_TIMEOUT_MS,
+            'PDF range download',
+          )
+          if (cancelled) return
+          const transport = new pdfjsLib.PDFDataRangeTransport(
+            initial.totalLength,
+            new Uint8Array(initial.data),
+            true,
+            filename,
+          )
+          transport.requestDataRange = (begin: number, end: number) => {
+            void (async () => {
+              try {
+                const chunk = await api.getFileRange(path, begin, end - 1)
+                if (cancelled) return
+                transport.onDataRange(begin, new Uint8Array(chunk.data))
+              } catch (err) {
+                if (cancelled) return
+                const message =
+                  err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'Failed to load PDF range'
+                setErrorMessage(message)
+                setStatus('error')
+              }
+            })()
+          }
+          pdfDocument = await loadPDFDocument({ range: transport, worker: pdfWorker }, 'PDF range render')
         }
-
-        pdfDocument = await pdfjsLib.getDocument({ range: transport }).promise
         if (cancelled) {
           void pdfDocument.destroy()
+          pdfWorker.destroy()
           return
         }
         pdfViewer.setDocument(pdfDocument)
@@ -143,7 +193,8 @@ export function PDFViewerPanel({ fileId, filename }: Props) {
       cancelled = true
       pdfViewerRef.current = null
       pdfModesRef.current = null
-      void pdfDocument?.destroy()
+      void pdfDocument?.destroy().finally(() => pdfWorker?.destroy())
+      if (!pdfDocument) pdfWorker?.destroy()
     }
     // Re-open from scratch if the viewed file changes; loadPdfViewerModule/
     // pdfjsLib are stable module-level singletons, not real dependencies.

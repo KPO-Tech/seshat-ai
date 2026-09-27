@@ -68,6 +68,7 @@ type SDKRuntime struct {
 	ragArtifacts storage.ArtifactStore
 	ragVectors   vector.Store
 	ragEmbedder  rag.Embedder
+	ragChunker   rag.Chunker
 	ragCorpora   *db.CorpusStore
 
 	turnMu    sync.Mutex
@@ -181,12 +182,13 @@ func (r *SDKRuntime) SetBrowserSessionTargetResolver(resolve func(ctx context.Co
 // input.RAGAllowedOwnerIDs instead of reusing the shared, unscoped one. Not
 // calling this (e.g. in tests, or when RAG isn't configured at all) leaves
 // baseConfig.RAGService as-is, matching behavior before this fix.
-func (r *SDKRuntime) SetRAGComponents(artifacts storage.ArtifactStore, vectors vector.Store, embedder rag.Embedder, corpora *db.CorpusStore) {
+func (r *SDKRuntime) SetRAGComponents(artifacts storage.ArtifactStore, vectors vector.Store, embedder rag.Embedder, chunker rag.Chunker, corpora *db.CorpusStore) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.ragArtifacts = artifacts
 	r.ragVectors = vectors
 	r.ragEmbedder = embedder
+	r.ragChunker = chunker
 	r.ragCorpora = corpora
 }
 
@@ -639,10 +641,10 @@ func (r *SDKRuntime) clientForInput(ctx context.Context, input QueryInput) (*sdk
 	cfg.UserID = input.UserID
 
 	r.mu.RLock()
-	ragArtifacts, ragVectors, ragEmbedder, ragCorpora := r.ragArtifacts, r.ragVectors, r.ragEmbedder, r.ragCorpora
+	ragArtifacts, ragVectors, ragEmbedder, ragChunker, ragCorpora := r.ragArtifacts, r.ragVectors, r.ragEmbedder, r.ragChunker, r.ragCorpora
 	r.mu.RUnlock()
 	if ragVectors != nil && ragCorpora != nil && len(input.RAGAllowedOwnerIDs) > 0 {
-		cfg.RAGService = rag.NewService(ragArtifacts, newUserScopedVectorStore(ragVectors, ragCorpora, input.RAGAllowedOwnerIDs), ragEmbedder, nil)
+		cfg.RAGService = rag.NewService(ragArtifacts, newUserScopedVectorStore(ragVectors, ragCorpora, input.RAGAllowedOwnerIDs), ragEmbedder, ragChunker)
 	}
 
 	key := clientCacheKey{

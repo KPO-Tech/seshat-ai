@@ -1,13 +1,21 @@
-import type { Corpus, DoclingConfig, EmbedderConfig, RerankerConfig, StorageStatus } from './knowledgeTypes'
+import type { Corpus, DocumentReaderConfig, EmbedderConfig, RerankerConfig, StorageStatus, SystemStatus } from './knowledgeTypes'
 
-export function KnowledgeStatus({ corpora, embedder, reranker, docling, storage }: {
+export function KnowledgeStatus({ corpora, embedder, reranker, documentReader, storage, system }: {
   corpora: Corpus[]
   embedder: EmbedderConfig | null
   reranker: RerankerConfig | null
-  docling: DoclingConfig | null
+  documentReader: DocumentReaderConfig | null
   storage: StorageStatus | null
+  system: SystemStatus | null
 }) {
   const chunks = corpora.reduce((total, corpus) => total + (corpus.chunk_count ?? 0), 0)
+  const externalConfigured = system?.document_external_configured ?? Boolean(documentReader?.enabled && documentReader.base_url)
+  const externalReachable = system?.document_reader_reachable
+  const hybridConfigured = system?.document_hybrid_chunking_configured ?? externalConfigured
+  const externalReaderDetail = externalReachable === true ? 'External reachable' : externalReachable === false ? 'External check failed' : externalConfigured ? 'External configured' : 'Local readers'
+  const pdfSmartAvailable = system?.document_pdfsmart_available ?? system?.document_conversion_available !== false
+  const nativeDocReady = system?.document_nativedoc_ready === true
+  const localDocumentDetail = nativeDocReady ? 'PDF smart + native OCR' : pdfSmartAvailable ? 'PDF smart local' : externalReaderDetail
   const items = [
     {
       label: 'Embedding',
@@ -22,10 +30,16 @@ export function KnowledgeStatus({ corpora, embedder, reranker, docling, storage 
       tone: reranker?.is_configured ? 'text-[var(--accent-success)]' : 'text-[var(--text-primary)]'
     },
     {
-      label: 'Conversion',
-      value: docling?.enabled === false ? 'Off' : 'On',
-      detail: docling?.base_url || 'Auto/local',
-      tone: docling?.enabled === false ? 'text-[var(--text-primary)]' : 'text-[var(--accent-success)]'
+      label: 'Document read',
+      value: system?.document_conversion_available === false ? 'Review' : 'Local',
+      detail: localDocumentDetail,
+      tone: system?.document_conversion_available === false ? 'text-[var(--accent-danger)]' : 'text-[var(--accent-success)]'
+    },
+    {
+      label: 'Hybrid chunks',
+      value: hybridConfigured ? 'Ready' : 'Local',
+      detail: hybridConfigured ? 'Document-aware chunks' : system?.document_hybrid_chunking_error || 'Structured fallback',
+      tone: hybridConfigured ? 'text-[var(--accent-success)]' : 'text-[var(--text-primary)]'
     },
     {
       label: 'Knowledge',
@@ -42,7 +56,7 @@ export function KnowledgeStatus({ corpora, embedder, reranker, docling, storage 
   ]
 
   return (
-    <section className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-5">
+    <section className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-6">
       {items.map((item) => (
         <article key={item.label} className="min-w-0 rounded-lg border border-[var(--border-soft)] bg-[var(--surface-panel)] px-3 py-2.5">
           <div className="flex items-center justify-between gap-2">

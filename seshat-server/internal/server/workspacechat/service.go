@@ -580,7 +580,7 @@ func (s *Service) getOrCreateSession(ctx context.Context, principal *iam.Princip
 		ProviderConfig:         providerConfig,
 		WebSearchKeys:          webSearchKeys,
 		RAGService:             ragService,
-		DoclingURL:             s.doclingURL,
+		DocumentReaderURL:      s.doclingURL,
 		MCPServers:             mcpServers,
 		// This is a multi-tenant server: the bash tool is registered on every
 		// sdk.Client with no way to exclude it, and PermissionModeBypass means

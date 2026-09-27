@@ -1,10 +1,4 @@
 import * as pdfjsLib from 'pdfjs-dist'
-// Side-effect import: sets pdfjsLib.GlobalWorkerOptions.workerPort. Sharing
-// the same worker as the thumbnail generator (rather than spinning up a
-// second one here) is intentional - pdfjs-dist is a module singleton, so
-// GlobalWorkerOptions is the same object either way, but importing this
-// makes that not depend on load order.
-import './pdfPreview'
 
 // pdf_viewer.mjs is a bundled/rolled-up file (not itself using ES imports) -
 // its top-level code destructures everything it needs from

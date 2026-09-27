@@ -20,3 +20,5 @@ What we avoid:
 The MVP order lives in `D:\Documents\PROJECTS\ai\Discussions\mvp`.
 
 Visual identity decisions live in [`docs/visual-identity.md`](docs/visual-identity.md).
+
+Frontend strategy lives in [`../docs/frontend-strategy.md`](../docs/frontend-strategy.md): keep this desktop on Electron + React for now, and consider Svelte first for new standalone product surfaces such as Knowledge or Inbox.

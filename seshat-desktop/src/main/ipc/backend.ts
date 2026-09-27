@@ -19,6 +19,11 @@ type StoredSession = {
   roles: string[]
 }
 
+type AuthMeResponse = {
+  user?: AuthUser
+  roles?: string[]
+}
+
 type RequestPayload = {
   path: string
   method?: string
@@ -125,6 +130,32 @@ async function saveSession(session: StoredSession) {
 async function clearSession() {
   cachedSession = null
   await deleteSecret(AUTH_SESSION_KEY)
+}
+
+async function refreshSession(session: StoredSession): Promise<StoredSession | null> {
+  let payload: Awaited<ReturnType<typeof performJSONRequest>>
+  try {
+    payload = await performJSONRequest('/auth/me', 'GET', undefined, session.token)
+  } catch {
+    return session
+  }
+  if (payload.ok) {
+    const data = payload.data as AuthMeResponse | undefined
+    const refreshed = {
+      token: session.token,
+      user: data?.user ?? session.user,
+      roles: data?.roles ?? session.roles,
+    }
+    await saveSession(refreshed)
+    return refreshed
+  }
+
+  if (payload.status === 401 || payload.status === 403) {
+    await clearSession()
+    return null
+  }
+
+  return session
 }
 
 function sessionView(session: StoredSession | null) {
@@ -450,7 +481,9 @@ export function registerBackendHandlers(ipcMain: IpcMain): void {
 
   ipcMain.handle('auth:restore-session', async (event) => {
     assertTrustedSender(event)
-    return sessionView(await loadSession())
+    const session = await loadSession()
+    if (!session) return null
+    return sessionView(await refreshSession(session))
   })
 
   ipcMain.handle('auth:clear-session', async (event) => {

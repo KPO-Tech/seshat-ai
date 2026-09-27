@@ -33,7 +33,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/skills"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/websearch"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/workflows"
-	"github.com/KPO-Tech/seshat/pkg/docling"
+	"github.com/KPO-Tech/seshat/pkg/documentreader"
 	longterm "github.com/KPO-Tech/seshat/pkg/memory/longterm"
 	"github.com/KPO-Tech/seshat/pkg/rag"
 	"github.com/KPO-Tech/seshat/pkg/storage"
@@ -96,13 +96,10 @@ type Dependencies struct {
 	ArtifactStore       storage.ArtifactStore // nil = blob storage disabled
 	RAGService          *rag.Service          // nil = embedder not configured
 	Monitoring          metrics.Snapshotter
-	// ResolveDoclingClient returns the docling client to use for a given
-	// call, re-evaluated on every invocation (not cached) — nil = no
-	// auto-conversion. Set by bootstrap.go to check the user's persisted
-	// Settings > Knowledge override first, falling back to whatever was
-	// resolved from config.DoclingURL at boot (see docling_config.go's
-	// doc comment for the priority order).
-	ResolveDoclingClient func(ctx context.Context) *docling.Client
+	// ResolveDocumentConverter returns the document converter to use for a given call,
+	// re-evaluated on every invocation. Bootstrap wires local-first or
+	// external-first policy from the persisted document reader settings.
+	ResolveDocumentConverter func(ctx context.Context) documentreader.Converter
 	// New services
 	UserMemoryStore *db.UserMemoryStore
 	// LongTermMemoryStore is longterm.Store (an SDK interface), not a
@@ -256,12 +253,12 @@ func NewApp(deps Dependencies) *App {
 		preferencesProvider = preferences.NewLocalProvider(deps.UserPreferencesStore)
 	}
 	preferencesService := preferences.NewService(preferencesProvider)
-	filesService := files.NewService(deps.FileStore, deps.ArtifactStore).WithDocling(deps.ResolveDoclingClient)
+	filesService := files.NewService(deps.FileStore, deps.ArtifactStore).WithDocumentReader(deps.ResolveDocumentConverter)
 	knowledgeService := deps.KnowledgeBackend
 	if knowledgeService == nil {
-		knowledgeService = knowledge.NewService(deps.CorpusStore, deps.FileStore, deps.IngestionJobStore, deps.ArtifactStore, deps.RAGService).WithDocling(deps.ResolveDoclingClient)
+		knowledgeService = knowledge.NewService(deps.CorpusStore, deps.FileStore, deps.IngestionJobStore, deps.ArtifactStore, deps.RAGService).WithDocumentReader(deps.ResolveDocumentConverter)
 	}
-	// Give the Drive connector the same Docling-backed extraction an
+	// Give the Drive connector the same document-reader extraction an
 	// uploaded file gets, instead of ingesting a downloaded PDF/DOCX's raw
 	// bytes as text (unsearchable garbage - found via a real end-to-end
 	// test, see helps/roadmap.md Phase 1). Only possible against the local
@@ -269,7 +266,7 @@ func NewApp(deps Dependencies) *App {
 	// RemoteService isn't wired for connector-driven ingestion in this
 	// phase either.
 	// Same reasoning applies to any generic KnowledgeConnector that needs
-	// Docling-backed extraction - internal/knowledge/s3 (Phase 3) is the
+	// Document-reader extraction - internal/knowledge/s3 (Phase 3) is the
 	// first one, resolved by kind rather than a dedicated field since
 	// KnowledgeConnectors is the generic map, not KnowledgeGDrive's
 	// one-off pattern.

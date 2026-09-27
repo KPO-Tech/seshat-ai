@@ -76,7 +76,7 @@ func RateLimit(message string, err error) error {
 }
 
 // BadGateway reports a failure from an upstream service this backend depends
-// on (Docling, whisper-server, a cloud control-plane call, ...) — distinct
+// on (document reader, whisper-server, a cloud control-plane call, ...) — distinct
 // from Unavailable, which means this backend itself can't serve the request.
 func BadGateway(message string, err error) error {
 	return newError(ErrorKindBadGateway, message, err)

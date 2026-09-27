@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router'
 import { Shield } from '@icon-park/react'
 import { api } from '@renderer/api/client'
 import type { SystemStatus } from '@renderer/api/types'
+import { hasAdminAccess } from '@renderer/lib/authz'
 import { useAuthStore } from '@renderer/stores/auth'
 import { AdminNav, adminTabExists } from './AdminNav'
 import { ORGANIZATION_TABS, type AdminTab } from './adminTabs'
@@ -28,7 +29,7 @@ export function AdminPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const roles = useAuthStore((s) => s.roles)
-  const isAdmin = roles.includes('admin')
+  const isAdmin = hasAdminAccess(roles)
   const requestedTab = tabFromLocation(location.pathname, location.search)
   const [activeTab, setActiveTab] = useState<AdminTab>(adminTabExists(requestedTab) ? requestedTab : 'overview')
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null)

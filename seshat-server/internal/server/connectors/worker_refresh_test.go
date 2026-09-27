@@ -26,7 +26,7 @@ func (f *fakeConnectorWithRefresh) RefreshedToken() (accessToken, refreshToken s
 
 func TestProcessSyncJobPersistsRotatedRefreshToken(t *testing.T) {
 	env := newTestEnv(t)
-	env.knowledge.WithDocling(nil)
+	env.knowledge.WithDocumentReader(nil)
 
 	corpus, err := env.knowledge.CreateCorpus(context.Background(), env.adminPrincipal, knowledge.CreateCorpusParams{
 		OrganizationID: env.orgID, Name: "Wiki Docs",
@@ -90,7 +90,7 @@ func TestProcessSyncJobPersistsRotatedRefreshToken(t *testing.T) {
 // implement RefreshedToken at all.
 func TestProcessSyncJobLeavesTokenUnchangedWithoutReporter(t *testing.T) {
 	env := newTestEnv(t)
-	env.knowledge.WithDocling(nil)
+	env.knowledge.WithDocumentReader(nil)
 
 	corpus, err := env.knowledge.CreateCorpus(context.Background(), env.adminPrincipal, knowledge.CreateCorpusParams{
 		OrganizationID: env.orgID, Name: "Docs",

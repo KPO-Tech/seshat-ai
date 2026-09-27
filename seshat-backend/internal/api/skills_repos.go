@@ -24,7 +24,7 @@ type FeaturedSkillRepo struct {
 
 // DefaultSeshatSkillsRepo is the official Seshat skills collection. Left empty
 // for now: some of its skills (e.g. pdf) shadow the SDK's own better-suited
-// built-in tools (docling-backed Read) for tasks the skill's description
+// built-in tools (document-reader-backed Read) for tasks the skill's description
 // claims too broadly, causing worse agent behavior than not having it at all.
 // Re-enable once the individual skill descriptions are scoped tightly enough
 // to stop competing with built-in tools. Operators can still opt in with

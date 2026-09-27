@@ -17,16 +17,16 @@ import (
 // not part of the generic pkg/dataflow SDK - same reasoning as
 // GmailPollNode, it needs a seshat-ai connector account.
 //
-// No seshat-core/jira package exists yet, so this hand-rolls the two
+// No shared jira package exists yet, so this hand-rolls the two
 // requests it needs directly - the first representative Jira action, not
 // exhaustive API coverage. Jira Cloud has no fixed API base URL (same
 // structural quirk as Confluence, another Atlassian product - see
 // connectors/confluence.go's doc comment): every call is scoped under a
 // per-account cloud ID, resolved fresh per call via Atlassian's
 // accessible-resources endpoint rather than cached - this node duplicates
-// that one small lookup instead of exporting seshat-core's unexported
+// that one small lookup instead of exporting a shared package's unexported
 // resolveConfluenceCloudID, keeping this batch (like Notion/Stripe/Sheets/
-// Calendar) free of any seshat-core/SDK change. Reads job context
+// Calendar) free of any shared package SDK change. Reads job context
 // (owner_id, organization_id) from its own input, same constraint as
 // GmailSendNode - see its doc comment.
 type JiraCreateIssueNode struct {
@@ -66,7 +66,7 @@ func (n *JiraCreateIssueNode) ValidateParameters(params map[string]any) error {
 // jiraAccessibleResource is one entry of GET /oauth/token/accessible-resources
 // - the same shape (and endpoint) confluence_atlassian.go's
 // confluenceAccessibleResource models, duplicated here rather than
-// exported/reused across the seshat-core boundary for this batch (see this
+// exported/reused across the shared-core boundary for this batch (see this
 // node's doc comment).
 type jiraAccessibleResource struct {
 	ID string `json:"id"`

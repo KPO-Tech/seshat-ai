@@ -26,16 +26,22 @@ const MD_EXTENSIONS = new Set(['md', 'markdown'])
 const PLAIN_TEXT_EXTENSIONS = new Set(['txt', 'csv', 'tsv', 'json', 'yaml', 'yml', 'log'])
 const TEXT_PREVIEW_EXTENSIONS = new Set([...MD_EXTENSIONS, ...PLAIN_TEXT_EXTENSIONS])
 // Files with no dedicated native panel and no readable raw-byte preview -
-// the backend docling-converts these to markdown at upload time (see
-// doclingExtensions in seshat-backend/internal/files/types.go), so preview
+// the backend document reader converts these to markdown at upload time, so preview
 // that conversion instead. DOCX/PPTX/XLSX are NOT here even though the
 // backend also converts them: those get their own real client-side render
 // (see resolveAttachmentOpenAction), so fetching a markdown conversion for
 // them would be wasted work that's never shown.
 const MARKDOWN_CONVERTED_EXTENSIONS = new Set(['html', 'htm', 'tex'])
+const NATIVE_PANEL_EXTENSIONS = new Set(['pdf', 'docx', 'xlsx', 'pptx'])
 
 export function isPlainTextFilename(filename: string): boolean {
   return PLAIN_TEXT_EXTENSIONS.has(fileExtension(filename))
+}
+
+function hasMarkdownPreview(file: ChatAttachment): boolean {
+  const ext = fileExtension(file.filename)
+  if (MARKDOWN_CONVERTED_EXTENSIONS.has(ext)) return true
+  return file.document_read_status === 'converted' && !isImageAttachment(file) && !NATIVE_PANEL_EXTENSIONS.has(ext)
 }
 
 async function fetchTextContent(fileId: string, kind: 'direct' | 'markdown'): Promise<string> {
@@ -66,7 +72,7 @@ export function resolveAttachmentOpenAction(file: ChatAttachment, previewURL: st
   if (ext === 'docx') return { kind: 'panel', panel: 'docx' }
   if (ext === 'xlsx') return { kind: 'panel', panel: 'xlsx' }
   if (ext === 'pptx') return { kind: 'panel', panel: 'pptx' }
-  if (TEXT_PREVIEW_EXTENSIONS.has(ext) || MARKDOWN_CONVERTED_EXTENSIONS.has(ext)) return { kind: 'text' }
+  if (TEXT_PREVIEW_EXTENSIONS.has(ext) || hasMarkdownPreview(file)) return { kind: 'text' }
   if (file.local_path) return { kind: 'external' }
   return { kind: 'none' }
 }
@@ -78,7 +84,7 @@ export async function fetchAttachmentTextPreview(file: ChatAttachment): Promise<
   if (TEXT_PREVIEW_EXTENSIONS.has(ext)) {
     return { markdown: await fetchTextContent(file.id, 'direct'), plainText: isPlainTextFilename(file.filename) }
   }
-  if (MARKDOWN_CONVERTED_EXTENSIONS.has(ext)) {
+  if (hasMarkdownPreview(file)) {
     return { markdown: await fetchTextContent(file.id, 'markdown'), plainText: false }
   }
   return null

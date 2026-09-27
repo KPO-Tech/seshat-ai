@@ -17,7 +17,7 @@ import (
 // Deliberately not part of the generic pkg/dataflow SDK - same reasoning
 // as GmailPollNode, it needs a seshat-ai connector account.
 //
-// No seshat-core/hubspot package exists yet, so this hand-rolls the one
+// No shared hubspot package exists yet, so this hand-rolls the one
 // request it needs directly - the first representative HubSpot action,
 // not exhaustive API coverage. Reads job context (owner_id,
 // organization_id) from its own input, same constraint as GmailSendNode -

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { api } from '@renderer/api/client'
 import type { SystemStatus } from '@renderer/api/types'
+import { hasAdminAccess } from '@renderer/lib/authz'
 import { useAuthStore } from '@renderer/stores/auth'
 import { useDialogsStore } from '@renderer/stores/dialogs'
 
@@ -11,7 +12,7 @@ import { useDialogsStore } from '@renderer/stores/dialogs'
 export function useSettingsMenu() {
   const navigate = useNavigate()
   const roles = useAuthStore((state) => state.roles)
-  const isAdmin = roles.includes('admin')
+  const isAdmin = hasAdminAccess(roles)
   const [connected, setConnected] = useState(false)
 
   useEffect(() => {

@@ -65,10 +65,6 @@ const CorpusDetailPage = lazyPage(() => import('@/pages/knowledge/CorpusDetailPa
 const EmbedderSettingsPage = lazyPage(() => import('@/pages/knowledge/EmbedderSettingsPage').then((module) => ({ default: module.EmbedderSettingsPage })))
 const RerankerSettingsPage = lazyPage(() => import('@/pages/knowledge/RerankerSettingsPage').then((module) => ({ default: module.RerankerSettingsPage })))
 const ConnectorsPage = lazyPage(() => import('@/pages/connectors/ConnectorsPage').then((module) => ({ default: module.ConnectorsPage })))
-const SweepsPage = lazyPage(() => import('@/pages/prospecting/SweepsPage').then((module) => ({ default: module.SweepsPage })))
-const ProspectingSettingsPage = lazyPage(() =>
-  import('@/pages/prospecting/ProspectingSettingsPage').then((module) => ({ default: module.ProspectingSettingsPage })),
-)
 const WebSearchSettingsPage = lazyPage(() => import('@/pages/webSearch/WebSearchSettingsPage').then((module) => ({ default: module.WebSearchSettingsPage })))
 const OrganizationPreferencesPage = lazyPage(() =>
   import('@/pages/organizationPreferences/OrganizationPreferencesPage').then((module) => ({ default: module.OrganizationPreferencesPage })),
@@ -170,8 +166,6 @@ export const router = createBrowserRouter([
                   { path: 'integrations/providers', element: renderLazyPage(ProvidersPage) },
                   { path: 'integrations/scim', element: renderLazyPage(ScimSettingsPage) },
                   { path: 'integrations/network-diagnostics', element: renderLazyPage(NetworkDiagnosticsPage) },
-                  { path: 'prospecting/sweeps', element: renderLazyPage(SweepsPage) },
-                  { path: 'prospecting/settings', element: renderLazyPage(ProspectingSettingsPage) },
                   { path: 'activity/audit', element: renderLazyPage(AuditEventsPage) },
                   { path: 'activity/chat-sessions', element: renderLazyPage(ChatSessionsPage) },
                 ],

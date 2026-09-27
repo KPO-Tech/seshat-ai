@@ -17,7 +17,7 @@ import (
 // part of the generic pkg/dataflow SDK - same reasoning as GmailPollNode,
 // it needs a seshat-ai connector account.
 //
-// No seshat-core/pipedrive package exists yet, so this hand-rolls the one
+// No shared pipedrive package exists yet, so this hand-rolls the one
 // request it needs directly - the first representative Pipedrive action,
 // not exhaustive API coverage. Pipedrive's REST API host is per-account
 // (api_domain, captured at connect time into ConnectorAccount.Config - see

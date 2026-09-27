@@ -26,7 +26,7 @@ import (
 // the node's params" shape, unlike a webhook URL which is scoped to one
 // channel. Verified against Discord's API docs before writing this: POST
 // /api/v10/channels/{channel.id}/messages, Authorization: Bot <token>. No
-// seshat-core/discord package exists yet, so this hand-rolls the one
+// shared package discord package exists yet, so this hand-rolls the one
 // request it needs directly. Reads job context (owner_id,
 // organization_id) from its own input, same constraint as GmailSendNode -
 // see its doc comment.

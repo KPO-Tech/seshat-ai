@@ -37,7 +37,7 @@ const sections: Array<{ id: ConfigSection; label: string; icon: IconName; group:
   { id: 'providers', label: 'Providers', icon: 'provider', group: 'AI Runtime', description: 'Configure OpenAI, Anthropic, Mistral, Ollama, and custom compatible providers.' },
   { id: 'models', label: 'Models', icon: 'model', group: 'AI Runtime', description: 'Choose defaults, model catalogs, aliases, and fallback behavior.' },
   { id: 'web-search', label: 'Web Search', icon: 'search', group: 'AI Runtime', description: 'Search providers, domain policies, and web retrieval settings.' },
-  { id: 'knowledge', label: 'Knowledge', icon: 'book', group: 'Knowledge', description: 'Corpora, embeddings, reranking, Docling, and retrieval defaults.' },
+  { id: 'knowledge', label: 'Knowledge', icon: 'book', group: 'Knowledge', description: 'Knowledge bases, retrieval models, document reading, and local OCR.' },
   { id: 'multimodal', label: 'Multimodal', icon: 'media', group: 'Knowledge', description: 'Image generation, voice input, Whisper models, and local media capabilities.' },
   { id: 'mcp', label: 'MCP', icon: 'api', group: 'Workspace Runtime', description: 'MCP servers exposed to agents and tools.' },
   { id: 'connectors', label: 'Connectors', icon: 'connectors', group: 'Workspace Runtime', description: 'External accounts and application connectors.' },
@@ -184,7 +184,7 @@ const configDetails: Record<ConfigSection, { source: string; scope: string[] }> 
   },
   knowledge: {
     source: 'seshat-ui/pages/settings/KnowledgeView.tsx',
-    scope: ['Corpora', 'Embedder settings', 'Reranker settings', 'Docling document conversion']
+    scope: ['Corpora', 'Embedder settings', 'Reranker settings', 'Document reader settings']
   },
   multimodal: {
     source: 'seshat-ui/pages/settings/CapabilitiesViews.tsx',

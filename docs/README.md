@@ -9,6 +9,7 @@ This is a map of `docs/`, not an exhaustive file list — each section below nam
 | [`helps/roadmap.md`](./helps/roadmap.md) | Session journal for `seshat-backend`/`seshat-server` work — read this first at the start of any session touching those two. |
 | `../ROADMAP.md` (repo root) | The `seshat-server`/`seshat-console` engineering log, picking up where `helps/roadmap.md` leaves off (2026-08-16). Different scope, same "read before working" role — see its own note on why these two aren't merged. |
 | [`architecture.md`](./architecture.md) | Package map, layer responsibilities, dependency rules for the Go backend split. |
+| [`frontend-strategy.md`](./frontend-strategy.md) | Frontend direction: keep the current React desktop, use Svelte for new product surfaces when appropriate. |
 | [`development.md`](./development.md) | Local setup, env vars, Go workspace structure. |
 
 `D:\Documents\PROJECTS\ai\Discussions\` (outside this repo) holds the current MVP strategy and product direction (Chat-first order, `seshat-desktop` rebuild) — check `Discussions/mvp/` before assuming anything under `project/` or `produits/` below is still the active plan.

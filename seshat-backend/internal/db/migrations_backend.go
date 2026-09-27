@@ -246,10 +246,10 @@ func backendMigrations() []schemaMigration {
 			},
 		},
 		{
-			ID:    "20260714_032_docling_config",
+			ID:    "20260714_032_document_reader_config",
 			Scope: migrationScopeBackend,
 			Run: func(ctx context.Context, db *DB) error {
-				return db.gormDB.WithContext(ctx).AutoMigrate(&gDoclingConfig{})
+				return db.gormDB.WithContext(ctx).AutoMigrate(&gDocumentReaderConfig{})
 			},
 		},
 		{
@@ -297,18 +297,6 @@ func backendMigrations() []schemaMigration {
 			Scope: migrationScopeBackend,
 			Run: func(ctx context.Context, db *DB) error {
 				return db.gormDB.WithContext(ctx).AutoMigrate(&gSessionOwnership{})
-			},
-		},
-		{
-			ID:    "20260808_039_prospecting_core",
-			Scope: migrationScopeBackend,
-			Run: func(ctx context.Context, db *DB) error {
-				return db.gormDB.WithContext(ctx).AutoMigrate(
-					&gProspectingCacheEntry{},
-					&gProspectingDailyUsage{},
-					&gProspectingSweep{},
-					&gProspectingBusiness{},
-				)
 			},
 		},
 		{

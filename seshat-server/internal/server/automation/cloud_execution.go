@@ -493,13 +493,13 @@ func (s *Service) executeCloudRun(ctx context.Context, runID string) error {
 
 	executor, err := sdkautomation.NewExecutor(sdkautomation.ExecutorConfig{
 		RunnerConfig: sdkautomation.RunnerConfig{
-			Model:          sdkautomation.ModelIdentifier{Provider: sdktypes.APIProvider(provider), Model: model},
-			ProviderConfig: providerConfig,
-			MaxTokens:      cloudMaxTokens,
-			RAGService:     ragService,
-			DoclingURL:     s.doclingURL,
-			ArtifactStore:  s.artifacts,
-			MCPServers:     mcpServers,
+			Model:             sdkautomation.ModelIdentifier{Provider: sdktypes.APIProvider(provider), Model: model},
+			ProviderConfig:    providerConfig,
+			MaxTokens:         cloudMaxTokens,
+			RAGService:        ragService,
+			DocumentReaderURL: s.doclingURL,
+			ArtifactStore:     s.artifacts,
+			MCPServers:        mcpServers,
 			// See jobWorkflow's doc comment above — bash is reachable from
 			// this executor, so it must never run unconfined on this shared
 			// host.

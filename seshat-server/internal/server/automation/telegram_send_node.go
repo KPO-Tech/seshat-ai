@@ -20,7 +20,7 @@ import (
 // bots authenticate with a single bot token, no OAuth2 flow, no refresh.
 //
 // The bot token is part of the request URL itself, not a header - verified
-// against Telegram's Bot API docs before writing this. No seshat-core/
+// against Telegram's Bot API docs before writing this. No shared package
 // telegram package exists yet, so this hand-rolls the one request it needs
 // directly. Reads job context (owner_id, organization_id) from its own
 // input, same constraint as GmailSendNode - see its doc comment.

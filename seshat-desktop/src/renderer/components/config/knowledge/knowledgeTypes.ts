@@ -17,10 +17,32 @@ export type RerankerConfig = {
   updated_at?: number
 }
 
-export type DoclingConfig = {
+export type DocumentReaderConfig = {
   base_url: string
   enabled: boolean
+  prefer_external: boolean
   updated_at?: number
+}
+
+export type SystemStatus = {
+  mode: 'standalone' | 'connected'
+  server_url?: string
+  document_reader_configured?: boolean
+  document_conversion_available?: boolean
+  document_local_basic_available?: boolean
+  document_pdfsmart_available?: boolean
+  document_nativedoc_compiled?: boolean
+  document_nativedoc_runtime_initialized?: boolean
+  document_nativedoc_models_available?: boolean
+  document_nativedoc_ready?: boolean
+  document_vision_fallback_configured?: boolean
+  document_external_configured?: boolean
+  document_reader_reachable?: boolean
+  document_reader_tested_at?: number
+  document_external_conversion_available?: boolean
+  document_external_conversion_error?: string
+  document_hybrid_chunking_configured?: boolean
+  document_hybrid_chunking_error?: string
 }
 
 export type StorageConfigData = {
@@ -56,6 +78,49 @@ export type TestResult = {
   ok: boolean
   latency_ms: number
   error: string | null
+  document_reader_reachable?: boolean
+  document_conversion_available?: boolean
+  document_conversion_error?: string | null
+  document_hybrid_chunking_configured?: boolean
+  document_hybrid_chunking_error?: string | null
+}
+
+export type NativeDocInitResult = {
+  ok: boolean
+  error: string | null
+  document_local_basic_available?: boolean
+  document_pdfsmart_available?: boolean
+  document_nativedoc_compiled?: boolean
+  document_nativedoc_runtime_initialized?: boolean
+  document_nativedoc_models_available?: boolean
+  document_nativedoc_ready?: boolean
+  document_vision_fallback_configured?: boolean
+}
+
+export type NativeDocDownloadState = {
+  status: 'idle' | 'running' | 'completed' | 'failed'
+  current_file?: string
+  file_index?: number
+  file_count?: number
+  bytes_downloaded?: number
+  bytes_total?: number
+  files_completed?: number
+  error?: string
+  model_dir: string
+}
+
+export type NativeDocStatusResult = {
+  model_dir: string
+  models: string[]
+  download: NativeDocDownloadState
+  capabilities: Partial<SystemStatus>
+}
+
+export type NativeDocDownloadResult = {
+  ok: boolean
+  already_running: boolean
+  download: NativeDocDownloadState
+  capabilities: Partial<SystemStatus>
 }
 
 export type TestState = 'idle' | 'running' | 'ok' | 'error'

@@ -18,7 +18,7 @@ import (
 // Deliberately not part of the generic pkg/dataflow SDK - same reasoning as
 // GmailPollNode, it needs a seshat-ai connector account.
 //
-// No seshat-core/gsheets package exists yet, so this hand-rolls the one
+// No shared gsheets package exists yet, so this hand-rolls the one
 // request it needs directly (the Sheets API v4 values:append endpoint) -
 // the first representative Sheets action, not exhaustive API coverage.
 // Every cell is sent as a string (values param is a flat array, not a typed

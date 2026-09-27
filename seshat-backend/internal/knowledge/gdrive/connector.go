@@ -28,9 +28,9 @@ func NewConnector(oauthConfig *oauth2.Config) *Connector {
 }
 
 // WithTextExtractor wires binary-file extraction (PDF/DOCX/PPTX/XLSX via
-// Docling) into the connector - see core/connectors.TextExtractorFunc's doc
+// a document reader) into the connector - see core/connectors.TextExtractorFunc's doc
 // comment. Returns the receiver so callers can chain it onto NewConnector,
-// mirroring knowledge.Service.WithDocling's fluent pattern.
+// mirroring knowledge.Service.WithDocumentReader's fluent pattern.
 func (c *Connector) WithTextExtractor(fn func(ctx context.Context, data []byte, contentType, filename string) string) *Connector {
 	c.inner.WithTextExtractor(coreconnectors.TextExtractorFunc(fn))
 	return c

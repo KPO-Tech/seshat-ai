@@ -13,7 +13,7 @@ var Scopes = coregmail.Scopes
 
 // IsConfigured reports whether GOOGLE_OAUTH_CLIENT_ID/SECRET are set -
 // bootstrap.go uses this to decide whether to register the Gmail connector
-// at all, the same way other optional integrations (Docling, web search
+// at all, the same way other optional integrations (document readers, web search
 // providers) are skipped rather than half-initialized when unconfigured.
 func IsConfigured() bool {
 	return googleOAuth.IsConfigured()

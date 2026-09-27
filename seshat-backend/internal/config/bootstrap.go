@@ -31,13 +31,13 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/mcp"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/memories"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/preferences"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/prospecting"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/quotas"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/settings"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/websearch"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/connector"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/dataflowsecrets"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/documentreading"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox/gmail"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox/outlook"
@@ -54,8 +54,6 @@ import (
 	mcpAction "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/mcp/action"
 	backendmemories "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/memories"
 	backendpreferences "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/preferences"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/prospecting"
-	prospectingTools "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/prospecting/tool"
 	backendquery "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/query"
 	backendquotas "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/quotas"
 	backendsettings "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/settings"
@@ -64,7 +62,7 @@ import (
 	dataflowexpr "github.com/KPO-Tech/seshat/pkg/dataflow/expr"
 	dataflownodes "github.com/KPO-Tech/seshat/pkg/dataflow/nodes"
 	dataflowdatabase "github.com/KPO-Tech/seshat/pkg/dataflow/nodes/database"
-	"github.com/KPO-Tech/seshat/pkg/docling"
+	"github.com/KPO-Tech/seshat/pkg/documentreader"
 	"github.com/KPO-Tech/seshat/pkg/mcp"
 	longterm "github.com/KPO-Tech/seshat/pkg/memory/longterm"
 	"github.com/KPO-Tech/seshat/pkg/monitoring"
@@ -317,7 +315,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	// backendApp.Query exists - see the comment next to
 	// cloudAutomationExecutor, whose exact pattern it mirrors.
 	// Each channel connector is registered only when its credentials are
-	// actually configured - same pattern as Docling/web search providers
+	// actually configured - same pattern as document-reader/web search providers
 	// below: an unconfigured channel just doesn't show up as connectable,
 	// rather than the whole inbox domain failing to start.
 	if gmail.IsConfigured() {
@@ -456,40 +454,6 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		fmt.Printf("[API] Knowledge: connecteur OneDrive activé\n")
 	}
 
-	prospectingCacheStore, err := db.NewProspectingCacheStore(database)
-	if err != nil {
-		_ = cleanup()
-		return nil, nil, fmt.Errorf("init prospecting cache store: %w", err)
-	}
-	prospectingUsageStore, err := db.NewProspectingUsageStore(database)
-	if err != nil {
-		_ = cleanup()
-		return nil, nil, fmt.Errorf("init prospecting usage store: %w", err)
-	}
-	prospectingSweepStore, err := db.NewProspectingSweepStore(database)
-	if err != nil {
-		_ = cleanup()
-		return nil, nil, fmt.Errorf("init prospecting sweep store: %w", err)
-	}
-	prospectingBusinessStore, err := db.NewProspectingBusinessStore(database)
-	if err != nil {
-		_ = cleanup()
-		return nil, nil, fmt.Errorf("init prospecting business store: %w", err)
-	}
-	var prospectingService *prospecting.Service
-	if prospecting.IsConfigured() {
-		dailyCap := 100
-		if raw := strings.TrimSpace(os.Getenv("PROSPECTING_PLACES_DAILY_CAP")); raw != "" {
-			if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
-				dailyCap = parsed
-			}
-		}
-		prospectingService = prospecting.NewService(prospectingSweepStore, prospectingBusinessStore, prospectingCacheStore, prospectingUsageStore, os.Getenv("GOOGLE_PLACES_API_KEY"), dailyCap)
-		fmt.Printf("[API] Prospecting: Google Places configuré (cap quotidien=%d)\n", dailyCap)
-	} else {
-		fmt.Printf("[API] Prospecting: désactivé (GOOGLE_PLACES_API_KEY non configurée)\n")
-	}
-
 	settingStore, err := db.NewProviderSettingStore(database)
 	if err != nil {
 		_ = cleanup()
@@ -619,10 +583,10 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		return nil, nil, fmt.Errorf("init capability link store: %w", err)
 	}
 
-	doclingConfigStore, err := db.NewDoclingConfigStore(database)
+	documentReaderConfigStore, err := db.NewDocumentReaderConfigStore(database)
 	if err != nil {
 		_ = cleanup()
-		return nil, nil, fmt.Errorf("init docling config store: %w", err)
+		return nil, nil, fmt.Errorf("init document reader config store: %w", err)
 	}
 
 	rerankerConfigStore, err := db.NewRerankerConfigStore(database)
@@ -643,6 +607,36 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		return nil, nil, fmt.Errorf("init sandbox config store: %w", err)
 	}
 
+	resolveDocumentConverter := func(ctx context.Context) documentreader.Converter {
+		cfg, _ := documentReaderConfigStore.Get(ctx)
+		baseURL := strings.TrimSpace(config.DocumentReaderURL)
+		preferExternal := false
+		externalEnabled := false
+		if cfg != nil {
+			externalEnabled = cfg.Enabled
+			preferExternal = cfg.PreferExternal
+			if strings.TrimSpace(cfg.BaseURL) != "" {
+				baseURL = strings.TrimSpace(cfg.BaseURL)
+			}
+		} else if baseURL != "" {
+			externalEnabled = true
+		}
+
+		var external documentreader.Converter
+		if externalEnabled && baseURL != "" {
+			if client, err := documentreading.NewSeshatIntelligenceClient(baseURL); err == nil {
+				external = client
+			}
+		}
+		return documentreading.NewPolicyConverterWithLocalAdvanced(documentreading.NewNativeDocConverter(), external, preferExternal)
+	}
+	if documentreading.NativeDocAutoInitEnabled() {
+		if capabilities, initErr := documentreading.InitNativeDocRuntime(); initErr != nil {
+			fmt.Fprintf(os.Stderr, "[API] Avertissement native OCR: auto-init échouée: %v\n", initErr)
+		} else if capabilities.NativeDocReady {
+			fmt.Printf("[API] Native OCR initialisé: models=%s\n", documentreading.NativeDocModelsDir())
+		}
+	}
 	userMemoryStore, err := db.NewUserMemoryStore(database)
 	if err != nil {
 		_ = cleanup()
@@ -717,6 +711,18 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	} else {
 		fmt.Printf("[API] Artifact store initialisé: %s\n", storage.GetProviderType())
 	}
+	var documentChunkCache rag.ChunkCache = rag.NewMemoryChunkCache()
+	if artifactStore != nil {
+		documentChunkCache = rag.NewArtifactChunkCache(artifactStore)
+	}
+	documentChunker := rag.NewCachedDocumentChunker(
+		rag.NewHybridDocumentChunkerForProfile(
+			documentreading.NewDynamicHybridChunker(resolveDocumentConverter),
+			rag.ChunkProfile{Name: rag.ChunkProfileStructured, MaxTokens: 1024, OverlapTokens: 128},
+			documentreader.ChunkOptions{},
+		),
+		documentChunkCache,
+	)
 	// Shares the same blob store as internal/files - inbox attachments live
 	// under their own "inbox-attachments/" key prefix, no separate storage
 	// mechanism. Nil-tolerant, same as files.NewService below: without it,
@@ -739,20 +745,6 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	var knowledgeCloudBackend backendknowledge.Backend
 	if serverURL != "" {
 		knowledgeCloudBackend = cloudknowledge.NewRemoteService(serverURL, fileStore, artifactStore)
-	}
-
-	// Prospecting: same clean-swap pattern as Documents above — connected
-	// mode always wins when a seshat-server is reachable (the org's own
-	// Places API key lives there, see seshat-server's ProspectingSettings),
-	// falling back to the local prospectingService (built earlier, guarded
-	// by prospecting.IsConfigured()) only in standalone mode. Declared as
-	// the prospecting.Backend interface for the same nil-interface reason
-	// as knowledgeCloudBackend above.
-	var prospectingBackend prospecting.Backend
-	if serverURL != "" {
-		prospectingBackend = cloudprospecting.NewRemoteService(serverURL)
-	} else if prospectingService != nil {
-		prospectingBackend = prospectingService
 	}
 
 	vectorDatabase := database
@@ -839,7 +831,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		if embedderCfg.IsConfigured() {
 			embedder = ragembedder.New(embedderCfg)
 		}
-		ragService = rag.NewService(artifactStore, vs, embedder, nil)
+		ragService = rag.NewService(artifactStore, vs, embedder, documentChunker)
 		ragVectorStore = vs
 		ragEmbedder = embedder
 		backendName := string(vectorCfg.StoreKind)
@@ -925,7 +917,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		MCPServers:              startupMCPServers,
 		PlanStore:               &dbPlanStoreAdapter{store: planDocumentStore},
 		LongTermMemory:          longTermMemStore,
-		DoclingURL:              strings.TrimSpace(config.DoclingURL),
+		DocumentConverter:       documentreading.NewProcessorConverter(resolveDocumentConverter),
 		AutomationServiceURL:    strings.TrimSpace(config.AutomationServiceURL),
 		AutomationAPIKey:        strings.TrimSpace(os.Getenv("AUTOMATION_API_KEY")),
 		ImageGeneration:         defaultImageGenerationConfig(ctx, capabilityLinkStore, settingStore),
@@ -1087,10 +1079,10 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	// otherwise unchecked). No-op when RAG isn't configured at all
 	// (ragVectorStore/ragEmbedder stay nil).
 	if ragVectorStore != nil {
-		runtime.SetRAGComponents(artifactStore, ragVectorStore, ragEmbedder, corpusStore)
+		runtime.SetRAGComponents(artifactStore, ragVectorStore, ragEmbedder, documentChunker, corpusStore)
 	}
 
-	// Mirrors resolveDocling below: Settings > Capabilities can point the
+	// Mirrors resolveDocumentConverter below: Settings > Capabilities can point the
 	// agent's own speech_to_text tool at a locally running whisper.cpp
 	// server (see api.handleLocalSTTConfig, set by the Electron main
 	// process) instead of the operator's OPENAI_API_KEY default, without a
@@ -1126,26 +1118,6 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		}
 		return sdk.SandboxKindDocker, true
 	})
-
-	// resolveDocling lets Settings > Knowledge override, at runtime, which
-	// docling-serve instance to use (self-hosted, on the local network, or
-	// an organization's own) — without needing an env var or a restart.
-	// bootDoclingClient is the fallback: whatever config.DoclingURL resolved
-	// to at boot, which already reflects the managed local venv if
-	// cmd/api/main.go auto-started one (see docling_config.go's doc comment
-	// for the full priority order).
-	bootDoclingClient := buildDoclingClient(config.DoclingURL)
-	resolveDocling := func(ctx context.Context) *docling.Client {
-		if cfg, err := doclingConfigStore.Get(ctx); err == nil && cfg != nil {
-			if !cfg.Enabled {
-				return nil
-			}
-			if cfg.BaseURL != "" {
-				return docling.NewClient(cfg.BaseURL, docling.WithTimeout(doclingConversionTimeout))
-			}
-		}
-		return bootDoclingClient
-	}
 
 	// ActionConnectors: one entry per MCP-backed connector.ActionConnector
 	// (see internal/mcp/action and helps/roadmap.md Phase 3). "demo-crm" is
@@ -1210,7 +1182,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		ArtifactStore:            artifactStore,
 		RAGService:               ragService,
 		Monitoring:               queryClient.GetMonitoring(),
-		ResolveDoclingClient:     resolveDocling,
+		ResolveDocumentConverter: resolveDocumentConverter,
 		UserMemoryStore:          userMemoryStore,
 		LongTermMemoryStore:      longTermMemStore,
 		LongTermExtractor:        longTermExtractor,
@@ -1279,21 +1251,6 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		for _, tool := range toolsToRegister {
 			if err := queryClient.RegisterTool(tool); err != nil {
 				fmt.Fprintf(os.Stderr, "[API] Avertissement: tool inbox non enregistré: %v\n", err)
-			}
-		}
-	}
-
-	// Prospecting tools are registered globally (like web_search/
-	// knowledge_search) rather than tied to a dedicated agent persona - any
-	// agent can use them via its tool-slug list.
-	if prospectingBackend != nil {
-		prospectingAgentTools := []sdk.Tool{
-			prospectingTools.NewSweepAreaTool(prospectingBackend),
-			prospectingTools.NewListBusinessesTool(prospectingBackend),
-		}
-		for _, tool := range prospectingAgentTools {
-			if err := queryClient.RegisterTool(tool); err != nil {
-				fmt.Fprintf(os.Stderr, "[API] Avertissement: tool prospecting non enregistré: %v\n", err)
 			}
 		}
 	}
@@ -1442,7 +1399,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		EmbedderStore:         embedderConfigStore,
 		CapabilityLinkStore:   capabilityLinkStore,
 		ProviderSettingStore:  settingStore,
-		DoclingStore:          doclingConfigStore,
+		DocumentReaderStore:   documentReaderConfigStore,
 		RerankerStore:         rerankerConfigStore,
 		LocalSTTStore:         localSTTConfigStore,
 		SandboxConfigStore:    sandboxConfigStore,
@@ -1546,27 +1503,6 @@ func (a *dbPlanStoreAdapter) SetStatus(ctx context.Context, planID string, statu
 }
 
 // ─── Infrastructure helpers ───────────────────────────────────────────────────
-
-// doclingConversionTimeout replaces the SDK client's 120s default. This
-// same client serves both the ephemeral chat-attachment path (files.Service)
-// and RAG corpus ingestion (knowledge.Service, ResolveDoclingClient is
-// shared between them - see NewApp), and the latter now routes every
-// document through docling unconditionally (see internal/knowledge's
-// extractTextWithDocling doc comment for why). A several-hundred-page PDF
-// on a CPU-only docling-serve - layout detection runs on every page's
-// rasterized image regardless of native text - can genuinely take longer
-// than two minutes; 120s would fail it outright rather than let it finish.
-const doclingConversionTimeout = 15 * time.Minute
-
-// buildDoclingClient creates a docling client from a URL string.
-// Returns nil if the URL is empty (docling integration disabled).
-func buildDoclingClient(url string) *docling.Client {
-	url = strings.TrimSpace(url)
-	if url == "" {
-		return nil
-	}
-	return docling.NewClient(url, docling.WithTimeout(doclingConversionTimeout))
-}
 
 // logProviderDiscovery scans env vars and local services at startup and logs a
 // summary so operators know which providers are ready without manual inspection.

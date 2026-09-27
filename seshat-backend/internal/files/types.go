@@ -10,11 +10,15 @@ type File struct {
 	SessionID    string `json:"session_id,omitempty"`
 	Category     string `json:"category,omitempty"`
 	LocalPath    string `json:"local_path,omitempty"`
-	MarkdownPath string `json:"markdown_path,omitempty"` // set when docling conversion succeeded
-	Filename     string `json:"filename"`
-	ContentType  string `json:"content_type"`
-	Size         int64  `json:"size"`
-	SHA256       string `json:"sha256,omitempty"`
+	MarkdownPath string `json:"markdown_path,omitempty"` // set when document conversion succeeded
+	// DocumentReadStatus summarizes whether a normalized document read result
+	// is available for previews, chat tools or Knowledge ingestion.
+	DocumentReadStatus string `json:"document_read_status,omitempty"`
+	DocumentReadEngine string `json:"document_read_engine,omitempty"`
+	Filename           string `json:"filename"`
+	ContentType        string `json:"content_type"`
+	Size               int64  `json:"size"`
+	SHA256             string `json:"sha256,omitempty"`
 	// UserMessageIndex, when set, is the 0-based position of this file's
 	// owning user message within its session's transcript. See
 	// db.File.UserMessageIndex.
@@ -38,6 +42,6 @@ const (
 )
 
 // Which extensions get an eagerly-converted markdown sidecar on upload is
-// now decided by internal/docconvert.AllConvertibleExtensions - it's the
+// now decided by internal/documentreading.AllConvertibleExtensions - it's the
 // single source of truth shared with knowledge.Service's RAG ingestion path,
 // instead of each maintaining its own near-duplicate list.

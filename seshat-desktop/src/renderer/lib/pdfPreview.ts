@@ -1,11 +1,7 @@
 import * as pdfjs from 'pdfjs-dist'
+import { ensureDefaultPDFWorker } from './pdfWorker'
 
-// Not pdfjs-dist's own worker file directly - see pdfWorkerEntry.ts for why.
-// Vite's `new Worker(new URL(...))` form is what actually bundles the file
-// (resolving its import of pdf.worker.mjs) rather than copying it as-is the
-// way a plain `?url` import of a .ts source does.
-const pdfWorker = new Worker(new URL('./pdfWorkerEntry.ts', import.meta.url), { type: 'module' })
-pdfjs.GlobalWorkerOptions.workerPort = pdfWorker
+ensureDefaultPDFWorker()
 
 export type PDFPagePreview = {
   page: number
