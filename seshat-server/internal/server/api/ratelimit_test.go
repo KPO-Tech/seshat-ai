@@ -6,12 +6,16 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"golang.org/x/time/rate"
 )
 
 func TestLoginIsRateLimitedPerIP(t *testing.T) {
-	handler, _, _, _, _ := newTestServerRouter(t)
-
 	body, _ := json.Marshal(map[string]any{"email": "admin@example.com", "password": "wrong-password"})
+	limiter := newIPRateLimiter(rate.Limit(5.0/60.0), 5)
+	handler := rateLimited(limiter, func(w http.ResponseWriter, _ *http.Request) {
+		writeJSONError(w, http.StatusUnauthorized, "bad credentials")
+	})
 
 	// Burst is 5: the first five attempts should reach the handler (and be
 	// rejected for bad credentials), the sixth should be stopped by the

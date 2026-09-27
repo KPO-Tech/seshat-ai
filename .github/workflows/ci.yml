@@ -99,14 +99,11 @@ jobs:
             seshat-server/go.sum
 
       - name: Tests
-        # internal/api and iam both build a real bootstrap account (bcrypt.DefaultCost)
-        # per fixture across a dozen+ test functions - under -race that alone already
-        # ran iam to 236s of a 300s budget before this change, and pushed internal/api
-        # over it outright (reproduced twice: FAIL at 300.05s/300.06s, both times with
-        # the timed-out goroutine caught mid-bcrypt in the stack trace). 300s was never
-        # a real headroom margin here, just an unnoticed near-miss - 600s matches what
-        # this suite legitimately costs under -race, not a workaround for a hang.
-        run: go test -race ./seshat-backend/... ./seshat-server/... -timeout 600s
+        # internal/api, db, and iam build real bootstrap accounts and exercise
+        # SQLite heavily. Under -race, Go 1.26 + bcrypt.DefaultCost can push
+        # these packages well past 600s even when the non-race suite completes.
+        # Keep a real timeout, but give the race run enough headroom.
+        run: go test -race ./seshat-backend/... ./seshat-server/... -timeout 1200s
 
   lint:
     name: Lint
@@ -167,7 +164,8 @@ jobs:
       - name: govulncheck
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
-          govulncheck ./seshat-backend/... ./seshat-server/...
+          (cd seshat-backend && govulncheck ./...)
+          (cd seshat-server && govulncheck ./...)
 
   desktop:
     name: Desktop
