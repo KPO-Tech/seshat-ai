@@ -3,7 +3,7 @@ module github.com/EngineerProjects/seshat-ai/seshat-server
 go 1.26.6
 
 require (
-	github.com/KPO-Tech/seshat v1.2.52
+	github.com/KPO-Tech/seshat v1.2.54
 	github.com/coreos/go-oidc/v3 v3.20.0
 	github.com/crewjam/saml v0.5.1
 	github.com/glebarez/sqlite v1.11.0
@@ -40,6 +40,7 @@ require (
 	github.com/klauspost/cpuid/v2 v2.4.0 // indirect
 	github.com/lib/pq v1.12.3 // indirect
 	github.com/mattermost/xml-roundtrip-validator v0.1.0 // indirect
+	github.com/mattn/go-sqlite3 v1.14.48 // indirect
 	github.com/opensearch-project/opensearch-go/v5 v5.0.0-rc6 // indirect
 	github.com/pierrec/lz4/v4 v4.1.28 // indirect
 	github.com/redis/go-redis/v9 v9.22.0 // indirect
@@ -48,6 +49,7 @@ require (
 	github.com/russellhaering/goxmldsig v1.4.0 // indirect
 	github.com/segmentio/asm v1.1.3 // indirect
 	github.com/segmentio/encoding v0.5.4 // indirect
+	github.com/sergi/go-diff v1.3.1 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.2.0 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
