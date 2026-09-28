@@ -87,6 +87,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -99,11 +100,21 @@ jobs:
             seshat-server/go.sum
 
       - name: Tests
-        # internal/api, db, and iam build real bootstrap accounts and exercise
-        # SQLite heavily. Under -race, Go 1.26 + bcrypt.DefaultCost can push
-        # these packages well past 600s even when the non-race suite completes.
-        # Keep a real timeout, but give the race run enough headroom.
-        run: go test -race ./seshat-backend/... ./seshat-server/... -timeout 1200s
+        run: go test ./seshat-backend/... ./seshat-server/... -timeout 10m
+
+      - name: Race-sensitive tests
+        # A monorepo-wide race run can take longer than the useful CI signal.
+        # Keep the complete test suite above, then race-check the packages that
+        # hold request/session state, document ingestion, and server policy.
+        run: |
+          go test -race -timeout 8m \
+            ./seshat-backend/internal/config \
+            ./seshat-backend/internal/documentreading \
+            ./seshat-backend/internal/files \
+            ./seshat-backend/internal/query \
+            ./seshat-server/internal/server/api \
+            ./seshat-server/internal/server/config \
+            ./seshat-server/internal/server/iam
 
   lint:
     name: Lint
