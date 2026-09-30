@@ -1325,7 +1325,23 @@ func (s *Service) recordProviderLoginAttempt(providerID string, loginErr error) 
 
 // bcryptCost matches the "cost 12 minimum" policy documented in SECURITY.md.
 // bcrypt.DefaultCost (10) is bcrypt's own library default, not this project's.
-const bcryptCost = 12
+// A var (not const) so SetBcryptCostForTesting can lower it in test binaries -
+// production code never calls that setter, so this always stays 12 outside tests.
+var bcryptCost = 12
+
+// SetBcryptCostForTesting lowers the cost hashPassword uses to bcrypt.MinCost
+// for the lifetime of the calling test binary, and returns a restore func.
+// Tests that create many accounts (Bootstrap, CreateUser, invitations, SCIM
+// provisioning, ...) each pay a real cost-12 bcrypt hash otherwise - fine
+// individually, but the combined cost across this package's test suite is
+// what pushed CI's `-race` run of internal/server/iam and internal/server/api
+// (which calls into iam.CreateUser) past their 8-minute timeout as the suite
+// grew. Never call this outside a test binary.
+func SetBcryptCostForTesting(cost int) (restore func()) {
+	prev := bcryptCost
+	bcryptCost = cost
+	return func() { bcryptCost = prev }
+}
 
 func hashPassword(password string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcryptCost)
