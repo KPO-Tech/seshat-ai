@@ -91,9 +91,6 @@ func (app *App) handleApplications(w http.ResponseWriter, r *http.Request) {
 			writeIAMError(w, err)
 			return
 		}
-		for i := range applications {
-			applications[i].ClientSecret = redactSecret(applications[i].ClientSecret)
-		}
 		writeListResponse(w, http.StatusOK, "applications", applications, query, int(total))
 	case http.MethodPost:
 		var req createApplicationRequest
@@ -156,7 +153,6 @@ func (app *App) handleApplicationByID(w http.ResponseWriter, r *http.Request) {
 			writeIAMError(w, err)
 			return
 		}
-		application.ClientSecret = redactSecret(application.ClientSecret)
 		writeJSON(w, http.StatusOK, application)
 	case http.MethodPut:
 		var req updateApplicationRequest
@@ -195,7 +191,6 @@ func (app *App) handleApplicationByID(w http.ResponseWriter, r *http.Request) {
 			writeIAMError(w, err)
 			return
 		}
-		application.ClientSecret = redactSecret(application.ClientSecret)
 		writeJSON(w, http.StatusOK, application)
 	case http.MethodDelete:
 		if err := app.backend.IAM.DeleteApplication(r.Context(), principal, applicationID); err != nil {

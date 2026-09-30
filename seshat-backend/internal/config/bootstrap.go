@@ -7,36 +7,62 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	neturl "net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
 
 	seshat "github.com/EngineerProjects/seshat-ai/seshat-backend/internal"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/agents"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/api"
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudagents"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudautomation"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudidentity"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudlongterm"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudmcp"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudmemories"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudpreferences"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudquotas"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudsettings"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudwebsearch"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/agents"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/automation"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/hooks"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/identity"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/knowledge"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/longterm"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/mcp"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/memories"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/preferences"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/quotas"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/settings"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/websearch"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/connector"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/dataflowsecrets"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/documentreading"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox/gmail"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox/outlook"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox/teams"
+	inboxAgentTools "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox/tool"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox/whatsapp"
 	backendknowledge "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge/azureblob"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge/gdrive"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge/onedrive"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge/s3"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge/sharepoint"
+	knowledgeAgentTools "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge/tool"
+	mcpAction "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/mcp/action"
 	backendmemories "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/memories"
 	backendpreferences "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/preferences"
 	backendquery "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/query"
 	backendquotas "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/quotas"
 	backendsettings "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/settings"
 	appconfig "github.com/KPO-Tech/seshat/pkg/config"
-	"github.com/KPO-Tech/seshat/pkg/docling"
+	"github.com/KPO-Tech/seshat/pkg/dataflow"
+	dataflowexpr "github.com/KPO-Tech/seshat/pkg/dataflow/expr"
+	dataflownodes "github.com/KPO-Tech/seshat/pkg/dataflow/nodes"
+	dataflowdatabase "github.com/KPO-Tech/seshat/pkg/dataflow/nodes/database"
+	"github.com/KPO-Tech/seshat/pkg/documentreader"
 	"github.com/KPO-Tech/seshat/pkg/mcp"
 	longterm "github.com/KPO-Tech/seshat/pkg/memory/longterm"
 	"github.com/KPO-Tech/seshat/pkg/monitoring"
@@ -82,6 +108,81 @@ func serverReachable(ctx context.Context, url string) bool {
 	}
 	defer resp.Body.Close()
 	return resp.StatusCode < 500
+}
+
+func discoverElectronBrowserRemoteControlURL(ctx context.Context) string {
+	port := strings.TrimSpace(os.Getenv("SESHAT_ELECTRON_REMOTE_DEBUG_PORT"))
+	if port == "" {
+		port = "9333"
+	}
+	if _, err := strconv.Atoi(port); err != nil {
+		return ""
+	}
+	reqCtx, cancel := context.WithTimeout(ctx, 350*time.Millisecond)
+	defer cancel()
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, "http://127.0.0.1:"+port+"/json/version", nil)
+	if err != nil {
+		return ""
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return ""
+	}
+	var payload struct {
+		WebSocketDebuggerURL string `json:"webSocketDebuggerUrl"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(payload.WebSocketDebuggerURL)
+}
+
+// resolveElectronBrowserSessionTarget asks the Electron main process (via its
+// small local bridge server - see seshat-desktop/src/main/browser-bridge.ts)
+// to create/reuse the desktop-visible browser tab dedicated to sessionID, and
+// returns its CDP target ID so the SDK's browser session can attach directly
+// to it (see sdk.ClientConfig.BrowserSessionTargetResolver). Returns
+// ok=false whenever the bridge isn't configured or reachable - e.g. dev mode,
+// or a platform without the desktop shell at all - so callers fall back to
+// the SDK's normal incognito-per-session behavior with no special-casing.
+func resolveElectronBrowserSessionTarget(ctx context.Context, sessionID sdk.SessionID) (string, bool) {
+	// Same shared-default-port convention as discoverElectronBrowserRemoteControlURL
+	// above: works out of the box in dev mode (both processes started manually,
+	// neither passing env vars to the other) as long as neither side overrode it.
+	port := strings.TrimSpace(os.Getenv("SESHAT_ELECTRON_BRIDGE_PORT"))
+	if port == "" {
+		port = "9334"
+	}
+	if _, err := strconv.Atoi(port); err != nil {
+		return "", false
+	}
+	reqCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	url := "http://127.0.0.1:" + port + "/session-target?sessionId=" + neturl.QueryEscape(string(sessionID))
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", false
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", false
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", false
+	}
+	var payload struct {
+		TargetID string `json:"target_id"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return "", false
+	}
+	targetID := strings.TrimSpace(payload.TargetID)
+	return targetID, targetID != ""
 }
 
 // BuildApp wires all infrastructure (DB, stores, query runtime, RAG, MCP, skills)
@@ -159,12 +260,6 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		return nil, nil, fmt.Errorf("init api key store: %w", err)
 	}
 
-	groupStore, err := db.NewGroupStore(database)
-	if err != nil {
-		_ = cleanup()
-		return nil, nil, fmt.Errorf("init group store: %w", err)
-	}
-
 	sessionOwnershipStore, err := db.NewSessionOwnershipStore(database)
 	if err != nil {
 		_ = cleanup()
@@ -187,6 +282,176 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	if err != nil {
 		_ = cleanup()
 		return nil, nil, fmt.Errorf("init ingestion job store: %w", err)
+	}
+
+	channelAccountStore, err := db.NewChannelAccountStore(database)
+	if err != nil {
+		_ = cleanup()
+		return nil, nil, fmt.Errorf("init channel account store: %w", err)
+	}
+	inboxContactStore, err := db.NewInboxContactStore(database)
+	if err != nil {
+		_ = cleanup()
+		return nil, nil, fmt.Errorf("init inbox contact store: %w", err)
+	}
+	inboxThreadStore, err := db.NewInboxThreadStore(database)
+	if err != nil {
+		_ = cleanup()
+		return nil, nil, fmt.Errorf("init inbox thread store: %w", err)
+	}
+	inboxMessageStore, err := db.NewInboxMessageStore(database)
+	if err != nil {
+		_ = cleanup()
+		return nil, nil, fmt.Errorf("init inbox message store: %w", err)
+	}
+	inboxService := inbox.NewService(channelAccountStore, inboxContactStore, inboxThreadStore, inboxMessageStore)
+	inboxWorkflowRows, err := db.NewInboxWorkflowStore(database)
+	if err != nil {
+		_ = cleanup()
+		return nil, nil, fmt.Errorf("init inbox workflow store: %w", err)
+	}
+	inboxService.WithWorkflowStore(inbox.NewWorkflowStore(inboxWorkflowRows))
+	// The executor half (WithWorkflowExecutor) is wired further down, once
+	// backendApp.Query exists - see the comment next to
+	// cloudAutomationExecutor, whose exact pattern it mirrors.
+	// Each channel connector is registered only when its credentials are
+	// actually configured - same pattern as document-reader/web search providers
+	// below: an unconfigured channel just doesn't show up as connectable,
+	// rather than the whole inbox domain failing to start.
+	if gmail.IsConfigured() {
+		gmailOAuthConfig, err := gmail.BaseOAuthConfig()
+		if err != nil {
+			_ = cleanup()
+			return nil, nil, fmt.Errorf("init gmail oauth config: %w", err)
+		}
+		inboxService.RegisterConnector(gmail.NewConnector(gmailOAuthConfig))
+		fmt.Printf("[API] Inbox: connecteur Gmail activé\n")
+
+		// Gmail is poll-based (unlike WhatsApp's persistent push connection),
+		// and there is no local job scheduler anymore for standalone
+		// deployments - automation now runs exclusively through a connected
+		// seshat-server, configured via seshat-console (see
+		// internal/cloudautomation's package doc), which a standalone
+		// desktop install (like a first pilot customer's) won't have. This
+		// loop is deliberately narrow - keeping one connector's data fresh
+		// in the background, the way any ordinary email client polls, not a
+		// general-purpose automation system. Connected-mode users get this
+		// for free too; a seshat-console-configured job is a future,
+		// additive option for them, not a requirement.
+		go runGmailSyncLoop(inboxService)
+	}
+
+	// Outlook Mail and Teams share one Microsoft OAuth client
+	// (MICROSOFT_OAUTH_CLIENT_ID) with the SharePoint Knowledge connector
+	// below - Graph scopes are additive across grants, so one Entra app
+	// registration covers all three. Same graceful-skip pattern as Gmail.
+	if outlook.IsConfigured() {
+		outlookOAuthConfig, err := outlook.BaseOAuthConfig()
+		if err != nil {
+			_ = cleanup()
+			return nil, nil, fmt.Errorf("init outlook oauth config: %w", err)
+		}
+		inboxService.RegisterConnector(outlook.NewConnector(outlookOAuthConfig))
+		fmt.Printf("[API] Inbox: connecteur Outlook activé\n")
+		go runMicrosoftInboxSyncLoop(inboxService, inbox.ChannelOutlook)
+	}
+	if teams.IsConfigured() {
+		teamsOAuthConfig, err := teams.BaseOAuthConfig()
+		if err != nil {
+			_ = cleanup()
+			return nil, nil, fmt.Errorf("init teams oauth config: %w", err)
+		}
+		inboxService.RegisterConnector(teams.NewConnector(teamsOAuthConfig))
+		fmt.Printf("[API] Inbox: connecteur Teams activé\n")
+		go runMicrosoftInboxSyncLoop(inboxService, inbox.ChannelTeams)
+	}
+
+	// WhatsApp shares this app's own database connection for whatsmeow's
+	// session tables (see whatsapp.NewManager's doc) - only possible
+	// when the main DB is one whatsmeow's dbutil actually understands
+	// (SQLite or Postgres, not MySQL). On an unsupported driver, WhatsApp
+	// just doesn't register as connectable, same graceful-skip pattern as
+	// every other optional integration here.
+	var whatsappManager *whatsapp.Manager
+	if waDialect, ok := whatsappDialectFor(database.Driver()); ok {
+		sqlDB, err := database.GormDB().DB()
+		if err != nil {
+			_ = cleanup()
+			return nil, nil, fmt.Errorf("get sql.DB for whatsapp manager: %w", err)
+		}
+		whatsappManager, err = whatsapp.NewManager(ctx, sqlDB, waDialect, inboxService.IngestMessage, inboxService.MarkAccountError)
+		if err != nil {
+			_ = cleanup()
+			return nil, nil, fmt.Errorf("init whatsapp manager: %w", err)
+		}
+		inboxService.RegisterConnector(whatsapp.NewConnector(whatsappManager))
+		fmt.Printf("[API] Inbox: connecteur WhatsApp activé\n")
+
+		// Reconnect every already-paired WhatsApp account so incoming
+		// messages resume flowing immediately on restart, without waiting
+		// for a user action - mirrors how Gmail's connector is stateless
+		// per-call, except WhatsApp needs its persistent connection
+		// actually re-established, not just "available to call".
+		if accounts, err := inboxService.ListConnectedAccountsByChannel(ctx, inbox.ChannelWhatsApp); err == nil {
+			for _, account := range accounts {
+				if err := whatsappManager.Reconnect(ctx, account.ID, account.ExternalAccountID); err != nil {
+					fmt.Fprintf(os.Stderr, "[API] Avertissement: reconnexion WhatsApp échouée pour %s: %v\n", account.DisplayName, err)
+					// Without this, the account's DB status stays "connected"
+					// (last known-good state) even though no live client exists -
+					// the Accounts page would show a green tile that will never
+					// sync or send again until the user notices and manually
+					// reconnects. Mirrors the live events.LoggedOut handler in
+					// whatsapp/manager.go, which marks the same way.
+					if markErr := inboxService.MarkAccountError(ctx, account.ID, inbox.AccountStatusError, err.Error()); markErr != nil {
+						fmt.Fprintf(os.Stderr, "[API] Avertissement: échec de l'enregistrement de l'erreur de compte WhatsApp pour %s: %v\n", account.DisplayName, markErr)
+					}
+				}
+			}
+		}
+		cleanups = append(cleanups, func() error { whatsappManager.DisconnectAll(); return nil })
+	} else {
+		fmt.Printf("[API] Inbox: connecteur WhatsApp désactivé (base de données %q non supportée par whatsmeow)\n", database.Driver())
+	}
+
+	// Google Drive Knowledge connector - same env-var-gated, graceful-skip
+	// pattern as Gmail above. Read-only, manual sync trigger only in this
+	// first version (see helps/roadmap.md Phase 1) - no background loop like
+	// Gmail's, since there's no local scheduler to run one on and syncing a
+	// whole Drive is a heavier operation than polling a mailbox.
+	connectorAccountStore, err := db.NewConnectorAccountStore(database)
+	if err != nil {
+		_ = cleanup()
+		return nil, nil, fmt.Errorf("init connector account store: %w", err)
+	}
+	var knowledgeGDriveConnector *gdrive.Connector
+	if gdrive.IsConfigured() {
+		gdriveOAuthConfig, err := gdrive.BaseOAuthConfig()
+		if err != nil {
+			_ = cleanup()
+			return nil, nil, fmt.Errorf("init google drive oauth config: %w", err)
+		}
+		knowledgeGDriveConnector = gdrive.NewConnector(gdriveOAuthConfig)
+		fmt.Printf("[API] Knowledge: connecteur Google Drive activé\n")
+	}
+	var knowledgeSharePointConnector *sharepoint.Connector
+	if sharepoint.IsConfigured() {
+		sharepointOAuthConfig, err := sharepoint.BaseOAuthConfig()
+		if err != nil {
+			_ = cleanup()
+			return nil, nil, fmt.Errorf("init sharepoint oauth config: %w", err)
+		}
+		knowledgeSharePointConnector = sharepoint.NewConnector(sharepointOAuthConfig)
+		fmt.Printf("[API] Knowledge: connecteur SharePoint activé\n")
+	}
+	var knowledgeOneDriveConnector *onedrive.Connector
+	if onedrive.IsConfigured() {
+		onedriveOAuthConfig, err := onedrive.BaseOAuthConfig()
+		if err != nil {
+			_ = cleanup()
+			return nil, nil, fmt.Errorf("init onedrive oauth config: %w", err)
+		}
+		knowledgeOneDriveConnector = onedrive.NewConnector(onedriveOAuthConfig)
+		fmt.Printf("[API] Knowledge: connecteur OneDrive activé\n")
 	}
 
 	settingStore, err := db.NewProviderSettingStore(database)
@@ -214,9 +479,21 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	var preferencesProvider backendpreferences.Provider
 	var webSearchCloudClient *cloudwebsearch.Client
 	var mcpCloudClient *cloudmcp.Client
+	var hooksCloudClient *cloudhooks.Client
 	var memoriesProvider backendmemories.Provider
 	var agentsCloudClient *cloudagents.Client
 	var quotaProvider backendquotas.Provider
+	// Constructed here (not down in the "Cloud automation" section below,
+	// where the rest of cloudautomation's pieces are wired) because
+	// cloudsettings.NewProvider needs it immediately below - the same
+	// PolicyStore instance is reused later for the automation Service/Worker,
+	// since it's a thin stateless wrapper around the shared *db.DB (safe to
+	// construct once and hand out, unlike the DB itself).
+	cloudAutomationPolicyStore := cloudautomation.NewPolicyStore(database)
+	// Reused later for the automation Service/Worker, same reasoning as
+	// cloudAutomationPolicyStore above - a thin stateless wrapper around the
+	// shared *db.DB, safe to construct once.
+	cloudAutomationVersionStore := cloudautomation.NewVersionStore(database)
 	serverURL := ""
 	if serverReachable(ctx, defaultServerURL) {
 		serverURL = defaultServerURL
@@ -230,10 +507,11 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		// anyone whose actual membership didn't match it.
 		authProvider = cloudidentity.NewProvider(serverURL, cloudidentity.NewCache(database), identityStore)
 		localSettingsProvider := backendsettings.NewLocalProvider(settingStore, oauthStore, nil)
-		settingsProvider = cloudsettings.NewProvider(serverURL, localSettingsProvider)
+		settingsProvider = cloudsettings.NewProvider(serverURL, localSettingsProvider, cloudAutomationPolicyStore)
 		preferencesProvider = cloudpreferences.NewProvider(serverURL)
 		webSearchCloudClient = cloudwebsearch.NewClient(serverURL)
 		mcpCloudClient = cloudmcp.NewClient(serverURL)
+		hooksCloudClient = cloudhooks.NewClient(serverURL)
 		memoriesProvider = cloudmemories.NewProvider(serverURL)
 		agentsCloudClient = cloudagents.NewClient(serverURL)
 		quotaProvider = cloudquotas.NewProvider(serverURL)
@@ -299,10 +577,22 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		return nil, nil, fmt.Errorf("init embedder config store: %w", err)
 	}
 
-	doclingConfigStore, err := db.NewDoclingConfigStore(database)
+	capabilityLinkStore, err := db.NewCapabilityLinkStore(database)
 	if err != nil {
 		_ = cleanup()
-		return nil, nil, fmt.Errorf("init docling config store: %w", err)
+		return nil, nil, fmt.Errorf("init capability link store: %w", err)
+	}
+
+	documentReaderConfigStore, err := db.NewDocumentReaderConfigStore(database)
+	if err != nil {
+		_ = cleanup()
+		return nil, nil, fmt.Errorf("init document reader config store: %w", err)
+	}
+
+	rerankerConfigStore, err := db.NewRerankerConfigStore(database)
+	if err != nil {
+		_ = cleanup()
+		return nil, nil, fmt.Errorf("init reranker config store: %w", err)
 	}
 
 	localSTTConfigStore, err := db.NewLocalSTTConfigStore(database)
@@ -311,6 +601,42 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		return nil, nil, fmt.Errorf("init local stt config store: %w", err)
 	}
 
+	sandboxConfigStore, err := db.NewSandboxConfigStore(database)
+	if err != nil {
+		_ = cleanup()
+		return nil, nil, fmt.Errorf("init sandbox config store: %w", err)
+	}
+
+	resolveDocumentConverter := func(ctx context.Context) documentreader.Converter {
+		cfg, _ := documentReaderConfigStore.Get(ctx)
+		baseURL := strings.TrimSpace(config.DocumentReaderURL)
+		preferExternal := false
+		externalEnabled := false
+		if cfg != nil {
+			externalEnabled = cfg.Enabled
+			preferExternal = cfg.PreferExternal
+			if strings.TrimSpace(cfg.BaseURL) != "" {
+				baseURL = strings.TrimSpace(cfg.BaseURL)
+			}
+		} else if baseURL != "" {
+			externalEnabled = true
+		}
+
+		var external documentreader.Converter
+		if externalEnabled && baseURL != "" {
+			if client, err := documentreading.NewSeshatIntelligenceClient(baseURL); err == nil {
+				external = client
+			}
+		}
+		return documentreading.NewPolicyConverterWithLocalAdvanced(documentreading.NewNativeDocConverter(), external, preferExternal)
+	}
+	if documentreading.NativeDocAutoInitEnabled() {
+		if capabilities, initErr := documentreading.InitNativeDocRuntime(); initErr != nil {
+			fmt.Fprintf(os.Stderr, "[API] Avertissement native OCR: auto-init échouée: %v\n", initErr)
+		} else if capabilities.NativeDocReady {
+			fmt.Printf("[API] Native OCR initialisé: models=%s\n", documentreading.NativeDocModelsDir())
+		}
+	}
 	userMemoryStore, err := db.NewUserMemoryStore(database)
 	if err != nil {
 		_ = cleanup()
@@ -322,6 +648,8 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		_ = cleanup()
 		return nil, nil, fmt.Errorf("init storage config store: %w", err)
 	}
+
+	dataflowSecretsService := dataflowsecrets.New(database)
 
 	userPreferencesStore, err := db.NewUserPreferencesStore(database)
 	if err != nil {
@@ -339,6 +667,12 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	if err != nil {
 		_ = cleanup()
 		return nil, nil, fmt.Errorf("init mcp org server approval store: %w", err)
+	}
+
+	hookOrgApprovalStore, err := db.NewHookOrgApprovalStore(database)
+	if err != nil {
+		_ = cleanup()
+		return nil, nil, fmt.Errorf("init hook org approval store: %w", err)
 	}
 
 	agentDefinitionStore, err := db.NewAgentDefinitionStore(database)
@@ -377,10 +711,44 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	} else {
 		fmt.Printf("[API] Artifact store initialisé: %s\n", storage.GetProviderType())
 	}
+	var documentChunkCache rag.ChunkCache = rag.NewMemoryChunkCache()
+	if artifactStore != nil {
+		documentChunkCache = rag.NewArtifactChunkCache(artifactStore)
+	}
+	documentChunker := rag.NewCachedDocumentChunker(
+		rag.NewHybridDocumentChunkerForProfile(
+			documentreading.NewDynamicHybridChunker(resolveDocumentConverter),
+			rag.ChunkProfile{Name: rag.ChunkProfileStructured, MaxTokens: 1024, OverlapTokens: 128},
+			documentreader.ChunkOptions{},
+		),
+		documentChunkCache,
+	)
+	// Shares the same blob store as internal/files - inbox attachments live
+	// under their own "inbox-attachments/" key prefix, no separate storage
+	// mechanism. Nil-tolerant, same as files.NewService below: without it,
+	// attachment metadata still shows up, downloads just aren't available.
+	inboxService.WithArtifactStore(artifactStore)
 
-	vectorStoreKind := vector.StoreKind(config.VectorStore)
+	// Documents (knowledge): standalone local knowledge.Service, or
+	// cloudknowledge.RemoteService proxying to a connected seshat-server's
+	// own org-wide corpora — both implement knowledge.Backend, and NewApp
+	// falls back to the local one when this is nil. See
+	// internal/cloudknowledge's package doc for why this is a clean swap
+	// rather than an additive merge like MCP.
+	//
+	// Declared as the knowledge.Backend interface (not *cloudknowledge.
+	// RemoteService) so that leaving it unset in standalone mode is a true
+	// nil interface — assigning a nil *RemoteService to an interface-typed
+	// Dependencies field would produce a non-nil interface holding a nil
+	// pointer, defeating NewApp's `if knowledgeService == nil` fallback
+	// check. Same reasoning as longTermMemStore above.
+	var knowledgeCloudBackend backendknowledge.Backend
+	if serverURL != "" {
+		knowledgeCloudBackend = cloudknowledge.NewRemoteService(serverURL, fileStore, artifactStore)
+	}
+
 	vectorDatabase := database
-	if vectorStoreKind == vector.StorePgVector && strings.TrimSpace(config.PgVectorDSN) != "" {
+	if vector.StoreKind(config.VectorStore) == vector.StorePgVector && strings.TrimSpace(config.PgVectorDSN) != "" {
 		vectorDB, err := db.Open(ctx, db.Config{
 			Driver:      db.DriverPostgres,
 			DSN:         strings.TrimSpace(config.PgVectorDSN),
@@ -396,6 +764,8 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	}
 
 	var ragService *rag.Service
+	var ragVectorStore vector.Store
+	var ragEmbedder rag.Embedder
 	embedderCfg := &ragembedder.Config{
 		BaseURL:  config.EmbedderBaseURL,
 		APIKey:   config.EmbedderAPIKey,
@@ -404,6 +774,13 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	}
 	if dbEmb, dbErr := embedderConfigStore.Get(ctx); dbErr == nil && dbEmb != nil && dbEmb.Enabled && dbEmb.BaseURL != "" && dbEmb.Model != "" {
 		apiKeyFromDB, _ := embedderConfigStore.GetDecryptedAPIKey(ctx)
+		// An opt-in capability link (Settings > Providers, "Use my <provider>
+		// key" - see internal/db/capability_links.go) takes precedence over
+		// the embedder's own standalone key, so the same OpenAI credential
+		// configured for chat doesn't have to be pasted a second time here.
+		if _, linkedKey, ok := resolveCapabilityCredential(ctx, capabilityLinkStore, settingStore, backendsettings.CapabilityEmbeddings); ok {
+			apiKeyFromDB = linkedKey
+		}
 		embedderCfg = &ragembedder.Config{
 			BaseURL:  dbEmb.BaseURL,
 			APIKey:   apiKeyFromDB,
@@ -412,54 +789,81 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		}
 		fmt.Printf("[API] Embedder config chargée depuis DB: provider=%s model=%s\n", dbEmb.Provider, dbEmb.Model)
 	}
-	if embedderCfg.IsConfigured() {
-		embedder := ragembedder.New(embedderCfg)
-		pgvectorCreateExtension := config.PgVectorCreateExtension
-		vectorDim := 1536
-		if raw := strings.TrimSpace(os.Getenv("SESHAT_VECTOR_DIM")); raw != "" {
-			if n, err := fmt.Sscanf(raw, "%d", &vectorDim); n != 1 || err != nil {
-				fmt.Fprintf(os.Stderr, "[API] Avertissement: SESHAT_VECTOR_DIM invalide (%q), utilise 1536\n", raw)
-				vectorDim = 1536
-			} else if vectorDim < 64 || vectorDim > 4096 {
-				fmt.Fprintf(os.Stderr, "[API] Avertissement: SESHAT_VECTOR_DIM hors limites (%d, accepté: 64-4096), utilise 1536\n", vectorDim)
-				vectorDim = 1536
-			}
+	// The vector store (and so ragService) is built regardless of whether an
+	// embedder is configured — rag.Service itself already degrades to
+	// vectorless/BM25-only ingest+search when its embedder is nil (see the
+	// SDK's internal/rag/service.go), so gating construction on
+	// embedderCfg.IsConfigured() used to disable the whole knowledge feature
+	// instead of just skipping vector search. Configuring an embedder later
+	// and re-ingesting upgrades existing chunks in place (Ingest upserts by
+	// deterministic key), no need to re-upload anything.
+	pgvectorCreateExtension := config.PgVectorCreateExtension
+	vectorDim := 1536
+	if raw := strings.TrimSpace(os.Getenv("SESHAT_VECTOR_DIM")); raw != "" {
+		if n, err := fmt.Sscanf(raw, "%d", &vectorDim); n != 1 || err != nil {
+			fmt.Fprintf(os.Stderr, "[API] Avertissement: SESHAT_VECTOR_DIM invalide (%q), utilise 1536\n", raw)
+			vectorDim = 1536
+		} else if vectorDim < 64 || vectorDim > 4096 {
+			fmt.Fprintf(os.Stderr, "[API] Avertissement: SESHAT_VECTOR_DIM hors limites (%d, accepté: 64-4096), utilise 1536\n", vectorDim)
+			vectorDim = 1536
 		}
-		vectorCfg := vector.Config{
-			StoreKind:                  vectorStoreKind,
-			DB:                         vector.NewDBHandle(string(vectorDatabase.Driver()), vectorDatabase.DSN()),
-			Dim:                        vectorDim,
-			QdrantHost:                 config.QdrantHost,
-			QdrantPort:                 config.QdrantPort,
-			QdrantAPIKey:               config.QdrantAPIKey,
-			QdrantPrefix:               config.QdrantPrefix,
-			PgVectorCreateExtension:    &pgvectorCreateExtension,
-			PgVectorIndexMethod:        config.PgVectorIndexMethod,
-			PgVectorHNSWM:              config.PgVectorHNSWM,
-			PgVectorHNSWEfConstruction: config.PgVectorHNSWEF,
-			PgVectorIVFFlatLists:       config.PgVectorIVFFlatLists,
-			ChromaURL:                  config.ChromaURL,
-			ChromaAPIKey:               config.ChromaAPIKey,
-			ChromaTenant:               config.ChromaTenant,
-			ChromaDatabase:             config.ChromaDatabase,
+	}
+	vectorCfg := vector.Config{
+		StoreKind:                  vector.StoreKind(config.VectorStore),
+		DB:                         vector.NewDBHandle(string(vectorDatabase.Driver()), vectorDatabase.DSN()),
+		Dim:                        vectorDim,
+		QdrantHost:                 config.QdrantHost,
+		QdrantPort:                 config.QdrantPort,
+		QdrantAPIKey:               config.QdrantAPIKey,
+		QdrantPrefix:               config.QdrantPrefix,
+		PgVectorCreateExtension:    &pgvectorCreateExtension,
+		PgVectorIndexMethod:        config.PgVectorIndexMethod,
+		PgVectorHNSWM:              config.PgVectorHNSWM,
+		PgVectorHNSWEfConstruction: config.PgVectorHNSWEF,
+		PgVectorIVFFlatLists:       config.PgVectorIVFFlatLists,
+		ChromaURL:                  config.ChromaURL,
+		ChromaAPIKey:               config.ChromaAPIKey,
+		ChromaTenant:               config.ChromaTenant,
+		ChromaDatabase:             config.ChromaDatabase,
+	}
+	if vs, err := vector.NewStore(ctx, vectorCfg); err == nil {
+		var embedder rag.Embedder
+		if embedderCfg.IsConfigured() {
+			embedder = ragembedder.New(embedderCfg)
 		}
-		if vs, err := vector.NewStore(ctx, vectorCfg); err == nil {
-			ragService = rag.NewService(artifactStore, vs, embedder, nil)
-			backendName := string(vectorCfg.StoreKind)
-			if backendName == "" {
-				backendName = "sqlite"
-			}
+		ragService = rag.NewService(artifactStore, vs, embedder, documentChunker)
+		ragVectorStore = vs
+		ragEmbedder = embedder
+		backendName := string(vectorCfg.StoreKind)
+		if backendName == "" {
+			backendName = "sqlite"
+		}
+		if embedderCfg.IsConfigured() {
 			fmt.Printf("[API] RAG service initialisé: embedder=%s model=%s backend=%s\n", embedderCfg.Provider, embedderCfg.Model, backendName)
-
-			if key := strings.TrimSpace(os.Getenv("LANGSEARCH_API_KEY")); key != "" {
-				ragService.SetReranker(reranker.NewLangSearchRerankerWithKey(key))
-				fmt.Printf("[API] RAG reranker: LangSearch activé\n")
-			}
 		} else {
-			fmt.Fprintf(os.Stderr, "[API] Avertissement: vector store non disponible (%v)\n", err)
+			fmt.Printf("[API] RAG service initialisé en mode vectorless (BM25) — aucun embedder configuré, backend=%s\n", backendName)
+		}
+
+		if dbReranker, dbErr := rerankerConfigStore.Get(ctx); dbErr == nil && dbReranker != nil && dbReranker.Enabled && dbReranker.BaseURL != "" {
+			apiKey, _ := rerankerConfigStore.GetDecryptedAPIKey(ctx)
+			ragService.SetReranker(reranker.New(reranker.Config{
+				BaseURL: dbReranker.BaseURL,
+				APIKey:  apiKey,
+				Model:   dbReranker.Model,
+			}))
+			fmt.Printf("[API] RAG reranker actif: model=%s\n", dbReranker.Model)
+		} else {
+			// RAG_RERANK_URL points at any Cohere/TEI-compatible endpoint
+			// (self-hosted TEI/vLLM serving BAAI/bge-reranker-v2-m3, free and
+			// no API key needed) - falls back to LangSearch's hosted API if
+			// only LANGSEARCH_API_KEY is set. See reranker.FromEnv's doc.
+			if r := reranker.NewFromEnv(); r.IsConfigured() {
+				ragService.SetReranker(r)
+				fmt.Printf("[API] RAG reranker actif (second passage sur les résultats de recherche)\n")
+			}
 		}
 	} else {
-		fmt.Fprintf(os.Stderr, "[API] Avertissement: embedder non configuré (RAG_EMBEDDING_URL + RAG_EMBEDDING_MODEL requis) — knowledge ingest/search désactivé\n")
+		fmt.Fprintf(os.Stderr, "[API] Avertissement: vector store non disponible (%v)\n", err)
 	}
 
 	// Auto-import mcp.json into DB so the UI and runtime share the same state.
@@ -478,18 +882,36 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		fmt.Printf("[API] MCP: %d server(s) chargés depuis la DB\n", len(dbServers))
 	}
 
+	browserRemoteControlURL := strings.TrimSpace(config.BrowserRemoteControlURL)
+	if browserRemoteControlURL == "" {
+		browserRemoteControlURL = discoverElectronBrowserRemoteControlURL(ctx)
+	}
+
 	titleBroker := backendquery.NewTitleBroker()
 	defaultModel := appconfig.ParseModelIdentifier(config.Model)
+	titleModel := appconfig.ParseModelIdentifier(config.TitleModel)
 	queryClientConfig := &sdk.ClientConfig{
-		APIKey:                  config.APIKey,
-		Model:                   defaultModel,
-		MaxTokens:               backendquery.InteractiveMaxTokensForModel(defaultModel),
-		PermissionMode:          sdk.PermissionModeNever,
-		AutoCompact:             true,
-		PersistSessions:         true,
-		SessionSQLitePath:       appconfig.EffectiveSessionDBPath(config),
-		WorkingDir:              workingDir,
-		BrowserRemoteControlURL: strings.TrimSpace(config.BrowserRemoteControlURL),
+		APIKey:              config.APIKey,
+		Model:               defaultModel,
+		TitleModel:          titleModel,
+		TitleProviderConfig: titleProviderConfigFromAppConfig(config, titleModel),
+		LocalTitle:          localTitleConfigFromAppConfig(config),
+		PermissionMode:      sdk.PermissionModeNever,
+		MaxTokens:           backendquery.InteractiveMaxTokensForModel(defaultModel),
+		AutoCompact:         true,
+		PersistSessions:     true,
+		EnableMonitoring:    true,
+		SessionSQLitePath:   appconfig.EffectiveSessionDBPath(config),
+		WorkingDir:          workingDir,
+		// Desktop default: try Docker sandboxing for bash tool execution,
+		// with a sane zero-value SandboxDocker config. RequireSandbox stays
+		// false (the zero value) — the SDK itself documents that refusing to
+		// run bash entirely is worse desktop UX than a visible, logged
+		// fallback to unconfined execution when Docker isn't installed or
+		// running; NewTool already handles that fallback silently and safely
+		// (internal/tools/bash/bash.go's NewTool, seshat SDK).
+		SandboxKind:             sdk.SandboxKindDocker,
+		BrowserRemoteControlURL: browserRemoteControlURL,
 		BrowserExecutablePath:   strings.TrimSpace(config.BrowserExecutablePath),
 		StorageGCEnabled:        config.StorageGCEnabled,
 		StorageGCInterval:       parseDurationOrDefault(config.StorageGCInterval, time.Hour),
@@ -499,12 +921,13 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		MCPServers:              startupMCPServers,
 		PlanStore:               &dbPlanStoreAdapter{store: planDocumentStore},
 		LongTermMemory:          longTermMemStore,
-		DoclingURL:              strings.TrimSpace(config.DoclingURL),
+		DocumentConverter:       documentreading.NewProcessorConverter(resolveDocumentConverter),
+		DocumentPageRenderer:    documentreading.NewNativeDocPageRenderer(),
 		AutomationServiceURL:    strings.TrimSpace(config.AutomationServiceURL),
 		AutomationAPIKey:        strings.TrimSpace(os.Getenv("AUTOMATION_API_KEY")),
-		ImageGeneration:         defaultImageGenerationConfig(),
-		TextToSpeech:            defaultTextToSpeechConfig(),
-		SpeechToText:            defaultSpeechToTextConfig(),
+		ImageGeneration:         defaultImageGenerationConfig(ctx, capabilityLinkStore, settingStore),
+		TextToSpeech:            defaultTextToSpeechConfig(ctx, capabilityLinkStore, settingStore),
+		SpeechToText:            defaultSpeechToTextConfig(ctx, capabilityLinkStore, settingStore),
 		// The SDK auto-generates a short AI title after a session's first
 		// turn completes (see its own generateTitleAsync) and was already
 		// running unconditionally - just silently discarded, since nothing
@@ -526,6 +949,10 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		return nil, nil, fmt.Errorf("init query runtime: %w", err)
 	}
 	cleanups = append(cleanups, func() error { queryClient.Close(); return nil })
+	// The kind actually resolved to (Docker only if it passed its health
+	// check; Local otherwise) — not just what was requested above. See
+	// api.App's sandboxKind field for how this reaches /system/status.
+	sandboxKind := string(queryClient.SandboxKind())
 
 	if err := managedskills.EnsureExtracted(skillsloader.GetBuiltinSkillsPath()); err != nil {
 		fmt.Fprintf(os.Stderr, "[API] Avertissement builtin skills: %v\n", err)
@@ -635,13 +1062,32 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 	}
 
 	runtime := backendquery.NewSDKRuntime(queryClient, queryClientConfig)
+	cleanups = append(cleanups, func() error { runtime.CloseCachedClients(); return nil })
+	if strings.TrimSpace(config.BrowserRemoteControlURL) == "" {
+		runtime.SetBrowserRemoteControlResolver(discoverElectronBrowserRemoteControlURL)
+	}
+	// Unconditional - resolveElectronBrowserSessionTarget itself no-ops
+	// (returns ok=false) whenever SESHAT_ELECTRON_BRIDGE_PORT isn't set, so
+	// this is a no-op outside the desktop app without needing a guard here.
+	runtime.SetBrowserSessionTargetResolver(resolveElectronBrowserSessionTarget)
 	// Shared with api.NewApp below (via AppConfig.TerminalRelay) - the WS
 	// handler there registers a session's Electron relay connection into the
 	// same instance runtime.applyRemoteExecutor reads from per turn.
 	terminalRelay := backendquery.NewTerminalRelay()
 	runtime.SetTerminalRelay(terminalRelay)
 
-	// Mirrors resolveDocling below: Settings > Capabilities can point the
+	// Scopes the rag_search/rag_ingest/rag_delete tools to the requesting
+	// user's own (or shared-workspace) corpora per request, instead of
+	// every Main Chat turn sharing the one process-wide ragService - see
+	// SDKRuntime.SetRAGComponents and userScopedVectorStore for why this
+	// matters (rag_search's corpus_id argument is model-supplied and was
+	// otherwise unchecked). No-op when RAG isn't configured at all
+	// (ragVectorStore/ragEmbedder stay nil).
+	if ragVectorStore != nil {
+		runtime.SetRAGComponents(artifactStore, ragVectorStore, ragEmbedder, documentChunker, corpusStore)
+	}
+
+	// Mirrors resolveDocumentConverter below: Settings > Capabilities can point the
 	// agent's own speech_to_text tool at a locally running whisper.cpp
 	// server (see api.handleLocalSTTConfig, set by the Electron main
 	// process) instead of the operator's OPENAI_API_KEY default, without a
@@ -659,36 +1105,65 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		}
 	})
 
-	// resolveDocling lets Settings > Knowledge override, at runtime, which
-	// docling-serve instance to use (self-hosted, on the local network, or
-	// an organization's own) — without needing an env var or a restart.
-	// bootDoclingClient is the fallback: whatever config.DoclingURL resolved
-	// to at boot, which already reflects the managed local venv if
-	// cmd/api/main.go auto-started one (see docling_config.go's doc comment
-	// for the full priority order).
-	bootDoclingClient := buildDoclingClient(config.DoclingURL)
-	resolveDocling := func(ctx context.Context) *docling.Client {
-		if cfg, err := doclingConfigStore.Get(ctx); err == nil && cfg != nil {
-			if !cfg.Enabled {
-				return nil
-			}
-			if cfg.BaseURL != "" {
-				return docling.NewClient(cfg.BaseURL)
-			}
+	// Settings > Environment lets the user choose Docker-sandboxed vs direct
+	// host execution for the bash tool (see db.SandboxConfigStore) - no
+	// stored choice (a fresh install) resolves to SandboxModeLocal, not the
+	// bootstrap default above: an agent asked to write a document, move a
+	// file, or run/test code the user is working on needs real access to the
+	// user's own machine, not an isolated container that can't see any of
+	// it. ok=false (a genuine store read error) falls through to
+	// queryClientConfig's own SandboxKind above instead.
+	runtime.SetSandboxModeResolver(func(ctx context.Context) (sdk.SandboxKind, bool) {
+		cfg, err := sandboxConfigStore.Get(ctx)
+		if err != nil {
+			return "", false
 		}
-		return bootDoclingClient
+		if cfg == nil || strings.TrimSpace(cfg.Mode) != db.SandboxModeDocker {
+			return sdk.SandboxKindLocal, true
+		}
+		return sdk.SandboxKindDocker, true
+	})
+
+	// ActionConnectors: one entry per MCP-backed connector.ActionConnector
+	// (see internal/mcp/action and helps/roadmap.md Phase 3). "demo-crm" is
+	// the first concrete instance, not a hardcoded special case - any MCP
+	// server registered under a different name (via the existing generic
+	// /mcp API/Settings UI) can be wrapped the same way by adding another
+	// entry here. Resolution of whether that server is actually configured
+	// happens per-call in Connector.Act, not here.
+	demoCRMConnector := mcpAction.NewConnector(mcpServerStore, "demo-crm")
+	actionConnectors := map[string]connector.ActionConnector{
+		string(demoCRMConnector.Kind()): demoCRMConnector,
+	}
+
+	// KnowledgeConnectors: the generic counterpart of actionConnectors above,
+	// for connector.KnowledgeConnector implementations reached via the
+	// generic POST .../accounts/{id}/sync route (internal/app.go's NewApp
+	// wires this instance's text extractor once knowledgeService exists,
+	// same reasoning as Drive's WithTextExtractor call there).
+	s3Connector := s3.NewConnector()
+	azureBlobConnector := azureblob.NewConnector()
+	knowledgeConnectors := map[string]connector.KnowledgeConnector{
+		string(s3.Kind):        s3Connector,
+		string(azureblob.Kind): azureBlobConnector,
+	}
+	if knowledgeSharePointConnector != nil {
+		knowledgeConnectors[string(sharepoint.Kind)] = knowledgeSharePointConnector
+	}
+	if knowledgeOneDriveConnector != nil {
+		knowledgeConnectors[string(onedrive.Kind)] = knowledgeOneDriveConnector
 	}
 
 	backendApp := seshat.NewApp(seshat.Dependencies{
 		Identity:            identityStore,
 		APIKeyStore:         apiKeyStore,
-		GroupStore:          groupStore,
 		AuthProvider:        authProvider,
 		SettingsProvider:    settingsProvider,
 		PreferencesProvider: preferencesProvider,
 		MemoriesProvider:    memoriesProvider,
 		AgentsCloudClient:   agentsCloudClient,
 		QuotaProvider:       quotaProvider,
+		DesktopPolicies:     cloudAutomationPolicyStore,
 		AuthConfig: backendauth.ServiceConfig{
 			EnableSignup:    config.EnableSignup,
 			DefaultUserRole: config.DefaultUserRole,
@@ -700,6 +1175,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		FileStore:                fileStore,
 		CorpusStore:              corpusStore,
 		IngestionJobStore:        ingestionJobStore,
+		KnowledgeBackend:         knowledgeCloudBackend,
 		SettingStore:             settingStore,
 		OAuthStore:               oauthStore,
 		WebSearchSettings:        webSearchSettingStore,
@@ -711,7 +1187,7 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		ArtifactStore:            artifactStore,
 		RAGService:               ragService,
 		Monitoring:               queryClient.GetMonitoring(),
-		ResolveDoclingClient:     resolveDocling,
+		ResolveDocumentConverter: resolveDocumentConverter,
 		UserMemoryStore:          userMemoryStore,
 		LongTermMemoryStore:      longTermMemStore,
 		LongTermExtractor:        longTermExtractor,
@@ -720,9 +1196,69 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		MCPRuntime:               runtime,
 		MCPCloudClient:           mcpCloudClient,
 		MCPOrgServerApprovals:    mcpOrgServerApprovalStore,
+		HooksRuntime:             runtime,
+		HooksCloudClient:         hooksCloudClient,
+		HookOrgApprovals:         hookOrgApprovalStore,
 		UserPreferencesStore:     userPreferencesStore,
 		AgentDefinitionStore:     agentDefinitionStore,
+		Inbox:                    inboxService,
+		KnowledgeGDrive:          knowledgeGDriveConnector,
+		KnowledgeGDriveAccounts:  connectorAccountStore,
+		ConnectorAccounts:        connectorAccountStore,
+		ActionConnectors:         actionConnectors,
+		KnowledgeConnectors:      knowledgeConnectors,
 	})
+
+	// Knowledge Agent: unlike the Inbox Agent (provisioned lazily on first
+	// channel connection, see api/inbox.go's ensureInboxAgent), the
+	// knowledge base has no "first connection" event to hook into - it's
+	// always available - so it's provisioned once, eagerly, right here.
+	if backendApp.Agents != nil {
+		if err := backendApp.Agents.EnsureDefault(ctx, agents.DefaultKnowledgeAgentParams()); err != nil {
+			fmt.Fprintf(os.Stderr, "[API] Avertissement: création du Knowledge Agent échouée: %v\n", err)
+		}
+	}
+
+	// knowledge_search: lets the Company Assistant (and any other session on
+	// this shared query client) search across every corpus the calling
+	// principal can access, not just one - see internal/knowledge/tool's
+	// package doc. Registered here (not next to sdk.NewClient above) because
+	// it needs the fully-resolved backendApp.Knowledge (local
+	// *knowledge.Service or connected-mode *cloudknowledge.RemoteService),
+	// which only exists after seshat.NewApp runs its own fallback logic.
+	if backendApp.Knowledge != nil {
+		if err := queryClient.RegisterTool(knowledgeAgentTools.NewSearchTool(backendApp.Knowledge)); err != nil {
+			fmt.Fprintf(os.Stderr, "[API] Avertissement: knowledge_search tool non enregistré: %v\n", err)
+		}
+	}
+
+	// Inbox Agent tools - same registration point/reasoning as
+	// knowledge_search above. Registered whenever the inbox domain itself
+	// is configured, independent of which channel connectors ended up
+	// active - a tool call against a channel with no connector fails
+	// clearly through inbox.Service, same as any other inbox error.
+	if backendApp.Inbox != nil {
+		toolsToRegister := []sdk.Tool{
+			inboxAgentTools.NewListThreadsTool(backendApp.Inbox),
+			inboxAgentTools.NewGetThreadTool(backendApp.Inbox),
+			inboxAgentTools.NewUpdateThreadStatusTool(backendApp.Inbox),
+			inboxAgentTools.NewDraftReplyTool(backendApp.Inbox),
+			inboxAgentTools.NewSendReplyTool(backendApp.Inbox),
+			inboxAgentTools.NewListAccountsTool(backendApp.Inbox),
+			inboxAgentTools.NewSearchContactsTool(backendApp.Inbox),
+			inboxAgentTools.NewSearchMessagesTool(backendApp.Inbox),
+			inboxAgentTools.NewArchiveThreadTool(backendApp.Inbox),
+			inboxAgentTools.NewSetThreadReadStatusTool(backendApp.Inbox),
+			inboxAgentTools.NewCreateWorkflowTool(backendApp.Inbox),
+			inboxAgentTools.NewListWorkflowsTool(backendApp.Inbox),
+			inboxAgentTools.NewDeleteWorkflowTool(backendApp.Inbox),
+		}
+		for _, tool := range toolsToRegister {
+			if err := queryClient.RegisterTool(tool); err != nil {
+				fmt.Fprintf(os.Stderr, "[API] Avertissement: tool inbox non enregistré: %v\n", err)
+			}
+		}
+	}
 
 	// Cloud automation: this machine executes execution_target=device jobs
 	// claimed from a connected seshat-server, using its own locally
@@ -749,11 +1285,78 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		}
 		return result.Content, nil
 	})
-	cloudAutomationWorker := cloudautomation.NewWorker(cloudAutomationStore, cloudAutomationExecutor)
+	cloudAutomationWorker := cloudautomation.NewWorker(cloudAutomationStore, cloudAutomationPolicyStore, cloudAutomationVersionStore, cloudAutomationExecutor)
 	cloudAutomationWorker.Start()
 	cleanups = append(cleanups, func() error { cloudAutomationWorker.Stop(); return nil })
-	cloudAutomationService := cloudautomation.NewService(cloudAutomationStore)
+	cloudAutomationService := cloudautomation.NewService(cloudAutomationStore, cloudAutomationPolicyStore, cloudAutomationVersionStore)
 	fmt.Printf("[API] Cloud automation worker démarré\n")
+
+	// Inbox event-triggered workflows (see internal/inbox.WorkflowExecutor's
+	// doc comment): mirrors cloudAutomationExecutor immediately above almost
+	// verbatim (bare Principal, resolveCloudJobModel, BuildContextInput,
+	// RunPrompt) - the same "no live HTTP request, still needs the real
+	// tooled agent path" problem, just triggered by an inbox message instead
+	// of a claimed cloud job. AgentSlug is the one real difference: a
+	// workflow always runs as a named agent (e.g. "inbox-agent"), where
+	// cloud automation jobs are a bare prompt with no agent identity.
+	inboxService.WithWorkflowExecutor(func(ctx context.Context, ownerID, agentSlug, prompt, modelOverride string) (string, error) {
+		principal := &backendauth.Principal{
+			User: backendauth.User{ID: ownerID},
+		}
+		providerSettingID, modelID := resolveCloudJobModel(ctx, backendApp.Settings, principal, modelOverride)
+		input, _ := backendApp.Query.BuildContextInput(ctx, backendquery.ContextBuildParams{
+			Principal:         principal,
+			Prompt:            prompt,
+			ProviderSettingID: providerSettingID,
+			ModelID:           modelID,
+			AgentSlug:         agentSlug,
+			ExecutionOrigin:   enginetypes.ExecutionOriginAutomation,
+		})
+		result, err := backendApp.Query.RunPrompt(ctx, principal, input)
+		if err != nil {
+			return "", err
+		}
+		return result.Content, nil
+	})
+
+	// Job.Graph execution (internal/inbox/workflow_graph.go): same
+	// principal/model-resolution/BuildContextInput/RunPrompt pattern as
+	// WithWorkflowExecutor immediately above, but threading QueryInput/
+	// QueryResult's SessionID across repeated calls (sessionID in, new
+	// sessionID out) so multiple "agent"/"subworkflow" nodes fired within
+	// one graph run share conversation context - inbox.WorkflowAsker's own
+	// doc comment for the contract this fulfills.
+	inboxService.WithWorkflowAsker(func(ctx context.Context, ownerID, agentSlug, prompt, modelOverride, sessionID string) (string, string, error) {
+		principal := &backendauth.Principal{
+			User: backendauth.User{ID: ownerID},
+		}
+		providerSettingID, modelID := resolveCloudJobModel(ctx, backendApp.Settings, principal, modelOverride)
+		input, _ := backendApp.Query.BuildContextInput(ctx, backendquery.ContextBuildParams{
+			Principal:         principal,
+			Prompt:            prompt,
+			SessionID:         sessionID,
+			ProviderSettingID: providerSettingID,
+			ModelID:           modelID,
+			AgentSlug:         agentSlug,
+			ExecutionOrigin:   enginetypes.ExecutionOriginAutomation,
+		})
+		result, err := backendApp.Query.RunPrompt(ctx, principal, input)
+		if err != nil {
+			return "", "", err
+		}
+		return result.Content, result.SessionID, nil
+	})
+	// Which node types a Graph can reference - generic (http_request/
+	// filter/if/switch/set/merge/wait, no credentials) plus database
+	// (postgres/mysql/sqlite/redis/mongodb/elasticsearch, credential-
+	// resolving via dataflowSecretsService below). Both come from the SDK;
+	// nothing here is seshat-ai-specific.
+	inboxNodeRegistry := dataflow.NewRegistry()
+	dataflow.RegisterBuiltins(inboxNodeRegistry)
+	dataflownodes.Register(inboxNodeRegistry, dataflowexpr.NewPool(8))
+	dataflowdatabase.Register(inboxNodeRegistry)
+	inboxService.WithNodeRegistry(inboxNodeRegistry)
+	inboxService.WithDataflowSecrets(dataflowSecretsService)
 
 	// Abandoned-session sweep: a session (plus any files attached to it) is
 	// created the instant a file is attached, before the user ever sends a
@@ -798,13 +1401,18 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		Backend:               backendApp,
 		DB:                    database,
 		ModelStore:            modelStore,
-		GroupStore:            groupStore,
 		EmbedderStore:         embedderConfigStore,
-		DoclingStore:          doclingConfigStore,
+		CapabilityLinkStore:   capabilityLinkStore,
+		ProviderSettingStore:  settingStore,
+		DocumentReaderStore:   documentReaderConfigStore,
+		RerankerStore:         rerankerConfigStore,
 		LocalSTTStore:         localSTTConfigStore,
+		SandboxConfigStore:    sandboxConfigStore,
 		StorageConfigStore:    storageConfigStore,
+		DataflowSecrets:       dataflowSecretsService,
 		LongTermExtractor:     longTermExtractor,
 		CloudAutomation:       cloudAutomationService,
+		RAGService:            ragService,
 		RateLimiter:           api.NewRateLimiter(config.RateLimitPerMinute, time.Minute),
 		LoginRateLimiter:      api.NewRateLimiter(10, 15*time.Minute),
 		EnableSignup:          config.EnableSignup,
@@ -813,15 +1421,25 @@ func BuildApp(ctx context.Context, config appconfig.Config) (*api.App, func() er
 		TrustedProxyCIDRs:     api.ParseTrustedProxies(config.TrustedProxies),
 		AllowedSkillRepoHosts: api.ParseSkillRepoHosts(config.SkillRepoHosts),
 		ConnectedServerURL:    serverURL,
+		TargetServerURL:       defaultServerURL,
+		SandboxKind:           sandboxKind,
 		TerminalRelay:         terminalRelay,
 		TitleBroker:           titleBroker,
+		WhatsAppManager:       whatsappManager,
 	})
 
-	knowledgeRunner := backendknowledge.NewRunner(backendApp.Knowledge, backendknowledge.RunnerConfig{
-		PollInterval: 500 * time.Millisecond,
-		MaxPerTick:   4,
-	})
-	knowledgeRunner.Start(ctx)
+	// Only the local knowledge.Service has a queue for this runner to drain —
+	// in connected mode backendApp.Knowledge is a *cloudknowledge.RemoteService
+	// instead, and a connected seshat-server already runs its own ingestion
+	// pipeline server-side (internal/server/knowledge.Runner), so there is
+	// nothing for a local runner to do.
+	if localKnowledge, ok := backendApp.Knowledge.(*backendknowledge.Service); ok {
+		knowledgeRunner := backendknowledge.NewRunner(localKnowledge, backendknowledge.RunnerConfig{
+			PollInterval: 500 * time.Millisecond,
+			MaxPerTick:   4,
+		})
+		knowledgeRunner.Start(ctx)
+	}
 
 	return app, cleanup, nil
 }
@@ -891,16 +1509,6 @@ func (a *dbPlanStoreAdapter) SetStatus(ctx context.Context, planID string, statu
 
 // ─── Infrastructure helpers ───────────────────────────────────────────────────
 
-// buildDoclingClient creates a docling client from a URL string.
-// Returns nil if the URL is empty (docling integration disabled).
-func buildDoclingClient(url string) *docling.Client {
-	url = strings.TrimSpace(url)
-	if url == "" {
-		return nil
-	}
-	return docling.NewClient(url)
-}
-
 // logProviderDiscovery scans env vars and local services at startup and logs a
 // summary so operators know which providers are ready without manual inspection.
 func logProviderDiscovery(ctx context.Context) {
@@ -959,16 +1567,47 @@ func splitCommaList(raw string) []string {
 	return result
 }
 
+// resolveCapabilityCredential looks up an opt-in capability link (Settings
+// > Providers, "Use my <provider> key" — see internal/db/capability_links.go
+// and internal/settings/capabilities.go) and returns the linked provider's
+// type and decrypted API key, if one is configured and still resolves to a
+// real provider setting. Never errors: a missing link, a deleted provider,
+// or a store that failed to initialize all just mean "not linked" (ok =
+// false), so callers fall back to their own default the same as before this
+// feature existed.
+func resolveCapabilityCredential(ctx context.Context, linkStore *db.CapabilityLinkStore, providerStore *db.ProviderSettingStore, capability backendsettings.Capability) (providerType, apiKey string, ok bool) {
+	if linkStore == nil || providerStore == nil {
+		return "", "", false
+	}
+	providerSettingID, linked, err := linkStore.Get(ctx, string(capability))
+	if err != nil || !linked {
+		return "", "", false
+	}
+	setting, err := providerStore.GetByID(ctx, providerSettingID)
+	if err != nil {
+		return "", "", false
+	}
+	key, err := providerStore.GetDecryptedAPIKey(ctx, providerSettingID)
+	if err != nil || key == "" {
+		return "", "", false
+	}
+	return setting.Provider, key, true
+}
+
 // defaultImageGenerationConfig, defaultTextToSpeechConfig and
 // defaultSpeechToTextConfig enable the engine's generate_image/text_to_speech/
-// speech_to_text built-in tools whenever the operator already has the
-// corresponding provider key set — same env vars the chat model itself
-// resolves against (see pkg/config/provider_catalog.go), so a working
-// OPENAI_API_KEY/GOOGLE_API_KEY makes these tools visible to the LLM with no
-// extra configuration. Without this, ClientConfig.ImageGeneration/
-// .TextToSpeech/.SpeechToText stay nil and the tools are never initialized,
-// regardless of which API keys are configured.
-func defaultImageGenerationConfig() *sdk.ImageGenerationConfig {
+// speech_to_text built-in tools whenever a credential is available for that
+// capability — first an opt-in capability link to an already-configured chat
+// provider (resolveCapabilityCredential), then the corresponding raw env var
+// (OPENAI_API_KEY/GOOGLE_API_KEY — same ones the chat model itself resolves
+// against, see pkg/config/provider_catalog.go) as a fallback for anyone who
+// prefers to configure these independently via Settings > Environment.
+// Without either, ClientConfig.ImageGeneration/.TextToSpeech/.SpeechToText
+// stay nil and the tools are never initialized.
+func defaultImageGenerationConfig(ctx context.Context, linkStore *db.CapabilityLinkStore, providerStore *db.ProviderSettingStore) *sdk.ImageGenerationConfig {
+	if providerType, key, ok := resolveCapabilityCredential(ctx, linkStore, providerStore, backendsettings.CapabilityImage); ok {
+		return &sdk.ImageGenerationConfig{Provider: providerType, APIKey: key}
+	}
 	if key := strings.TrimSpace(os.Getenv("OPENAI_API_KEY")); key != "" {
 		return &sdk.ImageGenerationConfig{Provider: "openai", APIKey: key}
 	}
@@ -978,18 +1617,71 @@ func defaultImageGenerationConfig() *sdk.ImageGenerationConfig {
 	return nil
 }
 
-func defaultTextToSpeechConfig() *sdk.TextToSpeechConfig {
+func defaultTextToSpeechConfig(ctx context.Context, linkStore *db.CapabilityLinkStore, providerStore *db.ProviderSettingStore) *sdk.TextToSpeechConfig {
+	if providerType, key, ok := resolveCapabilityCredential(ctx, linkStore, providerStore, backendsettings.CapabilityAudio); ok {
+		return &sdk.TextToSpeechConfig{Provider: providerType, APIKey: key}
+	}
 	if key := strings.TrimSpace(os.Getenv("OPENAI_API_KEY")); key != "" {
 		return &sdk.TextToSpeechConfig{Provider: "openai", APIKey: key}
 	}
 	return nil
 }
 
-func defaultSpeechToTextConfig() *sdk.SpeechToTextConfig {
+func defaultSpeechToTextConfig(ctx context.Context, linkStore *db.CapabilityLinkStore, providerStore *db.ProviderSettingStore) *sdk.SpeechToTextConfig {
+	if providerType, key, ok := resolveCapabilityCredential(ctx, linkStore, providerStore, backendsettings.CapabilityAudio); ok {
+		return &sdk.SpeechToTextConfig{Provider: providerType, APIKey: key}
+	}
 	if key := strings.TrimSpace(os.Getenv("OPENAI_API_KEY")); key != "" {
 		return &sdk.SpeechToTextConfig{Provider: "openai", APIKey: key}
 	}
 	return nil
+}
+
+func titleProviderConfigFromAppConfig(config appconfig.Config, titleModel sdk.ModelIdentifier) *providers.Config {
+	if strings.TrimSpace(titleModel.Model) == "" || titleModel.Provider == "" {
+		return nil
+	}
+	if strings.TrimSpace(config.TitleModelBaseURL) == "" && strings.TrimSpace(config.TitleModelAPIKey) == "" {
+		return nil
+	}
+	return &providers.Config{
+		Provider: titleModel.Provider,
+		BaseURL:  strings.TrimSpace(config.TitleModelBaseURL),
+		APIKey:   strings.TrimSpace(config.TitleModelAPIKey),
+	}
+}
+
+func localTitleConfigFromAppConfig(config appconfig.Config) *sdk.LocalTitleConfig {
+	if !config.TitleLocalEnabled {
+		return nil
+	}
+	timeout := parseDurationOrDefault(config.TitleLocalTimeout, 30*time.Second)
+	return &sdk.LocalTitleConfig{
+		Enabled:        true,
+		Runtime:        strings.TrimSpace(config.TitleLocalRuntime),
+		ExecutablePath: strings.TrimSpace(config.TitleLocalExe),
+		ModelPath:      strings.TrimSpace(config.TitleLocalModel),
+		HFRepo:         strings.TrimSpace(config.TitleLocalHFRepo),
+		HFFile:         strings.TrimSpace(config.TitleLocalHFFile),
+		CacheDir:       strings.TrimSpace(config.TitleLocalCache),
+		Args:           splitTitleLocalArgs(config.TitleLocalArgs),
+		Timeout:        timeout,
+	}
+}
+
+func splitTitleLocalArgs(raw string) []string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+	parts := strings.Split(raw, " ")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if trimmed := strings.TrimSpace(part); trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out
 }
 
 // resolveCloudJobModel maps a cloud job's model_override ("provider:model",
@@ -1013,4 +1705,90 @@ func resolveCloudJobModel(ctx context.Context, settingsService *backendsettings.
 		}
 	}
 	return "", ""
+}
+
+// gmailSyncInterval mirrors a typical email client's background poll
+// cadence - frequent enough that new mail shows up promptly, cheap enough
+// (Gmail's History API returns just a delta) not to matter at this rate.
+const gmailSyncInterval = 2 * time.Minute
+
+// runGmailSyncLoop periodically syncs every connected Gmail account across
+// every user - see its call site's comment for why this exists instead of
+// relying on cloudautomation. Runs for the process's lifetime with no
+// explicit shutdown, matching this file's other daemon-style background
+// loops (e.g. api.NewApp's artifactPreviews.Sweep ticker).
+func runGmailSyncLoop(inboxService *inbox.Service) {
+	syncAllGmailAccounts(inboxService)
+	ticker := time.NewTicker(gmailSyncInterval)
+	defer ticker.Stop()
+	for range ticker.C {
+		syncAllGmailAccounts(inboxService)
+	}
+}
+
+func syncAllGmailAccounts(inboxService *inbox.Service) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	accounts, err := inboxService.ListConnectedAccountsByChannel(ctx, inbox.ChannelGmail)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[API] Gmail sync loop: échec de la liste des comptes: %v\n", err)
+		return
+	}
+	for _, account := range accounts {
+		principal := &backendauth.Principal{User: backendauth.User{ID: account.UserID}}
+		if _, err := inboxService.SyncAccount(ctx, principal, account.ID); err != nil {
+			fmt.Fprintf(os.Stderr, "[API] Gmail sync loop: échec de sync pour %s: %v\n", account.DisplayName, err)
+		}
+	}
+}
+
+// microsoftInboxSyncInterval mirrors gmailSyncInterval's reasoning -
+// frequent enough that new mail/chat messages show up promptly, cheap
+// enough (Mail delta/Teams chat listing are both lightweight) not to matter
+// at this rate.
+const microsoftInboxSyncInterval = 2 * time.Minute
+
+// runMicrosoftInboxSyncLoop is runGmailSyncLoop's shape, generalized across
+// channel since outlook/teams differ only in which channel string to list
+// accounts for - both poll-based, same reasoning as Gmail's loop (no local
+// job scheduler for standalone deployments).
+func runMicrosoftInboxSyncLoop(inboxService *inbox.Service, channel string) {
+	syncAllAccountsForChannel(inboxService, channel)
+	ticker := time.NewTicker(microsoftInboxSyncInterval)
+	defer ticker.Stop()
+	for range ticker.C {
+		syncAllAccountsForChannel(inboxService, channel)
+	}
+}
+
+func syncAllAccountsForChannel(inboxService *inbox.Service, channel string) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	accounts, err := inboxService.ListConnectedAccountsByChannel(ctx, channel)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[API] %s sync loop: échec de la liste des comptes: %v\n", channel, err)
+		return
+	}
+	for _, account := range accounts {
+		principal := &backendauth.Principal{User: backendauth.User{ID: account.UserID}}
+		if _, err := inboxService.SyncAccount(ctx, principal, account.ID); err != nil {
+			fmt.Fprintf(os.Stderr, "[API] %s sync loop: échec de sync pour %s: %v\n", channel, account.DisplayName, err)
+		}
+	}
+}
+
+// whatsappDialectFor maps this app's database driver to the dialect string
+// whatsmeow's sqlstore understands, so its session tables can live in the
+// same physical database as everything else rather than a second one.
+// whatsmeow only supports SQLite and Postgres (not MySQL) - see
+// go.mau.fi/util/dbutil's ParseDialect.
+func whatsappDialectFor(driver db.Driver) (string, bool) {
+	switch driver {
+	case db.DriverSQLite:
+		return "sqlite", true
+	case db.DriverPostgres:
+		return "postgres", true
+	default:
+		return "", false
+	}
 }

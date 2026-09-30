@@ -10,9 +10,15 @@ import { Button,
   Space,
   Switch,
   Tag,
+  Tooltip,
   Typography, } from 'antd'
 import type { TableProps } from 'antd'
-import { PlusOutlined, DeleteOutlined, EditOutlined, CloudServerOutlined } from '@ant-design/icons'
+import { PlusOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  CloudServerOutlined,
+  CheckCircleFilled,
+  CloseCircleFilled, } from '@ant-design/icons'
 import { useProvidersList,
   useCreateProvider,
   useUpdateProvider,
@@ -28,24 +34,59 @@ import { presentText } from '@/lib/present'
 
 const PAGE_SIZE = 20
 
+// HealthBadge reflects whether a login through this connection has ever
+// actually completed - separate from "enabled" (which only says the
+// connection is turned on, not that it works). Only OIDC/SAML providers
+// carry this signal today: it's updated at the end of CompleteOIDCLogin/
+// CompleteSAMLLogin, so an OAuth2-kind provider (no login flow of its own
+// yet) always shows "No activity yet".
+function HealthBadge({ provider }: { provider: Provider }) {
+  if (provider.last_login_success === undefined || provider.last_login_success === null) {
+    return <Tag style={{ margin: 0 }}>No activity yet</Tag>
+  }
+  const label = provider.last_login_at ? new Date(provider.last_login_at).toLocaleString() : ''
+  return provider.last_login_success ? (
+    <Tooltip title={label ? `Last login succeeded ${label}` : 'Last login succeeded'}>
+      <Tag color="green" icon={<CheckCircleFilled />} style={{ margin: 0 }}>
+        Healthy
+      </Tag>
+    </Tooltip>
+  ) : (
+    <Tooltip title={[label ? `Last login failed ${label}` : 'Last login failed', provider.last_error].filter(Boolean).join(' — ')}>
+      <Tag color="red" icon={<CloseCircleFilled />} style={{ margin: 0 }}>
+        Last login failed
+      </Tag>
+    </Tooltip>
+  )
+}
+
 export function ProvidersPage() { const organizationId = useScopedOrganizationId()
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
+  const [sort, setSort] = useState<{ field: string; order: 'asc' | 'desc' }>({ field: 'name', order: 'asc' })
   const [editing, setEditing] = useState<Provider | 'new' | null>(null)
 
-  const { data, isLoading, isFetching } = useProvidersList(organizationId ?? undefined, { q: search || undefined,
-    sort: 'name',
-    order: 'asc',
+  const { data, isLoading, isFetching, error } = useProvidersList(organizationId ?? undefined, { q: search || undefined,
+    sort: sort.field,
+    order: sort.order,
     limit: PAGE_SIZE,
     offset: (page - 1) * PAGE_SIZE, })
   const createProvider = useCreateProvider()
   const updateProvider = useUpdateProvider()
   const deleteProvider = useDeleteProvider()
 
+  const handleTableChange: TableProps<Provider>['onChange'] = (_pagination, _filters, sorter) => {
+    const single = Array.isArray(sorter) ? sorter[0] : sorter
+    if (single?.field && single.order) {
+      setSort({ field: String(single.field), order: single.order === 'ascend' ? 'asc' : 'desc' })
+    }
+  }
+
   const columns: TableProps<Provider>['columns'] = [
     { title: 'Name',
       dataIndex: 'name',
       key: 'name',
+      sorter: true,
       render: (name: string, record) => (
         <div>
           <div style={{ fontWeight: 500 }}>{name}</div>
@@ -56,12 +97,15 @@ export function ProvidersPage() { const organizationId = useScopedOrganizationId
       dataIndex: 'kind',
       key: 'kind',
       width: 100,
+      sorter: true,
       render: (kind: string) => <Tag>{kind?.toUpperCase()}</Tag>, },
     { title: 'Status',
       dataIndex: 'enabled',
       key: 'enabled',
       width: 100,
+      sorter: true,
       render: (enabled: boolean) => (enabled ? <Tag color="green">Enabled</Tag> : <Tag>Disabled</Tag>), },
+    { title: 'Health', key: 'health', width: 150, render: (_, record) => <HealthBadge provider={record} /> },
     { title: 'Issuer / Metadata', key: 'issuer', render: (_, record) => presentText(record.issuer_url || record.metadata_url, 'Not configured') },
     { title: '',
       key: 'actions',
@@ -89,8 +133,6 @@ export function ProvidersPage() { const organizationId = useScopedOrganizationId
   return (
     <div>
       <PageHeader
-        title="Identity Providers"
-        description="Upstream identity providers (OIDC/OAuth2/SAML) this organization trusts."
         actions={ <Space>
             <Input.Search
               placeholder="Search providers"
@@ -116,6 +158,8 @@ export function ProvidersPage() { const organizationId = useScopedOrganizationId
           columns={columns}
           dataSource={data?.providers ?? []}
           loading={isLoading || isFetching}
+          queryError={error}
+          onChange={handleTableChange}
           locale={{ emptyText: (
               <Empty
                 image={<CloudServerOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}

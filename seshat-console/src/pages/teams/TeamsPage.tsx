@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button, Drawer, Empty, Form, Input, message, Popconfirm, Space, Typography } from 'antd'
+import { Button, Drawer, Empty, Form, Input, message, Popconfirm, Space, Tooltip, Typography } from 'antd'
 import type { TableProps } from 'antd'
 import { PlusOutlined, DeleteOutlined, EditOutlined, ClusterOutlined } from '@ant-design/icons'
 import { useGroupsList,
@@ -17,13 +17,24 @@ import { UserMultiSelect } from '@/components/UserSelect'
 import { palette } from '@/theme/tokens'
 
 const PAGE_SIZE = 20
+const DESCRIPTION_MAX_LENGTH = 200
+
+// Lowercase, non-alphanumerics collapsed to single hyphens, no leading/
+// trailing hyphen - matches the slug's own validation pattern below
+// (/^[a-z0-9-]+$/) so an auto-generated slug never fails it.
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
 
 export function TeamsPage() { const organizationId = useScopedOrganizationId()
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<Group | 'new' | null>(null)
 
-  const { data, isLoading, isFetching } = useGroupsList(organizationId ?? undefined, { q: search || undefined,
+  const { data, isLoading, isFetching, error } = useGroupsList(organizationId ?? undefined, { q: search || undefined,
     sort: 'name',
     order: 'asc',
     limit: PAGE_SIZE,
@@ -42,6 +53,20 @@ export function TeamsPage() { const organizationId = useScopedOrganizationId()
           <Typography.Text style={{ fontSize: 12, color: palette.inkTertiary }}>{record.slug}</Typography.Text>
         </div>
       ), },
+    { title: 'Description',
+      dataIndex: 'description',
+      key: 'description',
+      ellipsis: { showTitle: false },
+      render: (description: string | undefined) =>
+        description ? (
+          <Tooltip title={description}>
+            <Typography.Text style={{ color: palette.inkSecondary }} ellipsis>
+              {description}
+            </Typography.Text>
+          </Tooltip>
+        ) : (
+          <Typography.Text style={{ color: palette.inkTertiary }}>—</Typography.Text>
+        ), },
     { title: 'Members',
       dataIndex: 'member_user_ids',
       key: 'member_user_ids',
@@ -73,8 +98,6 @@ export function TeamsPage() { const organizationId = useScopedOrganizationId()
   return (
     <div>
       <PageHeader
-        title="Teams"
-        description="Organize members into teams for policy assignment and day-to-day structure. A member can be on any number of teams, or none."
         actions={ <Space>
             <Input.Search
               placeholder="Search teams"
@@ -100,6 +123,7 @@ export function TeamsPage() { const organizationId = useScopedOrganizationId()
           columns={columns}
           dataSource={data?.groups ?? []}
           loading={isLoading || isFetching}
+          queryError={error}
           locale={{ emptyText: (
               <Empty
                 image={<ClusterOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}
@@ -142,10 +166,19 @@ function TeamFormDrawer({ team,
   onClose: () => void
   onSubmit: (values: Omit<GroupInput, 'organization_id'>) => void
   submitting: boolean }) { const [form] = Form.useForm<Omit<GroupInput, 'organization_id'>>()
+  // Tracks whether the admin has typed into Slug themselves - while they
+  // haven't, Slug keeps following Name; the moment they touch it directly,
+  // their own value wins and Name no longer overwrites it. Existing teams
+  // (editing, not creating) never auto-slug at all - the slug is already
+  // set and other things may already reference it.
+  const [slugTouched, setSlugTouched] = useState(false)
 
-  useEffect(() => { if (open) { form.setFieldsValue(
-        team ?? { name: '', slug: '', description: '', member_user_ids: [] },
-      ) } }, [open, team, form])
+  useEffect(() => { if (open) {
+        setSlugTouched(Boolean(team))
+        form.setFieldsValue(
+          team ?? { name: '', slug: '', description: '', member_user_ids: [] },
+        )
+      } }, [open, team, form])
 
   return (
     <Drawer
@@ -159,17 +192,21 @@ function TeamFormDrawer({ team,
     >
       <Form form={form} layout="vertical" onFinish={onSubmit}>
         <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Required' }]}>
-          <Input />
+          <Input
+            onChange={(event) => {
+              if (!slugTouched) form.setFieldValue('slug', slugify(event.target.value))
+            }}
+          />
         </Form.Item>
         <Form.Item
           name="slug"
           label="Slug"
           rules={[{ required: true, pattern: /^[a-z0-9-]+$/, message: 'Lowercase letters, digits, hyphens' }]}
         >
-          <Input />
+          <Input onChange={() => setSlugTouched(true)} />
         </Form.Item>
         <Form.Item name="description" label="Description">
-          <Input.TextArea rows={2} />
+          <Input.TextArea rows={2} maxLength={DESCRIPTION_MAX_LENGTH} showCount />
         </Form.Item>
         <Form.Item name="member_user_ids" label="Members">
           <UserMultiSelect />

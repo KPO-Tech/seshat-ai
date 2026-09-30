@@ -22,9 +22,13 @@ func (s *Service) BlockExpiredPendingMemberships(ctx context.Context, window tim
 }
 
 // MembershipExpiry periodically blocks pending memberships past their
-// confirmation window. Same Start/Stop/loop shape as
-// workspacechat.Cleanup - single-instance only, a sweep every interval plus
-// one immediate pass so a short-lived process still gets one sweep.
+// confirmation window. Same Start/Stop/loop shape as workspacechat.Cleanup,
+// a sweep every interval plus one immediate pass so a short-lived process
+// still gets one sweep. Safe to run on more than one seshat-server process
+// concurrently — BlockExpiredPendingMemberships is a bulk UPDATE ... WHERE
+// status = 'pending', naturally idempotent under duplicate concurrent
+// execution (a second instance's identical WHERE matches nothing once the
+// first has already flipped those rows to 'blocked').
 type MembershipExpiry struct {
 	service  *Service
 	window   time.Duration

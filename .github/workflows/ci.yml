@@ -29,6 +29,8 @@ jobs:
       backend: ${{ steps.filter.outputs.backend }}
       desktop: ${{ steps.filter.outputs.desktop }}
       console: ${{ steps.filter.outputs.console }}
+      openapi: ${{ steps.filter.outputs.openapi }}
+      compose: ${{ steps.filter.outputs.compose }}
       website: ${{ steps.filter.outputs.website }}
     steps:
       - uses: actions/checkout@v4
@@ -47,14 +49,18 @@ jobs:
             echo "backend=true" >> "$GITHUB_OUTPUT"
             echo "desktop=true" >> "$GITHUB_OUTPUT"
             echo "console=true" >> "$GITHUB_OUTPUT"
+            echo "openapi=true" >> "$GITHUB_OUTPUT"
+            echo "compose=true" >> "$GITHUB_OUTPUT"
             echo "website=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           CHANGED=$(git diff --name-only "$BASE" "${{ github.sha }}")
           echo "$CHANGED"
           echo "backend=$(echo "$CHANGED" | grep -qE '^(seshat-backend/|seshat-server/|go\.work)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          echo "desktop=$(echo "$CHANGED" | grep -q '^seshat-ui/' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "desktop=$(echo "$CHANGED" | grep -q '^seshat-desktop/' && echo true || echo false)" >> "$GITHUB_OUTPUT"
           echo "console=$(echo "$CHANGED" | grep -q '^seshat-console/' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "openapi=$(echo "$CHANGED" | grep -qE '^(seshat-server/openapi\.yaml|seshat-console/(package(-lock)?\.json|src/api/schema\.d\.ts))$' && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "compose=$(echo "$CHANGED" | grep -qE '^(deploy/|scripts/smoke-compose-core\.sh|Makefile|seshat-server/Dockerfile|seshat-console/(Dockerfile|nginx\.conf|package(-lock)?\.json))' && echo true || echo false)" >> "$GITHUB_OUTPUT"
           echo "website=$(echo "$CHANGED" | grep -q '^website/' && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
   build:
@@ -81,6 +87,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -93,11 +100,21 @@ jobs:
             seshat-server/go.sum
 
       - name: Tests
-        # internal/api, db, and iam build real bootstrap accounts and exercise
-        # SQLite heavily. Under -race, Go 1.26 + bcrypt.DefaultCost can push
-        # these packages well past 600s even when the non-race suite completes.
-        # Keep a real timeout, but give the race run enough headroom.
-        run: go test -race ./seshat-backend/... ./seshat-server/... -timeout 1200s
+        run: go test ./seshat-backend/... ./seshat-server/... -timeout 10m
+
+      - name: Race-sensitive tests
+        # A monorepo-wide race run can take longer than the useful CI signal.
+        # Keep the complete test suite above, then race-check the packages that
+        # hold request/session state, document ingestion, and server policy.
+        run: |
+          go test -race -timeout 8m \
+            ./seshat-backend/internal/config \
+            ./seshat-backend/internal/documentreading \
+            ./seshat-backend/internal/files \
+            ./seshat-backend/internal/query \
+            ./seshat-server/internal/server/api \
+            ./seshat-server/internal/server/config \
+            ./seshat-server/internal/server/iam
 
   lint:
     name: Lint
@@ -173,22 +190,26 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: seshat-ui/package-lock.json
+          cache-dependency-path: seshat-desktop/package-lock.json
 
       - name: Install dependencies
-        working-directory: seshat-ui
+        working-directory: seshat-desktop
         run: npm ci
 
       - name: Typecheck
-        working-directory: seshat-ui
+        working-directory: seshat-desktop
         run: npm run typecheck
 
       - name: Lint
-        working-directory: seshat-ui
+        working-directory: seshat-desktop
         run: npm run lint
 
+      - name: Tests
+        working-directory: seshat-desktop
+        run: npm test
+
       - name: Build
-        working-directory: seshat-ui
+        working-directory: seshat-desktop
         run: npm run build
 
   console:
@@ -216,6 +237,40 @@ jobs:
       - name: Build (includes typecheck)
         working-directory: seshat-console
         run: npm run build
+
+  openapi_schema:
+    name: OpenAPI Schema
+    needs: changes
+    if: needs.changes.outputs.openapi == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: seshat-console/package-lock.json
+
+      - name: Install dependencies
+        working-directory: seshat-console
+        run: npm ci
+
+      - name: Check generated OpenAPI types
+        working-directory: seshat-console
+        run: npm run api:check
+
+  compose_core_smoke:
+    name: Compose Core Smoke
+    needs: changes
+    if: needs.changes.outputs.compose == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Smoke core compose stack
+        run: bash scripts/smoke-compose-core.sh
 
   website:
     name: Website
@@ -272,12 +327,12 @@ jobs:
   gate:
     name: Gate
     runs-on: ubuntu-latest
-    needs: [changes, build, test, lint, security, desktop, console, website, branch-policy]
+    needs: [changes, build, test, lint, security, desktop, console, openapi_schema, compose_core_smoke, website, branch-policy]
     if: always()
     steps:
       - name: All checks passed
         run: |
-          # build/test/lint/security/desktop/console/website are conditionally
+          # build/test/lint/security/desktop/console/openapi/compose/website are conditionally
           # skipped by the changes job when the diff doesn't touch what they
           # cover - treat "skipped" as passing, same as "success". changes and
           # branch-policy always run and must succeed outright.
@@ -288,6 +343,8 @@ jobs:
              ! ok "${{ needs.security.result }}" || \
              ! ok "${{ needs.desktop.result }}" || \
              ! ok "${{ needs.console.result }}" || \
+             ! ok "${{ needs.openapi_schema.result }}" || \
+             ! ok "${{ needs.compose_core_smoke.result }}" || \
              ! ok "${{ needs.website.result }}" || \
              [[ "${{ needs.changes.result }}" != "success" ]] || \
              [[ "${{ needs.branch-policy.result }}" != "success" ]]; then
@@ -299,6 +356,8 @@ jobs:
             echo "  security:      ${{ needs.security.result }}"
             echo "  desktop:       ${{ needs.desktop.result }}"
             echo "  console:       ${{ needs.console.result }}"
+            echo "  openapi-schema: ${{ needs.openapi_schema.result }}"
+            echo "  compose-smoke: ${{ needs.compose_core_smoke.result }}"
             echo "  website:       ${{ needs.website.result }}"
             echo "  branch-policy: ${{ needs.branch-policy.result }}"
             exit 1

@@ -18,6 +18,8 @@ type CreatePolicyBindingParams struct {
 	SubjectType     string   `json:"subject_type"`
 	SubjectID       string   `json:"subject_id"`
 	PermissionCodes []string `json:"permission_codes"`
+	ResourceType    string   `json:"resource_type"`
+	ResourceID      string   `json:"resource_id"`
 }
 
 type UpdatePolicyBindingParams struct {
@@ -26,6 +28,8 @@ type UpdatePolicyBindingParams struct {
 	SubjectType     string   `json:"subject_type"`
 	SubjectID       string   `json:"subject_id"`
 	PermissionCodes []string `json:"permission_codes"`
+	ResourceType    string   `json:"resource_type"`
+	ResourceID      string   `json:"resource_id"`
 }
 
 var policyBindingSortFields = map[string]sdb.SortField{
@@ -122,11 +126,23 @@ func (s *Service) CreatePolicyBinding(ctx context.Context, principal *Principal,
 	if err != nil {
 		return nil, err
 	}
+	resourceType, resourceID, err := validatePolicyResourceScope(params.ResourceType, params.ResourceID)
+	if err != nil {
+		return nil, err
+	}
 
 	var binding *PolicyBinding
 	err = s.db.Transaction(func(tx *gorm.DB) error {
 		tx = tx.WithContext(ctx)
-		if err := requireOrganizationPermission(tx, principal, organizationID, "policies.manage", "organization.manage"); err != nil {
+		// Resource-scoped, not requireOrganizationPermission: a principal who
+		// only holds policies.manage on one corpus (via their own
+		// resource-scoped binding) must still be able to delegate access to
+		// that same corpus without needing an organization-wide grant —
+		// otherwise resource-scoped policies.manage would grant nothing.
+		if err := requireResourcePermission(tx, principal, organizationID, resourceType, resourceID, "policies.manage", "organization.manage"); err != nil {
+			return err
+		}
+		if err := requirePermissionsWithinCallerScope(tx, principal, organizationID, resourceType, resourceID, permissionCodes); err != nil {
 			return err
 		}
 		if err := validatePolicySubject(tx, organizationID, subjectType, subjectID); err != nil {
@@ -145,6 +161,8 @@ func (s *Service) CreatePolicyBinding(ctx context.Context, principal *Principal,
 			SubjectType:     subjectType,
 			SubjectID:       subjectID,
 			PermissionCodes: permissionCodes,
+			ResourceType:    resourceType,
+			ResourceID:      resourceID,
 			CreatedAt:       now,
 			UpdatedAt:       now,
 		}
@@ -180,6 +198,10 @@ func (s *Service) UpdatePolicyBinding(ctx context.Context, principal *Principal,
 	if err != nil {
 		return nil, err
 	}
+	resourceType, resourceID, err := validatePolicyResourceScope(params.ResourceType, params.ResourceID)
+	if err != nil {
+		return nil, err
+	}
 
 	var binding *PolicyBinding
 	err = s.db.Transaction(func(tx *gorm.DB) error {
@@ -191,7 +213,20 @@ func (s *Service) UpdatePolicyBinding(ctx context.Context, principal *Principal,
 			}
 			return err
 		}
-		if err := requireOrganizationPermission(tx, principal, record.OrganizationID, "policies.manage", "organization.manage"); err != nil {
+		// Gate on the binding's current scope (can the caller manage it as it
+		// stands today); if the update also retargets it to a different
+		// scope, the caller must hold policies.manage there too — otherwise
+		// an update could smuggle a binding from a scope they administer
+		// into one they don't.
+		if err := requireResourcePermission(tx, principal, record.OrganizationID, record.ResourceType, record.ResourceID, "policies.manage", "organization.manage"); err != nil {
+			return err
+		}
+		if record.ResourceType != resourceType || record.ResourceID != resourceID {
+			if err := requireResourcePermission(tx, principal, record.OrganizationID, resourceType, resourceID, "policies.manage", "organization.manage"); err != nil {
+				return err
+			}
+		}
+		if err := requirePermissionsWithinCallerScope(tx, principal, record.OrganizationID, resourceType, resourceID, permissionCodes); err != nil {
 			return err
 		}
 		if err := validatePolicySubject(tx, record.OrganizationID, subjectType, subjectID); err != nil {
@@ -202,6 +237,8 @@ func (s *Service) UpdatePolicyBinding(ctx context.Context, principal *Principal,
 		record.SubjectType = subjectType
 		record.SubjectID = subjectID
 		record.PermissionCodes = permissionCodes
+		record.ResourceType = resourceType
+		record.ResourceID = resourceID
 		record.UpdatedAt = time.Now().UTC()
 		if err := tx.Save(&record).Error; err != nil {
 			return err
@@ -234,7 +271,7 @@ func (s *Service) DeletePolicyBinding(ctx context.Context, principal *Principal,
 			}
 			return err
 		}
-		if err := requireOrganizationPermission(tx, principal, record.OrganizationID, "policies.manage", "organization.manage"); err != nil {
+		if err := requireResourcePermission(tx, principal, record.OrganizationID, record.ResourceType, record.ResourceID, "policies.manage", "organization.manage"); err != nil {
 			return err
 		}
 		if err := tx.Delete(&sdb.PolicyBinding{}, "id = ?", record.ID).Error; err != nil {

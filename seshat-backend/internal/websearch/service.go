@@ -10,7 +10,7 @@ import (
 
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudwebsearch"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/websearch"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	backendsettings "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/settings"
 	searchproviders "github.com/KPO-Tech/seshat/pkg/web/search/providers"

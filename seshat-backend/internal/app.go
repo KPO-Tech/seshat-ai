@@ -6,12 +6,22 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/agents"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/audit"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudagents"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudmcp"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudwebsearch"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/agents"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/automation"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/hooks"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/mcp"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/websearch"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/connector"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/files"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/hooks"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/inbox"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge/azureblob"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge/gdrive"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge/onedrive"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge/s3"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge/sharepoint"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/mcp"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/memories"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/metrics"
@@ -23,7 +33,7 @@ import (
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/skills"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/websearch"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/workflows"
-	"github.com/KPO-Tech/seshat/pkg/docling"
+	"github.com/KPO-Tech/seshat/pkg/documentreader"
 	longterm "github.com/KPO-Tech/seshat/pkg/memory/longterm"
 	"github.com/KPO-Tech/seshat/pkg/rag"
 	"github.com/KPO-Tech/seshat/pkg/storage"
@@ -33,12 +43,15 @@ import (
 type Dependencies struct {
 	Identity    *db.IdentityStore
 	APIKeyStore *db.APIKeyStore // nil = api keys disabled
-	GroupStore  *db.GroupStore  // nil = groups disabled
 	AuthConfig  auth.ServiceConfig
-	// AuthProvider selects standalone vs connected identity (see
-	// helps/seshat-architecture-target.md). nil = auth.NewLocalProvider(Identity),
-	// i.e. today's standalone behavior — set only by bootstrap.go when
-	// SESHAT_SERVER_URL is configured.
+	// AuthProvider selects standalone vs connected identity (see ROADMAP.md,
+	// "Direction: seshat-server becomes the multi-tenant backbone"). nil =
+	// auth.NewLocalProvider(Identity), i.e. today's standalone behavior —
+	// set only by bootstrap.go when connected mode is active. Connected mode
+	// is not user-configurable: it is decided at boot by a reachability probe
+	// against a build-fixed seshat-server URL (defaultServerURL in
+	// internal/config/bootstrap.go), deliberately not an environment
+	// variable — see that file's doc comment for why.
 	AuthProvider      auth.Provider
 	QueryRuntime      query.QueryRuntime
 	SessionManager    query.SessionManager
@@ -52,7 +65,8 @@ type Dependencies struct {
 	// SettingsProvider selects standalone vs connected provider-settings
 	// resolution (org → platform → local personal key). nil =
 	// settings.NewLocalProvider(...), i.e. today's local-only behavior — set
-	// only by bootstrap.go when SESHAT_SERVER_URL is configured.
+	// only by bootstrap.go when connected mode is active (see
+	// internal/config/bootstrap.go).
 	SettingsProvider         settings.Provider
 	WebSearchSettings        *db.WebSearchSettingStore
 	WebSearchLogs            *db.WebSearchLogStore
@@ -61,24 +75,31 @@ type Dependencies struct {
 	// WebSearchCloudClient enriches the local provider-resolution chain and
 	// domain policy with a connected seshat-server's org/platform web-search
 	// config — nil in standalone mode, set only by bootstrap.go when
-	// SESHAT_SERVER_URL is configured. The organization itself is resolved
-	// fresh per call from the caller's own principal (see
-	// auth.Principal.OrganizationID), not configured here. See
-	// internal/cloudwebsearch's package doc.
+	// connected mode is active (see internal/config/bootstrap.go). The
+	// organization itself is resolved fresh per call from the caller's own
+	// principal (see auth.Principal.OrganizationID), not configured here.
+	// See internal/cloudwebsearch's package doc.
 	WebSearchCloudClient *cloudwebsearch.Client
-	EmbedderConfigStore  *db.EmbedderConfigStore
-	AuditLogStore        *db.AuditLogStore     // nil = audit logging disabled
-	UsageCounterStore    *db.UsageCounterStore // nil = quota tracking disabled
-	ArtifactStore        storage.ArtifactStore // nil = blob storage disabled
-	RAGService           *rag.Service          // nil = embedder not configured
-	Monitoring           metrics.Snapshotter
-	// ResolveDoclingClient returns the docling client to use for a given
-	// call, re-evaluated on every invocation (not cached) — nil = no
-	// auto-conversion. Set by bootstrap.go to check the user's persisted
-	// Settings > Knowledge override first, falling back to whatever was
-	// resolved from config.DoclingURL at boot (see docling_config.go's
-	// doc comment for the priority order).
-	ResolveDoclingClient func(ctx context.Context) *docling.Client
+	// KnowledgeBackend selects standalone vs connected Documents storage.
+	// nil = knowledge.NewService(CorpusStore, FileStore, IngestionJobStore,
+	// ArtifactStore, RAGService), i.e. today's local-only behavior — set only
+	// by bootstrap.go to a *cloudknowledge.RemoteService when connected mode
+	// is active (see internal/config/bootstrap.go). Unlike MCP/agents/
+	// web-search (which enrich the local behavior with an org catalog),
+	// this is a clean swap: in connected mode
+	// there is exactly one set of corpora, the organization's, not local
+	// corpora plus org corpora. See internal/cloudknowledge's package doc.
+	KnowledgeBackend    knowledge.Backend
+	EmbedderConfigStore *db.EmbedderConfigStore
+	AuditLogStore       *db.AuditLogStore     // nil = audit logging disabled
+	UsageCounterStore   *db.UsageCounterStore // nil = quota tracking disabled
+	ArtifactStore       storage.ArtifactStore // nil = blob storage disabled
+	RAGService          *rag.Service          // nil = embedder not configured
+	Monitoring          metrics.Snapshotter
+	// ResolveDocumentConverter returns the document converter to use for a given call,
+	// re-evaluated on every invocation. Bootstrap wires local-first or
+	// external-first policy from the persisted document reader settings.
+	ResolveDocumentConverter func(ctx context.Context) documentreader.Converter
 	// New services
 	UserMemoryStore *db.UserMemoryStore
 	// LongTermMemoryStore is longterm.Store (an SDK interface), not a
@@ -94,36 +115,85 @@ type Dependencies struct {
 	// MCPCloudClient/MCPOrgServerApprovals enrich the local MCP runtime with
 	// a connected seshat-server's shared server catalog, once the user has
 	// explicitly approved each one — nil in standalone mode, set only by
-	// bootstrap.go when SESHAT_SERVER_URL is configured. The organization
-	// itself is resolved fresh per request (see api.requestOrganizationID),
-	// not configured here. See internal/cloudmcp's package doc.
+	// bootstrap.go when connected mode is active (see
+	// internal/config/bootstrap.go). The organization itself is resolved
+	// fresh per request (see api.requestOrganizationID), not configured
+	// here. See internal/cloudmcp's package doc.
 	MCPCloudClient        *cloudmcp.Client
 	MCPOrgServerApprovals *db.MCPOrgServerApprovalStore
-	UserPreferencesStore  *db.UserPreferencesStore
-	AgentDefinitionStore  *db.AgentDefinitionStore
+	// HooksRuntime/HooksCloudClient/HookOrgApprovals mirror the MCP fields
+	// above exactly, for org-shared PreToolUse hooks - see
+	// internal/hooks.Service and
+	// docs/helps/audit-2026-08-29-openwork-den-comparison.md § 7.
+	// HooksRuntime is nil for workflows.Service's own client, which builds
+	// its own sdk.Client per run rather than sharing query's long-lived one
+	// - see internal/workflows/service.go.
+	HooksRuntime         hooks.RuntimeReloader
+	HooksCloudClient     *cloudhooks.Client
+	HookOrgApprovals     *db.HookOrgApprovalStore
+	UserPreferencesStore *db.UserPreferencesStore
+	AgentDefinitionStore *db.AgentDefinitionStore
 	// AgentsCloudClient enriches local agent resolution with a connected
 	// seshat-server's shared preset catalog, once a caller has an
 	// authenticated principal — nil in standalone mode, set only by
-	// bootstrap.go when SESHAT_SERVER_URL is configured. The organization
-	// itself is resolved fresh per call from the caller's own principal (see
+	// bootstrap.go when connected mode is active (see
+	// internal/config/bootstrap.go). The organization itself is resolved
+	// fresh per call from the caller's own principal (see
 	// auth.Principal.OrganizationID). Purely additive, see
 	// internal/agents.Service's own doc comment.
 	AgentsCloudClient *cloudagents.Client
 	// PreferencesProvider selects standalone vs connected preferences storage.
 	// nil = preferences.NewLocalProvider(UserPreferencesStore), i.e. today's
-	// local-only behavior — set only by bootstrap.go when SESHAT_SERVER_URL
-	// is configured.
+	// local-only behavior — set only by bootstrap.go when connected mode is
+	// active (see internal/config/bootstrap.go).
 	PreferencesProvider preferences.Provider
 	// MemoriesProvider selects standalone vs connected flat-memory-list
 	// storage. nil = memories.NewLocalProvider(UserMemoryStore), i.e.
-	// today's local-only behavior — set only by bootstrap.go when
-	// SESHAT_SERVER_URL is configured.
+	// today's local-only behavior — set only by bootstrap.go when connected
+	// mode is active (see internal/config/bootstrap.go).
 	MemoriesProvider memories.Provider
 	// QuotaProvider selects standalone vs connected usage-counter storage.
 	// nil = quotas.NewLocalProvider(UsageCounterStore), i.e. today's
-	// local-only behavior — set only by bootstrap.go when SESHAT_SERVER_URL
-	// is configured. Pure counting either way, never an enforced limit.
+	// local-only behavior — set only by bootstrap.go when connected mode is
+	// active (see internal/config/bootstrap.go). Pure counting either way,
+	// never an enforced limit.
 	QuotaProvider quotas.Provider
+	// Inbox is pre-built by bootstrap.go (not assembled here from raw
+	// stores like most other services) because its Connector registrations
+	// depend on which channel credentials (e.g. GOOGLE_OAUTH_CLIENT_ID) are
+	// configured in the environment - that decision belongs where the rest
+	// of the env-var-driven optional integrations already live. nil = the
+	// inbox domain is disabled (no routes registered).
+	Inbox *inbox.Service
+	// KnowledgeGDrive/KnowledgeGDriveAccounts follow the same
+	// bootstrap.go-owned, env-var-gated pattern as Inbox above - nil = the
+	// Google Drive Knowledge connector is disabled (no routes registered).
+	// See helps/roadmap.md Phase 1.
+	KnowledgeGDrive         *gdrive.Connector
+	KnowledgeGDriveAccounts *db.ConnectorAccountStore
+	// ConnectorAccounts is the same generic, kind-agnostic store as
+	// KnowledgeGDriveAccounts (identical underlying table - see
+	// db.ConnectorAccountStore's own doc comment) but named for its general
+	// use across every connector kind, not just Drive. ActionConnectors
+	// maps connector.Kind (as a string) to the implementation that should
+	// handle a POST .../accounts/{id}/act call for that kind - see
+	// internal/mcp/action and helps/roadmap.md Phase 3. Both nil = no Action
+	// connector is configured (no routes registered).
+	ConnectorAccounts *db.ConnectorAccountStore
+	ActionConnectors  map[string]connector.ActionConnector
+	// KnowledgeConnectors mirrors ActionConnectors, for the generic
+	// POST .../accounts/{id}/sync route - internal/knowledge/s3 is its first
+	// entry. Deliberately not used for Drive, which keeps its own dedicated
+	// KnowledgeGDrive field/routes (see helps/roadmap.md Phase 3 for why).
+	KnowledgeConnectors map[string]connector.KnowledgeConnector
+	// DesktopPolicies is this device's last-synced desktop policy bundle
+	// (see docs/helps/audit-2026-08-29-openwork-den-comparison.md § 5) -
+	// unlike most fields above, always non-nil (bootstrap.go constructs it
+	// unconditionally, standalone or connected): in standalone mode, or
+	// before this device has ever paired with an organization, it simply
+	// has nothing synced and fails open (allows everything), which is the
+	// correct behavior, not a special case to guard against here.
+	DesktopPolicies *cloudautomation.PolicyStore
 }
 
 // App is the root backend service container.
@@ -132,7 +202,7 @@ type App struct {
 	Auth        *auth.Service
 	Query       *query.Service
 	Files       *files.Service
-	Knowledge   *knowledge.Service
+	Knowledge   knowledge.Backend
 	Settings    *settings.Service
 	WebSearch   *websearch.Service
 	Audit       *audit.Service
@@ -141,10 +211,24 @@ type App struct {
 	Memories    *memories.Service
 	Plans       *plans.Service
 	MCP         *mcp.Service
+	Hooks       *hooks.Service
 	Preferences *preferences.Service
 	Skills      *skills.Service
 	Agents      *agents.Service
 	Workflows   *workflows.Service
+	Inbox       *inbox.Service
+
+	KnowledgeGDrive         *gdrive.Connector
+	KnowledgeGDriveAccounts *db.ConnectorAccountStore
+	ConnectorAccounts       *db.ConnectorAccountStore
+	ActionConnectors        map[string]connector.ActionConnector
+	KnowledgeConnectors     map[string]connector.KnowledgeConnector
+
+	// DesktopPolicies mirrors Dependencies.DesktopPolicies (see its doc
+	// comment) - kept on App too, not just consumed inline while building
+	// Auth above, because the settings-write middleware (internal/api)
+	// needs to read it directly at request time, not just once at boot.
+	DesktopPolicies *cloudautomation.PolicyStore
 }
 
 func NewApp(deps Dependencies) *App {
@@ -169,8 +253,40 @@ func NewApp(deps Dependencies) *App {
 		preferencesProvider = preferences.NewLocalProvider(deps.UserPreferencesStore)
 	}
 	preferencesService := preferences.NewService(preferencesProvider)
-	filesService := files.NewService(deps.FileStore, deps.ArtifactStore).WithDocling(deps.ResolveDoclingClient)
-	knowledgeService := knowledge.NewService(deps.CorpusStore, deps.FileStore, deps.IngestionJobStore, deps.ArtifactStore, deps.RAGService).WithDocling(deps.ResolveDoclingClient)
+	filesService := files.NewService(deps.FileStore, deps.ArtifactStore).WithDocumentReader(deps.ResolveDocumentConverter)
+	knowledgeService := deps.KnowledgeBackend
+	if knowledgeService == nil {
+		knowledgeService = knowledge.NewService(deps.CorpusStore, deps.FileStore, deps.IngestionJobStore, deps.ArtifactStore, deps.RAGService).WithDocumentReader(deps.ResolveDocumentConverter)
+	}
+	// Give the Drive connector the same document-reader extraction an
+	// uploaded file gets, instead of ingesting a downloaded PDF/DOCX's raw
+	// bytes as text (unsearchable garbage - found via a real end-to-end
+	// test, see helps/roadmap.md Phase 1). Only possible against the local
+	// *knowledge.Service (IngestExternal's own home) - connected mode's
+	// RemoteService isn't wired for connector-driven ingestion in this
+	// phase either.
+	// Same reasoning applies to any generic KnowledgeConnector that needs
+	// Document-reader extraction - internal/knowledge/s3 (Phase 3) is the
+	// first one, resolved by kind rather than a dedicated field since
+	// KnowledgeConnectors is the generic map, not KnowledgeGDrive's
+	// one-off pattern.
+	if concreteKnowledge, ok := knowledgeService.(*knowledge.Service); ok {
+		if deps.KnowledgeGDrive != nil {
+			deps.KnowledgeGDrive.WithTextExtractor(concreteKnowledge.ExtractText)
+		}
+		if s3Connector, ok := deps.KnowledgeConnectors[string(s3.Kind)].(*s3.Connector); ok {
+			s3Connector.WithTextExtractor(concreteKnowledge.ExtractText)
+		}
+		if spConnector, ok := deps.KnowledgeConnectors[string(sharepoint.Kind)].(*sharepoint.Connector); ok {
+			spConnector.WithTextExtractor(concreteKnowledge.ExtractText)
+		}
+		if azureBlobConnector, ok := deps.KnowledgeConnectors[string(azureblob.Kind)].(*azureblob.Connector); ok {
+			azureBlobConnector.WithTextExtractor(concreteKnowledge.ExtractText)
+		}
+		if oneDriveConnector, ok := deps.KnowledgeConnectors[string(onedrive.Kind)].(*onedrive.Connector); ok {
+			oneDriveConnector.WithTextExtractor(concreteKnowledge.ExtractText)
+		}
+	}
 	skillsService := skills.NewService()
 	agentsService := agents.NewService(deps.AgentDefinitionStore, deps.AgentsCloudClient)
 	quotaProvider := deps.QuotaProvider
@@ -178,7 +294,7 @@ func NewApp(deps Dependencies) *App {
 		quotaProvider = quotas.NewLocalProvider(deps.UsageCounterStore)
 	}
 	return &App{
-		Auth: auth.NewService(authProvider, deps.Identity, deps.APIKeyStore, deps.GroupStore, deps.AuthConfig),
+		Auth: auth.NewService(authProvider, deps.Identity, deps.APIKeyStore, deps.AuthConfig, deps.DesktopPolicies),
 		Query: query.NewService(query.ServiceConfig{
 			Runtime:     deps.QueryRuntime,
 			Sessions:    deps.SessionManager,
@@ -207,9 +323,22 @@ func NewApp(deps Dependencies) *App {
 			CloudClient: deps.MCPCloudClient,
 			Approvals:   deps.MCPOrgServerApprovals,
 		}),
+		Hooks: hooks.NewService(hooks.ServiceConfig{
+			Runtime:     deps.HooksRuntime,
+			CloudClient: deps.HooksCloudClient,
+			Approvals:   deps.HookOrgApprovals,
+		}),
 		Preferences: preferencesService,
 		Skills:      skillsService,
 		Agents:      agentsService,
-		Workflows:   workflows.New(settingsService),
+		Inbox:       deps.Inbox,
+
+		KnowledgeGDrive:         deps.KnowledgeGDrive,
+		KnowledgeGDriveAccounts: deps.KnowledgeGDriveAccounts,
+		ConnectorAccounts:       deps.ConnectorAccounts,
+		ActionConnectors:        deps.ActionConnectors,
+		KnowledgeConnectors:     deps.KnowledgeConnectors,
+		Workflows:               workflows.New(settingsService),
+		DesktopPolicies:         deps.DesktopPolicies,
 	}
 }

@@ -1,13 +1,13 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 # scripts/setup.sh
 # One-command setup for SeshatOS app on Linux and macOS.
 #
 # What it does:
-#   1. Verifies Go 1.21+ (seshat-backend, seshat-server)
+#   1. Verifies Go 1.26+ (seshat-backend, seshat-server)
 #   2. Installs ripgrep (required at runtime by the engine's glob/grep tools)
-#   3. Verifies Node.js 20+ and bun (or npm)
+#   3. Verifies Node.js 22+ and bun (or npm)
 #   4. Installs Node dependencies (bun install)
-#   5. Installs uv and docling-serve (optional — skip with SKIP_PYTHON=1)
+#   5. Installs uv and docling-serve (optional â€” skip with SKIP_PYTHON=1)
 #   6. Builds seshat-backend, seshat-server, and the Electron app
 #
 # Usage:
@@ -41,28 +41,29 @@ export SESHAT_RUNTIME_ROOT
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 BLUE='\033[0;34m'; BOLD='\033[1m'; NC='\033[0m'
 
-ok()   { echo -e "${GREEN}  ✓${NC}  $*"; }
-info() { echo -e "${BLUE}  ·${NC}  $*"; }
+ok()   { echo -e "${GREEN}  âœ“${NC}  $*"; }
+info() { echo -e "${BLUE}  Â·${NC}  $*"; }
 warn() { echo -e "${YELLOW}  !${NC}  $*"; }
-fail() { echo -e "${RED}  ✗${NC}  $*" >&2; exit 1; }
+fail() { echo -e "${RED}  âœ—${NC}  $*" >&2; exit 1; }
 step() { echo -e "\n${BOLD}$*${NC}"; }
 
-# ── 1. Go ─────────────────────────────────────────────────────────────────────
+
+# â”€â”€ 1. Go â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 step "Checking Go..."
 
 if ! command -v go &>/dev/null; then
-    fail "Go not found. Install Go 1.21+ from: https://go.dev/dl/"
+    fail "Go not found. Install Go 1.26+ from: https://go.dev/dl/"
 fi
 
 GO_VERSION="$(go version | awk '{print $3}' | sed 's/go//')"
 GO_MAJOR="$(echo "$GO_VERSION" | cut -d. -f1)"
 GO_MINOR="$(echo "$GO_VERSION" | cut -d. -f2)"
-if [ "$GO_MAJOR" -lt 1 ] || { [ "$GO_MAJOR" -eq 1 ] && [ "$GO_MINOR" -lt 21 ]; }; then
-    fail "Go $GO_VERSION found but 1.21+ is required. Update at: https://go.dev/dl/"
+if [ "$GO_MAJOR" -lt 1 ] || { [ "$GO_MAJOR" -eq 1 ] && [ "$GO_MINOR" -lt 26 ]; }; then
+    fail "Go $GO_VERSION found but 1.26+ is required. Update at: https://go.dev/dl/"
 fi
 ok "Go $GO_VERSION"
 
-# ── 2. ripgrep ────────────────────────────────────────────────────────────────
+# â”€â”€ 2. ripgrep â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Not a build dependency - a runtime one. seshat-backend embeds the seshat
 # engine, and its glob/grep tools shell out to `rg` directly (no pure-Go
 # fallback) - without it, every glob/grep tool call fails with "ripgrep (rg)
@@ -125,89 +126,3 @@ else
     fi
 fi
 
-# ── 3. Node.js ────────────────────────────────────────────────────────────────
-step "Checking Node.js..."
-
-if ! command -v node &>/dev/null; then
-    fail "Node.js not found. Install Node.js 20+ from: https://nodejs.org/"
-fi
-
-NODE_VERSION="$(node --version | sed 's/v//' | cut -d. -f1)"
-if [ "$NODE_VERSION" -lt 20 ]; then
-    fail "Node.js v$NODE_VERSION found but v20+ is required."
-fi
-ok "Node.js $(node --version)"
-
-# ── 4. Package manager ────────────────────────────────────────────────────────
-step "Checking package manager..."
-
-if command -v bun &>/dev/null; then
-    PKG_INSTALL="bun install"
-    ok "bun $(bun --version)"
-elif command -v npm &>/dev/null; then
-    PKG_INSTALL="npm install --legacy-peer-deps"
-    ok "npm $(npm --version)"
-else
-    fail "Neither bun nor npm found."
-fi
-
-# ── 5. Install Node dependencies ──────────────────────────────────────────────
-step "Installing Node dependencies..."
-
-cd "$UI_DIR"
-$PKG_INSTALL
-ok "Node dependencies installed"
-
-# ── 6. Python venv + docling-serve (optional) ────────────────────────────────
-if [ "${SKIP_PYTHON:-0}" = "1" ]; then
-    warn "Skipping Python/docling setup (SKIP_PYTHON=1)"
-    warn "Run './scripts/install-python-env.sh' later to enable document conversion."
-else
-    step "Setting up Python environment (docling-serve)..."
-    bash "$REPO_ROOT/scripts/install-python-env.sh"
-fi
-
-# ── 7. Build Go binaries ──────────────────────────────────────────────────────
-step "Building seshat-backend and seshat-server..."
-
-( cd "$BACKEND_DIR" && go build ./... )
-ok "seshat-backend"
-( cd "$SERVER_DIR" && go build ./... )
-ok "seshat-server"
-
-# go.work (repo root) can optionally point at a local checkout of the seshat
-# engine itself (sibling directory, "use ../seshat") for engine development -
-# see go.work's `use` block. Without it, seshat-backend/seshat-server build
-# fine against the published module instead; this is informational only.
-if grep -q '\.\./seshat' "$REPO_ROOT/go.work" 2>/dev/null; then
-    if [ -f "$REPO_ROOT/../seshat/go.mod" ]; then
-        ok "go.work: local seshat engine checkout found at $(cd "$REPO_ROOT/.." && pwd)/seshat"
-    else
-        warn "go.work references ../seshat but no go.mod was found there — Go builds will fail until that checkout exists (or remove the 'use ../seshat' line to build against the published module instead)."
-    fi
-fi
-
-# ── 8. Build UI ────────────────────────────────────────────────────────────────
-step "Building SeshatOS UI..."
-
-cd "$UI_DIR"
-if command -v bun &>/dev/null; then
-    bun run build
-else
-    npm run build --legacy-peer-deps
-fi
-ok "Build complete → seshat-ui/out/"
-
-# ── Done ─────────────────────────────────────────────────────────────────────
-echo ""
-echo -e "${BOLD}${GREEN}  Setup complete!${NC}"
-echo ""
-echo "  Runtime data: $SESHAT_RUNTIME_ROOT"
-echo ""
-echo "  Start in dev mode (from repo root):"
-echo "    make dev"
-echo ""
-case "$OS" in
-    Linux|Darwin) echo "  Package for distribution: make ui-build" ;;
-esac
-echo ""

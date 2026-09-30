@@ -3,6 +3,7 @@ package db
 import (
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestMigrateCreatesSchemaAndEnforcesUniqueSlug(t *testing.T) {
@@ -91,5 +92,293 @@ func TestMembershipUserIDIsUniqueAcrossOrganizations(t *testing.T) {
 	second := Membership{ID: "mem_2", UserID: user.ID, OrganizationID: orgB.ID, Role: "owner"}
 	if err := database.Gorm().Create(&second).Error; err == nil {
 		t.Fatal("expected a second membership for the same user in a different organization to violate the unique index")
+	}
+}
+
+// TestScimSchemaMigratesAndEnforcesUniqueness is Étape 1's cold-migration
+// check for the SCIM tables (see docs/helps/audit-2026-08-29-openwork-den-comparison.md
+// § 3): a fresh database migrates cleanly, one ScimConnection per
+// organization is enforced at the schema level (not just application code),
+// and Membership.ScimExternalID is unique per organization while still
+// allowing any number of non-SCIM memberships (NULL) to coexist.
+func TestScimSchemaMigratesAndEnforcesUniqueness(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "state.db")
+	database, err := Open(Config{Driver: DriverSQLite, DSN: dbPath})
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer database.Close()
+
+	if err := database.Migrate(); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+
+	org := Organization{ID: "org_1", Name: "Seshat", Slug: "seshat"}
+	if err := database.Gorm().Create(&org).Error; err != nil {
+		t.Fatalf("create organization: %v", err)
+	}
+
+	connection := ScimConnection{ID: "scim_1", OrganizationID: org.ID, Name: "Okta", TokenHash: "hash-a"}
+	if err := database.Gorm().Create(&connection).Error; err != nil {
+		t.Fatalf("create scim connection: %v", err)
+	}
+	duplicateOrg := ScimConnection{ID: "scim_2", OrganizationID: org.ID, Name: "Entra ID", TokenHash: "hash-b"}
+	if err := database.Gorm().Create(&duplicateOrg).Error; err == nil {
+		t.Fatal("expected a second SCIM connection for the same organization to violate the unique index")
+	}
+
+	otherOrg := Organization{ID: "org_2", Name: "Other", Slug: "other"}
+	if err := database.Gorm().Create(&otherOrg).Error; err != nil {
+		t.Fatalf("create other organization: %v", err)
+	}
+	duplicateToken := ScimConnection{ID: "scim_3", OrganizationID: otherOrg.ID, Name: "Duplicate token", TokenHash: "hash-a"}
+	if err := database.Gorm().Create(&duplicateToken).Error; err == nil {
+		t.Fatal("expected a reused token hash across organizations to violate the unique index")
+	}
+
+	event := ScimSyncEvent{
+		ID: "sse_1", ScimConnectionID: connection.ID, OrganizationID: org.ID,
+		Operation: "user.create", ResourceType: "User", ExternalID: "ext-1", Success: true,
+	}
+	if err := database.Gorm().Create(&event).Error; err != nil {
+		t.Fatalf("create scim sync event: %v", err)
+	}
+
+	userA := User{ID: "usr_a", Email: "a@example.com", DisplayName: "A", PasswordHash: "hash"}
+	userB := User{ID: "usr_b", Email: "b@example.com", DisplayName: "B", PasswordHash: "hash"}
+	if err := database.Gorm().Create(&userA).Error; err != nil {
+		t.Fatalf("create user A: %v", err)
+	}
+	if err := database.Gorm().Create(&userB).Error; err != nil {
+		t.Fatalf("create user B: %v", err)
+	}
+
+	externalID := "idp-external-1"
+	memberA := Membership{ID: "mem_a", UserID: userA.ID, OrganizationID: org.ID, Role: "member", ScimExternalID: &externalID}
+	if err := database.Gorm().Create(&memberA).Error; err != nil {
+		t.Fatalf("create scim-provisioned membership: %v", err)
+	}
+	memberBSameExternal := Membership{ID: "mem_b", UserID: userB.ID, OrganizationID: org.ID, Role: "member", ScimExternalID: &externalID}
+	if err := database.Gorm().Create(&memberBSameExternal).Error; err == nil {
+		t.Fatal("expected reusing a SCIM external id within the same organization to violate the unique index")
+	}
+
+	// Two non-SCIM memberships (ScimExternalID nil) in the same org must not
+	// collide with each other or with the SCIM-provisioned one above.
+	memberBNoExternal := Membership{ID: "mem_b2", UserID: userB.ID, OrganizationID: org.ID, Role: "member"}
+	if err := database.Gorm().Create(&memberBNoExternal).Error; err != nil {
+		t.Fatalf("expected a non-SCIM membership to coexist with a SCIM one in the same org: %v", err)
+	}
+}
+
+// TestSAMLAuthRequestStateSchemaMigratesAndEnforcesUniqueness is the SAML
+// SSO plan's cold-migration check (mirrors the SCIM one above): a fresh
+// database migrates SAMLAuthRequestState cleanly, and RequestID - the
+// InResponseTo correlator - is unique, since two in-flight login attempts
+// must never collide on the same AuthnRequest id.
+func TestSAMLAuthRequestStateSchemaMigratesAndEnforcesUniqueness(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "state.db")
+	database, err := Open(Config{Driver: DriverSQLite, DSN: dbPath})
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer database.Close()
+
+	if err := database.Migrate(); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+
+	now := time.Now().UTC()
+	first := SAMLAuthRequestState{
+		ID: "sam_1", ProviderID: "prv_1", RequestID: "id-a",
+		RedirectURI: "http://localhost:1234/callback", CreatedAt: now, ExpiresAt: now.Add(10 * time.Minute),
+	}
+	if err := database.Gorm().Create(&first).Error; err != nil {
+		t.Fatalf("create saml auth request state: %v", err)
+	}
+
+	duplicate := SAMLAuthRequestState{
+		ID: "sam_2", ProviderID: "prv_1", RequestID: "id-a",
+		RedirectURI: "http://localhost:1234/callback", CreatedAt: now, ExpiresAt: now.Add(10 * time.Minute),
+	}
+	if err := database.Gorm().Create(&duplicate).Error; err == nil {
+		t.Fatal("expected a reused RequestID to violate the unique index")
+	}
+}
+
+// TestDesktopPolicyBindingSchemaMigratesAndEnforcesUniqueness is the desktop
+// policies plan's cold-migration check (mirrors the SCIM/SAML ones above): a
+// fresh database migrates DesktopPolicyBinding cleanly, and the
+// (organization_id, policy_code, subject_type, subject_id) quadruplet is
+// unique - an admin must update a binding's Value in place rather than ever
+// accumulating two rows for the same subject.
+func TestDesktopPolicyBindingSchemaMigratesAndEnforcesUniqueness(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "state.db")
+	database, err := Open(Config{Driver: DriverSQLite, DSN: dbPath})
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer database.Close()
+
+	if err := database.Migrate(); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+
+	org := Organization{ID: "org_1", Name: "Seshat", Slug: "seshat"}
+	if err := database.Gorm().Create(&org).Error; err != nil {
+		t.Fatalf("create organization: %v", err)
+	}
+
+	first := DesktopPolicyBinding{
+		ID: "dpb_1", OrganizationID: org.ID, PolicyCode: "allow_custom_providers",
+		SubjectType: "role", SubjectID: "member", Value: false,
+	}
+	if err := database.Gorm().Create(&first).Error; err != nil {
+		t.Fatalf("create desktop policy binding: %v", err)
+	}
+
+	duplicate := DesktopPolicyBinding{
+		ID: "dpb_2", OrganizationID: org.ID, PolicyCode: "allow_custom_providers",
+		SubjectType: "role", SubjectID: "member", Value: true,
+	}
+	if err := database.Gorm().Create(&duplicate).Error; err == nil {
+		t.Fatal("expected a duplicate (org, policy_code, subject_type, subject_id) to violate the unique index")
+	}
+
+	// A different subject, or a different policy code, for the same org must
+	// not collide with the binding above.
+	differentSubject := DesktopPolicyBinding{
+		ID: "dpb_3", OrganizationID: org.ID, PolicyCode: "allow_custom_providers",
+		SubjectType: "role", SubjectID: "admin", Value: false,
+	}
+	if err := database.Gorm().Create(&differentSubject).Error; err != nil {
+		t.Fatalf("expected a different subject to coexist: %v", err)
+	}
+	differentCode := DesktopPolicyBinding{
+		ID: "dpb_4", OrganizationID: org.ID, PolicyCode: "allow_local_models",
+		SubjectType: "role", SubjectID: "member", Value: false,
+	}
+	if err := database.Gorm().Create(&differentCode).Error; err != nil {
+		t.Fatalf("expected a different policy code to coexist: %v", err)
+	}
+
+	// An org-wide binding (empty SubjectID) for a different org must not
+	// collide with an org-wide binding on the first org either.
+	otherOrg := Organization{ID: "org_2", Name: "Other", Slug: "other"}
+	if err := database.Gorm().Create(&otherOrg).Error; err != nil {
+		t.Fatalf("create other organization: %v", err)
+	}
+	orgWideA := DesktopPolicyBinding{ID: "dpb_5", OrganizationID: org.ID, PolicyCode: "allow_settings_modification", SubjectType: "org", SubjectID: "", Value: false}
+	if err := database.Gorm().Create(&orgWideA).Error; err != nil {
+		t.Fatalf("create org-wide binding: %v", err)
+	}
+	orgWideB := DesktopPolicyBinding{ID: "dpb_6", OrganizationID: otherOrg.ID, PolicyCode: "allow_settings_modification", SubjectType: "org", SubjectID: "", Value: false}
+	if err := database.Gorm().Create(&orgWideB).Error; err != nil {
+		t.Fatalf("expected an org-wide binding in a different organization to coexist: %v", err)
+	}
+}
+
+// TestHookConfigSchemaMigratesAndEnforcesUniqueness is the hooks/bundle
+// plan's cold-migration check (mirrors the desktop policies one above): a
+// fresh database migrates HookConfig cleanly, and (organization_id, name) is
+// unique - an admin must update an existing hook rather than accumulate two
+// rows under the same name.
+func TestHookConfigSchemaMigratesAndEnforcesUniqueness(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "state.db")
+	database, err := Open(Config{Driver: DriverSQLite, DSN: dbPath})
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer database.Close()
+
+	if err := database.Migrate(); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+
+	org := Organization{ID: "org_1", Name: "Seshat", Slug: "seshat"}
+	if err := database.Gorm().Create(&org).Error; err != nil {
+		t.Fatalf("create organization: %v", err)
+	}
+	user := User{ID: "usr_1", Email: "admin@example.com", DisplayName: "Admin", PasswordHash: "x"}
+	if err := database.Gorm().Create(&user).Error; err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	first := HookConfig{ID: "hookcfg_1", OrganizationID: org.ID, CreatedByUserID: user.ID, Name: "block-rm", Command: "echo test", TimeoutSecs: 30, Enabled: true}
+	if err := database.Gorm().Create(&first).Error; err != nil {
+		t.Fatalf("create hook config: %v", err)
+	}
+
+	duplicate := HookConfig{ID: "hookcfg_2", OrganizationID: org.ID, CreatedByUserID: user.ID, Name: "block-rm", Command: "echo other", TimeoutSecs: 30, Enabled: true}
+	if err := database.Gorm().Create(&duplicate).Error; err == nil {
+		t.Fatal("expected a duplicate (organization_id, name) to violate the unique index")
+	}
+
+	otherOrg := Organization{ID: "org_2", Name: "Other", Slug: "other"}
+	if err := database.Gorm().Create(&otherOrg).Error; err != nil {
+		t.Fatalf("create other organization: %v", err)
+	}
+	sameNameOtherOrg := HookConfig{ID: "hookcfg_3", OrganizationID: otherOrg.ID, CreatedByUserID: user.ID, Name: "block-rm", Command: "echo test", TimeoutSecs: 30, Enabled: true}
+	if err := database.Gorm().Create(&sameNameOtherOrg).Error; err != nil {
+		t.Fatalf("expected the same name in a different organization to coexist: %v", err)
+	}
+}
+
+// TestBundleImportSchemaMigratesAndTracksItems is the bundle marketplace
+// plan's cold-migration check: a fresh database migrates BundleImport/
+// BundleImportItem cleanly, and querying items by BundleImportID returns
+// exactly what was tagged - the mechanism "what did this bundle add"/
+// "remove everything this bundle added" depends on.
+func TestBundleImportSchemaMigratesAndTracksItems(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "state.db")
+	database, err := Open(Config{Driver: DriverSQLite, DSN: dbPath})
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer database.Close()
+
+	if err := database.Migrate(); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+
+	org := Organization{ID: "org_1", Name: "Seshat", Slug: "seshat"}
+	if err := database.Gorm().Create(&org).Error; err != nil {
+		t.Fatalf("create organization: %v", err)
+	}
+	user := User{ID: "usr_1", Email: "admin@example.com", DisplayName: "Admin", PasswordHash: "x"}
+	if err := database.Gorm().Create(&user).Error; err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	bundleImport := BundleImport{ID: "bimp_1", OrganizationID: org.ID, BundleName: "Jira Integration", ImportedByUserID: user.ID}
+	if err := database.Gorm().Create(&bundleImport).Error; err != nil {
+		t.Fatalf("create bundle import: %v", err)
+	}
+
+	items := []BundleImportItem{
+		{ID: "bimpi_1", BundleImportID: bundleImport.ID, OrganizationID: org.ID, ResourceType: "mcp_server_config", ResourceID: "mcpsrvcfg_1"},
+		{ID: "bimpi_2", BundleImportID: bundleImport.ID, OrganizationID: org.ID, ResourceType: "agent_preset", ResourceID: "agentpreset_1"},
+	}
+	if err := database.Gorm().Create(&items).Error; err != nil {
+		t.Fatalf("create bundle import items: %v", err)
+	}
+
+	// An unrelated import in the same org must never be conflated with this
+	// one when querying by BundleImportID.
+	otherImport := BundleImport{ID: "bimp_2", OrganizationID: org.ID, BundleName: "Slack Integration", ImportedByUserID: user.ID}
+	if err := database.Gorm().Create(&otherImport).Error; err != nil {
+		t.Fatalf("create other bundle import: %v", err)
+	}
+	otherItem := BundleImportItem{ID: "bimpi_3", BundleImportID: otherImport.ID, OrganizationID: org.ID, ResourceType: "skill_repo", ResourceID: "skillrepo_1"}
+	if err := database.Gorm().Create(&otherItem).Error; err != nil {
+		t.Fatalf("create other bundle import item: %v", err)
+	}
+
+	var found []BundleImportItem
+	if err := database.Gorm().Where("bundle_import_id = ?", bundleImport.ID).Order("id").Find(&found).Error; err != nil {
+		t.Fatalf("query items: %v", err)
+	}
+	if len(found) != 2 {
+		t.Fatalf("expected exactly the 2 items tagged to this bundle import, got %+v", found)
 	}
 }

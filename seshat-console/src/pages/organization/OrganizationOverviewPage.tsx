@@ -143,8 +143,15 @@ export function OrganizationOverviewPage() {
   return (
     <div>
       <PageHeader
-        title={organization?.name ?? 'Organization overview'}
-        description={organization?.description || 'Team, AI, automation, knowledge, and integrations.'}
+        actions={
+          <Button
+            type="default"
+            onClick={() => setEditingProfile(true)}
+            style={{ borderRadius: 8 }}
+          >
+            Edit Organization
+          </Button>
+        }
       />
 
       <div
@@ -155,104 +162,154 @@ export function OrganizationOverviewPage() {
           marginBottom: 24,
         }}
       >
-        <StatTile label="Team members" value={memberships.data?.total} loading={memberships.isLoading} icon={<TeamOutlined />} />
-        <StatTile label="Pending invites" value={invitations.data?.total} loading={invitations.isLoading} icon={<MailOutlined />} />
-        <StatTile label="Jobs" value={jobs.data?.length} loading={jobs.isLoading} icon={<ScheduleOutlined />} />
-        <StatTile label="Devices" value={devices.data?.length} loading={devices.isLoading} icon={<DesktopOutlined />} />
-        <StatTile label="Corpora" value={corpora.data?.total} loading={corpora.isLoading} icon={<DatabaseOutlined />} />
+        <StatTile
+          label="Team Members"
+          value={memberships.data?.total}
+          loading={memberships.isLoading}
+          icon={<TeamOutlined />}
+          sublabel="Active members"
+        />
+        <StatTile
+          label="Pending Invites"
+          value={invitations.data?.total}
+          loading={invitations.isLoading}
+          icon={<MailOutlined />}
+          sublabel="Awaiting accept"
+        />
+        <StatTile
+          label="Automation Jobs"
+          value={jobs.data?.length}
+          loading={jobs.isLoading}
+          icon={<ScheduleOutlined />}
+          sublabel="Configured tasks"
+        />
+        <StatTile
+          label="Worker Devices"
+          value={devices.data?.length}
+          loading={devices.isLoading}
+          icon={<DesktopOutlined />}
+          sublabel="Registered runners"
+        />
+        <StatTile
+          label="Knowledge Corpora"
+          value={corpora.data?.total}
+          loading={corpora.isLoading}
+          icon={<DatabaseOutlined />}
+          sublabel="Vector indexes"
+        />
       </div>
 
+      <Card title="Needs Attention" style={{ marginBottom: 24 }}>
+        {alerts.length > 0 ? (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: 12,
+            }}
+          >
+            {alerts.map((alert) => (
+              <Alert
+                key={alert.title}
+                type={alert.type ?? 'warning'}
+                showIcon
+                message={<span style={{ fontWeight: 600 }}>{alert.title}</span>}
+                description={
+                  <div style={{ marginTop: 4 }}>
+                    <div style={{ color: palette.inkSecondary, fontSize: 13, marginBottom: 8 }}>
+                      {alert.description}
+                    </div>
+                    <Button size="small" type="default" onClick={alert.action} style={{ borderRadius: 6 }}>
+                      {alert.actionLabel}
+                    </Button>
+                  </div>
+                }
+                style={{ borderRadius: 10, height: '100%' }}
+              />
+            ))}
+          </div>
+        ) : (
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description="This organization is fully configured and operational."
+            style={{ padding: '20px 0' }}
+          />
+        )}
+      </Card>
+
       <div
+        className="organization-overview-detail-grid"
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
           gap: 16,
-          marginBottom: 24,
-          alignItems: 'start',
+          alignItems: 'stretch',
         }}
       >
-        <Card title="Setup status">
+        <Card title="Setup Status">
           <Space direction="vertical" size={14} style={{ width: '100%' }}>
-            <div>
-              <Typography.Text strong style={{ display: 'block' }}>Profile</Typography.Text>
-              <Typography.Text style={{ color: palette.inkSecondary }}>
-                {profile.isReady ? 'Profile looks complete.' : `Still missing: ${profile.missing.join(', ')}`}
+            <div style={{ padding: '8px 12px', background: 'rgba(30, 28, 26, 0.02)', borderRadius: 8, border: `1px solid ${palette.borderSubtle}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+                <Typography.Text strong>Profile & Branding</Typography.Text>
+                <Tag color={profile.isReady ? 'green' : 'orange'} style={{ margin: 0, borderRadius: 6 }}>
+                  {profile.isReady ? 'Complete' : 'Incomplete'}
+                </Tag>
+              </div>
+              <Typography.Text style={{ color: palette.inkSecondary, fontSize: 13 }}>
+                {profile.isReady ? 'Profile details configured.' : `Missing: ${profile.missing.join(', ')}`}
               </Typography.Text>
             </div>
-            <div>
-              <Typography.Text strong style={{ display: 'block' }}>AI configuration</Typography.Text>
-              <Typography.Text style={{ color: palette.inkSecondary }}>
+
+            <div style={{ padding: '8px 12px', background: 'rgba(30, 28, 26, 0.02)', borderRadius: 8, border: `1px solid ${palette.borderSubtle}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+                <Typography.Text strong>AI Credentials</Typography.Text>
+                <Tag color={providerSettings.data?.length ? 'green' : 'orange'} style={{ margin: 0, borderRadius: 6 }}>
+                  {providerSettings.data?.length ? `${providerSettings.data.length} Configured` : 'Missing'}
+                </Tag>
+              </div>
+              <Typography.Text style={{ color: palette.inkSecondary, fontSize: 13 }}>
                 {providerSettings.isLoading
                   ? 'Checking provider settings...'
                   : providerSettings.data?.length
-                    ? `${providerSettings.data.length} provider setting(s) configured.`
-                    : 'No provider setting configured for this organization yet.'}
+                    ? `${providerSettings.data.length} provider setting(s) active.`
+                    : 'No provider setting configured yet.'}
               </Typography.Text>
             </div>
-            <div>
-              <Typography.Text strong style={{ display: 'block' }}>Knowledge</Typography.Text>
-              <Typography.Text style={{ color: palette.inkSecondary }}>
+
+            <div style={{ padding: '8px 12px', background: 'rgba(30, 28, 26, 0.02)', borderRadius: 8, border: `1px solid ${palette.borderSubtle}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+                <Typography.Text strong>Embedder & Search</Typography.Text>
+                <Tag color={embedder.data ? 'green' : 'default'} style={{ margin: 0, borderRadius: 6 }}>
+                  {embedder.data ? 'Configured' : 'Inherited'}
+                </Tag>
+              </div>
+              <Typography.Text style={{ color: palette.inkSecondary, fontSize: 13 }}>
                 {embedder.isLoading
                   ? 'Checking embedder...'
                   : embedder.data
-                    ? `Embedder configured: ${presentText(embedder.data.model, 'Configured')}.`
-                    : 'No organization-level embedder configured yet.'}
+                    ? `Model: ${presentText(embedder.data.model, 'Configured')}`
+                    : 'Using platform default embedder fallback.'}
               </Typography.Text>
             </div>
-            <div>
-              <Typography.Text strong style={{ display: 'block' }}>Integrations</Typography.Text>
-              <Typography.Text style={{ color: palette.inkSecondary }}>
+
+            <div style={{ padding: '8px 12px', background: 'rgba(30, 28, 26, 0.02)', borderRadius: 8, border: `1px solid ${palette.borderSubtle}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+                <Typography.Text strong>Integrations & Apps</Typography.Text>
+                <Tag color={(applications.data?.total ?? 0) > 0 ? 'green' : 'default'} style={{ margin: 0, borderRadius: 6 }}>
+                  {(applications.data?.total ?? 0) > 0 ? `${applications.data?.total} Connected` : 'None'}
+                </Tag>
+              </div>
+              <Typography.Text style={{ color: palette.inkSecondary, fontSize: 13 }}>
                 {applications.isLoading
                   ? 'Checking applications...'
-                  : `${applications.data?.total ?? 0} application(s) configured.`}
+                  : (applications.data?.total ?? 0) > 0
+                    ? `${applications.data?.total} application(s) integrated.`
+                    : 'No external applications connected yet.'}
               </Typography.Text>
             </div>
           </Space>
         </Card>
 
-        <Card title="Needs attention">
-          {alerts.length > 0 ? (
-            <Space direction="vertical" size={12} style={{ width: '100%' }}>
-              {alerts.map((alert) => (
-                <Alert
-                  key={alert.title}
-                  type={alert.type ?? 'warning'}
-                  showIcon
-                  title={alert.title}
-                  description={
-                    <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                      <Typography.Text style={{ color: palette.inkSecondary }}>
-                        {alert.description}
-                      </Typography.Text>
-                      <div>
-                        <Button size="small" onClick={alert.action}>
-                          {alert.actionLabel}
-                        </Button>
-                      </div>
-                    </Space>
-                  }
-                />
-              ))}
-            </Space>
-          ) : (
-            <Empty
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description="This organization looks ready to use."
-              style={{ padding: '12px 0' }}
-            />
-          )}
-        </Card>
-      </div>
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-          gap: 16,
-          alignItems: 'start',
-        }}
-      >
-        <Card title="Recent activity" styles={{ body: { padding: 0 } }}>
+        <Card title="Recent Activity" styles={{ body: { padding: 0 } }}>
           {auditEvents.isLoading ? (
             <div style={{ padding: 20 }}>
               <Skeleton active paragraph={{ rows: 4 }} />

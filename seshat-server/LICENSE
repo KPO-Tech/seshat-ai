@@ -1,0 +1,108 @@
+Seshat Cloud Source-Available License
+Version 0.1-DRAFT
+
+================================================================================
+ THIS IS A DRAFT. It has not been reviewed by a lawyer and is not binding on
+ anyone. It is a starting point modeled on the structure of the Functional
+ Source License 1.1 (see https://fsl.software/), with an added small-deployment
+ carve-out modeled on the license OpenWork (https://github.com/openworklabs)
+ uses for its own `ee/` directory. Before this license governs any published
+ code:
+   1. Compare this draft against the canonical FSL-1.1 text at fsl.software
+      and reconcile any differences in wording.
+   2. Fill in every [TODO: ...] placeholder below with a real, confirmed value.
+   3. Have it reviewed by a lawyer, particularly the "Competing Use" and
+      "Additional Use Grant" sections, which are the two clauses doing the
+      actual commercial-protection work.
+================================================================================
+
+Copyright (c) 2026-present [TODO: confirm legal copyright holder]
+
+This license applies to the source code in this directory and its
+subdirectories ("the Software"). Capitalized terms are defined in Section 5.
+
+## 1. Usage Grant
+
+Licensor hereby grants you the right to copy, modify, create derivative
+works, redistribute, and make non-production use of the Software, subject
+to the following conditions:
+
+1.1. You may make production use of the Software, provided such use is not
+     a Competing Use, as defined below.
+
+1.2. Any Competing Use requires a separate commercial agreement with
+     Licensor. Contact: [TODO: sales/licensing contact email or URL].
+
+"Competing Use" means using the Software's functionality, unmodified or
+modified, to (a) offer a product or service to third parties that competes
+with any product or service offered by Licensor that itself uses the
+Software, or (b) circumvent a paid feature, seat limit, or usage limit of
+a product or service offered by Licensor.
+
+## 2. Additional Use Grant (small-deployment carve-out)
+
+Notwithstanding Section 1.2, Production Use that would otherwise be a
+Competing Use is nonetheless permitted, without a separate commercial
+agreement, for any Organization whose deployment of the Software serves
+[TODO: confirm threshold - draft default: 5] or fewer individual Users in
+total, counted across every environment that Organization operates.
+
+This carve-out exists so a single company or team can self-host and run
+this software for itself, for free, indefinitely, regardless of how the
+"Competing Use" restriction above would otherwise apply to a larger
+deployment.
+
+## 3. License Term and Conversion
+
+For each version of the Software, on the date [TODO: confirm - draft
+default: two (2) years] after that version's initial public release date,
+the license grant for that specific version automatically converts, in
+full, to the [TODO: confirm - draft default: Apache License, Version 2.0].
+The version's copyright notices must be preserved through that conversion.
+Later versions remain governed by this license (and its own future
+conversion date) until each independently converts.
+
+## 4. Conditions
+
+4.1. You must retain, in all copies or substantial portions of the
+     Software, this license text and all copyright, trademark, and
+     attribution notices from the original.
+
+4.2. You may not remove or obscure any functionality in the Software that
+     enforces or reports on the terms of this license, if any exists.
+
+## 5. Definitions
+
+"Licensor" means [TODO: confirm legal entity/individual].
+
+"Organization" means any individual, company, or legal entity, together
+with all entities that control, are controlled by, or are under common
+control with it.
+
+"User" means a distinct human account with access to a deployment of the
+Software, however that deployment authenticates or identifies its users.
+
+"Production Use" means use of the Software that is not solely for
+evaluation, development, testing, or non-commercial personal use.
+
+## 6. Patents
+
+Licensor grants you a license, under any patent claims Licensor can
+license, to make, use, sell, and import the Software, to the same extent
+as the Usage Grant above. This patent license ends automatically, for
+anyone, the moment they or their Organization file a patent infringement
+claim against Licensor concerning the Software.
+
+## 7. No Trademark Rights
+
+This license does not grant any right to use Licensor's names, logos, or
+trademarks.
+
+## 8. Disclaimer
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL
+THE LICENSOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

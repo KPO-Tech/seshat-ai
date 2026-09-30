@@ -13,12 +13,17 @@ import (
 // (seshat-ui/src/renderer/stores/session.ts) - this is the JSON shape the UI
 // reads back out of message.metadata.attachments.
 type attachmentPayload struct {
-	ID          string `json:"id"`
-	Filename    string `json:"filename"`
-	ContentType string `json:"content_type,omitempty"`
-	Size        int64  `json:"size,omitempty"`
-	Category    string `json:"category,omitempty"`
-	LocalPath   string `json:"local_path,omitempty"`
+	ID                      string `json:"id"`
+	Filename                string `json:"filename"`
+	ContentType             string `json:"content_type,omitempty"`
+	Size                    int64  `json:"size,omitempty"`
+	Category                string `json:"category,omitempty"`
+	LocalPath               string `json:"local_path,omitempty"`
+	DocumentReadStatus      string `json:"document_read_status,omitempty"`
+	DocumentReadEngine      string `json:"document_read_engine,omitempty"`
+	DocumentReadPages       int    `json:"document_read_pages,omitempty"`
+	DocumentReadImages      int    `json:"document_read_images,omitempty"`
+	DocumentReadVisualPages []int  `json:"document_read_visual_pages,omitempty"`
 }
 
 // decorateMessagesWithAttachments merges each user message's persisted file
@@ -38,12 +43,17 @@ func decorateMessagesWithAttachments(ctx context.Context, files *backendfiles.Se
 					continue
 				}
 				byIndex[*f.UserMessageIndex] = append(byIndex[*f.UserMessageIndex], attachmentPayload{
-					ID:          f.ID,
-					Filename:    f.Filename,
-					ContentType: f.ContentType,
-					Size:        f.Size,
-					Category:    f.Category,
-					LocalPath:   f.LocalPath,
+					ID:                      f.ID,
+					Filename:                f.Filename,
+					ContentType:             f.ContentType,
+					Size:                    f.Size,
+					Category:                f.Category,
+					LocalPath:               f.LocalPath,
+					DocumentReadStatus:      f.DocumentReadStatus,
+					DocumentReadEngine:      f.DocumentReadEngine,
+					DocumentReadPages:       f.DocumentReadPages,
+					DocumentReadImages:      f.DocumentReadImages,
+					DocumentReadVisualPages: f.DocumentReadVisualPages,
 				})
 			}
 		}

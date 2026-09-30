@@ -6,8 +6,13 @@ import (
 )
 
 // Cleanup periodically purges chat sessions past sessionRetention. Mirrors
-// automation.Scheduler's Start/Stop tick-loop shape for consistency -
-// single-instance only, same as that scheduler (see its own doc comment).
+// automation.Scheduler's Start/Stop tick-loop shape for consistency. Safe to
+// run on more than one seshat-server process concurrently: purgeExpiredSessions
+// is a plain DELETE ... WHERE created_at < threshold, naturally idempotent
+// under duplicate concurrent execution (a second instance's identical
+// DELETE just matches the rows the first one already removed) — unlike
+// automation.Scheduler, there's no create-a-side-effect step here to guard
+// with a claim.
 type Cleanup struct {
 	service  *Service
 	interval time.Duration

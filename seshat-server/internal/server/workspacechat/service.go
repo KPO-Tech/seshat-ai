@@ -28,54 +28,66 @@ import (
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/knowledge"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/mcpregistry"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/websearchsettings"
 )
 
 // sessionIdleTimeout is how long an unused chat session keeps its
 // underlying sdk.Client (and the LLM-side conversation history it holds in
-// memory) alive. Deliberately much shorter than sessionRetention — by the
-// time a persisted conversation is old enough to be purged, its in-memory
-// SDK client has always already been evicted here, so the two mechanisms
-// never need to coordinate.
+// memory) alive - this one does reset on activity (see chatSession.lastUsed),
+// since it's purely about evicting an idle in-memory SDK client, not the
+// conversation's own lifetime (see sessionRetention below, which does not
+// reset on activity). Deliberately much shorter than sessionRetention - by
+// the time a persisted conversation is old enough to be purged, its
+// in-memory SDK client has always already been evicted here, so the two
+// mechanisms never need to coordinate.
 const sessionIdleTimeout = 2 * time.Hour
 
 // sessionRetention is how long a persisted conversation (see persistTurn,
-// GetSession, and Cleanup) is kept before it's treated as gone. This is a
-// personal experimentation surface, not a durable conversation store — see
-// workspaceChat/transport.ts's own note that "persistent conversation
-// sessions are optional, not required": bluntly deleting everything past a
-// fixed window is deliberately simpler than any per-conversation retention
-// policy.
+// GetSession, and Cleanup) is kept before it's treated as gone - counted
+// from CreatedAt, not from its last message. This is a personal
+// experimentation/validation surface (see workspaceChat/transport.ts's own
+// note that "persistent conversation sessions are optional, not required"),
+// not something meant to accumulate as a long-lived record: a session kept
+// alive indefinitely by continued use would defeat the point of a fixed
+// cutoff, so this window always expires the same fixed 48h after creation
+// regardless of how recently it was used.
 const sessionRetention = 48 * time.Hour
 
 // Service owns the in-memory registry of live chat sessions (one
 // sdk.Client+sdk.Session per browser conversation) and resolves the
 // credentials/tools each one needs from the rest of the control plane.
 type Service struct {
-	db         *sdb.DB
-	iam        *iam.Service
-	automation *automation.Service
-	webSearch  *websearchsettings.Service
-	knowledge  *knowledge.Service
-	doclingURL string
+	db          *sdb.DB
+	iam         *iam.Service
+	automation  *automation.Service
+	webSearch   *websearchsettings.Service
+	knowledge   *knowledge.Service
+	mcpRegistry *mcpregistry.Service
+	doclingURL  string
+	sdkSessions *sdkSessionBackend
 
-	mu       sync.Mutex
-	sessions map[string]*chatSession
+	mu        sync.Mutex
+	sessions  map[string]*chatSession
+	busyTurns map[string]struct{}
 }
 
 type chatSession struct {
-	client     *sdk.Client
-	sdkSession *sdk.Session
-	provider   string
-	model      string
-	lastUsed   time.Time
+	client         *sdk.Client
+	sdkSession     *sdk.Session
+	userID         string
+	organizationID string
+	provider       string
+	model          string
+	lastUsed       time.Time
 }
 
-func New(database *sdb.DB, iamService *iam.Service, automationService *automation.Service, webSearchService *websearchsettings.Service, knowledgeService *knowledge.Service, doclingURL string) *Service {
+func New(database *sdb.DB, iamService *iam.Service, automationService *automation.Service, webSearchService *websearchsettings.Service, knowledgeService *knowledge.Service, mcpRegistryService *mcpregistry.Service, doclingURL string) *Service {
 	return &Service{
 		db: database, iam: iamService, automation: automationService,
-		webSearch: webSearchService, knowledge: knowledgeService, doclingURL: doclingURL,
-		sessions: make(map[string]*chatSession),
+		webSearch: webSearchService, knowledge: knowledgeService, mcpRegistry: mcpRegistryService, doclingURL: doclingURL,
+		sdkSessions: newSDKSessionBackend(database),
+		sessions:    make(map[string]*chatSession),
 	}
 }
 
@@ -111,12 +123,15 @@ type Event struct {
 }
 
 type ToolProgressEvent struct {
-	Name      string          `json:"name"`
-	ToolUseID string          `json:"tool_use_id"`
-	Stage     string          `json:"stage"` // pending | running | completed | failed
-	Summary   string          `json:"summary,omitempty"`
-	Query     string          `json:"query,omitempty"`
-	WebSearch *WebSearchTrace `json:"web_search,omitempty"`
+	Name       string          `json:"name"`
+	ToolUseID  string          `json:"tool_use_id"`
+	Stage      string          `json:"stage"` // pending | running | completed | failed
+	Summary    string          `json:"summary,omitempty"`
+	Query      string          `json:"query,omitempty"`
+	Input      map[string]any  `json:"input,omitempty"`
+	Result     string          `json:"result,omitempty"`
+	DurationMs int64           `json:"duration_ms,omitempty"`
+	WebSearch  *WebSearchTrace `json:"web_search,omitempty"`
 }
 
 type WebSearchTrace struct {
@@ -158,6 +173,16 @@ func (s *Service) StreamChat(ctx context.Context, principal *iam.Principal, para
 	if !allowed {
 		return apperr.Forbidden("not a member of this organization")
 	}
+
+	if _, err := s.loadOwnedSession(ctx, principal, params.OrganizationID, params.SessionID); err != nil {
+		return err
+	}
+
+	release, ok := s.tryAcquireSessionTurn(params.SessionID)
+	if !ok {
+		return apperr.Conflict("a turn is already in progress for this session")
+	}
+	defer release()
 
 	sess, err := s.getOrCreateSession(ctx, principal, params)
 	if err != nil {
@@ -207,6 +232,28 @@ func (s *Service) StreamChat(ctx context.Context, principal *iam.Principal, para
 	return nil
 }
 
+// loadOwnedSession loads sessionID's persisted row and verifies it belongs
+// to principal within organizationID - the single place this check happens,
+// reused by every path that resumes, caches, or writes to an
+// already-existing session so the rule can't be forgotten in one of them.
+// A nil, nil return means the session doesn't exist yet: a legitimate new
+// conversation, not something to reject - persistTurn's create-path below
+// is what actually assigns it an owner, on its first turn.
+func (s *Service) loadOwnedSession(ctx context.Context, principal *iam.Principal, organizationID, sessionID string) (*sdb.WorkspaceChatSession, error) {
+	var session sdb.WorkspaceChatSession
+	err := s.db.Gorm().WithContext(ctx).Where("id = ?", sessionID).First(&session).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if session.UserID != principal.User.ID || session.OrganizationID != organizationID {
+		return nil, apperr.Forbidden("session belongs to a different user or organization")
+	}
+	return &session, nil
+}
+
 // persistTurn saves the user's message and the assistant's recorded events
 // for this turn, creating the session row on its first message. Best-effort
 // like the RAG/web-search credential lookups above - a persistence failure
@@ -229,6 +276,9 @@ func (s *Service) persistTurn(ctx context.Context, principal *iam.Principal, par
 		case err != nil:
 			return err
 		default:
+			if session.UserID != principal.User.ID || session.OrganizationID != params.OrganizationID {
+				return apperr.Forbidden("session belongs to a different user or organization")
+			}
 			if err := tx.Model(&session).Update("updated_at", now).Error; err != nil {
 				return err
 			}
@@ -262,6 +312,76 @@ func (s *Service) persistTurn(ctx context.Context, principal *iam.Principal, par
 	}
 }
 
+// SessionSummary is one row of an organization's workspace chat sessions,
+// for the admin-visibility list (see ListSessions) - metadata only, not the
+// owning member's own full message replay (that's SessionHistory/GetSession,
+// owner-scoped for the personal Workspace > Chat screen itself).
+type SessionSummary struct {
+	ID              string    `json:"id"`
+	UserID          string    `json:"user_id"`
+	UserEmail       string    `json:"user_email"`
+	UserDisplayName string    `json:"user_display_name"`
+	Title           string    `json:"title"`
+	MessageCount    int       `json:"message_count"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+}
+
+var sessionSortFields = map[string]sdb.SortField{
+	"created_at": {Column: "workspace_chat_sessions.created_at", Tiebreak: "workspace_chat_sessions.id"},
+	"updated_at": {Column: "workspace_chat_sessions.updated_at", Tiebreak: "workspace_chat_sessions.id"},
+	"title":      {Column: "workspace_chat_sessions.title", Tiebreak: "workspace_chat_sessions.id"},
+}
+
+var sessionSearchColumns = []string{"workspace_chat_sessions.title", "users.email", "users.display_name"}
+
+// ListSessions returns a page of organizationID's workspace chat sessions
+// across every member, newest-activity first by default - an admin-
+// visibility surface, unlike GetSession's owner-scoped single-session
+// lookup. Requires organization.manage, not the plain org-membership check
+// GetSession uses, since this exposes other people's session metadata (not
+// message content - see handleListWorkspaceChatSessions's own doc comment
+// on why message bodies stay out of this endpoint). Sessions past
+// sessionRetention (counted from CreatedAt, not UpdatedAt - see that
+// constant's own doc comment) are excluded, matching GetSession/
+// purgeExpiredSessions' own "gone once past the window" convention - the
+// row may not even be purged from the DB yet, but it's already meaningless
+// to list.
+func (s *Service) ListSessions(ctx context.Context, principal *iam.Principal, organizationID string, listParams sdb.ListParams) ([]SessionSummary, int64, error) {
+	if principal == nil {
+		return nil, 0, apperr.Unauthorized("authentication required")
+	}
+	organizationID = strings.TrimSpace(organizationID)
+	if organizationID == "" {
+		return nil, 0, apperr.InvalidInput("organization_id is required")
+	}
+	if !principal.User.IsAdmin {
+		if err := s.iam.CheckOrganizationPermission(s.db.Gorm().WithContext(ctx), principal, organizationID, "organization.manage"); err != nil {
+			return nil, 0, err
+		}
+	}
+
+	tx := s.db.Gorm().WithContext(ctx)
+	cutoff := time.Now().UTC().Add(-sessionRetention)
+	query := tx.Table("workspace_chat_sessions").
+		Select("workspace_chat_sessions.id AS id, workspace_chat_sessions.user_id AS user_id, "+
+			"users.email AS user_email, users.display_name AS user_display_name, "+
+			"workspace_chat_sessions.title AS title, workspace_chat_sessions.created_at AS created_at, "+
+			"workspace_chat_sessions.updated_at AS updated_at, "+
+			"(SELECT COUNT(*) FROM workspace_chat_message_records WHERE workspace_chat_message_records.session_id = workspace_chat_sessions.id) AS message_count").
+		Joins("JOIN users ON users.id = workspace_chat_sessions.user_id").
+		Where("workspace_chat_sessions.organization_id = ? AND workspace_chat_sessions.created_at > ?", organizationID, cutoff)
+
+	sortField, err := sdb.ResolveSortField(sessionSortFields, listParams.Sort)
+	if err != nil {
+		return nil, 0, apperr.InvalidInput(err.Error())
+	}
+	query = sdb.ApplySearch(query, listParams.Search, sessionSearchColumns...)
+	query = sdb.ApplySort(query, sortField, listParams.Order)
+
+	return sdb.Page[SessionSummary](query, listParams.Limit, listParams.Offset)
+}
+
 // SessionHistory is a previously persisted conversation, ready to replay
 // client-side.
 type SessionHistory struct {
@@ -278,10 +398,11 @@ type HistoryMessage struct {
 }
 
 // GetSession loads a persisted conversation, scoped to its owner - a 404
-// covers both "never existed" and "past the 48h retention window" (the
-// query filters on updated_at itself, not a separate purge having already
-// run), so the console can't tell the two apart and just starts fresh
-// either way.
+// covers both "never existed" and "past the 48h retention window, counted
+// from creation" (the query filters on created_at itself, not a separate
+// purge having already run - see sessionRetention's own doc comment on why
+// this is a fixed cutoff rather than one continued use resets), so the
+// console can't tell the two apart and just starts fresh either way.
 func (s *Service) GetSession(ctx context.Context, principal *iam.Principal, sessionID string) (*SessionHistory, error) {
 	if principal == nil {
 		return nil, apperr.Unauthorized("authentication required")
@@ -294,7 +415,7 @@ func (s *Service) GetSession(ctx context.Context, principal *iam.Principal, sess
 	tx := s.db.Gorm().WithContext(ctx)
 	var session sdb.WorkspaceChatSession
 	cutoff := time.Now().UTC().Add(-sessionRetention)
-	err := tx.Where("id = ? AND user_id = ? AND updated_at > ?", sessionID, principal.User.ID, cutoff).First(&session).Error
+	err := tx.Where("id = ? AND user_id = ? AND created_at > ?", sessionID, principal.User.ID, cutoff).First(&session).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, apperr.NotFound("session not found")
@@ -322,37 +443,107 @@ func (s *Service) GetSession(ctx context.Context, principal *iam.Principal, sess
 	return &SessionHistory{ID: session.ID, Title: session.Title, Messages: messages}, nil
 }
 
-// purgeExpiredSessions deletes every session (and its messages) untouched
-// for longer than sessionRetention. Called periodically by Cleanup.
+// purgeExpiredSessions deletes every session (and its messages) created
+// more than sessionRetention ago, regardless of how recently it was used
+// (see that constant's own doc comment on why this is a fixed cutoff, not
+// an inactivity window). Called periodically by Cleanup. Also deletes the
+// same IDs' rows from sdkSessions (the SDK's own conversation memory, see
+// sdksessionstore.go) - without this, that data would outlive the
+// WorkspaceChatSession/WorkspaceChatMessageRecord rows it exists to keep
+// in sync with, accumulating forever for conversations the UI (and
+// GetSession's own retention-window check) already treat as gone.
 func (s *Service) purgeExpiredSessions(ctx context.Context) {
+	var expiredIDs []string
 	err := s.db.Gorm().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		cutoff := time.Now().UTC().Add(-sessionRetention)
 		var expired []sdb.WorkspaceChatSession
-		if err := tx.Where("updated_at < ?", cutoff).Find(&expired).Error; err != nil {
+		if err := tx.Where("created_at < ?", cutoff).Find(&expired).Error; err != nil {
 			return err
 		}
 		if len(expired) == 0 {
 			return nil
 		}
-		ids := make([]string, len(expired))
+		expiredIDs = make([]string, len(expired))
 		for i, session := range expired {
-			ids[i] = session.ID
+			expiredIDs[i] = session.ID
 		}
-		if err := tx.Where("session_id IN ?", ids).Delete(&sdb.WorkspaceChatMessageRecord{}).Error; err != nil {
+		if err := tx.Where("session_id IN ?", expiredIDs).Delete(&sdb.WorkspaceChatMessageRecord{}).Error; err != nil {
 			return err
 		}
-		return tx.Where("id IN ?", ids).Delete(&sdb.WorkspaceChatSession{}).Error
+		return tx.Where("id IN ?", expiredIDs).Delete(&sdb.WorkspaceChatSession{}).Error
 	})
 	if err != nil {
 		log.Printf("[workspacechat] purge expired sessions failed: %v", err)
+		return
+	}
+	if err := s.sdkSessions.deleteSessions(expiredIDs); err != nil {
+		log.Printf("[workspacechat] purge expired SDK session state failed: %v", err)
 	}
 }
 
-func (s *Service) getOrCreateSession(ctx context.Context, principal *iam.Principal, params StreamChatParams) (*sdk.Session, error) {
+// resolveMCPServers converts organizationID's MCP server catalog
+// (mcpregistry.ResolveServerConfigs, already personalized for principal -
+// see its own doc comment on Bearer-token bridging) into the SDK's own
+// config shape. Best-effort like ragService just below in
+// getOrCreateSession: an org with no MCP servers, or a resolve error, just
+// means the chat runs with none available, not a reason to fail it.
+func (s *Service) resolveMCPServers(ctx context.Context, principal *iam.Principal, organizationID string) []sdk.MCPServerConfig {
+	if s.mcpRegistry == nil {
+		return nil
+	}
+	resolved, err := s.mcpRegistry.ResolveServerConfigs(ctx, principal, organizationID)
+	if err != nil {
+		log.Printf("workspacechat: resolve mcp servers for org %s: %v", organizationID, err)
+		return nil
+	}
+	return mcpregistry.ToSDKServerConfigs(resolved)
+}
+
+// tryAcquireSessionTurn ensures at most one StreamChat turn runs at a time
+// for a given session_id. Without this, two concurrent StreamChat calls for
+// the same session_id race on getOrCreateSession's session-cache
+// population/eviction (the loser's client.Close() can tear down the client
+// the winner is actively streaming through) and, on a cache hit, both would
+// call SetResponseChunkFn/SetProgressFn on the very same session object - a
+// plain data race on shared callback fields, independent of anything the
+// sdk.Session/engine itself guards against (that guard only protects one
+// already-loaded Session object; it can't help two callers still racing to
+// decide which client/session to use). Fails fast (no queuing) rather than
+// blocking, since a genuine second concurrent request for one session_id
+// from one browser tab is virtually always a client bug, not legitimate
+// concurrent work to wait out.
+func (s *Service) tryAcquireSessionTurn(sessionID string) (release func(), ok bool) {
 	s.mu.Lock()
-	if existing, ok := s.sessions[params.SessionID]; ok && existing.provider == params.Provider && existing.model == params.Model {
+	defer s.mu.Unlock()
+	if s.busyTurns == nil {
+		s.busyTurns = make(map[string]struct{})
+	}
+	if _, busy := s.busyTurns[sessionID]; busy {
+		return nil, false
+	}
+	s.busyTurns[sessionID] = struct{}{}
+	return func() {
+		s.mu.Lock()
+		delete(s.busyTurns, sessionID)
+		s.mu.Unlock()
+	}, true
+}
+
+func (s *Service) getOrCreateSession(ctx context.Context, principal *iam.Principal, params StreamChatParams) (*sdk.Session, error) {
+	// Resolved before the cache-hit check, and unconditionally on every
+	// call, so a long-lived cached session's Bearer tokens (see
+	// resolveMCPServers) never go stale mid-conversation - Google/Microsoft
+	// access tokens expire well within sessionIdleTimeout's 2h window.
+	mcpServers := s.resolveMCPServers(ctx, principal, params.OrganizationID)
+
+	s.mu.Lock()
+	if existing, ok := s.sessions[params.SessionID]; ok && existing.provider == params.Provider && existing.model == params.Model &&
+		existing.userID == principal.User.ID && existing.organizationID == params.OrganizationID {
 		existing.lastUsed = time.Now()
 		s.mu.Unlock()
+		if err := existing.client.ReloadMCPServers(ctx, mcpServers); err != nil {
+			log.Printf("workspacechat: reload mcp servers for session %s: %v", params.SessionID, err)
+		}
 		return existing.sdkSession, nil
 	}
 	s.mu.Unlock()
@@ -381,7 +572,7 @@ func (s *Service) getOrCreateSession(ctx context.Context, principal *iam.Princip
 		PermissionMode:         sdk.PermissionModeBypass,
 		MaxTokens:              4096,
 		AutoCompact:            true,
-		PersistSessions:        false,
+		SessionBackend:         s.sdkSessions,
 		DisableTitleGeneration: true,
 		EnableMemory:           false,
 		EnableHooks:            false,
@@ -389,7 +580,8 @@ func (s *Service) getOrCreateSession(ctx context.Context, principal *iam.Princip
 		ProviderConfig:         providerConfig,
 		WebSearchKeys:          webSearchKeys,
 		RAGService:             ragService,
-		DoclingURL:             s.doclingURL,
+		DocumentReaderURL:      s.doclingURL,
+		MCPServers:             mcpServers,
 		// This is a multi-tenant server: the bash tool is registered on every
 		// sdk.Client with no way to exclude it, and PermissionModeBypass means
 		// no human approves each call. Without this, an LLM-invoked shell
@@ -405,7 +597,7 @@ func (s *Service) getOrCreateSession(ctx context.Context, principal *iam.Princip
 	if err != nil {
 		return nil, err
 	}
-	sdkSession, err := client.CreateSession(ctx)
+	sdkSession, err := s.resumeOrCreateSDKSession(ctx, client, params.SessionID)
 	if err != nil {
 		client.Close()
 		return nil, err
@@ -418,10 +610,29 @@ func (s *Service) getOrCreateSession(ctx context.Context, principal *iam.Princip
 	}
 	s.sessions[params.SessionID] = &chatSession{
 		client: client, sdkSession: sdkSession,
+		userID: principal.User.ID, organizationID: params.OrganizationID,
 		provider: params.Provider, model: params.Model, lastUsed: time.Now(),
 	}
 	s.evictStaleLocked()
 	return sdkSession, nil
+}
+
+// resumeOrCreateSDKSession restores sessionID's prior conversation via
+// sdkSessions (client.LoadSession) before ever starting an empty one - this
+// is what makes multi-turn context survive a server restart, an idle
+// eviction, or a provider/model switch instead of silently starting over
+// each time (see sdksessionstore.go's own doc comment). It never calls
+// client.CreateSession (which cannot be told to use a caller-supplied ID -
+// see that same doc comment) - ensureSessionExists seeds a fresh, empty
+// metadata row on a genuine first turn so LoadSession always has something
+// to find, whether that's real prior history or an empty session it just
+// created a moment ago.
+func (s *Service) resumeOrCreateSDKSession(ctx context.Context, client *sdk.Client, sessionID string) (*sdk.Session, error) {
+	sdkSessionID := sdk.SessionID(sessionID)
+	if err := s.sdkSessions.ensureSessionExists(sdkSessionID); err != nil {
+		return nil, err
+	}
+	return client.LoadSession(ctx, sdkSessionID)
 }
 
 // evictStaleLocked closes and drops any session untouched for longer than
@@ -437,6 +648,14 @@ func (s *Service) evictStaleLocked() {
 	}
 }
 
+// resultTruncateLimit caps how much of a tool's raw output rides on the
+// wire/gets persisted per event - generous enough to show a real bash/RAG/
+// MCP result in full most of the time, without letting one pathological
+// tool call (e.g. a huge file read) blow up an SSE frame or a
+// WorkspaceChatMessageRecord row. Summary keeps its own, much shorter
+// truncate(400) for the always-visible collapsed line.
+const resultTruncateLimit = 8000
+
 func toToolProgressEvent(progress sdk.ToolProgress) *ToolProgressEvent {
 	event := &ToolProgressEvent{
 		Name:      progress.ToolName,
@@ -447,13 +666,18 @@ func toToolProgressEvent(progress sdk.ToolProgress) *ToolProgressEvent {
 	if progress.Metadata == nil {
 		return event
 	}
-	if query, ok := progress.Metadata["tool_input"].(map[string]any); ok {
-		if q, ok := query["query"].(string); ok {
+	if input, ok := progress.Metadata["tool_input"].(map[string]any); ok {
+		event.Input = input
+		if q, ok := input["query"].(string); ok {
 			event.Query = q
 		}
 	}
 	if content, ok := progress.Metadata["content"].(string); ok && content != "" {
 		event.Summary = truncate(content, 400)
+		event.Result = truncate(content, resultTruncateLimit)
+	}
+	if duration, ok := progress.Metadata["execution_duration_ms"].(int64); ok {
+		event.DurationMs = duration
 	}
 	return event
 }

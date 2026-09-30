@@ -29,10 +29,7 @@ export function MemoryGraphPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Memory Graph"
-        description="Your personal entity graph and long-term relationship memory. This data stays user-scoped and is never shared as an org or platform default."
-      />
+      <PageHeader />
 
       <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', marginBottom: 24 }}>
         <Card title="Search graph">
@@ -62,7 +59,7 @@ export function MemoryGraphPage() {
         </Card>
 
         <Card title="Build context block">
-          <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          <Space orientation="vertical" size={12} style={{ width: '100%' }}>
             <Input value={contextQuery} onChange={(event) => setContextQuery(event.target.value)} placeholder="What are my current research priorities?" />
             <InputNumber min={50} max={4000} step={50} value={maxTokens} onChange={(value) => setMaxTokens(value ?? undefined)} style={{ width: '100%' }} />
             <Button onClick={() => context.refetch()} disabled={!contextQuery.trim()} loading={context.isFetching}>
@@ -149,14 +146,14 @@ export function MemoryGraphPage() {
 
       <Card title="Current graph view">
         {graph?.entities?.length || graph?.relations?.length ? (
-          <Space direction="vertical" size={20} style={{ width: '100%' }}>
+          <Space orientation="vertical" size={20} style={{ width: '100%' }}>
             <div>
               <Typography.Title level={5}>Entities</Typography.Title>
               <List
                 dataSource={graph.entities ?? []}
                 renderItem={(entity) => (
                   <List.Item>
-                    <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                    <Space orientation="vertical" size={4} style={{ width: '100%' }}>
                       <Space wrap>
                         <Tag icon={<NodeIndexOutlined />}>{entity.entity_type || 'entity'}</Tag>
                         <Typography.Text strong>{entity.name}</Typography.Text>

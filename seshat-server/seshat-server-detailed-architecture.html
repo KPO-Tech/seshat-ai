@@ -1,0 +1,752 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Seshat Server - Diagramme d'architecture detaille</title>
+  <style>
+    :root {
+      --bg: #2f2e34;
+      --panel: #383740;
+      --panel-2: #42414a;
+      --ink: #f2eee8;
+      --muted: #c7bfb5;
+      --line: #6f6b72;
+      --orange: #ef7c2f;
+      --blue: #84a7dc;
+      --green: #8fc09d;
+      --yellow: #d8b35a;
+      --red: #d97866;
+      --violet: #b59ad6;
+      --code: #232229;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.45;
+    }
+
+    main {
+      width: min(1380px, calc(100vw - 48px));
+      margin: 0 auto;
+      padding: 36px 0 56px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1.4fr .9fr;
+      gap: 28px;
+      align-items: end;
+      margin-bottom: 28px;
+      border-bottom: 1px solid rgba(242, 238, 232, .16);
+      padding-bottom: 24px;
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    h1 {
+      font-size: 42px;
+      font-weight: 760;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      font-size: 24px;
+      margin-bottom: 14px;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      font-size: 15px;
+      color: var(--ink);
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 16px;
+      margin-top: 10px;
+      max-width: 860px;
+    }
+
+    .meta {
+      display: grid;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.1);
+      padding: 14px;
+      border-radius: 8px;
+    }
+
+    .meta strong { color: var(--ink); font-weight: 650; }
+
+    section {
+      margin-top: 32px;
+      padding-top: 8px;
+    }
+
+    .diagram {
+      background: var(--panel);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 18px 55px rgba(0,0,0,.22);
+    }
+
+    .diagram svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: #34333b;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 12px 14px;
+      border-top: 1px solid rgba(255,255,255,.1);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .fact {
+      background: var(--panel);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 8px;
+      padding: 16px;
+      min-height: 142px;
+    }
+
+    .fact p {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .matrix {
+      display: grid;
+      grid-template-columns: 1.05fr 1fr 1.15fr 1.2fr;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--panel);
+    }
+
+    .cell {
+      padding: 13px 14px;
+      min-height: 84px;
+      border-right: 1px solid rgba(255,255,255,.1);
+      border-bottom: 1px solid rgba(255,255,255,.1);
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .cell:nth-child(4n) { border-right: none; }
+    .cell.head {
+      min-height: auto;
+      background: var(--code);
+      color: var(--ink);
+      font-weight: 700;
+    }
+    .cell strong {
+      display: block;
+      color: var(--ink);
+      margin-bottom: 5px;
+    }
+
+    .note {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    code {
+      background: var(--code);
+      color: var(--ink);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 5px;
+      padding: 1px 5px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: .92em;
+    }
+
+    .node text,
+    .label,
+    .small,
+    .title {
+      font-family: Arial, Helvetica, sans-serif;
+      letter-spacing: 0;
+    }
+
+    .node rect,
+    .node path {
+      stroke-width: 1.3;
+    }
+
+    .title {
+      fill: var(--ink);
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .label {
+      fill: var(--ink);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .small {
+      fill: var(--muted);
+      font-size: 11px;
+    }
+
+    .lane-title {
+      fill: var(--ink);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .arrow {
+      stroke: var(--line);
+      stroke-width: 2;
+      fill: none;
+    }
+
+    .arrow-strong {
+      stroke: var(--orange);
+      stroke-width: 2.6;
+      fill: none;
+    }
+
+    .dash {
+      stroke-dasharray: 7 6;
+    }
+
+    @media (max-width: 900px) {
+      main { width: min(100vw - 28px, 1380px); padding-top: 22px; }
+      header { grid-template-columns: 1fr; }
+      h1 { font-size: 32px; }
+      .summary-grid { grid-template-columns: 1fr; }
+      .matrix { grid-template-columns: 1fr; }
+      .cell, .cell:nth-child(4n) { border-right: none; }
+      .cell.head { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>Seshat Server</h1>
+        <p class="subtitle">Diagramme d'architecture detaille, base sur la lecture du code actuel de <code>D:\Documents\PROJECTS\ai\seshat-ai\seshat-server</code>, pas sur la documentation historique.</p>
+      </div>
+      <div class="meta">
+        <div><strong>Projet :</strong> module Go <code>github.com/EngineerProjects/seshat-ai/seshat-server</code></div>
+        <div><strong>Runtime cle :</strong> <code>github.com/KPO-Tech/seshat v1.2.13</code></div>
+        <div><strong>Scan :</strong> Graphify code-only, 175 fichiers Go, 1 793 noeuds, 5 096 liens</div>
+        <div><strong>Point d'entree :</strong> <code>cmd/server/main.go</code></div>
+      </div>
+    </header>
+
+    <section>
+      <h2>Carte Globale</h2>
+      <div class="diagram">
+        <svg viewBox="0 0 1260 720" role="img" aria-labelledby="global-title global-desc">
+          <title id="global-title">Architecture globale de seshat-server</title>
+          <desc id="global-desc">Carte des clients, de l'API HTTP, du conteneur applicatif, des services metier, du runtime Seshat et de la persistance.</desc>
+          <defs>
+            <marker id="g-arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L9,3 z" fill="#6f6b72"></path>
+            </marker>
+            <marker id="g-arrow-hot" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L9,3 z" fill="#ef7c2f"></path>
+            </marker>
+          </defs>
+
+          <text x="34" y="42" class="title">Vue d'ensemble du serveur</text>
+          <text x="34" y="64" class="small">HTTP control plane + services org/personnels + integrations directes avec le SDK Seshat</text>
+
+          <g class="node">
+            <rect x="42" y="125" width="190" height="120" rx="8" fill="#3f3e47" stroke="#84a7dc"></rect>
+            <text x="62" y="154" class="label">Clients</text>
+            <text x="62" y="179" class="small">Console web / admin</text>
+            <text x="62" y="199" class="small">Backends connectes</text>
+            <text x="62" y="219" class="small">Agents device</text>
+          </g>
+
+          <g class="node">
+            <rect x="300" y="102" width="210" height="166" rx="8" fill="#3f3e47" stroke="#d8b35a"></rect>
+            <text x="320" y="133" class="label">API HTTP</text>
+            <text x="320" y="158" class="small">Routes /api/v1</text>
+            <text x="320" y="178" class="small">CORS, JSON, NDJSON</text>
+            <text x="320" y="198" class="small">Bearer auth middleware</text>
+            <text x="320" y="218" class="small">Rate limits auth</text>
+            <text x="320" y="238" class="small">Device token endpoints</text>
+          </g>
+
+          <g class="node">
+            <rect x="580" y="88" width="260" height="194" rx="8" fill="#3f3e47" stroke="#ef7c2f"></rect>
+            <text x="604" y="120" class="label">App container</text>
+            <text x="604" y="145" class="small">Construit dans internal/server/app</text>
+            <text x="604" y="165" class="small">Assemble DB + IAM + domaines</text>
+            <text x="604" y="185" class="small">Injecte RAGResolver et DoclingURL</text>
+            <text x="604" y="205" class="small">Demarre scheduler, ingestion, cleanup</text>
+            <text x="604" y="225" class="small">Config via env + defaults</text>
+          </g>
+
+          <g class="node">
+            <rect x="932" y="62" width="240" height="140" rx="8" fill="#3f3e47" stroke="#8fc09d"></rect>
+            <text x="956" y="94" class="label">IAM / gouvernance</text>
+            <text x="956" y="119" class="small">Users, orgs, memberships</text>
+            <text x="956" y="139" class="small">RBAC + policy bindings</text>
+            <text x="956" y="159" class="small">OIDC, invitations, audit</text>
+            <text x="956" y="179" class="small">Secrets par organisation</text>
+          </g>
+
+          <g class="node">
+            <rect x="914" y="252" width="276" height="162" rx="8" fill="#3f3e47" stroke="#b59ad6"></rect>
+            <text x="938" y="284" class="label">Services de configuration</text>
+            <text x="938" y="309" class="small">LLM provider settings</text>
+            <text x="938" y="329" class="small">Web search + policies</text>
+            <text x="938" y="349" class="small">MCP configs, skill repos</text>
+            <text x="938" y="369" class="small">Agent presets, preferences</text>
+            <text x="938" y="389" class="small">Quotas usage counters</text>
+          </g>
+
+          <g class="node">
+            <rect x="554" y="352" width="252" height="142" rx="8" fill="#3f3e47" stroke="#84a7dc"></rect>
+            <text x="578" y="384" class="label">Workspace Chat</text>
+            <text x="578" y="409" class="small">NDJSON streaming</text>
+            <text x="578" y="429" class="small">SDK session in-memory</text>
+            <text x="578" y="449" class="small">Historique persiste 48h</text>
+            <text x="578" y="469" class="small">RequireSandbox=true</text>
+          </g>
+
+          <g class="node">
+            <rect x="255" y="352" width="232" height="142" rx="8" fill="#3f3e47" stroke="#ef7c2f"></rect>
+            <text x="279" y="384" class="label">Automation</text>
+            <text x="279" y="409" class="small">ScheduledJob + JobRun</text>
+            <text x="279" y="429" class="small">Scheduler multi-process safe</text>
+            <text x="279" y="449" class="small">Cloud executor ou device</text>
+            <text x="279" y="469" class="small">Reap stale runs</text>
+          </g>
+
+          <g class="node">
+            <rect x="58" y="410" width="150" height="118" rx="8" fill="#3f3e47" stroke="#d97866"></rect>
+            <text x="78" y="442" class="label">Device API</text>
+            <text x="78" y="467" class="small">Heartbeat</text>
+            <text x="78" y="487" class="small">Claim runs</text>
+            <text x="78" y="507" class="small">Start/complete/fail</text>
+          </g>
+
+          <g class="node">
+            <rect x="516" y="555" width="250" height="124" rx="8" fill="#3f3e47" stroke="#8fc09d"></rect>
+            <text x="540" y="587" class="label">Knowledge / RAG</text>
+            <text x="540" y="612" class="small">Corpora, files, ingestion jobs</text>
+            <text x="540" y="632" class="small">Docling extraction optional</text>
+            <text x="540" y="652" class="small">SDK RAG service par org</text>
+          </g>
+
+          <g class="node">
+            <rect x="860" y="535" width="270" height="136" rx="8" fill="#3f3e47" stroke="#d8b35a"></rect>
+            <text x="884" y="567" class="label">Persistence et stockage</text>
+            <text x="884" y="592" class="small">GORM SQLite par defaut / Postgres</text>
+            <text x="884" y="612" class="small">OrgDataKey + encrypted secrets</text>
+            <text x="884" y="632" class="small">Artifacts local ou S3</text>
+            <text x="884" y="652" class="small">Vectors HNSW par defaut</text>
+          </g>
+
+          <g class="node">
+            <rect x="50" y="584" width="304" height="86" rx="8" fill="#3f3e47" stroke="#84a7dc"></rect>
+            <text x="74" y="616" class="label">Runtime externe</text>
+            <text x="74" y="641" class="small">LLM APIs, OIDC, SMTP, Docling</text>
+          </g>
+
+          <path d="M232 185 H300" class="arrow" marker-end="url(#g-arrow)"></path>
+          <path d="M510 185 H580" class="arrow" marker-end="url(#g-arrow-hot)"></path>
+          <path d="M840 157 H932" class="arrow" marker-end="url(#g-arrow)"></path>
+          <path d="M840 225 C878 247 885 282 914 318" class="arrow" marker-end="url(#g-arrow)"></path>
+          <path d="M650 282 V352" class="arrow-strong" marker-end="url(#g-arrow-hot)"></path>
+          <path d="M586 282 C528 315 461 334 421 352" class="arrow-strong" marker-end="url(#g-arrow-hot)"></path>
+          <path d="M255 445 H208" class="arrow" marker-end="url(#g-arrow)"></path>
+          <path d="M668 494 V555" class="arrow" marker-end="url(#g-arrow)"></path>
+          <path d="M785 460 C842 497 888 519 926 535" class="arrow" marker-end="url(#g-arrow)"></path>
+          <path d="M487 450 C532 509 572 532 610 555" class="arrow" marker-end="url(#g-arrow)"></path>
+          <path d="M766 617 H860" class="arrow" marker-end="url(#g-arrow)"></path>
+          <path d="M516 629 H354" class="arrow dash" marker-end="url(#g-arrow)"></path>
+          <path d="M255 626 H354" class="arrow dash" marker-end="url(#g-arrow)"></path>
+        </svg>
+        <div class="legend">
+          <span class="pill"><span class="dot" style="background:var(--orange)"></span>Chemin runtime Seshat direct</span>
+          <span class="pill"><span class="dot" style="background:var(--green)"></span>IAM/RAG et donnees organisationnelles</span>
+          <span class="pill"><span class="dot" style="background:var(--yellow)"></span>Persistance/configuration</span>
+          <span class="pill"><span class="dot" style="background:var(--blue)"></span>Surfaces utilisateur et device</span>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Flux Workspace Chat</h2>
+      <div class="diagram">
+        <svg viewBox="0 0 1260 585" role="img" aria-labelledby="chat-title chat-desc">
+          <title id="chat-title">Sequence du chat workspace</title>
+          <desc id="chat-desc">Flux de streaming NDJSON entre console, API, service workspace chat, SDK Seshat et base de donnees.</desc>
+          <defs>
+            <marker id="c-arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L9,3 z" fill="#6f6b72"></path>
+            </marker>
+            <marker id="c-hot" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L9,3 z" fill="#ef7c2f"></path>
+            </marker>
+          </defs>
+          <text x="34" y="42" class="title">POST /api/v1/users/me/workspace/chat/stream</text>
+          <text x="34" y="64" class="small">Streaming newline-delimited JSON; pas SSE strict</text>
+
+          <g>
+            <rect x="54" y="95" width="180" height="44" rx="8" fill="#3f3e47" stroke="#84a7dc"></rect>
+            <text x="88" y="123" class="lane-title">Console</text>
+            <line x1="144" y1="139" x2="144" y2="540" stroke="#605d66" stroke-dasharray="5 8"></line>
+          </g>
+          <g>
+            <rect x="300" y="95" width="180" height="44" rx="8" fill="#3f3e47" stroke="#d8b35a"></rect>
+            <text x="360" y="123" class="lane-title">API</text>
+            <line x1="390" y1="139" x2="390" y2="540" stroke="#605d66" stroke-dasharray="5 8"></line>
+          </g>
+          <g>
+            <rect x="546" y="95" width="180" height="44" rx="8" fill="#3f3e47" stroke="#84a7dc"></rect>
+            <text x="575" y="123" class="lane-title">WorkspaceChat</text>
+            <line x1="636" y1="139" x2="636" y2="540" stroke="#605d66" stroke-dasharray="5 8"></line>
+          </g>
+          <g>
+            <rect x="792" y="95" width="180" height="44" rx="8" fill="#3f3e47" stroke="#ef7c2f"></rect>
+            <text x="832" y="123" class="lane-title">SDK Seshat</text>
+            <line x1="882" y1="139" x2="882" y2="540" stroke="#605d66" stroke-dasharray="5 8"></line>
+          </g>
+          <g>
+            <rect x="1038" y="95" width="180" height="44" rx="8" fill="#3f3e47" stroke="#8fc09d"></rect>
+            <text x="1070" y="123" class="lane-title">DB / configs</text>
+            <line x1="1128" y1="139" x2="1128" y2="540" stroke="#605d66" stroke-dasharray="5 8"></line>
+          </g>
+
+          <path d="M144 180 H390" class="arrow-strong" marker-end="url(#c-hot)"></path>
+          <text x="168" y="171" class="small">message + org + provider/model + corpus</text>
+
+          <path d="M390 225 H636" class="arrow" marker-end="url(#c-arrow)"></path>
+          <text x="417" y="216" class="small">auth principal + decode body</text>
+
+          <path d="M636 268 H1128" class="arrow" marker-end="url(#c-arrow)"></path>
+          <text x="674" y="259" class="small">verifie org, credentials, web search, RAG, historique</text>
+
+          <path d="M1128 308 H636" class="arrow dash" marker-end="url(#c-arrow)"></path>
+          <text x="733" y="299" class="small">provider config + corpus + session records</text>
+
+          <path d="M636 350 H882" class="arrow-strong" marker-end="url(#c-hot)"></path>
+          <text x="657" y="341" class="small">cree/reutilise sdk.Client et sdk.Session</text>
+
+          <path d="M882 390 C938 405 968 405 1022 390" class="arrow dash" marker-end="url(#c-arrow)"></path>
+          <text x="907" y="426" class="small">LLM, tools, web search, RAG, Docling</text>
+
+          <path d="M882 462 H636" class="arrow-strong" marker-end="url(#c-hot)"></path>
+          <text x="672" y="453" class="small">text_delta, thinking, tool_progress, done</text>
+
+          <path d="M636 502 H1128" class="arrow" marker-end="url(#c-arrow)"></path>
+          <text x="720" y="493" class="small">persiste tour; retention 48h</text>
+
+          <path d="M636 532 H144" class="arrow-strong" marker-end="url(#c-hot)"></path>
+          <text x="242" y="523" class="small">flux NDJSON vers ReadableStream</text>
+        </svg>
+      </div>
+    </section>
+
+    <section>
+      <h2>Flux Automation</h2>
+      <div class="diagram">
+        <svg viewBox="0 0 1260 620" role="img" aria-labelledby="auto-title auto-desc">
+          <title id="auto-title">Flux automation et execution de jobs</title>
+          <desc id="auto-desc">Creation de scheduled jobs, scheduler, job runs cloud ou device, resolution des secrets et execution SDK.</desc>
+          <defs>
+            <marker id="a-arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L9,3 z" fill="#6f6b72"></path>
+            </marker>
+            <marker id="a-hot" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L9,3 z" fill="#ef7c2f"></path>
+            </marker>
+          </defs>
+          <text x="34" y="42" class="title">ScheduledJob -> JobRun -> Cloud ou Device</text>
+          <text x="34" y="64" class="small">Le scheduler est tolerant multi-process via mises a jour conditionnelles; il n'y a pas de leader election explicite.</text>
+
+          <g class="node">
+            <rect x="58" y="116" width="210" height="112" rx="8" fill="#3f3e47" stroke="#d8b35a"></rect>
+            <text x="82" y="148" class="label">Jobs API</text>
+            <text x="82" y="173" class="small">create/update/delete</text>
+            <text x="82" y="193" class="small">cron, interval, once</text>
+            <text x="82" y="213" class="small">cloud ou device target</text>
+          </g>
+
+          <g class="node">
+            <rect x="360" y="100" width="230" height="144" rx="8" fill="#3f3e47" stroke="#ef7c2f"></rect>
+            <text x="384" y="132" class="label">Scheduler</text>
+            <text x="384" y="157" class="small">tick toutes 30s par defaut</text>
+            <text x="384" y="177" class="small">queue due jobs</text>
+            <text x="384" y="197" class="small">reschedule next_run_at</text>
+            <text x="384" y="217" class="small">fail stale claimed/running</text>
+          </g>
+
+          <g class="node">
+            <rect x="710" y="88" width="242" height="154" rx="8" fill="#3f3e47" stroke="#d8b35a"></rect>
+            <text x="734" y="120" class="label">DB automation</text>
+            <text x="734" y="145" class="small">ScheduledJob</text>
+            <text x="734" y="165" class="small">JobRun status machine</text>
+            <text x="734" y="185" class="small">Device heartbeat/claim</text>
+            <text x="734" y="205" class="small">conditional UPDATE guards</text>
+          </g>
+
+          <g class="node">
+            <rect x="1012" y="122" width="186" height="106" rx="8" fill="#3f3e47" stroke="#d97866"></rect>
+            <text x="1036" y="154" class="label">Device agent</text>
+            <text x="1036" y="179" class="small">polls /device/runs</text>
+            <text x="1036" y="199" class="small">downloads job payload</text>
+          </g>
+
+          <g class="node">
+            <rect x="114" y="355" width="240" height="126" rx="8" fill="#3f3e47" stroke="#b59ad6"></rect>
+            <text x="138" y="387" class="label">Credentials resolver</text>
+            <text x="138" y="412" class="small">org provider first</text>
+            <text x="138" y="432" class="small">platform default fallback</text>
+            <text x="138" y="452" class="small">decrypt with owning org key</text>
+          </g>
+
+          <g class="node">
+            <rect x="440" y="342" width="238" height="152" rx="8" fill="#3f3e47" stroke="#ef7c2f"></rect>
+            <text x="464" y="374" class="label">Cloud executor</text>
+            <text x="464" y="399" class="small">claims queued cloud run</text>
+            <text x="464" y="419" class="small">jobWorkflow adapter</text>
+            <text x="464" y="439" class="small">session.SubmitMessage</text>
+            <text x="464" y="459" class="small">RequireSandbox=true</text>
+          </g>
+
+          <g class="node">
+            <rect x="762" y="350" width="220" height="134" rx="8" fill="#3f3e47" stroke="#84a7dc"></rect>
+            <text x="786" y="382" class="label">Seshat SDK</text>
+            <text x="786" y="407" class="small">automation.Executor</text>
+            <text x="786" y="427" class="small">provider config</text>
+            <text x="786" y="447" class="small">RAG service + DoclingURL</text>
+            <text x="786" y="467" class="small">sandbox requirement</text>
+          </g>
+
+          <g class="node">
+            <rect x="1030" y="355" width="180" height="126" rx="8" fill="#3f3e47" stroke="#8fc09d"></rect>
+            <text x="1054" y="387" class="label">Knowledge</text>
+            <text x="1054" y="412" class="small">RAGResolver</text>
+            <text x="1054" y="432" class="small">best-effort</text>
+            <text x="1054" y="452" class="small">org-scoped corpora</text>
+          </g>
+
+          <g class="node">
+            <rect x="450" y="532" width="330" height="58" rx="8" fill="#3f3e47" stroke="#d8b35a"></rect>
+            <text x="474" y="567" class="label">Run result: complete, fail, heartbeat, stale timeout</text>
+          </g>
+
+          <path d="M268 172 H360" class="arrow" marker-end="url(#a-arrow)"></path>
+          <path d="M590 170 H710" class="arrow" marker-end="url(#a-arrow)"></path>
+          <path d="M952 176 H1012" class="arrow" marker-end="url(#a-arrow)"></path>
+          <path d="M831 242 C790 300 718 330 678 378" class="arrow-strong" marker-end="url(#a-hot)"></path>
+          <path d="M440 412 H354" class="arrow" marker-end="url(#a-arrow)"></path>
+          <path d="M678 419 H762" class="arrow-strong" marker-end="url(#a-hot)"></path>
+          <path d="M982 418 H1030" class="arrow" marker-end="url(#a-arrow)"></path>
+          <path d="M872 484 C820 516 767 532 718 532" class="arrow" marker-end="url(#a-arrow)"></path>
+          <path d="M562 494 V532" class="arrow" marker-end="url(#a-arrow)"></path>
+          <path d="M1105 228 C1112 276 1115 318 1118 355" class="arrow dash" marker-end="url(#a-arrow)"></path>
+        </svg>
+      </div>
+    </section>
+
+    <section>
+      <h2>Couches Techniques</h2>
+      <div class="diagram">
+        <svg viewBox="0 0 1260 560" role="img" aria-labelledby="layers-title layers-desc">
+          <title id="layers-title">Architecture en couches</title>
+          <desc id="layers-desc">Empilement des couches techniques du serveur depuis le bootstrap jusqu'aux integrations externes.</desc>
+          <text x="34" y="42" class="title">Empilement des responsabilites</text>
+          <text x="34" y="64" class="small">Chaque bande correspond a une frontiere de changement visible dans le code.</text>
+
+          <g>
+            <rect x="80" y="105" width="1100" height="58" rx="8" fill="#3f3e47" stroke="#84a7dc"></rect>
+            <text x="110" y="140" class="label">Bootstrap serveur</text>
+            <text x="340" y="140" class="small">config env, DB migrate, app.New, background services, graceful shutdown</text>
+          </g>
+          <g>
+            <rect x="80" y="180" width="1100" height="58" rx="8" fill="#3f3e47" stroke="#d8b35a"></rect>
+            <text x="110" y="215" class="label">HTTP/API</text>
+            <text x="340" y="215" class="small">routes, auth middleware, device auth, CORS, rate limiting, JSON errors</text>
+          </g>
+          <g>
+            <rect x="80" y="255" width="1100" height="58" rx="8" fill="#3f3e47" stroke="#8fc09d"></rect>
+            <text x="110" y="290" class="label">Domain services</text>
+            <text x="340" y="290" class="small">IAM, knowledge, automation, settings, registries, memories, quotas</text>
+          </g>
+          <g>
+            <rect x="80" y="330" width="1100" height="58" rx="8" fill="#3f3e47" stroke="#ef7c2f"></rect>
+            <text x="110" y="365" class="label">Seshat runtime integration</text>
+            <text x="340" y="365" class="small">workspacechat sdk.Client/sdk.Session, automation.Executor, RAGResolver, DoclingURL, sandbox required</text>
+          </g>
+          <g>
+            <rect x="80" y="405" width="1100" height="58" rx="8" fill="#3f3e47" stroke="#b59ad6"></rect>
+            <text x="110" y="440" class="label">Persistence</text>
+            <text x="340" y="440" class="small">GORM, SQLite/Postgres, migrations modeles, secrets chiffr&eacute;s par organization data key</text>
+          </g>
+          <g>
+            <rect x="80" y="480" width="1100" height="58" rx="8" fill="#3f3e47" stroke="#d97866"></rect>
+            <text x="110" y="515" class="label">Dependances externes</text>
+            <text x="340" y="515" class="small">LLM APIs, OIDC, SMTP, Docling, S3/local artifacts, vector store HNSW/pgvector</text>
+          </g>
+        </svg>
+      </div>
+    </section>
+
+    <section>
+      <h2>Domaines Metier</h2>
+      <div class="matrix">
+        <div class="cell head">Domaine</div>
+        <div class="cell head">Portee</div>
+        <div class="cell head">Responsabilite observee dans le code</div>
+        <div class="cell head">Persistance / integration</div>
+
+        <div class="cell"><strong>IAM</strong>users, orgs, memberships, roles, policies, sessions, audit</div>
+        <div class="cell">Organisation + identite utilisateur</div>
+        <div class="cell">Bootstrap admin, login/register, OIDC, invitations, permissions effectives, audit trail.</div>
+        <div class="cell">Tables GORM; sessions stockees en hash SHA-256; secrets par org data key.</div>
+
+        <div class="cell"><strong>Automation</strong>scheduled jobs, job runs, devices</div>
+        <div class="cell">Organisation</div>
+        <div class="cell">Planifie, queue, execute en cloud ou delegue a un device; recupere les runs obsoletes.</div>
+        <div class="cell">Conditional updates; SDK <code>automation.Executor</code>; provider credentials resolus org puis platform.</div>
+
+        <div class="cell"><strong>Workspace chat</strong>conversation interactive</div>
+        <div class="cell">Utilisateur + organisation active</div>
+        <div class="cell">Cree/reutilise une session SDK en memoire, stream les evenements NDJSON, persiste l'historique court.</div>
+        <div class="cell">WorkspaceChatSession/Message; cleanup 48h; SDK sans persistence interne.</div>
+
+        <div class="cell"><strong>Knowledge / RAG</strong>corpora, files, ingestion</div>
+        <div class="cell">Organisation</div>
+        <div class="cell">Stocke les fichiers, lance ingestion asynchrone, extrait texte, construit le service RAG par org.</div>
+        <div class="cell">Artifacts local/S3; vectors HNSW par defaut; Docling optionnel; corpus ID comme namespace.</div>
+
+        <div class="cell"><strong>Registries</strong>MCP, skills, agents</div>
+        <div class="cell">Organisation avec fallback platform selon domaine</div>
+        <div class="cell">Centralise catalogues et configs; l'execution MCP/skills reste locale cote backend connecte.</div>
+        <div class="cell">MCP env/headers chiffres; skills et agent presets non secrets.</div>
+
+        <div class="cell"><strong>Preferences / memories / quotas</strong>profil personnel</div>
+        <div class="cell">Utilisateur; certains defaults organisationnels pour preferences</div>
+        <div class="cell">Self-service personnel, memoire simple et graph long-terme, compteurs jour/mois sans enforcement billing.</div>
+        <div class="cell">Tables user-scoped; long-term memory reproduit la recherche substring locale.</div>
+
+        <div class="cell"><strong>Web search settings</strong>providers et politiques</div>
+        <div class="cell">Organisation avec fallback platform</div>
+        <div class="cell">Gere credentials Tavily/Exa/Jina/LangSearch/SearXNG et allow/block domains org-wide.</div>
+        <div class="cell">API keys chiffrees; fusion avec politiques locales cote client/runtime.</div>
+
+      </div>
+
+      <div class="summary-grid">
+        <div class="fact">
+          <h3>Frontiere principale</h3>
+          <p>Le serveur n'est pas seulement un proxy IAM. Il execute directement deux chemins Seshat: chat workspace interactif et runs automation cloud.</p>
+        </div>
+        <div class="fact">
+          <h3>Securite runtime</h3>
+          <p>Les deux integrations SDK qui peuvent atteindre des outils imposent <code>RequireSandbox=true</code>. Les credentials sont decryptes seulement au moment de resolution.</p>
+        </div>
+        <div class="fact">
+          <h3>Mode multi-tenant</h3>
+          <p>Les domaines org-scoped dominent: IAM, settings, RAG, automation, registries. Preferences/memories/quotas restent user-scoped.</p>
+        </div>
+        <div class="fact">
+          <h3>Persistance</h3>
+          <p>SQLite est le defaut local; Postgres est supporte. Le stockage de fichiers et vectors est interchangeable via config, avec HNSW local par defaut.</p>
+        </div>
+      </div>
+      <p class="note">Sources principales lues: <code>cmd/server/main.go</code>, <code>internal/server/app/app.go</code>, <code>internal/server/api/routes.go</code>, <code>internal/server/db/models.go</code>, <code>internal/server/automation/*</code>, <code>internal/server/workspacechat/*</code>, <code>internal/server/knowledge/*</code>, et services secondaires sous <code>internal/server/*</code>. Graphify a ete lance en mode code-only car l'extraction semantique des documents necessitait une cle LLM absente.</p>
+    </section>
+
+    <section>
+      <h2>Connecteurs Cloud</h2>
+      <div class="matrix">
+        <div class="cell head">Type</div>
+        <div class="cell head">Existe ici</div>
+        <div class="cell head">Ce que fait le code</div>
+        <div class="cell head">Ce que ca n'est pas</div>
+
+        <div class="cell"><strong>LLM provider settings</strong><code>/api/v1/provider-settings</code></div>
+        <div class="cell">Oui, central.</div>
+        <div class="cell">Stocke et resout les credentials LLM par organisation, avec fallback platform. C'est ce qui debloque les jobs <code>execution_target=cloud</code> et le chat workspace.</div>
+        <div class="cell">Ce n'est pas un connecteur OAuth utilisateur vers une application tierce; c'est une configuration de fournisseur de modele.</div>
+
+        <div class="cell"><strong>Web search providers</strong><code>/api/v1/web-search-provider-settings</code></div>
+        <div class="cell">Oui.</div>
+        <div class="cell">Centralise Tavily, Exa, Jina, LangSearch et SearXNG, plus une policy allow/block domains par organisation.</div>
+        <div class="cell">Ce n'est pas un connecteur general de donnees cloud; seulement la recherche web appelee par le runtime.</div>
+
+        <div class="cell"><strong>MCP server configs</strong><code>/api/v1/mcp-server-configs</code></div>
+        <div class="cell">Oui, mais config-only.</div>
+        <div class="cell">Stocke command/url/env/headers chiffres pour que les backends connectes recuperent une configuration partagee.</div>
+        <div class="cell">L'execution MCP ne se fait pas dans <code>seshat-server</code>; les commentaires disent qu'elle reste locale cote membre/backend connecte.</div>
+
+        <div class="cell"><strong>Identity providers</strong><code>/api/v1/providers</code></div>
+        <div class="cell">Oui.</div>
+        <div class="cell">Gere les fournisseurs OIDC/OAuth2/SAML pour login, auto-link et auto-provisioning membership.</div>
+        <div class="cell">Ce n'est pas un connecteur metier vers les fichiers/messages/calendriers de ces providers.</div>
+
+        <div class="cell"><strong>Client applications</strong><code>/api/v1/applications</code></div>
+        <div class="cell">Oui.</div>
+        <div class="cell">Enregistre les clients OAuth/OIDC autorises a parler au control plane.</div>
+        <div class="cell">Ce n'est pas une marketplace d'integrations cloud; c'est l'auth client-side/control-plane.</div>
+
+        <div class="cell"><strong>Storage cloud</strong>S3 via config serveur</div>
+        <div class="cell">Oui, pour artifacts.</div>
+        <div class="cell">Permet de stocker les fichiers knowledge-base via provider local ou S3, configure par <code>SESHAT_SERVER_STORAGE_PROVIDER</code> et variables S3.</div>
+        <div class="cell">Pas de GCS/Azure detecte dans ce code serveur; pas de connecteur utilisateur OAuth a un drive cloud.</div>
+
+        <div class="cell"><strong>Device connectors</strong><code>/api/v1/device/*</code></div>
+        <div class="cell">Oui, sous forme de protocole.</div>
+        <div class="cell">Le cloud cible un <code>seshat-backend</code> local enregistre; le device poll/claim/start/heartbeat/complete/fail les runs.</div>
+        <div class="cell">Ce n'est pas un connecteur SaaS; c'est un pont vers une execution locale.</div>
+
+        <div class="cell"><strong>Connecteurs SaaS generiques</strong>Drive, Gmail, SharePoint, S3, MCP actions</div>
+        <div class="cell">Pas comme domaine serveur dedie.</div>
+        <div class="cell">Le serveur peut stocker des configs MCP ou des presets d'agents qui referencent des outils, mais les comptes OAuth utilisateur et les implementations de connecteurs ne vivent pas ici.</div>
+        <div class="cell">Ils sont dans <code>seshat-backend</code>: <code>internal/knowledge/gdrive</code>, <code>internal/inbox/gmail</code>, <code>internal/knowledge/sharepoint</code>, <code>internal/knowledge/s3</code>, <code>internal/mcp/action</code>.</div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

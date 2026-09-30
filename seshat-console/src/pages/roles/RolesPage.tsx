@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button, Drawer, Empty, Form, Input, message, Popconfirm, Space, Tag, Typography } from 'antd'
+import { Button, Drawer, Empty, Form, Input, message, Popconfirm, Space, Tag, Tooltip, Typography } from 'antd'
 import type { TableProps } from 'antd'
 import { PlusOutlined, DeleteOutlined, EditOutlined, SafetyOutlined } from '@ant-design/icons'
 import { useRolesList, useCreateRole, useUpdateRole, useDeleteRole, type Role, type RoleInput } from '@/api/roles'
@@ -10,10 +10,12 @@ import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
 import { PermissionChecklist } from '@/components/PermissionChecklist'
 import { palette } from '@/theme/tokens'
 
+const DESCRIPTION_MAX_LENGTH = 200
+
 export function RolesPage() { const organizationId = useScopedOrganizationId()
   const [editing, setEditing] = useState<Role | 'new' | null>(null)
 
-  const { data, isLoading } = useRolesList(organizationId ?? undefined)
+  const { data, isLoading, error } = useRolesList(organizationId ?? undefined)
   const createRole = useCreateRole()
   const updateRole = useUpdateRole()
   const deleteRole = useDeleteRole()
@@ -33,6 +35,20 @@ export function RolesPage() { const organizationId = useScopedOrganizationId()
       key: 'system',
       width: 100,
       render: (system: boolean) => (system ? <Tag>System</Tag> : <Tag color="orange">Custom</Tag>), },
+    { title: 'Description',
+      dataIndex: 'description',
+      key: 'description',
+      ellipsis: { showTitle: false },
+      render: (description: string | undefined) =>
+        description ? (
+          <Tooltip title={description}>
+            <Typography.Text style={{ color: palette.inkSecondary }} ellipsis>
+              {description}
+            </Typography.Text>
+          </Tooltip>
+        ) : (
+          <Typography.Text style={{ color: palette.inkTertiary }}>—</Typography.Text>
+        ), },
     { title: 'Permissions',
       dataIndex: 'permissions',
       key: 'permissions',
@@ -68,8 +84,6 @@ export function RolesPage() { const organizationId = useScopedOrganizationId()
   return (
     <div>
       <PageHeader
-        title="Roles"
-        description="System roles (owner/admin/member/viewer) plus custom roles defined for an organization."
         actions={ <Space>
             <Button
               type="primary"
@@ -87,6 +101,7 @@ export function RolesPage() { const organizationId = useScopedOrganizationId()
           columns={columns}
           dataSource={data?.roles ?? []}
           loading={isLoading}
+          queryError={error}
           pagination={false}
           locale={{ emptyText: (
               <Empty
@@ -156,7 +171,7 @@ function RoleFormDrawer({ role,
           <Input />
         </Form.Item>
         <Form.Item name="description" label="Description">
-          <Input.TextArea rows={2} />
+          <Input.TextArea rows={2} maxLength={DESCRIPTION_MAX_LENGTH} showCount />
         </Form.Item>
         <Form.Item name="permissions" label="Permissions">
           <PermissionChecklist />

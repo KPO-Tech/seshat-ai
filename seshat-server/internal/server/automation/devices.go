@@ -233,8 +233,33 @@ func (s *Service) ResolveDevice(ctx context.Context, token string) (*Device, err
 	return &device, nil
 }
 
-// Heartbeat records device liveness. Device-authenticated (no user principal).
-func (s *Service) Heartbeat(ctx context.Context, token string) (*Device, error) {
+// HeartbeatResult is the heartbeat response - the usual Device view plus
+// this device's resolved desktop policy bundle (see
+// iam.Service.ResolveDesktopPolicies). Device is embedded (not nested under
+// a "device" key) so the wire shape stays exactly what it was before
+// policies existed, plus one new top-level "policies" field - existing
+// decoders that only care about the device fields are unaffected.
+type HeartbeatResult struct {
+	Device
+	Policies map[string]bool `json:"policies"`
+	// MinAppVersion is the organization's configured minimum app version
+	// (nil if none is configured) and AppVersionOutdated is true when this
+	// device's own AppVersion is below it. Enforced as a WARNING only, per
+	// the desktop policies plan - the device is not blocked, this is purely
+	// for the client to surface a banner. Left false whenever either
+	// version string fails to parse (missing AppVersion, unset
+	// MinAppVersion, or a malformed value) rather than erroring the
+	// heartbeat over it.
+	MinAppVersion      *string `json:"min_app_version,omitempty"`
+	AppVersionOutdated bool    `json:"app_version_outdated"`
+}
+
+// Heartbeat records device liveness and resolves this device's current
+// desktop policy bundle. Device-authenticated (no user principal) - policies
+// are resolved for whoever registered the device (Device.RegisteredByUserID
+// within Device.OrganizationID), since that's the identity this device
+// connection represents.
+func (s *Service) Heartbeat(ctx context.Context, token string) (*HeartbeatResult, error) {
 	record, err := s.resolveDeviceByToken(ctx, token)
 	if err != nil {
 		return nil, err
@@ -245,8 +270,28 @@ func (s *Service) Heartbeat(ctx context.Context, token string) (*Device, error) 
 	if err := s.db.Gorm().WithContext(ctx).Save(&record).Error; err != nil {
 		return nil, err
 	}
-	device := toDevice(record)
-	return &device, nil
+	policies, err := s.iam.ResolveDesktopPolicies(s.db.Gorm().WithContext(ctx), record.OrganizationID, record.RegisteredByUserID)
+	if err != nil {
+		return nil, err
+	}
+
+	var org sdb.Organization
+	if err := s.db.Gorm().WithContext(ctx).Select("min_app_version").First(&org, "id = ?", record.OrganizationID).Error; err != nil {
+		return nil, err
+	}
+	outdated := false
+	if org.MinAppVersion != nil {
+		if cmp, err := iam.CompareAppVersions(record.AppVersion, *org.MinAppVersion); err == nil {
+			outdated = cmp < 0
+		}
+	}
+
+	return &HeartbeatResult{
+		Device:             toDevice(record),
+		Policies:           policies,
+		MinAppVersion:      org.MinAppVersion,
+		AppVersionOutdated: outdated,
+	}, nil
 }
 
 func toDevice(record sdb.Device) Device {

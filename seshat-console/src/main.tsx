@@ -7,6 +7,7 @@ import './index.css'
 import { consoleTheme } from '@/theme/tokens'
 import { queryClient } from '@/api/queryClient'
 import { router } from '@/routes/router'
+import { StepUpModal } from '@/components/StepUpModal'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -14,6 +15,7 @@ createRoot(document.getElementById('root')!).render(
       <AntApp>
         <QueryClientProvider client={queryClient}>
           <RouterProvider router={router} />
+          <StepUpModal />
         </QueryClientProvider>
       </AntApp>
     </ConfigProvider>

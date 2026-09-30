@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/KPO-Tech/seshat/pkg/dataflow"
 	"gorm.io/gorm"
 
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
@@ -23,21 +24,35 @@ const (
 
 // Run is one execution instance of a Job.
 type Run struct {
-	ID               string            `json:"id"`
-	JobID            string            `json:"job_id"`
-	OrganizationID   string            `json:"organization_id"`
-	ExecutionTarget  string            `json:"execution_target"`
-	AssignedDeviceID string            `json:"assigned_device_id,omitempty"`
-	Status           string            `json:"status"`
-	QueuedAt         time.Time         `json:"queued_at"`
-	ClaimedAt        *time.Time        `json:"claimed_at,omitempty"`
-	StartedAt        *time.Time        `json:"started_at,omitempty"`
-	LastHeartbeatAt  *time.Time        `json:"last_heartbeat_at,omitempty"`
-	FinishedAt       *time.Time        `json:"finished_at,omitempty"`
-	ExitReason       string            `json:"exit_reason,omitempty"`
-	OutputText       string            `json:"output_text,omitempty"`
-	ErrorText        string            `json:"error_text,omitempty"`
-	Metadata         map[string]string `json:"metadata,omitempty"`
+	ID               string               `json:"id"`
+	JobID            string               `json:"job_id"`
+	OrganizationID   string               `json:"organization_id"`
+	ExecutionTarget  string               `json:"execution_target"`
+	AssignedDeviceID string               `json:"assigned_device_id,omitempty"`
+	Status           string               `json:"status"`
+	QueuedAt         time.Time            `json:"queued_at"`
+	ClaimedAt        *time.Time           `json:"claimed_at,omitempty"`
+	StartedAt        *time.Time           `json:"started_at,omitempty"`
+	LastHeartbeatAt  *time.Time           `json:"last_heartbeat_at,omitempty"`
+	FinishedAt       *time.Time           `json:"finished_at,omitempty"`
+	ExitReason       string               `json:"exit_reason,omitempty"`
+	OutputText       string               `json:"output_text,omitempty"`
+	ErrorText        string               `json:"error_text,omitempty"`
+	Metadata         map[string]string    `json:"metadata,omitempty"`
+	NodeTrace        []sdb.NodeTraceEntry `json:"node_trace,omitempty"`
+	// GraphSnapshot is the graph exactly as it was when this run was queued
+	// (see sdb.JobRun.GraphSnapshot) - what the replay view (Tier 2.6) draws
+	// the canvas from, instead of the job's current live graph, so an edit
+	// made after the run doesn't misattribute NodeTrace onto today's shape.
+	// nil for Prompt jobs and for runs recorded before this field existed.
+	GraphSnapshot *dataflow.Definition `json:"graph_snapshot,omitempty"`
+	// TriggerPayload is JSON-encoded external data that started this run -
+	// currently only non-empty for webhook-triggered runs (see
+	// JobRun.TriggerPayload) - exposed so the editor can show what actually
+	// arrived on a job's webhook, the closest equivalent to n8n's "listen
+	// for test event" without needing its separate test/production
+	// infrastructure (our URL is already live once the job is saved).
+	TriggerPayload string `json:"trigger_payload,omitempty"`
 }
 
 type ListRunsParams struct {
@@ -473,7 +488,12 @@ func isTerminalRunStatus(status string) bool {
 // stay queued for the scheduler's own executeQueuedCloudRuns pass to pick
 // up (see cloud_execution.go) — never executed synchronously here, since an
 // LLM call is slow and this runs inside a DB transaction.
-func queueRunForJob(tx *gorm.DB, job sdb.ScheduledJob, now time.Time) (sdb.JobRun, error) {
+//
+// payload is JSON-encoded external data to merge into the graph's seed
+// input under a "webhook" key (see cloud_execution.go) — empty for every
+// caller except the webhook trigger handler, which passes the incoming
+// request's body/headers/query.
+func queueRunForJob(tx *gorm.DB, job sdb.ScheduledJob, now time.Time, payload string) (sdb.JobRun, error) {
 	if job.ExecutionTarget == ExecutionTargetDevice {
 		if err := validateTargetDevice(tx, job.OrganizationID, job.TargetDeviceID); err != nil {
 			return sdb.JobRun{}, err
@@ -491,6 +511,8 @@ func queueRunForJob(tx *gorm.DB, job sdb.ScheduledJob, now time.Time) (sdb.JobRu
 		AssignedDeviceID: job.TargetDeviceID,
 		Status:           RunStatusQueued,
 		QueuedAt:         now,
+		TriggerPayload:   payload,
+		GraphSnapshot:    job.GraphJSON,
 	}
 	if err := tx.Create(&run).Error; err != nil {
 		return sdb.JobRun{}, err
@@ -541,5 +563,8 @@ func toRun(record sdb.JobRun) Run {
 		OutputText:       record.OutputText,
 		ErrorText:        record.ErrorText,
 		Metadata:         record.Metadata,
+		NodeTrace:        record.NodeTrace,
+		GraphSnapshot:    graphFromJSON(record.GraphSnapshot),
+		TriggerPayload:   record.TriggerPayload,
 	}
 }

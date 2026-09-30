@@ -1,8 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { Button, Card, Empty, message, Popconfirm, Space, Tag, Upload } from 'antd'
+import { Alert, Button, Card, Empty, Input, message, Modal, Popconfirm, Space, Tag, Typography, Upload } from 'antd'
 import type { TableProps, UploadProps } from 'antd'
-import { ArrowLeftOutlined, DeleteOutlined, EditOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons'
+import {
+  ArrowLeftOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  HistoryOutlined,
+  LoadingOutlined,
+  ThunderboltOutlined,
+  UploadOutlined,
+} from '@ant-design/icons'
 import {
   useCorpus,
   useCorpusFiles,
@@ -10,14 +18,15 @@ import {
   useDeleteCorpus,
   useUploadCorpusFile,
   useDetachCorpusFile,
+  useIngestCorpusFile,
   useIngestionJobs,
-  useRetryIngestionJob,
   useSearchCorpus,
   type CorpusFile,
   type IngestionJob,
 } from '@/api/knowledge'
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
+import { palette } from '@/theme/tokens'
 import { ConsoleTable } from '@/components/ConsoleTable'
 import { CorpusFormDrawer } from '@/components/knowledge/CorpusFormDrawer'
 import { SearchTestCard } from '@/components/knowledge/SearchTestCard'
@@ -31,19 +40,45 @@ const STATUS_COLOR: Record<string, string> = {
   running: 'processing',
 }
 
+const IN_PROGRESS_JOB_STATUSES = new Set(['queued', 'running'])
+
 export function CorpusDetailPage() {
   const { organizationId, corpusId } = useParams<{ organizationId: string; corpusId: string }>()
   const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
-  const { data: corpus } = useCorpus(corpusId)
-  const { data: files, isLoading: filesLoading } = useCorpusFiles(corpusId)
-  const { data: jobs } = useIngestionJobs(corpusId)
+  const [errorModalFile, setErrorModalFile] = useState<CorpusFile | null>(null)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [historySearch, setHistorySearch] = useState('')
+  const { data: corpus, error: corpusError } = useCorpus(corpusId)
+  const { data: files, isLoading: filesLoading, error: filesError } = useCorpusFiles(corpusId)
+  const { data: jobs, error: jobsError } = useIngestionJobs(corpusId)
   const uploadFile = useUploadCorpusFile(corpusId ?? '')
   const detachFile = useDetachCorpusFile(corpusId ?? '')
-  const retryJob = useRetryIngestionJob(corpusId ?? '')
+  const ingestFile = useIngestCorpusFile(corpusId ?? '')
   const updateCorpus = useUpdateCorpus()
   const deleteCorpus = useDeleteCorpus()
   const searchCorpus = useSearchCorpus(corpusId ?? '')
+
+  // jobs comes back newest-created-first per file (see ListIngestionJobs),
+  // so the first match per corpus_file_id is that file's latest attempt -
+  // what the merged Files row's Attempts/error-popup should reflect. Old
+  // superseded attempts (e.g. a transient failure before a successful
+  // retry) still show up in the History modal, just not on the main row.
+  const latestJobByFileId = useMemo(() => {
+    const map = new Map<string, IngestionJob>()
+    for (const job of jobs ?? []) {
+      if (job.corpus_file_id && !map.has(job.corpus_file_id)) {
+        map.set(job.corpus_file_id, job)
+      }
+    }
+    return map
+  }, [jobs])
+
+  const filteredHistory = useMemo(() => {
+    const q = historySearch.trim().toLowerCase()
+    if (!q) return jobs ?? []
+    return (jobs ?? []).filter((job) => job.filename?.toLowerCase().includes(q))
+  }, [jobs, historySearch])
 
   const canonicalOrganizationId = corpus?.organization_id ?? organizationId
   const corporaPath = canonicalOrganizationId ? `/orgs/${canonicalOrganizationId}/knowledge/corpora` : null
@@ -59,6 +94,34 @@ export function CorpusDetailPage() {
   }, [canonicalOrganizationId, corpusDetailPath, corpusId, navigate, organizationId])
 
   if (!corpusId) return null
+
+  // A failed corpus fetch (403 on a corpus belonging to another org, 404, a
+  // transient 5xx) must never render as if the corpus just has no files/jobs
+  // yet — canonicalOrganizationId falls back to the URL's own org id when
+  // `corpus` is undefined, which used to let the page render past this point
+  // looking like an empty-but-otherwise-normal corpus. See the 2026-08-06
+  // audit: this was the illustrating example for the "failed fetch renders
+  // as empty" finding across the console.
+  if (corpusError) {
+    return (
+      <div>
+        <PageHeader />
+        <Alert
+          type="error"
+          showIcon
+          message="Couldn't load this corpus"
+          description={getErrorMessage(corpusError)}
+          action={
+            corporaPath ? (
+              <Button size="small" onClick={() => navigate(corporaPath)}>
+                Back to corpora
+              </Button>
+            ) : undefined
+          }
+        />
+      </div>
+    )
+  }
 
   const uploadProps: UploadProps = {
     multiple: true,
@@ -81,34 +144,79 @@ export function CorpusDetailPage() {
     { title: 'Filename', dataIndex: 'filename', key: 'filename' },
     {
       title: 'Status',
-      dataIndex: 'status',
       key: 'status',
-      width: 120,
-      render: (status: string) => <Tag color={STATUS_COLOR[status]}>{status}</Tag>,
+      width: 130,
+      render: (_, record) => {
+        const job = record.id ? latestJobByFileId.get(record.id) : undefined
+        if (job && IN_PROGRESS_JOB_STATUSES.has(job.status ?? '')) {
+          return (
+            <Tag icon={<LoadingOutlined spin />} color="processing">
+              {job.status}
+            </Tag>
+          )
+        }
+        if (record.status === 'failed') {
+          return (
+            <Tag
+              color="error"
+              style={{ cursor: 'pointer' }}
+              onClick={() => setErrorModalFile(record)}
+              title="Click to see the error"
+            >
+              failed
+            </Tag>
+          )
+        }
+        return <Tag color={STATUS_COLOR[record.status ?? '']}>{record.status}</Tag>
+      },
+    },
+    {
+      title: 'Attempts',
+      key: 'attempts',
+      width: 90,
+      render: (_, record) => {
+        const job = record.id ? latestJobByFileId.get(record.id) : undefined
+        return job ? `${job.attempt_count}/${job.max_attempts}` : '—'
+      },
     },
     { title: 'Chunks', dataIndex: 'chunk_count', key: 'chunk_count', width: 90 },
     { title: 'Size', dataIndex: 'size', key: 'size', width: 100, render: (size: number) => formatBytes(size) },
     {
       title: '',
       key: 'actions',
-      width: 64,
+      width: 96,
       render: (_, record) => (
-        <Popconfirm
-          title={`Remove ${record.filename}?`}
-          description="Deletes its ingested vector chunks too."
-          onConfirm={() =>
-            detachFile.mutate(record.id!, {
-              onError: (error) => message.error(getErrorMessage(error)),
-            })
-          }
-        >
-          <Button size="small" danger icon={<DeleteOutlined />} aria-label={`Remove ${record.filename}`} />
-        </Popconfirm>
+        <Space size={4}>
+          <Button
+            size="small"
+            icon={<ThunderboltOutlined />}
+            loading={ingestFile.isPending}
+            title="Re-ingest, upgrades to real vectors once an embedder is configured"
+            onClick={() =>
+              ingestFile.mutate(record.id!, {
+                onSuccess: () => message.success(`Queued ${record.filename} for ingestion`),
+                onError: (error) => message.error(getErrorMessage(error)),
+              })
+            }
+            aria-label={`Re-ingest ${record.filename}`}
+          />
+          <Popconfirm
+            title={`Remove ${record.filename}?`}
+            description="Deletes its ingested vector chunks too."
+            onConfirm={() =>
+              detachFile.mutate(record.id!, {
+                onError: (error) => message.error(getErrorMessage(error)),
+              })
+            }
+          >
+            <Button size="small" danger icon={<DeleteOutlined />} aria-label={`Remove ${record.filename}`} />
+          </Popconfirm>
+        </Space>
       ),
     },
   ]
 
-  const jobColumns: TableProps<IngestionJob>['columns'] = [
+  const historyColumns: TableProps<IngestionJob>['columns'] = [
     { title: 'File', dataIndex: 'filename', key: 'filename' },
     {
       title: 'Status',
@@ -120,31 +228,17 @@ export function CorpusDetailPage() {
     { title: 'Attempts', key: 'attempts', width: 100, render: (_, record) => `${record.attempt_count}/${record.max_attempts}` },
     { title: 'Error', dataIndex: 'last_error', key: 'last_error', ellipsis: true, render: (value) => value || 'No error' },
     {
-      title: '',
-      key: 'actions',
-      width: 64,
-      render: (_, record) =>
-        record.status === 'failed' && (
-          <Button
-            size="small"
-            icon={<ReloadOutlined />}
-            loading={retryJob.isPending}
-            onClick={() =>
-              retryJob.mutate(record.id!, {
-                onError: (error) => message.error(getErrorMessage(error)),
-              })
-            }
-            aria-label={`Retry ${record.filename}`}
-          />
-        ),
+      title: 'When',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 170,
+      render: (value: string | undefined) => (value ? new Date(value).toLocaleString() : '—'),
     },
   ]
 
   return (
     <div>
       <PageHeader
-        title={corpus?.name ?? 'Corpus'}
-        description={corpus?.description || `${corpus?.chunk_count ?? 0} chunks ingested`}
         actions={
           <Space>
             <Button icon={<ArrowLeftOutlined />} onClick={() => corporaPath && navigate(corporaPath)} disabled={!corporaPath}>
@@ -176,33 +270,99 @@ export function CorpusDetailPage() {
         }
       />
 
-      <Space direction="vertical" size={20} style={{ width: '100%' }}>
-        <Card title="Files" size="small">
+      {/* The corpus's own name/description - unlike every other page's
+          PageHeader description (removed 2026-09-03, pure boilerplate), this
+          is the one piece of identifying info nothing else on screen shows:
+          the breadcrumb/subnav above only ever say "Knowledge"/"Corpora". */}
+      <div style={{ marginBottom: 20 }}>
+        <Typography.Title level={4} style={{ margin: 0 }}>
+          {corpus?.name ?? 'Corpus'}
+        </Typography.Title>
+        <Typography.Text style={{ color: palette.inkSecondary, fontSize: 13.5 }}>
+          {corpus?.description || `${corpus?.chunk_count ?? 0} chunks ingested`}
+        </Typography.Text>
+      </div>
+
+      <Space orientation="vertical" size={20} style={{ width: '100%' }}>
+        <Card
+          title="Files"
+          size="small"
+          extra={
+            <Button
+              size="small"
+              icon={<HistoryOutlined />}
+              onClick={() => setHistoryOpen(true)}
+              disabled={!jobs || jobs.length === 0}
+            >
+              History
+            </Button>
+          }
+        >
+          {jobsError && (
+            <Alert
+              type="warning"
+              showIcon
+              message="Couldn't load ingestion attempts. Status still reflects each file's own record."
+              description={getErrorMessage(jobsError)}
+              style={{ marginBottom: 12 }}
+            />
+          )}
           <ConsoleTable<CorpusFile>
             rowKey="id"
             size="small"
             columns={fileColumns}
             dataSource={files ?? []}
             loading={filesLoading}
+            queryError={filesError}
             pagination={false}
             locale={{ emptyText: <Empty description="No files uploaded yet" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
           />
         </Card>
 
-        {jobs && jobs.length > 0 && (
-          <Card title="Ingestion jobs" size="small">
-            <ConsoleTable<IngestionJob>
-              rowKey="id"
-              size="small"
-              columns={jobColumns}
-              dataSource={jobs}
-              pagination={false}
-            />
-          </Card>
-        )}
-
         <SearchTestCard placeholder="Ask something this corpus should be able to answer" search={searchCorpus} />
       </Space>
+
+      <Modal
+        open={Boolean(errorModalFile)}
+        onCancel={() => setErrorModalFile(null)}
+        footer={null}
+        centered
+        title={`Ingestion error — ${errorModalFile?.filename ?? ''}`}
+      >
+        <Alert
+          type="error"
+          showIcon
+          message={
+            (errorModalFile?.id ? latestJobByFileId.get(errorModalFile.id)?.last_error : undefined) ||
+            'No error message recorded for this attempt.'
+          }
+        />
+      </Modal>
+
+      <Modal
+        open={historyOpen}
+        onCancel={() => setHistoryOpen(false)}
+        footer={null}
+        centered
+        width={800}
+        title="Ingestion history"
+      >
+        <Input.Search
+          placeholder="Filter by filename"
+          allowClear
+          value={historySearch}
+          onChange={(e) => setHistorySearch(e.target.value)}
+          style={{ marginBottom: 12 }}
+        />
+        <ConsoleTable<IngestionJob>
+          rowKey="id"
+          size="small"
+          columns={historyColumns}
+          dataSource={filteredHistory}
+          pagination={{ pageSize: 8, hideOnSinglePage: true }}
+          locale={{ emptyText: <Empty description="No ingestion attempts match" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
+        />
+      </Modal>
 
       {corpus && (
         <CorpusFormDrawer

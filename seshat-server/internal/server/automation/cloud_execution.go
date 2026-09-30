@@ -2,8 +2,10 @@ package automation
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -11,10 +13,12 @@ import (
 
 	sdkautomation "github.com/KPO-Tech/seshat/pkg/automation"
 	sdkconfig "github.com/KPO-Tech/seshat/pkg/config"
+	"github.com/KPO-Tech/seshat/pkg/dataflow"
 	sdkproviders "github.com/KPO-Tech/seshat/pkg/providers"
 	sdkrag "github.com/KPO-Tech/seshat/pkg/rag"
 	"github.com/KPO-Tech/seshat/pkg/sdk"
 	sdktypes "github.com/KPO-Tech/seshat/pkg/types"
+	"github.com/KPO-Tech/seshat/pkg/workflow"
 
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
@@ -27,25 +31,364 @@ const cloudMaxTokens = 4096
 
 // jobWorkflow adapts a queued cloud run to the automation.Workflow interface
 // the absorbed Runner/Executor expects. It only ever calls SubmitMessage —
-// the model itself decides whether to call a tool during that turn. Cloud
-// jobs still cannot touch bash, the filesystem, or anything local-machine
-// (automation.Runner.Execute never registers those), but rag_search/
-// rag_ingest are available whenever a RAGService is resolved for the job's
-// organization, and read_document_url is available whenever docling is
-// configured server-wide (see executeCloudRun) — the "cloud jobs are
-// text-only" boundary from earlier in this project's life is now
-// specifically "no local-machine access", not "no tools at all".
+// the model itself decides whether to call a tool during that turn.
+//
+// Bash IS reachable here: the SDK's sdk.NewClient registers the bash tool
+// unconditionally on every client (there is no tool allowlist in
+// ClientConfig), and the default "mono_run" surface profile includes it —
+// verified by reading the SDK directly, not assumed from an older comment
+// that used to claim otherwise here and was wrong. executeCloudRun sets
+// RequireSandbox: true on the RunnerConfig below (same posture
+// workspacechat.Service.getOrCreateSession already has, see its own
+// comment) so a model-issued shell command either runs Landlock-confined
+// (Linux hosts where the kernel supports it) or is refused outright — never
+// unconfined on this shared multi-tenant host. rag_search/rag_ingest are
+// available whenever a RAGService is resolved for the job's organization,
+// and read_document_url whenever docling is configured server-wide.
 type jobWorkflow struct {
 	id          string
 	description string
 	prompt      string
+	// graph, when non-nil (job.GraphJSON was set), runs instead of prompt —
+	// see runGraph below. registry/secrets are threaded from Service so a
+	// graph node can resolve org-scoped dataflow secrets and reach the node
+	// types this deployment registered (see Service.nodeRegistry).
+	graph        *dataflow.Definition
+	registry     *dataflow.Registry
+	organization string
+	ownerID      string
+	secrets      DataflowSecretResolver
+	// resolvedAgents/providerConfig/provider/model/maxTokens are threaded
+	// straight from executeCloudRun's own already-resolved values, so a
+	// dataflowAgentCaller (built per runGraph call, not once for the whole
+	// jobWorkflow) can build a scoped one-shot sdk.Client for an "agent" node
+	// whose resolved agent differs from the job's own default - see
+	// dataflowAgentCaller.Ask.
+	resolvedAgents map[string]sdb.ResolvedAgent
+	providerConfig *sdkproviders.Config
+	provider       string
+	model          string
+	maxTokens      int
+	// variables, when non-nil, resolves the job's whole organization's
+	// $vars.NAME set (Tier 3.2) before runGraph below builds the Runtime -
+	// see Service.SetVariablesResolver's doc comment.
+	variables DataflowVariableResolver
+	// exprEval, when non-nil, is threaded onto the Runtime built by runGraph
+	// below so a Graph node calling dataflow.ResolveParam/ResolveValue
+	// (http_request's url/body/headers, or any future opt-in) gets real
+	// expression resolution instead of literal-only params - see
+	// Service.SetExpressionEvaluator's doc comment.
+	exprEval dataflow.ExpressionEvaluator
+	// triggerPayload is JSON-encoded external data (currently only set for
+	// webhook-triggered runs - see JobRun.TriggerPayload) merged into the
+	// graph's seed under a "webhook" key by runGraph below. Empty for every
+	// other trigger, which changes nothing about their existing seed.
+	triggerPayload string
+	// nodeTrace is populated by runGraph as a side effect (dataflow.Run's
+	// own Result is otherwise discarded once success/failure is checked) -
+	// executeCloudRun reads it directly off this struct after Run returns,
+	// regardless of outcome, rather than threading it through Run's fixed
+	// (ctx, session) error signature.
+	nodeTrace []sdb.NodeTraceEntry
 }
 
 func (w *jobWorkflow) Name() string        { return w.id }
 func (w *jobWorkflow) Description() string { return w.description }
 func (w *jobWorkflow) Run(ctx context.Context, session *sdk.Session) error {
-	_, err := session.SubmitMessage(ctx, w.prompt)
+	if w.graph != nil {
+		return w.runGraph(ctx, session)
+	}
+	// A graph-less job has no seed Item to merge triggerPayload into the way
+	// runGraph does under a "webhook" key - append it to the prompt instead
+	// so a webhook-triggered prompt job (see TriggerTypeWebhook) doesn't fire
+	// blind to what actually arrived.
+	message := w.prompt
+	if w.triggerPayload != "" {
+		message += "\n\n---\nWebhook payload:\n" + w.triggerPayload
+	}
+	_, err := session.SubmitMessage(ctx, message)
 	return err
+}
+
+// runGraph mirrors internal/automation.runGraph in the seshat SDK (see its
+// doc comment) — reimplemented here rather than imported because this
+// jobWorkflow adapts a different job model (sdb.ScheduledJob, this
+// package's own cloud-execution path) than the SDK's own Job/JobScheduler,
+// which seshat-server does not use for cloud-targeted runs.
+func (w *jobWorkflow) runGraph(ctx context.Context, session *sdk.Session) error {
+	if w.registry == nil {
+		return fmt.Errorf("job has a Graph but this deployment has no dataflow node registry configured")
+	}
+	var secrets dataflow.SecretResolver
+	if w.secrets != nil {
+		secrets = orgScopedSecretResolver{resolver: w.secrets, organizationID: w.organization}
+	}
+	var vars map[string]string
+	if w.variables != nil {
+		var err error
+		vars, err = w.variables.ResolveAll(ctx, w.organization)
+		if err != nil {
+			return fmt.Errorf("resolve variables: %w", err)
+		}
+	}
+	rt := &dataflow.Runtime{
+		Secrets: secrets,
+		Agent: dataflowAgentCaller{
+			session:        session,
+			resolvedAgents: w.resolvedAgents,
+			providerConfig: w.providerConfig,
+			provider:       w.provider,
+			model:          w.model,
+			maxTokens:      w.maxTokens,
+		},
+		Subworkflow: dataflowSubworkflowRunner{session: session},
+		Expr:        w.exprEval,
+		Vars:        vars,
+	}
+	// Seeds the graph's starting nodes with the run's job/owner/org identity
+	// — the same pattern Inbox's event-triggered graphs already use for
+	// event_context — so a node like "gmail_new_messages" can resolve which
+	// mailbox/cursor to poll without that identity being authored into the
+	// graph definition itself (see GmailPollNode's doc comment).
+	seedItem := dataflow.Item{
+		"job_id":          w.id,
+		"owner_id":        w.ownerID,
+		"organization_id": w.organization,
+	}
+	if w.triggerPayload != "" {
+		var raw map[string]any
+		if err := json.Unmarshal([]byte(w.triggerPayload), &raw); err == nil {
+			if errorTrigger, ok := raw["error_trigger"]; ok {
+				// Tier 3.1's Error Workflow - the only place TriggerPayload
+				// is ever stored wrapped under a key like this (a webhook's
+				// own TriggerPayload is the unwrapped {body,headers,query}
+				// object itself) - see triggerErrorWorkflowIfConfigured,
+				// which builds this shape, and its own doc comment for why
+				// the wrapper exists (an unambiguous anti-loop marker).
+				seedItem["error_trigger"] = errorTrigger
+			} else {
+				seedItem["webhook"] = raw
+			}
+		}
+	}
+	seed := []dataflow.Item{seedItem}
+	result, err := dataflow.Run(ctx, *w.graph, w.registry, rt, seed, dataflow.Options{})
+	if err != nil {
+		return fmt.Errorf("run graph: %w", err)
+	}
+	w.nodeTrace = buildNodeTrace(result)
+	if !result.Success {
+		for _, id := range result.Order {
+			if r := result.Results[id]; !r.Success && r.Error != "" {
+				return fmt.Errorf("graph %q failed at node %q: %s", w.graph.Name, id, r.Error)
+			}
+		}
+		return fmt.Errorf("graph %q failed", w.graph.Name)
+	}
+	return nil
+}
+
+// buildNodeTrace converts the dataflow engine's own Result (already
+// computed by dataflow.Run, otherwise discarded once success/failure is
+// checked) into the DB-persisted shape - iterates Order so the trace
+// reflects actual execution order rather than map iteration order.
+func buildNodeTrace(result dataflow.Result) []sdb.NodeTraceEntry {
+	trace := make([]sdb.NodeTraceEntry, 0, len(result.Order))
+	for _, id := range result.Order {
+		r, ok := result.Results[id]
+		if !ok {
+			continue
+		}
+		var outputByPort map[string][]map[string]any
+		if len(r.OutputByPort) > 0 {
+			outputByPort = make(map[string][]map[string]any, len(r.OutputByPort))
+			for port, items := range r.OutputByPort {
+				outputByPort[port] = itemsToMaps(items)
+			}
+		}
+		var inputSource []sdb.NodeItemSource
+		if len(r.InputSource) > 0 {
+			inputSource = make([]sdb.NodeItemSource, len(r.InputSource))
+			for i, s := range r.InputSource {
+				inputSource[i] = sdb.NodeItemSource{Node: s.Node, Port: s.Port}
+			}
+		}
+		trace = append(trace, sdb.NodeTraceEntry{
+			ID:           r.ID,
+			Type:         r.Type,
+			Success:      r.Success,
+			Skipped:      r.Skipped,
+			Pinned:       r.Pinned,
+			Error:        r.Error,
+			Input:        itemsToMaps(r.Input),
+			InputSource:  inputSource,
+			Output:       itemsToMaps(r.Output),
+			OutputByPort: outputByPort,
+			StartedAt:    r.StartedAt,
+			EndedAt:      r.EndedAt,
+			DurationMS:   r.Duration.Milliseconds(),
+		})
+	}
+	return trace
+}
+
+// itemsToMaps converts a dataflow.Item slice ([]map[string]any under the
+// hood) to the plain []map[string]any shape sdb.NodeTraceEntry persists -
+// nil in, nil out, so an empty/absent field stays omitted (`omitempty`)
+// rather than becoming an allocated empty slice.
+func itemsToMaps(items []dataflow.Item) []map[string]any {
+	if items == nil {
+		return nil
+	}
+	out := make([]map[string]any, len(items))
+	for i, item := range items {
+		out[i] = map[string]any(item)
+	}
+	return out
+}
+
+// orgScopedSecretResolver binds one organization to Service's
+// DataflowSecretResolver, satisfying pkg/dataflow.SecretResolver's
+// narrower (organization-free) Resolve signature — see RunnerConfig.Secrets'
+// doc comment in the SDK for why this per-execution scoping happens at the
+// call site rather than in the interface itself.
+type orgScopedSecretResolver struct {
+	resolver       DataflowSecretResolver
+	organizationID string
+}
+
+func (r orgScopedSecretResolver) Resolve(ctx context.Context, ref string) (string, error) {
+	return r.resolver.ResolveDataflowSecret(ctx, r.organizationID, ref)
+}
+
+// dataflowAgentCaller/dataflowSubworkflowRunner mirror
+// internal/automation's sessionAgentCaller/sessionSubworkflowRunner in the
+// SDK (see its dataflow_adapter.go) — reimplemented here for the same
+// reason as runGraph above: this package's session comes from its own
+// executeCloudRun, not the SDK's JobScheduler.
+//
+// agentSlug is now real for a slug seshat-backend resolved at save time
+// (see resolvedAgents) - anything else (an unresolved slug, meaning the
+// graph was hand-edited via the raw API after the last save, or this
+// deployment's Job predates the resolvedAgents column) still fails clearly
+// rather than silently running as the job's own default agent. tools and
+// graphTools both still fail loudly unconditionally - per-node tool scoping
+// and nodes-as-tools are a separate, not-yet-built piece here (see
+// automation-app-pages.md §37.9's follow-up note; internal/automation's
+// sessionAgentCaller in the SDK repo is the one place graphTools is real
+// today).
+type dataflowAgentCaller struct {
+	session        *sdk.Session
+	resolvedAgents map[string]sdb.ResolvedAgent
+	// providerConfig/provider/model/maxTokens are executeCloudRun's own
+	// already-resolved values for the job's default agent - reused as-is
+	// for a scoped turn whose resolved agent didn't override the model, and
+	// as the base a resolved Model override is checked against (see Ask).
+	providerConfig *sdkproviders.Config
+	provider       string
+	model          string
+	maxTokens      int
+}
+
+func (a dataflowAgentCaller) Ask(ctx context.Context, agentSlug string, prompt string, tools []string, graphTools []dataflow.ToolSpec) (string, error) {
+	if len(tools) > 0 {
+		return "", fmt.Errorf("dataflow: agent node requested tools=%v, but per-node tool scoping is not implemented yet - omit it to use the workflow's own agent's tools", tools)
+	}
+	if len(graphTools) > 0 {
+		return "", fmt.Errorf("dataflow: agent node has %d node(s) wired as tools, but that's not implemented yet on cloud-targeted runs - omit them to run without graph-node tools", len(graphTools))
+	}
+	if agentSlug == "" {
+		resp, err := a.session.SubmitMessage(ctx, prompt)
+		if err != nil {
+			return "", err
+		}
+		return lastAssistantText(resp.Messages), nil
+	}
+	resolved, ok := a.resolvedAgents[agentSlug]
+	if !ok {
+		return "", fmt.Errorf("dataflow: agent node requested agent=%q, but it wasn't resolved when this automation was last saved - re-save the automation to pick it up", agentSlug)
+	}
+	return a.askScoped(ctx, resolved, prompt)
+}
+
+// askScoped runs prompt as a one-shot, isolated turn against resolved's own
+// system prompt - a fresh sdk.Client/session, never joining the job's own
+// shared conversation, mirroring pkg/sdk.Client.Ask's own create→submit→
+// close pattern. Reuses the job's own already-decrypted provider
+// credentials (providerConfig) unless resolved.Model names a different
+// provider, which this pass can't support - executeCloudRun only ever
+// decrypts credentials for the job's own provider, so switching providers
+// per-node would need credential resolution this caller doesn't have; it
+// fails clearly instead of guessing.
+func (a dataflowAgentCaller) askScoped(ctx context.Context, resolved sdb.ResolvedAgent, prompt string) (string, error) {
+	provider, model := a.provider, a.model
+	if strings.TrimSpace(resolved.Model) != "" {
+		p, m, err := parseModelOverride(resolved.Model)
+		if err != nil {
+			return "", fmt.Errorf("dataflow: resolved agent has an invalid model override %q: %w", resolved.Model, err)
+		}
+		if p != a.provider {
+			return "", fmt.Errorf("dataflow: resolved agent's model %q uses provider %q, but this run only has credentials decrypted for %q - per-node provider switching isn't supported yet", resolved.Model, p, a.provider)
+		}
+		model = m
+	}
+
+	clientConfig := &sdk.ClientConfig{
+		Model:          sdktypes.ModelIdentifier{Provider: sdktypes.APIProvider(provider), Model: model},
+		ProviderConfig: a.providerConfig,
+		MaxTokens:      a.maxTokens,
+		RequireSandbox: true,
+	}
+	if strings.TrimSpace(resolved.SystemPrompt) != "" {
+		systemPrompt := resolved.SystemPrompt
+		clientConfig.PromptConfig = &sdk.PromptConfig{SystemPrompt: &systemPrompt}
+	}
+	client, err := sdk.NewClient(clientConfig)
+	if err != nil {
+		return "", fmt.Errorf("dataflow: failed to build scoped agent client: %w", err)
+	}
+	defer client.Close()
+
+	session, err := client.CreateSession(ctx)
+	if err != nil {
+		return "", fmt.Errorf("dataflow: failed to create scoped agent session: %w", err)
+	}
+	defer session.Close()
+
+	resp, err := session.SubmitMessage(ctx, prompt)
+	if err != nil {
+		return "", err
+	}
+	return lastAssistantText(resp.Messages), nil
+}
+
+type dataflowSubworkflowRunner struct{ session *sdk.Session }
+
+func (r dataflowSubworkflowRunner) Run(ctx context.Context, def workflow.Definition) (workflow.Result, error) {
+	executor := workflow.ExecutorFunc(func(execCtx context.Context, node workflow.Node, inputs map[string]workflow.NodeResult) (string, error) {
+		resp, err := r.session.SubmitMessage(execCtx, workflow.BuildNodePrompt(node, inputs))
+		if err != nil {
+			return "", err
+		}
+		return lastAssistantText(resp.Messages), nil
+	})
+	return workflow.Run(ctx, def, executor, workflow.Options{})
+}
+
+func lastAssistantText(messages []sdktypes.Message) string {
+	for i := len(messages) - 1; i >= 0; i-- {
+		if messages[i].Role != sdktypes.RoleAssistant {
+			continue
+		}
+		var text string
+		for _, block := range messages[i].Content {
+			if tc, ok := block.(sdktypes.TextContent); ok {
+				text += tc.Text
+			}
+		}
+		return text
+	}
+	return ""
 }
 
 // executeCloudRun runs one queued cloud-targeted run against the org's
@@ -85,14 +428,14 @@ func (s *Service) executeCloudRun(ctx context.Context, runID string) error {
 		return s.markCloudRunFailed(ctx, run.ID, err.Error())
 	}
 
-	encryptedAPIKey, baseURL, ok, err := s.resolveProviderCredentials(ctx, job.OrganizationID, provider)
+	encryptedAPIKey, baseURL, resolvedOrgID, ok, err := s.resolveProviderCredentials(ctx, job.OrganizationID, provider)
 	if err != nil {
 		return err
 	}
 	if !ok {
 		return s.markCloudRunFailed(ctx, run.ID, fmt.Sprintf("no provider credentials configured for %q (checked this organization's provider_settings and the platform default)", provider))
 	}
-	apiKey, err := decryptSecret(encryptedAPIKey)
+	apiKey, err := decryptSecret(s.db.Gorm().WithContext(ctx), resolvedOrgID, encryptedAPIKey)
 	if err != nil {
 		return s.markCloudRunFailed(ctx, run.ID, "failed to decrypt provider credentials: "+err.Error())
 	}
@@ -112,13 +455,55 @@ func (s *Service) executeCloudRun(ctx context.Context, runID string) error {
 		}
 	}
 
+	// Whose per-employee MCP tokens (Slack/Outlook/Teams/Gmail, ...) a
+	// scheduled job bridges is a real design question, not an assumption -
+	// unlike workspacechat's interactive session (a live request always has
+	// a principal to bridge for), a background ScheduledJob has no "person
+	// currently waiting" at all. Resolved to the job's own creator
+	// (CreatedByUserID) - the only identity already on the row, and the
+	// only sane default given nothing in this codebase has an org-level
+	// "service account" concept for these MCP-action kinds at all today
+	// (see connectors' own package doc). Best-effort like ragService above:
+	// the creator not having connected an account for a given kind, or no
+	// longer being a member of this organization, just means this run
+	// executes without those MCP tools this time, not a reason to fail it -
+	// same "don't let an optional capability's absence break a job"
+	// posture used for every other resolved dependency here.
+	var mcpServers []sdk.MCPServerConfig
+	if s.mcp != nil {
+		if resolved, mcpErr := s.mcp.ResolveServerConfigsForUser(ctx, job.OrganizationID, job.CreatedByUserID); mcpErr == nil {
+			mcpServers = resolved
+		}
+	}
+
+	// A job's Graph, when set, needs no LLM tools of its own beyond the
+	// "agent"/"subworkflow" node types (see jobWorkflow.runGraph) — RAG/MCP/
+	// docling/artifacts are still passed through unconditionally below
+	// since a graph's own "agent" nodes reuse this same session and so can
+	// still call rag_search/read_document_url/MCP tools mid-turn, same as
+	// the plain-Prompt path.
+	var graph *dataflow.Definition
+	if strings.TrimSpace(job.GraphJSON) != "" {
+		var def dataflow.Definition
+		if err := json.Unmarshal([]byte(job.GraphJSON), &def); err != nil {
+			return s.markCloudRunFailed(ctx, run.ID, "invalid graph definition: "+err.Error())
+		}
+		graph = &def
+	}
+
 	executor, err := sdkautomation.NewExecutor(sdkautomation.ExecutorConfig{
 		RunnerConfig: sdkautomation.RunnerConfig{
-			Model:          sdkautomation.ModelIdentifier{Provider: sdktypes.APIProvider(provider), Model: model},
-			ProviderConfig: providerConfig,
-			MaxTokens:      cloudMaxTokens,
-			RAGService:     ragService,
-			DoclingURL:     s.doclingURL,
+			Model:             sdkautomation.ModelIdentifier{Provider: sdktypes.APIProvider(provider), Model: model},
+			ProviderConfig:    providerConfig,
+			MaxTokens:         cloudMaxTokens,
+			RAGService:        ragService,
+			DocumentReaderURL: s.doclingURL,
+			ArtifactStore:     s.artifacts,
+			MCPServers:        mcpServers,
+			// See jobWorkflow's doc comment above — bash is reachable from
+			// this executor, so it must never run unconfined on this shared
+			// host.
+			RequireSandbox: true,
 		},
 	})
 	if err != nil {
@@ -126,19 +511,31 @@ func (s *Service) executeCloudRun(ctx context.Context, runID string) error {
 	}
 	defer executor.Close()
 
-	workflow := &jobWorkflow{id: job.ID, description: job.Description, prompt: job.Prompt}
+	workflow := &jobWorkflow{
+		id: job.ID, description: job.Description, prompt: job.Prompt,
+		graph: graph, registry: s.nodeRegistry, organization: job.OrganizationID,
+		ownerID: job.CreatedByUserID, secrets: s.secrets, variables: s.variables,
+		triggerPayload: run.TriggerPayload,
+		exprEval:       s.exprEval,
+		resolvedAgents: job.ResolvedAgents,
+		providerConfig: providerConfig,
+		provider:       provider,
+		model:          model,
+		maxTokens:      cloudMaxTokens,
+	}
 	result, execErr := executor.Run(ctx, workflow, sdkautomation.Options{})
 
 	if execErr != nil {
-		return s.finishCloudRun(ctx, run.ID, RunStatusFailed, result.Output, execErr.Error())
+		return s.finishCloudRun(ctx, run.ID, RunStatusFailed, result.Output, execErr.Error(), workflow.nodeTrace)
 	}
-	return s.finishCloudRun(ctx, run.ID, RunStatusCompleted, result.Output, "")
+	return s.finishCloudRun(ctx, run.ID, RunStatusCompleted, result.Output, "", workflow.nodeTrace)
 }
 
-func (s *Service) finishCloudRun(ctx context.Context, runID, status, outputText, errorText string) error {
-	return s.db.Transaction(func(tx *gorm.DB) error {
+func (s *Service) finishCloudRun(ctx context.Context, runID, status, outputText, errorText string, nodeTrace []sdb.NodeTraceEntry) error {
+	var record sdb.JobRun
+	var applied bool
+	err := s.db.Transaction(func(tx *gorm.DB) error {
 		tx = tx.WithContext(ctx)
-		var record sdb.JobRun
 		if err := tx.First(&record, "id = ?", runID).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return nil
@@ -157,21 +554,92 @@ func (s *Service) finishCloudRun(ctx context.Context, runID, status, outputText,
 		if errorText != "" {
 			record.ExitReason = errorText
 		}
+		record.NodeTrace = nodeTrace
 		result := tx.Model(&sdb.JobRun{}).
 			Where("id = ? AND status = ?", record.ID, RunStatusRunning).
-			Updates(map[string]any{"status": record.Status, "finished_at": record.FinishedAt, "output_text": record.OutputText, "error_text": record.ErrorText, "exit_reason": record.ExitReason})
+			Updates(map[string]any{"status": record.Status, "finished_at": record.FinishedAt, "output_text": record.OutputText, "error_text": record.ErrorText, "exit_reason": record.ExitReason, "node_trace": record.NodeTrace})
 		if result.Error != nil {
 			return result.Error
 		}
 		if result.RowsAffected == 0 {
 			return nil
 		}
+		applied = true
 		return reflectRunOutcomeOnJob(tx, record)
 	})
+	if err != nil {
+		return err
+	}
+	// Tier 3.1's Error Workflow - deliberately outside the transaction
+	// above (a failure to queue it must never roll back the failure record
+	// that just committed) and only when this call actually just applied a
+	// failed status (not e.g. a no-op on an already-cancelled run).
+	if applied && status == RunStatusFailed {
+		s.triggerErrorWorkflowIfConfigured(ctx, record, errorText)
+	}
+	return nil
+}
+
+// triggerErrorWorkflowIfConfigured queues a run for the failing job's
+// configured "Error Workflow" (Tier 3.1), if any - best-effort: any failure
+// here (job lookup, queueing) is only logged, never propagated, since the
+// original run's own failure is already durably committed by the time this
+// runs (see finishCloudRun). Anti-loop guard: a run whose own
+// TriggerPayload already carries the error_trigger marker (meaning THIS run
+// was itself an error-workflow run) never triggers another one - a
+// same-organization cycle through several jobs would still pass
+// normalizeErrorWorkflowJobID's simple self-reference check at save time,
+// so this marker at trigger time is the real guard.
+func (s *Service) triggerErrorWorkflowIfConfigured(ctx context.Context, run sdb.JobRun, errorText string) {
+	if strings.Contains(run.TriggerPayload, `"error_trigger"`) {
+		return
+	}
+	tx := s.db.Gorm().WithContext(ctx)
+	var job sdb.ScheduledJob
+	if err := tx.First(&job, "id = ?", run.JobID).Error; err != nil {
+		return
+	}
+	if job.ErrorWorkflowJobID == nil || *job.ErrorWorkflowJobID == "" {
+		return
+	}
+	var errorJob sdb.ScheduledJob
+	if err := tx.First(&errorJob, "id = ? AND organization_id = ?", *job.ErrorWorkflowJobID, job.OrganizationID).Error; err != nil {
+		log.Printf("[automation] error workflow lookup failed for job %s: %v", job.ID, err)
+		return
+	}
+	payload, err := json.Marshal(map[string]any{
+		"error_trigger": map[string]any{
+			"job_id": job.ID, "job_name": job.Name, "run_id": run.ID, "error": errorText, "last_node_executed": lastFailedNodeID(run.NodeTrace),
+		},
+	})
+	if err != nil {
+		log.Printf("[automation] failed to build error workflow payload for job %s: %v", job.ID, err)
+		return
+	}
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		_, err := queueRunForJob(tx, errorJob, time.Now().UTC(), string(payload))
+		return err
+	})
+	if err != nil {
+		log.Printf("[automation] failed to queue error workflow run for job %s: %v", job.ID, err)
+	}
+}
+
+// lastFailedNodeID returns the id of the last node in trace order that
+// didn't succeed, mirroring n8n's own execution.lastNodeExecuted - "" if
+// trace is empty (a failure that happened before the graph ever ran, e.g.
+// no provider credentials configured).
+func lastFailedNodeID(trace []sdb.NodeTraceEntry) string {
+	for i := len(trace) - 1; i >= 0; i-- {
+		if !trace[i].Success {
+			return trace[i].ID
+		}
+	}
+	return ""
 }
 
 func (s *Service) markCloudRunFailed(ctx context.Context, runID, reason string) error {
-	return s.finishCloudRun(ctx, runID, RunStatusFailed, "", reason)
+	return s.finishCloudRun(ctx, runID, RunStatusFailed, "", reason, nil)
 }
 
 // resolveProviderCredentials implements the hybrid BYOK/managed model: an
@@ -180,31 +648,36 @@ func (s *Service) markCloudRunFailed(ctx context.Context, runID, reason string) 
 // currently flagged IsDefault (see iam.Service.DefaultOrganizationID) - the
 // credentials a paying-subscription org would run on without ever
 // configuring its own key. Returns ok=false if neither exists.
-func (s *Service) resolveProviderCredentials(ctx context.Context, organizationID, provider string) (encryptedAPIKey, baseURL string, ok bool, err error) {
+// resolveProviderCredentials returns the encrypted API key alongside
+// resolvedOrgID, the organization whose DEK actually encrypted it - the
+// org-tier and platform-fallback branches don't always agree with the
+// requested organizationID, and the caller needs the right one to decrypt
+// (see DecryptSecret's doc comment).
+func (s *Service) resolveProviderCredentials(ctx context.Context, organizationID, provider string) (encryptedAPIKey, baseURL, resolvedOrgID string, ok bool, err error) {
 	orgSetting, found, err := s.findProviderSetting(ctx, organizationID, provider)
 	if err != nil {
-		return "", "", false, err
+		return "", "", "", false, err
 	}
 	if found {
-		return orgSetting.EncryptedAPIKey, orgSetting.BaseURL, true, nil
+		return orgSetting.EncryptedAPIKey, orgSetting.BaseURL, organizationID, true, nil
 	}
 
 	tx := s.db.Gorm().WithContext(ctx)
 	defaultOrgID, found, err := s.iam.DefaultOrganizationIDForDomain(tx, iam.SharedDomainProviderSettings)
 	if err != nil {
-		return "", "", false, err
+		return "", "", "", false, err
 	}
 	if !found || defaultOrgID == organizationID {
-		return "", "", false, nil
+		return "", "", "", false, nil
 	}
 	defaultSetting, found, err := s.findProviderSetting(ctx, defaultOrgID, provider)
 	if err != nil {
-		return "", "", false, err
+		return "", "", "", false, err
 	}
 	if found {
-		return defaultSetting.EncryptedAPIKey, defaultSetting.BaseURL, true, nil
+		return defaultSetting.EncryptedAPIKey, defaultSetting.BaseURL, defaultOrgID, true, nil
 	}
-	return "", "", false, nil
+	return "", "", "", false, nil
 }
 
 // parseModelOverride splits a job's model_override ("provider:model") into

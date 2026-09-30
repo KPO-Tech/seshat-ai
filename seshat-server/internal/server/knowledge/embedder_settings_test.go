@@ -36,7 +36,7 @@ func TestSetEmbedderSettingEncryptsTheAPIKeyAtRest(t *testing.T) {
 	if stored.EncryptedAPIKey == "" || stored.EncryptedAPIKey == "sk-embed-super-secret" {
 		t.Fatalf("expected the API key to be encrypted at rest, got %q", stored.EncryptedAPIKey)
 	}
-	decrypted, err := decryptSecret(stored.EncryptedAPIKey)
+	decrypted, err := decryptSecret(env.db.Gorm(), env.orgID, stored.EncryptedAPIKey)
 	if err != nil {
 		t.Fatalf("decrypt stored key: %v", err)
 	}
@@ -220,7 +220,7 @@ func TestResolveEmbedderConfigHonorsShareEmbedderSettingsOptOut(t *testing.T) {
 		t.Fatalf("set embedder on the default org: %v", err)
 	}
 	shareEmbedderSettings := false
-	if _, err := env.iam.SetOrganizationSharedDomains(context.Background(), env.adminPrincipal, defaultOrg.ID, nil, &shareEmbedderSettings, nil, nil, nil, nil); err != nil {
+	if _, err := env.iam.SetOrganizationSharedDomains(context.Background(), env.adminPrincipal, defaultOrg.ID, nil, &shareEmbedderSettings, nil, nil, nil, nil, nil); err != nil {
 		t.Fatalf("opt out of sharing embedder settings: %v", err)
 	}
 

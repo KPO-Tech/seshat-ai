@@ -79,7 +79,7 @@ The **`seshat-ai`** repository contains **SeshatOS**, a self-hosted AI workspace
 │  seshat  (external Go module)   │  Agent runtime, tools, providers, MCP
 └─────────────────────────────────┘
 
-  ── optional "connected" mode (SESHAT_SERVER_URL) ──
+  ── optional "connected" mode (reachability-probed at boot, not user-configurable) ──
 
 ┌─────────────────────────────────┐      ┌──────────────────────────────┐
 │  seshat-server/cmd/server       │◄─────┤  seshat-console (React)      │
@@ -88,7 +88,9 @@ The **`seshat-ai`** repository contains **SeshatOS**, a self-hosted AI workspace
 └─────────────────────────────────┘      └──────────────────────────────┘
 ```
 
-Dependency direction is strictly one-way: `seshat-ai` imports `seshat/pkg/*` only, never the reverse. `seshat-ui` never talks to `seshat-server` directly — only through `seshat-backend` as the single gateway. In **standalone mode** (the default), `seshat-backend` runs fully offline with its own local auth/org/RBAC; in **connected mode**, identity, provider settings, preferences, skills/web-search/MCP registries, memories, agent presets, and usage counters are instead resolved from `seshat-server`, per-domain, config-driven — see [`ROADMAP.md`](ROADMAP.md) for the current migration status.
+Dependency direction is strictly one-way: `seshat-ai` imports `seshat/pkg/*` only, never the reverse. `seshat-ui` never talks to `seshat-server` directly — only through `seshat-backend` as the single gateway. In **standalone mode** (the default), `seshat-backend` runs fully offline with its own local auth/org/RBAC; in **connected mode**, identity, provider settings, preferences, skills/web-search/MCP registries, memories, agent presets, and usage counters are instead resolved from `seshat-server`, per-domain — see [`ROADMAP.md`](ROADMAP.md) for the current migration status.
+
+Which mode a given build runs in is **not a user or operator setting**. `seshat-server` access is Seshat's paid managed-service tier, so `seshat-backend` decides at boot, on its own, whether to use it — by probing a single URL compiled into the binary (`defaultServerURL` in `seshat-backend/internal/config/bootstrap.go`) and falling back to standalone mode if it isn't reachable. There is deliberately no environment variable or config field that retargets this.
 
 ---
 
@@ -245,7 +247,7 @@ cp .env.example .env   # set POSTGRES_PASSWORD and SESHAT_SERVER_ENCRYPTION_KEY
 docker compose up --build
 ```
 
-See [`deploy/README.md`](deploy/README.md). Point a `seshat-backend` instance at it with `SESHAT_SERVER_URL`/`SESHAT_SERVER_ORGANIZATION_ID` (see Configuration below) to switch it into connected mode.
+See [`deploy/README.md`](deploy/README.md). A `seshat-backend` build only switches into connected mode against a `seshat-server` deployment reachable at the URL compiled into that build (see the architecture diagram above) — there is no runtime variable to point an existing build at a different deployment.
 
 ---
 
@@ -269,8 +271,8 @@ All config is via environment variables. See [`.env.example`](.env.example) for 
 | `RAG_EMBEDDING_PROVIDER` | `ollama` | `ollama` or `openai` |
 | `RAG_EMBEDDING_MODEL` | `nomic-embed-text` | Embedding model name |
 | `SESHAT_DOCLING_URL` | *(auto)* | Docling-serve URL for binary-document conversion; empty/`auto` auto-manages a local instance, or point at a self-hosted one |
-| `SESHAT_SERVER_URL` | - | Set to switch this backend into **connected mode** against a `seshat-server` deployment (see architecture diagram above) |
-| `SESHAT_SERVER_ORGANIZATION_ID` | - | Organization ID on `seshat-server` this backend belongs to (connected mode only) |
+
+`seshat-server`/connected mode is intentionally **not** in this table: it is not environment-configurable (see architecture diagram above).
 
 ---
 
@@ -544,8 +546,11 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md). PRs target `dev`, never directly `main
 
 ## 📄 License
 
-SeshatOS is licensed under the **GNU Affero General Public License v3.0** (AGPL-3.0).
+> **Draft status:** the split below is not yet in effect for any published version — see the notice at the top of [`LICENSE`](LICENSE) and [`ROADMAP.md`](ROADMAP.md). Today the whole repository is AGPL-3.0.
+
+This repository is moving toward a directory-split license, the same pattern used by GitLab and OpenWork:
+
+- `seshat-backend/` and `seshat-ui/` — **GNU Affero General Public License v3.0** (AGPL-3.0), see [`LICENSE`](LICENSE).
+- `seshat-server/` and `seshat-console/` — a source-available license (draft, not final), see [`seshat-server/LICENSE`](seshat-server/LICENSE).
 
 The underlying runtime, [seshat](https://github.com/KPO-Tech/seshat), is Apache 2.0.
-
-See [`LICENSE`](LICENSE) for the full text.

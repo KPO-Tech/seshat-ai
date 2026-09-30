@@ -70,6 +70,73 @@ func (s *Service) ListProviderSettings(ctx context.Context, principal *iam.Princ
 	return settings, nil
 }
 
+// ListUsableProviderSettings returns the provider settings a caller may
+// actually pick from at chat time - e.g. to populate a provider dropdown.
+// Unlike ListProviderSettings (admin-only, for the settings/credentials
+// page), authorization here is the same loose "any member of the
+// organization" trust level as ResolveProviderSetting: this exposes no
+// secret, just which providers are configured and their default model.
+//
+// A provider setting is visible to every member by default. An admin can
+// narrow that down to specific members/teams by creating one or more
+// PolicyBindings scoped to (resource_type=provider_setting,
+// resource_id=<setting id>) granting provider_settings.read/.manage - the
+// moment any such binding exists for a setting, it switches from "open to
+// everyone" to "only these subjects", mirroring how ResolveProviderSetting
+// enforces the same restriction for the single-provider lookup path.
+func (s *Service) ListUsableProviderSettings(ctx context.Context, principal *iam.Principal, organizationID string) ([]ProviderSetting, error) {
+	if principal == nil {
+		return nil, ErrUnauthorized("authentication required")
+	}
+	organizationID = strings.TrimSpace(organizationID)
+	if organizationID == "" {
+		return nil, ErrInvalidInput("organization_id is required")
+	}
+
+	tx := s.db.Gorm().WithContext(ctx)
+	allowed, err := s.iam.CanAccessOrganization(tx, principal, organizationID)
+	if err != nil {
+		return nil, err
+	}
+	if !allowed {
+		return []ProviderSetting{}, nil
+	}
+
+	var records []sdb.ProviderSetting
+	if err := tx.Where("organization_id = ?", organizationID).Order("provider asc").Find(&records).Error; err != nil {
+		return nil, err
+	}
+	settings := make([]ProviderSetting, 0, len(records))
+	for _, record := range records {
+		usable, err := s.canUseProviderSetting(tx, principal, record)
+		if err != nil {
+			return nil, err
+		}
+		if usable {
+			settings = append(settings, toProviderSetting(record))
+		}
+	}
+	return settings, nil
+}
+
+// canUseProviderSetting applies the opt-in per-resource allowlist described
+// on ListUsableProviderSettings: open to any org member unless at least one
+// PolicyBinding is scoped to this exact setting, in which case the caller
+// must hold provider_settings.read/.manage either organization-wide or on
+// this resource specifically. principal is assumed to already be a member of
+// setting.OrganizationID (callers check that first, since it's cheaper and
+// covers the vastly more common unrestricted case).
+func (s *Service) canUseProviderSetting(tx *gorm.DB, principal *iam.Principal, setting sdb.ProviderSetting) (bool, error) {
+	restricted, err := s.iam.HasResourceScopedBindings(tx, setting.OrganizationID, "provider_setting", setting.ID)
+	if err != nil {
+		return false, err
+	}
+	if !restricted {
+		return true, nil
+	}
+	return s.iam.HasAnyResourcePermission(tx, principal, setting.OrganizationID, "provider_setting", setting.ID, "provider_settings.read", "provider_settings.manage")
+}
+
 // GetProviderSetting requires provider_settings.read/manage or
 // organization.manage.
 func (s *Service) GetProviderSetting(ctx context.Context, principal *iam.Principal, id string) (*ProviderSetting, error) {
@@ -121,7 +188,7 @@ func (s *Service) CreateProviderSetting(ctx context.Context, principal *iam.Prin
 			return err
 		}
 
-		encrypted, err := encryptSecret(apiKey)
+		encrypted, err := encryptSecret(tx, organizationID, apiKey)
 		if err != nil {
 			return err
 		}
@@ -174,7 +241,7 @@ func (s *Service) UpdateProviderSetting(ctx context.Context, principal *iam.Prin
 		}
 		setting.BaseURL = strings.TrimSpace(params.BaseURL)
 		if apiKey := strings.TrimSpace(params.APIKey); apiKey != "" {
-			encrypted, err := encryptSecret(apiKey)
+			encrypted, err := encryptSecret(tx, setting.OrganizationID, apiKey)
 			if err != nil {
 				return err
 			}
@@ -266,7 +333,14 @@ func (s *Service) ResolveProviderSetting(ctx context.Context, principal *iam.Pri
 	if orgSetting, found, err := s.findProviderSetting(ctx, organizationID, provider); err != nil {
 		return nil, err
 	} else if found {
-		apiKey, err := decryptSecret(orgSetting.EncryptedAPIKey)
+		usable, err := s.canUseProviderSetting(tx, principal, orgSetting)
+		if err != nil {
+			return nil, err
+		}
+		if !usable {
+			return nil, ErrForbidden("you are not permitted to use the " + provider + " provider setting")
+		}
+		apiKey, err := decryptSecret(tx, organizationID, orgSetting.EncryptedAPIKey)
 		if err != nil {
 			return nil, err
 		}
@@ -284,7 +358,9 @@ func (s *Service) ResolveProviderSetting(ctx context.Context, principal *iam.Pri
 		if defaultSetting, found, err := s.findProviderSetting(ctx, defaultOrgID, provider); err != nil {
 			return nil, err
 		} else if found {
-			apiKey, err := decryptSecret(defaultSetting.EncryptedAPIKey)
+			// defaultOrgID, not organizationID - this secret was encrypted
+			// with the DEFAULT organization's DEK.
+			apiKey, err := decryptSecret(tx, defaultOrgID, defaultSetting.EncryptedAPIKey)
 			if err != nil {
 				return nil, err
 			}

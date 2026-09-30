@@ -18,12 +18,13 @@ type createOrganizationRequest struct {
 }
 
 type updateOrganizationRequest struct {
-	Name         string `json:"name"`
-	Slug         string `json:"slug"`
-	Description  string `json:"description"`
-	WebsiteURL   string `json:"website_url"`
-	SupportEmail string `json:"support_email"`
-	Domain       string `json:"domain"`
+	Name          string `json:"name"`
+	Slug          string `json:"slug"`
+	Description   string `json:"description"`
+	WebsiteURL    string `json:"website_url"`
+	SupportEmail  string `json:"support_email"`
+	Domain        string `json:"domain"`
+	MinAppVersion string `json:"min_app_version"`
 }
 
 func (app *App) handleOrganizations(w http.ResponseWriter, r *http.Request) {
@@ -105,12 +106,13 @@ func (app *App) handleOrganizationByID(w http.ResponseWriter, r *http.Request) {
 		// Organization updates keep the tenant identity stable while allowing the
 		// admin console to edit human-facing settings and routing slugs.
 		organization, err := app.backend.IAM.UpdateOrganization(r.Context(), principal, organizationID, iam.UpdateOrganizationParams{
-			Name:         req.Name,
-			Slug:         req.Slug,
-			Description:  req.Description,
-			WebsiteURL:   req.WebsiteURL,
-			SupportEmail: req.SupportEmail,
-			Domain:       req.Domain,
+			Name:          req.Name,
+			Slug:          req.Slug,
+			Description:   req.Description,
+			WebsiteURL:    req.WebsiteURL,
+			SupportEmail:  req.SupportEmail,
+			Domain:        req.Domain,
+			MinAppVersion: req.MinAppVersion,
 		})
 		if err != nil {
 			writeIAMError(w, err)
@@ -126,4 +128,32 @@ func (app *App) handleOrganizationByID(w http.ResponseWriter, r *http.Request) {
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
+}
+
+// handleOrganizationVerifyDomain — POST /api/v1/organizations/{organizationID}/verify-domain.
+// Resolves the DNS TXT challenge published for the organization's claimed
+// Domain and marks it verified on a match - see
+// iam.Service.VerifyOrganizationDomain's doc comment for why this exists at
+// all (closing a real domain-ownership gap, not a hardening nice-to-have).
+func (app *App) handleOrganizationVerifyDomain(w http.ResponseWriter, r *http.Request) {
+	principal, ok := authPrincipalFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "missing principal")
+		return
+	}
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	organizationID := strings.TrimSpace(r.PathValue("organizationID"))
+	if organizationID == "" {
+		writeJSONError(w, http.StatusBadRequest, "missing organization id")
+		return
+	}
+	organization, err := app.backend.IAM.VerifyOrganizationDomain(r.Context(), principal, organizationID)
+	if err != nil {
+		writeIAMError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, organization)
 }

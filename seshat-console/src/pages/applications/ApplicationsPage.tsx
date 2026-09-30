@@ -32,24 +32,33 @@ const PAGE_SIZE = 20
 export function ApplicationsPage() { const organizationId = useScopedOrganizationId()
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
+  const [sort, setSort] = useState<{ field: string; order: 'asc' | 'desc' }>({ field: 'name', order: 'asc' })
   const [editing, setEditing] = useState<Application | 'new' | null>(null)
   const [createdSecret, setCreatedSecret] = useState<{ name: string; clientId: string; clientSecret: string } | null>(
     null,
   )
 
-  const { data, isLoading, isFetching } = useApplicationsList(organizationId ?? undefined, { q: search || undefined,
-    sort: 'name',
-    order: 'asc',
+  const { data, isLoading, isFetching, error } = useApplicationsList(organizationId ?? undefined, { q: search || undefined,
+    sort: sort.field,
+    order: sort.order,
     limit: PAGE_SIZE,
     offset: (page - 1) * PAGE_SIZE, })
   const createApp = useCreateApplication()
   const updateApp = useUpdateApplication()
   const deleteApp = useDeleteApplication()
 
+  const handleTableChange: TableProps<Application>['onChange'] = (_pagination, _filters, sorter) => {
+    const single = Array.isArray(sorter) ? sorter[0] : sorter
+    if (single?.field && single.order) {
+      setSort({ field: String(single.field), order: single.order === 'ascend' ? 'asc' : 'desc' })
+    }
+  }
+
   const columns: TableProps<Application>['columns'] = [
     { title: 'Name',
       dataIndex: 'name',
       key: 'name',
+      sorter: true,
       render: (name: string, record) => (
         <div>
           <div style={{ fontWeight: 500 }}>{record.display_name || name}</div>
@@ -60,11 +69,13 @@ export function ApplicationsPage() { const organizationId = useScopedOrganizatio
       dataIndex: 'protocol',
       key: 'protocol',
       width: 100,
+      sorter: true,
       render: (protocol: string) => <Tag>{protocol?.toUpperCase()}</Tag>, },
     { title: 'Status',
       dataIndex: 'enabled',
       key: 'enabled',
       width: 100,
+      sorter: true,
       render: (enabled: boolean) => (enabled ? <Tag color="green">Enabled</Tag> : <Tag>Disabled</Tag>), },
     { title: 'Client ID', dataIndex: 'client_id', key: 'client_id', render: (v) => presentText(v, 'Issued after setup') },
     { title: '',
@@ -93,8 +104,6 @@ export function ApplicationsPage() { const organizationId = useScopedOrganizatio
   return (
     <div>
       <PageHeader
-        title="Applications"
-        description="OAuth2/OIDC client applications registered for this organization."
         actions={ <Space>
             <Input.Search
               placeholder="Search applications"
@@ -120,6 +129,8 @@ export function ApplicationsPage() { const organizationId = useScopedOrganizatio
           columns={columns}
           dataSource={data?.applications ?? []}
           loading={isLoading || isFetching}
+          queryError={error}
+          onChange={handleTableChange}
           locale={{ emptyText: (
               <Empty
                 image={<AppstoreOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}

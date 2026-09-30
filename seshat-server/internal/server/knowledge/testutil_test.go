@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	sdkdocling "github.com/KPO-Tech/seshat/pkg/docling"
 	sdkstorage "github.com/KPO-Tech/seshat/pkg/storage"
 	sdkvector "github.com/KPO-Tech/seshat/pkg/vector"
 
@@ -171,14 +170,15 @@ func startFakeDoclingServer(t *testing.T, markdownContent string) *httptest.Serv
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	mux.HandleFunc("POST /v1/convert/file", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("POST /v1/chunk/hybrid/file", func(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"status": "success",
-			"document": map[string]any{
-				"md_content": markdownContent,
-				"pages":      []any{},
-				"pictures":   []any{},
-			},
+			"chunks": []map[string]any{{
+				"filename":     "document",
+				"chunk_index":  0,
+				"text":         markdownContent,
+				"raw_text":     markdownContent,
+				"page_numbers": []int{1},
+			}},
 		})
 	})
 	server := httptest.NewServer(mux)
@@ -191,5 +191,9 @@ func startFakeDoclingServer(t *testing.T, markdownContent string) *httptest.Serv
 func (env testEnv) configureDocling(t *testing.T, markdownContent string) {
 	t.Helper()
 	server := startFakeDoclingServer(t, markdownContent)
-	env.knowledge.WithDocling(sdkdocling.NewClient(server.URL))
+	reader, err := NewDoclingCompatibleReader(server.URL, time.Minute)
+	if err != nil {
+		t.Fatalf("configure document reader: %v", err)
+	}
+	env.knowledge.WithDocumentReader(reader)
 }

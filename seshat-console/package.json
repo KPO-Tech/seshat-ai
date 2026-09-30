@@ -8,10 +8,12 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "api:generate": "openapi-typescript ../seshat-server/openapi.yaml -o src/api/schema.d.ts"
+    "api:generate": "openapi-typescript ../seshat-server/openapi.yaml -o src/api/schema.d.ts",
+    "api:check": "npm run api:generate && git diff --exit-code -- src/api/schema.d.ts"
   },
   "dependencies": {
     "@ant-design/icons": "^6.3.2",
+    "@seshat/connector-catalog": "file:../shared/connector-catalog",
     "@tanstack/react-query": "^5.101.2",
     "antd": "^6.5.0",
     "dayjs": "^1.11.21",
@@ -21,6 +23,7 @@
     "react-markdown": "^10.1.0",
     "react-router": "^8.3.0",
     "remark-gfm": "^4.0.1",
+    "simple-icons": "^16.29.0",
     "zustand": "^5.0.14"
   },
   "devDependencies": {

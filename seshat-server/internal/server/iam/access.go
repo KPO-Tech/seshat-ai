@@ -29,9 +29,15 @@ type Group struct {
 	MemberUserIDs  []string  `json:"member_user_ids"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
+	// ScimExternalID is set only for a group created by a SCIM connection's
+	// auto-create-teams mode (see the scim package) - the IdP's own id for
+	// this group, echoed back so the IdP can correlate its own records.
+	ScimExternalID *string `json:"scim_external_id,omitempty"`
 }
 
-// PolicyBinding grants permissions to a role, user or group.
+// PolicyBinding grants permissions to a role, user or group. ResourceType/
+// ResourceID optionally narrow the grant to one resource within the
+// organization (both empty = organization-wide, see bindingMatchesPrincipal).
 type PolicyBinding struct {
 	ID              string    `json:"id"`
 	OrganizationID  string    `json:"organization_id"`
@@ -40,6 +46,8 @@ type PolicyBinding struct {
 	SubjectType     string    `json:"subject_type"`
 	SubjectID       string    `json:"subject_id"`
 	PermissionCodes []string  `json:"permission_codes"`
+	ResourceType    string    `json:"resource_type"`
+	ResourceID      string    `json:"resource_id"`
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
 }
@@ -49,6 +57,44 @@ const (
 	policySubjectGroup = "group"
 	policySubjectRole  = "role"
 )
+
+// resourceTypeCorpus is the first (and currently only) resource kind a
+// PolicyBinding can be scoped to. iam deliberately does not verify a
+// ResourceID actually refers to an existing corpus — that would require
+// importing the knowledge package, which already imports iam, an import
+// cycle. A dangling ResourceID (its corpus later deleted) is harmless: it
+// just never matches anything again, the same as a binding whose group
+// subject was deleted.
+const resourceTypeCorpus = "corpus"
+
+// resourceTypeProviderSetting scopes a PolicyBinding to one LLM provider
+// setting (automation.ProviderSetting.ID) - see
+// Service.HasResourceScopedBindings and automation.ListUsableProviderSettings
+// for how this turns into an opt-in per-member/team allowlist: a provider
+// setting with no bindings scoped to it stays usable by every org member
+// (today's behavior, unchanged), and creating even one such binding switches
+// that specific setting into "only these subjects" mode.
+const resourceTypeProviderSetting = "provider_setting"
+
+var knownResourceTypes = map[string]struct{}{
+	resourceTypeCorpus:          {},
+	resourceTypeProviderSetting: {},
+}
+
+func validatePolicyResourceScope(resourceType, resourceID string) (string, string, error) {
+	resourceType = strings.ToLower(strings.TrimSpace(resourceType))
+	resourceID = strings.TrimSpace(resourceID)
+	if resourceType == "" && resourceID == "" {
+		return "", "", nil
+	}
+	if _, ok := knownResourceTypes[resourceType]; !ok {
+		return "", "", ErrInvalidInput("unsupported resource_type")
+	}
+	if resourceID == "" {
+		return "", "", ErrInvalidInput("resource_id is required when resource_type is set")
+	}
+	return resourceType, resourceID, nil
+}
 
 // ListPermissions exposes the server-defined permission catalog.
 func (s *Service) ListPermissions(ctx context.Context, principal *Principal) ([]Permission, error) {
@@ -79,6 +125,8 @@ func permissionCatalog() []Permission {
 		{Code: "groups.manage", Name: "Manage Groups", Description: "Create, update and delete authorization groups.", Category: "groups"},
 		{Code: "policies.read", Name: "Read Policies", Description: "Inspect policy bindings.", Category: "policies"},
 		{Code: "policies.manage", Name: "Manage Policies", Description: "Create, update and delete policy bindings.", Category: "policies"},
+		{Code: "desktop_policies.read", Name: "Read Desktop Policies", Description: "Inspect the desktop policy catalog and how it's assigned by role, member and team.", Category: "desktop_policies"},
+		{Code: "desktop_policies.manage", Name: "Manage Desktop Policies", Description: "Create, update and delete desktop policy assignments.", Category: "desktop_policies"},
 		{Code: "audit.read", Name: "Read Audit Events", Description: "Inspect organization audit events.", Category: "audit"},
 		{Code: "devices.read", Name: "Read Devices", Description: "Inspect registered devices.", Category: "devices"},
 		{Code: "devices.manage", Name: "Manage Devices", Description: "Register and revoke devices.", Category: "devices"},
@@ -86,11 +134,20 @@ func permissionCatalog() []Permission {
 		{Code: "jobs.manage", Name: "Manage Jobs", Description: "Create, update, delete, pause, resume and trigger jobs; cancel runs.", Category: "jobs"},
 		{Code: "provider_settings.read", Name: "Read Provider Settings", Description: "See which LLM providers are configured (never the API key itself).", Category: "provider_settings"},
 		{Code: "provider_settings.manage", Name: "Manage Provider Settings", Description: "Create, update and delete LLM provider credentials.", Category: "provider_settings"},
+		{Code: "scim_connections.read", Name: "Read SCIM Connections", Description: "See this organization's SCIM provisioning connection and its recent sync activity (never the bearer token itself).", Category: "scim_connections"},
+		{Code: "scim_connections.manage", Name: "Manage SCIM Connections", Description: "Create, update, delete and rotate the token of this organization's SCIM provisioning connection.", Category: "scim_connections"},
+		{Code: "network_diagnostics.read", Name: "Run Network Diagnostics", Description: "Trigger a live connectivity check (DNS/TCP/TLS/HTTP) against the SMTP relay and this organization's configured SSO providers - a distinct capability from providers.read, since it makes real outbound network calls rather than just reading configuration.", Category: "network_diagnostics"},
+		{Code: "hooks_registry.read", Name: "Read Hooks", Description: "See this organization's configured PreToolUse hooks (desktop-only - see HookConfig's doc comment for why these never run inside seshat-server itself).", Category: "hooks_registry"},
+		{Code: "hooks_registry.manage", Name: "Manage Hooks", Description: "Create, update and delete this organization's PreToolUse hooks.", Category: "hooks_registry"},
 		{Code: "knowledge.read", Name: "Read Knowledge Base", Description: "Inspect corpora, uploaded files and ingestion status.", Category: "knowledge"},
 		{Code: "knowledge.manage", Name: "Manage Knowledge Base", Description: "Create/delete corpora, upload and remove files, retry ingestion.", Category: "knowledge"},
 		{Code: "skills_registry.manage", Name: "Manage Skills Registry", Description: "Curate the organization's list of recommended skill repos. Reading the list only requires org membership — these are public repo URLs, nothing secret to gate behind a read permission.", Category: "skills_registry"},
 		{Code: "web_search_settings.manage", Name: "Manage Web Search Settings", Description: "Create, update and delete web-search provider credentials and the organization's domain policy. Reading (resolving credentials, reading the domain policy) only requires org membership.", Category: "web_search_settings"},
 		{Code: "mcp_registry.manage", Name: "Manage MCP Registry", Description: "Create, update and delete the organization's shared MCP server definitions. Reading/resolving them (to load locally) only requires org membership — execution always happens on the member's own machine, never here.", Category: "mcp_registry"},
+		{Code: "dataflow_secrets.read", Name: "Read Dataflow Secrets", Description: "See which named secrets are configured for dataflow graph nodes (never the decrypted value itself).", Category: "dataflow_secrets"},
+		{Code: "dataflow_secrets.manage", Name: "Manage Dataflow Secrets", Description: "Create, update and delete named secrets that dataflow graph nodes (e.g. a database DSN) resolve by reference.", Category: "dataflow_secrets"},
+		{Code: "variables.read", Name: "Read Variables", Description: "See the named values ($vars.NAME) configured for use in any automation's expressions.", Category: "variables"},
+		{Code: "variables.manage", Name: "Manage Variables", Description: "Create, update and delete named values ($vars.NAME) usable in any automation's expressions.", Category: "variables"},
 	}
 	sort.Slice(permissions, func(i, j int) bool { return permissions[i].Code < permissions[j].Code })
 	return permissions
@@ -165,6 +222,41 @@ func hasOrganizationPermission(tx *gorm.DB, principal *Principal, organizationID
 	return ok, nil
 }
 
+// hasResourcePermission is the resource-scoped counterpart of
+// hasOrganizationPermission: it also credits bindings scoped to
+// (resourceType, resourceID), on top of every organization-wide grant.
+func hasResourcePermission(tx *gorm.DB, principal *Principal, organizationID, resourceType, resourceID, permissionCode string) (bool, error) {
+	if principal == nil {
+		return false, nil
+	}
+	if principal.User.IsAdmin {
+		var count int64
+		if err := tx.Model(&sdb.Organization{}).Where("id = ?", organizationID).Count(&count).Error; err != nil {
+			return false, err
+		}
+		return count > 0, nil
+	}
+	permissions, err := effectivePermissionsForPrincipalScoped(tx, principal, organizationID, resourceType, resourceID)
+	if err != nil {
+		return false, err
+	}
+	_, ok := permissions[permissionCode]
+	return ok, nil
+}
+
+func hasAnyResourcePermission(tx *gorm.DB, principal *Principal, organizationID, resourceType, resourceID string, permissionCodes ...string) (bool, error) {
+	for _, permissionCode := range permissionCodes {
+		ok, err := hasResourcePermission(tx, principal, organizationID, resourceType, resourceID, permissionCode)
+		if err != nil {
+			return false, err
+		}
+		if ok {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func hasAnyOrganizationPermission(tx *gorm.DB, principal *Principal, organizationID string, permissionCodes ...string) (bool, error) {
 	for _, permissionCode := range permissionCodes {
 		ok, err := hasOrganizationPermission(tx, principal, organizationID, permissionCode)
@@ -179,10 +271,27 @@ func hasAnyOrganizationPermission(tx *gorm.DB, principal *Principal, organizatio
 }
 
 // effectivePermissionsForPrincipal resolves the union of role-derived and
-// policy-binding-derived permissions for one principal, scoped to one
-// organization. Every query here is scoped by organization_id (indexed),
-// never a full-table scan of every tenant's data.
+// organization-wide policy-binding-derived permissions for one principal,
+// scoped to one organization. It's a thin wrapper over
+// effectivePermissionsForPrincipalScoped with an empty resource — see that
+// function for resource-scoped resolution.
 func effectivePermissionsForPrincipal(tx *gorm.DB, principal *Principal, organizationID string) (map[string]struct{}, error) {
+	return effectivePermissionsForPrincipalScoped(tx, principal, organizationID, "", "")
+}
+
+// effectivePermissionsForPrincipalScoped resolves the union of role-derived
+// and policy-binding-derived permissions for one principal, scoped to one
+// organization and optionally one resource within it. Every query here is
+// scoped by organization_id (indexed), never a full-table scan of every
+// tenant's data.
+//
+// resourceType/resourceID identify the resource the caller is checking
+// access to, if any. Passing both empty resolves organization-wide
+// permissions only (bindings scoped to a specific resource never match —
+// see bindingMatchesPrincipal). Passing a resource additionally credits
+// bindings scoped to exactly that resource; organization-wide bindings
+// always match regardless.
+func effectivePermissionsForPrincipalScoped(tx *gorm.DB, principal *Principal, organizationID, resourceType, resourceID string) (map[string]struct{}, error) {
 	permissions := map[string]struct{}{}
 	if principal == nil {
 		return permissions, nil
@@ -240,7 +349,7 @@ func effectivePermissionsForPrincipal(tx *gorm.DB, principal *Principal, organiz
 		return nil, err
 	}
 	for _, binding := range bindings {
-		if bindingMatchesPrincipal(binding, roleCodes, groupIDs, principal.User.ID) {
+		if bindingMatchesPrincipal(binding, roleCodes, groupIDs, principal.User.ID, resourceType, resourceID) {
 			for _, permissionCode := range binding.PermissionCodes {
 				permissions[permissionCode] = struct{}{}
 			}
@@ -260,19 +369,71 @@ func sortedPermissionCodes(permissions map[string]struct{}) []string {
 	return codes
 }
 
-func bindingMatchesPrincipal(binding sdb.PolicyBinding, roleCodes, groupIDs map[string]struct{}, userID string) bool {
+// bindingMatchesPrincipal checks both dimensions of a binding: WHO it's
+// granted to (subject: user/group/role) and WHAT resource it applies to.
+// An organization-wide binding (empty ResourceType) matches any requested
+// resource, including no resource at all — that's what makes existing
+// bindings keep working unchanged. A resource-scoped binding only matches
+// when the caller is checking access to that exact resource; it never
+// satisfies an organization-wide check (resourceType/resourceID == "").
+func bindingMatchesPrincipal(binding sdb.PolicyBinding, roleCodes, groupIDs map[string]struct{}, userID, resourceType, resourceID string) bool {
+	subjectMatches := false
 	switch binding.SubjectType {
 	case policySubjectUser:
-		return binding.SubjectID == userID
+		subjectMatches = binding.SubjectID == userID
 	case policySubjectGroup:
-		_, ok := groupIDs[binding.SubjectID]
-		return ok
+		_, subjectMatches = groupIDs[binding.SubjectID]
 	case policySubjectRole:
-		_, ok := roleCodes[binding.SubjectID]
-		return ok
-	default:
+		_, subjectMatches = roleCodes[binding.SubjectID]
+	}
+	if !subjectMatches {
 		return false
 	}
+	if binding.ResourceType == "" {
+		return true
+	}
+	return binding.ResourceType == resourceType && binding.ResourceID == resourceID
+}
+
+// requirePermissionsWithinCallerScope ensures every code in `codes` is
+// already held by principal within organizationID (platform admins always
+// pass). Use this wherever an action GRANTS permissions to someone or
+// something else — assigning a role to a membership, defining what a policy
+// binding grants, defining a custom role's permission set — so a principal
+// can never hand out more than they themselves currently hold.
+//
+// Added 2026-08-06: none of role assignment, policy bindings, or custom role
+// definitions checked this before. Holding only members.manage (an "admin"
+// role permission, not "owner") was enough to assign the "owner" role —
+// including organization.delete — to any membership, including your own.
+// Holding only policies.manage or roles.manage was enough to grant, via a
+// policy binding or a custom role, any permission in the catalog regardless
+// of what the grantor actually held. This closes all three the same way.
+// resourceType/resourceID identify the scope of the binding/role being
+// granted, not the caller. Granting an organization-wide permission
+// (resourceType == "") requires the caller to hold it organization-wide —
+// a permission the caller only holds on one resource does not satisfy this,
+// by construction of bindingMatchesPrincipal, so a resource-scoped grant can
+// never be used to escalate to organization-wide. Granting a resource-scoped
+// permission requires the caller to hold it on that same resource, or
+// organization-wide (which always covers every resource).
+func requirePermissionsWithinCallerScope(tx *gorm.DB, principal *Principal, organizationID, resourceType, resourceID string, codes []string) error {
+	if principal == nil {
+		return ErrUnauthorized("authentication required")
+	}
+	if principal.User.IsAdmin {
+		return nil
+	}
+	callerPermissions, err := effectivePermissionsForPrincipalScoped(tx, principal, organizationID, resourceType, resourceID)
+	if err != nil {
+		return err
+	}
+	for _, code := range codes {
+		if _, ok := callerPermissions[code]; !ok {
+			return ErrForbidden("cannot grant a permission you do not hold: " + code)
+		}
+	}
+	return nil
 }
 
 func requireOrganizationPermission(tx *gorm.DB, principal *Principal, organizationID string, permissionCodes ...string) error {
@@ -296,6 +457,66 @@ func requireOrganizationPermission(tx *gorm.DB, principal *Principal, organizati
 	return ErrForbidden("organization permission denied")
 }
 
+// requireResourcePermission is the resource-scoped counterpart of
+// requireOrganizationPermission: it passes if the principal holds any of
+// permissionCodes either organization-wide or specifically on
+// (resourceType, resourceID).
+func requireResourcePermission(tx *gorm.DB, principal *Principal, organizationID, resourceType, resourceID string, permissionCodes ...string) error {
+	if principal == nil {
+		return ErrUnauthorized("authentication required")
+	}
+	var count int64
+	if err := tx.Model(&sdb.Organization{}).Where("id = ?", organizationID).Count(&count).Error; err != nil {
+		return err
+	}
+	if count == 0 {
+		return ErrNotFound("organization not found")
+	}
+	ok, err := hasAnyResourcePermission(tx, principal, organizationID, resourceType, resourceID, permissionCodes...)
+	if err != nil {
+		return err
+	}
+	if ok {
+		return nil
+	}
+	return ErrForbidden("organization permission denied")
+}
+
+// CheckResourcePermission is the exported form of requireResourcePermission,
+// for sibling control-plane packages (e.g. knowledge) that need to gate an
+// action on one specific resource (e.g. one Corpus) rather than the whole
+// organization. Same tx-handle requirement as CheckOrganizationPermission.
+func (s *Service) CheckResourcePermission(tx *gorm.DB, principal *Principal, organizationID, resourceType, resourceID string, permissionCodes ...string) error {
+	return requireResourcePermission(tx, principal, organizationID, resourceType, resourceID, permissionCodes...)
+}
+
+// HasResourceScopedBindings reports whether at least one PolicyBinding is
+// scoped to exactly (resourceType, resourceID) within organizationID -
+// regardless of which subject it grants to. Callers use this to decide
+// whether a resource is in its default "open to every org member" state or
+// has been switched into an opt-in allowlist by the presence of any binding
+// at all; the actual authorization decision still goes through
+// CheckResourcePermission/HasAnyResourcePermission.
+func (s *Service) HasResourceScopedBindings(tx *gorm.DB, organizationID, resourceType, resourceID string) (bool, error) {
+	var count int64
+	err := tx.Model(&sdb.PolicyBinding{}).
+		Where("organization_id = ? AND resource_type = ? AND resource_id = ?", organizationID, resourceType, resourceID).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+// HasAnyResourcePermission is the exported form of hasAnyResourcePermission,
+// for sibling packages that need a boolean check (not an error-returning
+// gate) on one specific resource - e.g. filtering a list down to only the
+// items a principal is allowed to see, rather than rejecting a single
+// request outright.
+func (s *Service) HasAnyResourcePermission(tx *gorm.DB, principal *Principal, organizationID, resourceType, resourceID string, permissionCodes ...string) (bool, error) {
+	return hasAnyResourcePermission(tx, principal, organizationID, resourceType, resourceID, permissionCodes...)
+}
+
 // CheckOrganizationPermission is the exported form of requireOrganizationPermission,
 // for sibling control-plane packages (e.g. automation) that need the exact
 // same role/policy-binding resolution iam already implements, without
@@ -317,6 +538,23 @@ func (s *Service) CheckOrganizationPermission(tx *gorm.DB, principal *Principal,
 // packages. Same tx-handle requirement as CheckOrganizationPermission.
 func (s *Service) CanAccessOrganization(tx *gorm.DB, principal *Principal, organizationID string) (bool, error) {
 	return canAccessOrganization(tx, principal, organizationID)
+}
+
+// IsOrganizationMember reports whether userID currently has a non-blocked
+// membership in organizationID - the same coarse check canAccessOrganization
+// makes internally, but for a bare userID with no live Principal to wrap it
+// in (e.g. automation's cloud-job execution resolving MCP servers on behalf
+// of a ScheduledJob's creator, not an authenticated HTTP caller). No
+// IsAdmin fast-path, unlike canAccessOrganization - a job's creator being a
+// platform admin doesn't change whose per-employee connected account gets
+// bridged, and platform admins get a real membership row like anyone else
+// in every organization they actually manage.
+func (s *Service) IsOrganizationMember(tx *gorm.DB, userID, organizationID string) (bool, error) {
+	var count int64
+	if err := tx.Model(&sdb.Membership{}).Where("user_id = ? AND organization_id = ? AND status <> ?", userID, organizationID, "blocked").Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
 
 // canAccessOrganization is the coarse "is this principal a member (or a
@@ -350,6 +588,7 @@ func toGroup(record sdb.Group, memberUserIDs []string) Group {
 		MemberUserIDs:  append([]string(nil), memberUserIDs...),
 		CreatedAt:      record.CreatedAt,
 		UpdatedAt:      record.UpdatedAt,
+		ScimExternalID: record.ScimExternalID,
 	}
 }
 
@@ -362,6 +601,8 @@ func toPolicyBinding(record sdb.PolicyBinding) PolicyBinding {
 		SubjectType:     record.SubjectType,
 		SubjectID:       record.SubjectID,
 		PermissionCodes: append([]string(nil), record.PermissionCodes...),
+		ResourceType:    record.ResourceType,
+		ResourceID:      record.ResourceID,
 		CreatedAt:       record.CreatedAt,
 		UpdatedAt:       record.UpdatedAt,
 	}

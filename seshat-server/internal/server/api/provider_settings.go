@@ -60,6 +60,26 @@ func (app *App) handleProviderSettings(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleProviderSettingsUsable — GET /api/v1/provider-settings/usable.
+// Unlike handleProviderSettings' GET (admin-only, for the settings/
+// credentials page), this is the list a chat provider picker should call:
+// any member of the organization gets back whichever provider settings they
+// are actually allowed to use (see ListUsableProviderSettings).
+func (app *App) handleProviderSettingsUsable(w http.ResponseWriter, r *http.Request) {
+	principal, ok := authPrincipalFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "missing principal")
+		return
+	}
+	organizationID := strings.TrimSpace(r.URL.Query().Get("organization_id"))
+	settings, err := app.backend.Automation.ListUsableProviderSettings(r.Context(), principal, organizationID)
+	if err != nil {
+		writeAutomationError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"provider_settings": settings, "count": len(settings)})
+}
+
 // handleProviderSettingResolve — GET /api/v1/provider-settings/resolve.
 // Unlike the CRUD handlers above, this returns a USABLE config (decrypted API
 // key included) for any member of the organization, not just

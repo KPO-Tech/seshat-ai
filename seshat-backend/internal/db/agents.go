@@ -25,8 +25,14 @@ type gAgentDefinition struct {
 	McpServersJSON string `gorm:"column:mcp_servers_json;type:text;not null;default:'[]'"`
 	Icon           string `gorm:"column:icon;size:64;not null;default:'🤖'"`
 	Enabled        bool   `gorm:"column:enabled;not null;default:true"`
-	CreatedAtUnix  int64  `gorm:"column:created_at_unix;autoCreateTime:unix"`
-	UpdatedAtUnix  int64  `gorm:"column:updated_at_unix;autoUpdateTime:unix"`
+	// Source distinguishes an agent created from inside an Automation
+	// graph's own "agent" node ("workflow") from a normal Companion
+	// persona ("user", the default for every row created before this
+	// column existed and every caller that doesn't set it explicitly) -
+	// see agents.Service.List, which excludes "workflow" rows.
+	Source        string `gorm:"column:source;size:32;not null;default:'user'"`
+	CreatedAtUnix int64  `gorm:"column:created_at_unix;autoCreateTime:unix"`
+	UpdatedAtUnix int64  `gorm:"column:updated_at_unix;autoUpdateTime:unix"`
 }
 
 func (gAgentDefinition) TableName() string { return "agent_definitions" }
@@ -47,6 +53,7 @@ type AgentDefinition struct {
 	McpServers      []string
 	Icon            string
 	Enabled         bool
+	Source          string
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }
@@ -65,6 +72,10 @@ type CreateAgentDefinitionParams struct {
 	McpServers      []string
 	Icon            string
 	Enabled         bool
+	// Source defaults to "user" (empty string here means "not set" - the
+	// store fills in the real default) - only the Automation "agent" node
+	// passes "workflow" explicitly.
+	Source string
 }
 
 type UpdateAgentDefinitionParams struct {
@@ -124,6 +135,10 @@ func (s *AgentDefinitionStore) GetByID(ctx context.Context, id string) (*AgentDe
 
 func (s *AgentDefinitionStore) Create(ctx context.Context, p CreateAgentDefinitionParams) (*AgentDefinition, error) {
 	id := newIdentityID("agt")
+	source := strings.TrimSpace(p.Source)
+	if source == "" {
+		source = "user"
+	}
 	row := gAgentDefinition{
 		ID:             id,
 		Slug:           strings.TrimSpace(p.Slug),
@@ -139,6 +154,7 @@ func (s *AgentDefinitionStore) Create(ctx context.Context, p CreateAgentDefiniti
 		McpServersJSON: marshalStringSlice(p.McpServers),
 		Icon:           defaultAgentIcon(p.Icon),
 		Enabled:        p.Enabled,
+		Source:         source,
 	}
 	if err := s.db.gormDB.WithContext(ctx).Clauses(clause.OnConflict{DoNothing: true}).Create(&row).Error; err != nil {
 		return nil, err
@@ -224,6 +240,7 @@ func fromGAgent(r gAgentDefinition) AgentDefinition {
 		McpServers:      unmarshalStringSlice(r.McpServersJSON),
 		Icon:            r.Icon,
 		Enabled:         r.Enabled,
+		Source:          r.Source,
 		CreatedAt:       time.Unix(r.CreatedAtUnix, 0),
 		UpdatedAt:       time.Unix(r.UpdatedAtUnix, 0),
 	}

@@ -1,0 +1,35 @@
+# Preferences
+
+`/orgs/:id/preferences` — Organization → Preferences (ungrouped)
+
+## What it's for
+
+Org-wide defaults for how every member's agent behaves by default:
+working style, response style, extra context to always include, the
+permission mode used for interactive chat vs. automation runs, and how
+deep a sub-agent chain is allowed to go. Sits outside every labeled
+sidebar group on purpose - a catch-all settings page doesn't belong to a
+theme the way Organization/AI Core/Automation/Integrations do.
+
+Resolution is three-tier, same org→platform-default hierarchy as
+[Embedder](./ai-core/providers/embedder.mdx): a member's own personal
+preference (set at `/me/preferences`) always wins when they've set one;
+otherwise this organization's preferences apply; otherwise the platform
+default organization's preferences, if any and shared. Nothing configured
+anywhere just means the agent's own built-in defaults.
+
+## How to use it
+
+Four free-text fields (working style, response style, extra context) plus
+two permission-mode selects (interactive vs. automation - they're allowed
+to differ, since a human approving each step live is a different risk
+profile than an unattended scheduled job) and a max sub-agent depth cap.
+Leaving a field empty is meaningful - it means "no organization-level
+opinion, fall through to the platform default." "Clear" removes the whole
+row, reverting every member back to the platform default (if any) instead
+of leaving an empty-but-present override.
+
+## See also
+
+- Personal Preferences (`/me/preferences`, not yet documented here) - a
+  member's own override, which always beats this page's settings.

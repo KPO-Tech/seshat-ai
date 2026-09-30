@@ -70,7 +70,7 @@ func TestBuildAttachmentContext_ListsFilesWithoutInliningContent(t *testing.T) {
 		`workspace_path="uploads/documents/notes.txt"`,
 		`filename="brief.pdf"`,
 		`markdown_path="uploads/documents/brief.pdf.md"`,
-		`docling_status="converted"`,
+		`document_reader_status="converted"`,
 		"Use read_file on the workspace path",
 	} {
 		if !strings.Contains(got, want) {

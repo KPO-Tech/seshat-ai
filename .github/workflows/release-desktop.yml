@@ -67,24 +67,24 @@ jobs:
           node-version: "22"
 
       - name: Install dependencies
-        working-directory: seshat-ui
+        working-directory: seshat-desktop
         run: npm ci
 
       - name: Download backend binary
         uses: actions/download-artifact@v4
         with:
           name: backend-linux-amd64
-          path: seshat-ui/resources/backend
+          path: seshat-desktop/resources/backend
 
       - name: Make backend binary executable
-        run: chmod +x seshat-ui/resources/backend/seshat-backend
+        run: chmod +x seshat-desktop/resources/backend/seshat-backend
 
       - name: Build renderer/main
-        working-directory: seshat-ui
+        working-directory: seshat-desktop
         run: npm run build
 
       - name: Package (AppImage + deb)
-        working-directory: seshat-ui
+        working-directory: seshat-desktop
         run: npx electron-builder --linux AppImage deb --publish never
 
       - name: Upload Linux installers
@@ -92,8 +92,8 @@ jobs:
         with:
           name: installers-linux
           path: |
-            seshat-ui/dist/*.AppImage
-            seshat-ui/dist/*.deb
+            seshat-desktop/dist/*.AppImage
+            seshat-desktop/dist/*.deb
 
   package-windows:
     name: Package Windows (NSIS)
@@ -107,28 +107,28 @@ jobs:
           node-version: "22"
 
       - name: Install dependencies
-        working-directory: seshat-ui
+        working-directory: seshat-desktop
         run: npm ci
 
       - name: Download backend binary
         uses: actions/download-artifact@v4
         with:
           name: backend-windows-amd64
-          path: seshat-ui/resources/backend
+          path: seshat-desktop/resources/backend
 
       - name: Build renderer/main
-        working-directory: seshat-ui
+        working-directory: seshat-desktop
         run: npm run build
 
       - name: Package (NSIS)
-        working-directory: seshat-ui
+        working-directory: seshat-desktop
         run: npx electron-builder --win nsis --publish never
 
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
           name: installers-windows
-          path: seshat-ui/dist/*.exe
+          path: seshat-desktop/dist/*.exe
 
   publish:
     name: Publish GitHub Release
@@ -152,7 +152,7 @@ jobs:
           generate_release_notes: true
 
       # Public mirror consumed by electron-updater at runtime (see
-      # seshat-ui/package.json's build.publish) -- seshat-ai stays private,
+      # seshat-desktop/package.json's build.publish) -- seshat-ai stays private,
       # so this is the only repo the installed app is allowed to poll
       # unauthenticated. No internal changelog/PR details here on purpose.
       - name: Mirror release to the public update feed

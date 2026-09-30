@@ -16,6 +16,21 @@ const (
 	WorkspaceStatusActive    = "active"
 )
 
+// Organization/Workspace/WorkspaceMembership exist in the local, single-user
+// desktop database too — EnsureBootstrap (bootstrap.go) always creates one
+// "Default Organization" and "Main Workspace" for the sole local user, even
+// though nothing in that install has more than one member. This is
+// deliberate anticipation of a future local multi-profile mode (several
+// local accounts sharing one seshat-backend instance), not an accident —
+// but as of 2026-08-10 that future mode doesn't exist yet, so today every
+// local install carries this schema, and the full CRUD routes on
+// /organizations, /workspaces, /groups (see routes.go), purely as unused
+// surface. See helps/audit-2026-08-10.md §3/§7.3 for the audit finding and
+// the decision to document this rather than simplify the schema now — a
+// real simplification (e.g. an implicit singleton workspace with no CRUD
+// API) is deferred to Phase 3 of that audit's plan, once/if local
+// multi-profile is scoped for real, since it touches live migrations.
+//
 // ─── Public types ─────────────────────────────────────────────────────────────
 
 type Organization struct {

@@ -1,3 +1,27 @@
+Copyright (c) 2026-present [TODO: confirm legal copyright holder — individual or company name]
+
+================================================================================
+ DRAFT NOTICE - LICENSE SPLIT (not yet in effect; repository is private, no
+ released version is published under this split yet)
+================================================================================
+
+This repository is moving toward a directory-split license, the same pattern
+used by GitLab and OpenWork:
+
+  * Content under `seshat-server/` and `seshat-console/` is intended to be
+    licensed under the Seshat Cloud Source-Available License defined in
+    `seshat-server/LICENSE` (DRAFT - not final, not lawyer-reviewed).
+  * All third-party components keep their own original license.
+  * Everything else in this repository - including `seshat-backend/` and
+    `seshat-ui/` - remains under the GNU Affero General Public License v3.0,
+    reproduced in full below, unmodified.
+
+See ROADMAP.md for the current status of this split. Until it is actually
+adopted for a published release, the AGPL-3.0 text below governs the entire
+repository as it always has - this notice does not by itself change anything.
+
+================================================================================
+
                     GNU AFFERO GENERAL PUBLIC LICENSE
                        Version 3, 19 November 2007
 

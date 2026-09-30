@@ -129,6 +129,9 @@ func (s *Service) CreateRole(ctx context.Context, principal *Principal, params C
 		if err := requireOrganizationPermission(tx, principal, organizationID, "roles.manage", "organization.manage"); err != nil {
 			return err
 		}
+		if err := requirePermissionsWithinCallerScope(tx, principal, organizationID, "", "", permissions); err != nil {
+			return err
+		}
 		var existing int64
 		if err := tx.Model(&sdb.CustomRole{}).Where("organization_id = ? AND code = ?", organizationID, code).Count(&existing).Error; err != nil {
 			return err
@@ -197,6 +200,9 @@ func (s *Service) UpdateRole(ctx context.Context, principal *Principal, roleCode
 	err = s.db.Transaction(func(tx *gorm.DB) error {
 		tx = tx.WithContext(ctx)
 		if err := requireOrganizationPermission(tx, principal, organizationID, "roles.manage", "organization.manage"); err != nil {
+			return err
+		}
+		if err := requirePermissionsWithinCallerScope(tx, principal, organizationID, "", "", permissions); err != nil {
 			return err
 		}
 		record, ok, err := findCustomRoleRecord(tx, organizationID, currentCode)
@@ -311,14 +317,24 @@ func roleCatalog() []Role {
 			Code:        "owner",
 			Name:        "Owner",
 			Description: "Full organization control including destructive administration.",
-			Permissions: []string{"organization.manage", "organization.delete", "members.read", "members.manage", "roles.read", "roles.manage", "applications.read", "applications.manage", "providers.read", "providers.manage", "invitations.read", "invitations.manage", "groups.read", "groups.manage", "policies.read", "policies.manage", "audit.read", "devices.read", "devices.manage", "jobs.read", "jobs.manage", "provider_settings.read", "provider_settings.manage", "knowledge.read", "knowledge.manage", "skills_registry.manage", "web_search_settings.manage", "mcp_registry.manage", "agents_registry.manage"},
+			// organization.read/organization.use included explicitly (2026-08-06)
+			// so the effective-permission hierarchy is a real superset chain —
+			// owner ⊇ admin ⊇ member ⊇ viewer — rather than owner/admin
+			// structurally having more real access than member/viewer while
+			// literally missing two of member/viewer's own permission codes.
+			// That gap meant an admin couldn't create a custom "read-only
+			// auditor" role granting organization.read, since
+			// requirePermissionsWithinCallerScope (added the same day, to
+			// close a privilege-escalation hole) checks literal code
+			// membership, not implied access.
+			Permissions: []string{"organization.manage", "organization.delete", "organization.read", "organization.use", "members.read", "members.manage", "roles.read", "roles.manage", "applications.read", "applications.manage", "providers.read", "providers.manage", "invitations.read", "invitations.manage", "groups.read", "groups.manage", "policies.read", "policies.manage", "desktop_policies.read", "desktop_policies.manage", "audit.read", "devices.read", "devices.manage", "jobs.read", "jobs.manage", "provider_settings.read", "provider_settings.manage", "scim_connections.read", "scim_connections.manage", "network_diagnostics.read", "knowledge.read", "knowledge.manage", "skills_registry.manage", "web_search_settings.manage", "mcp_registry.manage", "agents_registry.manage", "hooks_registry.read", "hooks_registry.manage", "dataflow_secrets.read", "dataflow_secrets.manage", "variables.read", "variables.manage"},
 			System:      true,
 		},
 		{
 			Code:        "admin",
 			Name:        "Admin",
 			Description: "Administrative access for users, applications, providers, invitations and roles.",
-			Permissions: []string{"organization.manage", "members.read", "members.manage", "roles.read", "roles.manage", "applications.read", "applications.manage", "providers.read", "providers.manage", "invitations.read", "invitations.manage", "groups.read", "groups.manage", "policies.read", "policies.manage", "audit.read", "devices.read", "devices.manage", "jobs.read", "jobs.manage", "provider_settings.read", "provider_settings.manage", "knowledge.read", "knowledge.manage", "skills_registry.manage", "web_search_settings.manage", "mcp_registry.manage", "agents_registry.manage"},
+			Permissions: []string{"organization.manage", "organization.read", "organization.use", "members.read", "members.manage", "roles.read", "roles.manage", "applications.read", "applications.manage", "providers.read", "providers.manage", "invitations.read", "invitations.manage", "groups.read", "groups.manage", "policies.read", "policies.manage", "desktop_policies.read", "desktop_policies.manage", "audit.read", "devices.read", "devices.manage", "jobs.read", "jobs.manage", "provider_settings.read", "provider_settings.manage", "scim_connections.read", "scim_connections.manage", "network_diagnostics.read", "knowledge.read", "knowledge.manage", "skills_registry.manage", "web_search_settings.manage", "mcp_registry.manage", "agents_registry.manage", "hooks_registry.read", "hooks_registry.manage", "dataflow_secrets.read", "dataflow_secrets.manage", "variables.read", "variables.manage"},
 			System:      true,
 		},
 		{
@@ -416,6 +432,24 @@ func findRoleByCode(tx *gorm.DB, organizationID, roleCode string) (Role, bool, e
 	}
 	role := toRole(record)
 	return role, true, nil
+}
+
+// requireGrantedRolePermissionsWithinCallerScope resolves roleCode's
+// permission set (system or custom) and ensures principal already holds
+// every one of them — see requirePermissionsWithinCallerScope's doc comment.
+// Used wherever a role is being assigned to a membership (or invitation),
+// so a caller can't assign a role richer than their own effective
+// permissions, e.g. an "admin" (members.manage, but not organization.delete)
+// assigning "owner" to a membership — including their own.
+func requireGrantedRolePermissionsWithinCallerScope(tx *gorm.DB, principal *Principal, organizationID, roleCode string) error {
+	role, ok, err := findRoleByCode(tx, organizationID, roleCode)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return ErrInvalidInput("unsupported role")
+	}
+	return requirePermissionsWithinCallerScope(tx, principal, organizationID, "", "", role.Permissions)
 }
 
 func findCustomRoleRecord(tx *gorm.DB, organizationID, code string) (sdb.CustomRole, bool, error) {

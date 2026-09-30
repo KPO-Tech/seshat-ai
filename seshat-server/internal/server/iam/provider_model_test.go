@@ -65,6 +65,36 @@ func TestCreateProviderRejectsInvalidProtocolConfig(t *testing.T) {
 	}
 }
 
+// TestCreateProviderRejectsSAMLWithoutSSOURL and
+// TestCreateProviderRejectsSAMLWithoutX509Certificate cover the stricter
+// validation added alongside the SAML login flow itself (2026-08-29):
+// entity_id alone (or entity_id + metadata_url, previously sufficient) is
+// not enough, since BeginSAMLLogin/CompleteSAMLLogin read sso_url and
+// x509_certificate directly and never fetch metadata_url - a provider
+// saved without them would look configured but silently fail at actual
+// login time.
+func TestCreateProviderRejectsSAMLWithoutSSOURL(t *testing.T) {
+	service, principal, orgID := newProviderTestService(t)
+
+	if _, err := service.CreateProvider(context.Background(), principal, CreateProviderParams{
+		OrganizationID: orgID, Name: "Broken SAML", Slug: "broken-saml-no-sso", Kind: "saml",
+		EntityID: "urn:seshat:test", X509Certificate: "-----BEGIN CERTIFICATE-----test-----END CERTIFICATE-----",
+	}); err == nil {
+		t.Fatal("expected a saml provider without sso_url to be rejected")
+	}
+}
+
+func TestCreateProviderRejectsSAMLWithoutX509Certificate(t *testing.T) {
+	service, principal, orgID := newProviderTestService(t)
+
+	if _, err := service.CreateProvider(context.Background(), principal, CreateProviderParams{
+		OrganizationID: orgID, Name: "Broken SAML", Slug: "broken-saml-no-cert", Kind: "saml",
+		EntityID: "urn:seshat:test", SSOURL: "https://idp.example.com/sso",
+	}); err == nil {
+		t.Fatal("expected a saml provider without x509_certificate to be rejected")
+	}
+}
+
 func TestUpdateProviderSupportsSAMLConfiguration(t *testing.T) {
 	service, principal, orgID := newProviderTestService(t)
 

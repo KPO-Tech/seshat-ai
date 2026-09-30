@@ -2,10 +2,12 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
@@ -244,10 +246,10 @@ func backendMigrations() []schemaMigration {
 			},
 		},
 		{
-			ID:    "20260714_032_docling_config",
+			ID:    "20260714_032_document_reader_config",
 			Scope: migrationScopeBackend,
 			Run: func(ctx context.Context, db *DB) error {
-				return db.gormDB.WithContext(ctx).AutoMigrate(&gDoclingConfig{})
+				return db.gormDB.WithContext(ctx).AutoMigrate(&gDocumentReaderConfig{})
 			},
 		},
 		{
@@ -278,7 +280,159 @@ func backendMigrations() []schemaMigration {
 				return db.gormDB.WithContext(ctx).AutoMigrate(&gFile{})
 			},
 		},
+		{
+			ID:    "20260808_037_inbox_core",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(
+					&gChannelAccount{},
+					&gInboxContact{},
+					&gInboxThread{},
+					&gInboxMessage{},
+				)
+			},
+		},
+		{
+			ID:    "20260808_038_session_source",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(&gSessionOwnership{})
+			},
+		},
+		{
+			ID:    "20260810_040_capability_credential_links",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(&gCapabilityLink{})
+			},
+		},
+		{
+			ID:    "20260814_041_backfill_rag_scope_id",
+			Scope: migrationScopeBackend,
+			Run:   backfillRAGScopeID,
+		},
+		{
+			ID:    "20260814_042_connector_accounts",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(&gConnectorAccount{})
+			},
+		},
+		{
+			ID:    "20260830_043_hook_org_approvals",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(&gHookOrgApproval{})
+			},
+		},
+		{
+			ID:    "20260831_044_inbox_workflows",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(&gInboxWorkflow{}, &gInboxWorkflowRun{})
+			},
+		},
+		{
+			// Adds graph_json to an existing inbox_workflows table -
+			// AutoMigrate only adds missing columns, never drops data, so
+			// this is safe to run against installs that already applied
+			// 20260831_044_inbox_workflows above.
+			ID:    "20260902_045_inbox_workflow_graph",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(&gInboxWorkflow{})
+			},
+		},
+		{
+			// Adds source to an existing agent_definitions table - the
+			// default ('user') applies to every row already there, so
+			// existing Companion-created agents are unaffected. Lets an
+			// Automation graph's own "agent" node create an agent tagged
+			// source="workflow" that Companion's own list excludes (see
+			// agents.Service.List), instead of every DB-backed agent being
+			// indistinguishable from a Companion persona.
+			ID:    "20260910_046_agent_definition_source",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(&gAgentDefinition{})
+			},
+		},
+		{
+			ID:    "20260911_047_reranker_config",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(&gRerankerConfig{})
+			},
+		},
+		{
+			ID:    "20260923_048_sandbox_config",
+			Scope: migrationScopeBackend,
+			Run: func(ctx context.Context, db *DB) error {
+				return db.gormDB.WithContext(ctx).AutoMigrate(&gSandboxConfig{})
+			},
+		},
 	}
+}
+
+// backfillRAGScopeID re-queues every already-ingested corpus file so its
+// chunks get re-embedded with the scope_id metadata tag the RAG permission
+// filter added (Phase 1 of helps/roadmap.md — the tag didn't exist before
+// this migration, so without this every existing chunk would silently drop
+// out of search results). Reuses the existing ingestion job queue/worker
+// instead of touching vector storage directly: ingestFile's re-ingest is
+// already idempotent (deterministic per-file artifact key), so simply
+// re-running it is enough. Runs once, tracked by the migration framework
+// itself — no separate marker needed.
+func backfillRAGScopeID(ctx context.Context, db *DB) error {
+	var files []gCorpusFile
+	if err := db.gormDB.WithContext(ctx).
+		Where("status = ?", CorpusFileStatusIngested).
+		Find(&files).Error; err != nil {
+		return fmt.Errorf("list ingested corpus files: %w", err)
+	}
+	if len(files) == 0 {
+		return nil
+	}
+
+	jobs, err := NewKnowledgeIngestionJobStore(db)
+	if err != nil {
+		return fmt.Errorf("ingestion job store: %w", err)
+	}
+
+	corpusCache := make(map[string]gCorpus)
+	for _, f := range files {
+		corpus, ok := corpusCache[f.CorpusID]
+		if !ok {
+			if err := db.gormDB.WithContext(ctx).Where("id = ?", f.CorpusID).First(&corpus).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					continue // corpus deleted since this file was ingested
+				}
+				return fmt.Errorf("load corpus %s: %w", f.CorpusID, err)
+			}
+			corpusCache[f.CorpusID] = corpus
+		}
+
+		if active, err := jobs.FindActiveByCorpusFile(ctx, f.CorpusID, f.FileID); err != nil {
+			return fmt.Errorf("find active ingestion job: %w", err)
+		} else if active != nil {
+			continue
+		}
+
+		workspaceID := ""
+		if corpus.WorkspaceID != nil {
+			workspaceID = *corpus.WorkspaceID
+		}
+		if _, err := jobs.Create(ctx, CreateKnowledgeIngestionJobParams{
+			CorpusID:    f.CorpusID,
+			FileID:      f.FileID,
+			UserID:      corpus.UserID,
+			WorkspaceID: workspaceID,
+			Filename:    f.Filename,
+		}); err != nil {
+			return fmt.Errorf("enqueue backfill job for %s/%s: %w", f.CorpusID, f.FileID, err)
+		}
+	}
+	return nil
 }
 
 func migrateProviderModels(ctx context.Context, db *DB) error {
@@ -303,11 +457,15 @@ func migrateEmbedderConfig(ctx context.Context, db *DB) error {
 }
 
 func migrateUserProfilesAPIKeysGroups(ctx context.Context, db *DB) error {
+	// Local user_groups/group_members tables used to be AutoMigrated here too;
+	// the local Group/GroupPermissions system was removed in favor of
+	// seshat-server's organization-wide Teams (iam.Group). Existing installs
+	// keep those two tables as harmless dead schema - this migration's ID is
+	// already recorded as applied for them, so removing the structs here only
+	// affects fresh installs, which never create the tables at all.
 	return db.gormDB.WithContext(ctx).AutoMigrate(
-		&gUser{},        // add new profile columns (username, bio, avatar_url, last_active_at_unix, settings_json)
-		&gAPIKey{},      // new table
-		&gUserGroup{},   // new table
-		&gGroupMember{}, // new table
+		&gUser{},   // add new profile columns (username, bio, avatar_url, last_active_at_unix, settings_json)
+		&gAPIKey{}, // new table
 	)
 }
 

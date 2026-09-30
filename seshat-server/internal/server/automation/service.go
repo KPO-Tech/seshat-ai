@@ -8,8 +8,12 @@ package automation
 
 import (
 	"context"
+	"time"
 
+	"github.com/KPO-Tech/seshat/pkg/dataflow"
 	sdkrag "github.com/KPO-Tech/seshat/pkg/rag"
+	"github.com/KPO-Tech/seshat/pkg/sdk"
+	sdkstorage "github.com/KPO-Tech/seshat/pkg/storage"
 
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/apperr"
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
@@ -27,16 +31,81 @@ type RAGResolver interface {
 	RAGServiceForOrganization(ctx context.Context, organizationID string) (*sdkrag.Service, bool, error)
 }
 
+// MCPResolver resolves the MCP servers available to organizationID for
+// userID specifically - cloud-targeted job execution bridges a scheduled
+// job's own creator's per-employee connected accounts (Slack/Outlook/
+// Teams/Gmail, ...) into that job's tool access, the same mechanism
+// workspacechat already uses for interactive sessions, just resolved for a
+// stored ScheduledJob.CreatedByUserID instead of a live request's
+// principal - see executeCloudRun's own comment for why the creator is the
+// chosen identity (a user-confirmed design call, not assumed) and why a
+// resolution failure degrades the run rather than failing it. Satisfied by
+// *mcpregistry.Service (ResolveServerConfigsForUser), injected via
+// SetMCPResolver rather than imported directly - same reasoning as
+// RAGResolver.
+type MCPResolver interface {
+	ResolveServerConfigsForUser(ctx context.Context, organizationID, userID string) ([]sdk.MCPServerConfig, error)
+}
+
+// DataflowSecretResolver resolves a named secret (e.g. a "postgres" node's
+// dsnSecretRef) scoped to one organization — satisfied by
+// *dataflowsecrets.Service, injected via SetSecretResolver rather than
+// imported directly, same reasoning as RAGResolver/MCPResolver.
+type DataflowSecretResolver interface {
+	ResolveDataflowSecret(ctx context.Context, organizationID, name string) (string, error)
+}
+
+// DataflowVariableResolver resolves an organization's whole set of named
+// variables ($vars.NAME, Tier 3.2) — satisfied by *dataflowvariables.Service,
+// injected via SetVariablesResolver rather than imported directly, same
+// reasoning as DataflowSecretResolver. Unlike DataflowSecretResolver's
+// per-name Resolve, this returns everything at once: a Variable isn't
+// secret, so there's no cost to resolving the whole set eagerly before a run
+// starts (see pkg/dataflow's Runtime.Vars doc comment).
+type DataflowVariableResolver interface {
+	ResolveAll(ctx context.Context, organizationID string) (map[string]string, error)
+}
+
 // Service owns devices, scheduled jobs and job runs.
 type Service struct {
-	db         *sdb.DB
-	iam        *iam.Service
-	rag        RAGResolver // nil until SetRAGResolver is called
-	doclingURL string      // empty until SetDoclingURL is called
+	db           *sdb.DB
+	iam          *iam.Service
+	rag          RAGResolver                  // nil until SetRAGResolver is called
+	mcp          MCPResolver                  // nil until SetMCPResolver is called
+	doclingURL   string                       // empty until SetDoclingURL is called
+	artifacts    sdkstorage.ArtifactStore     // nil until SetArtifactStore is called
+	secrets      DataflowSecretResolver       // nil until SetSecretResolver is called
+	variables    DataflowVariableResolver     // nil until SetVariablesResolver is called
+	nodeRegistry *dataflow.Registry           // nil until SetNodeRegistry is called
+	exprEval     dataflow.ExpressionEvaluator // nil until SetExpressionEvaluator is called
+	// webhookSyncTimeout bounds how long TriggerJobByWebhook's "whenFinished"
+	// response mode waits for a run to complete before answering with
+	// whatever state it's in (see that function). Zero means "use
+	// defaultWebhookSyncTimeout" - tests override via SetWebhookSyncTimeout,
+	// production never needs to.
+	webhookSyncTimeout time.Duration
 }
+
+// defaultWebhookSyncTimeout is comfortably under the ~60s timeout most
+// reverse proxies/load balancers default to.
+const defaultWebhookSyncTimeout = 55 * time.Second
 
 func New(database *sdb.DB, iamService *iam.Service) *Service {
 	return &Service{db: database, iam: iamService}
+}
+
+// SetWebhookSyncTimeout overrides how long a "whenFinished" webhook call
+// waits for its run to complete (see TriggerJobByWebhook). Tests use this to
+// force the timeout branch deterministically; production leaves it unset.
+func (s *Service) SetWebhookSyncTimeout(d time.Duration) {
+	s.webhookSyncTimeout = d
+}
+
+func (s *Service) resolveWebhookSyncTimeout() time.Duration {
+	if s.webhookSyncTimeout > 0 {
+		return s.webhookSyncTimeout
+	}
+	return defaultWebhookSyncTimeout
 }
 
 // SetRAGResolver wires in the knowledge domain's embedder resolution so
@@ -44,6 +113,15 @@ func New(database *sdb.DB, iamService *iam.Service) *Service {
 // once at app startup, after both services exist — see app.New.
 func (s *Service) SetRAGResolver(r RAGResolver) {
 	s.rag = r
+}
+
+// SetMCPResolver wires in the mcpregistry domain's per-employee MCP
+// server/token resolution so cloud-targeted job execution can give the
+// model access to Slack/Outlook/Teams/Gmail (and any other configured MCP
+// server) on behalf of the job's own creator. Called once at app startup,
+// after both services exist — see app.New.
+func (s *Service) SetMCPResolver(r MCPResolver) {
+	s.mcp = r
 }
 
 // SetDoclingURL enables the read_document_url tool for cloud-targeted job
@@ -54,6 +132,71 @@ func (s *Service) SetRAGResolver(r RAGResolver) {
 // interface. Empty disables the tool, same as leaving it unset.
 func (s *Service) SetDoclingURL(url string) {
 	s.doclingURL = url
+}
+
+// SetArtifactStore backs cloud-targeted job execution's SDK client file I/O
+// (bash/file tools writing artifacts) with a real store instead of
+// ClientConfig's own per-process local-disk default — same shared,
+// not-a-secret infrastructure reasoning as SetDoclingURL, not per-tenant
+// like the RAG resolver: every organization's blobs share this one store,
+// namespaced by key prefix (mirrors knowledge.Service's own artifacts field,
+// which is typically the very same store — see app.New). Called once at
+// app startup, after both services exist. Nil (the default) leaves cloud
+// jobs on ClientConfig's own local-disk fallback.
+func (s *Service) SetArtifactStore(store sdkstorage.ArtifactStore) {
+	s.artifacts = store
+}
+
+// SetSecretResolver wires in dataflow-secret resolution so a cloud-targeted
+// job whose Graph references a *SecretRef parameter (e.g. a "postgres"
+// node's dsnSecretRef) can resolve it, scoped to the job's own
+// organization. Called once at app startup, after both services exist.
+func (s *Service) SetSecretResolver(r DataflowSecretResolver) {
+	s.secrets = r
+}
+
+// SetVariablesResolver wires in dataflow-variable resolution so a
+// cloud-targeted job's Graph (and expression preview) can resolve
+// $vars.NAME, scoped to the job's own organization. Called once at app
+// startup, after both services exist.
+func (s *Service) SetVariablesResolver(r DataflowVariableResolver) {
+	s.variables = r
+}
+
+// SetNodeRegistry enables Job.Graph execution for cloud-targeted runs by
+// giving executeCloudRun a set of node executors to run against — which
+// node types are available (generic-only vs. also database drivers) is a
+// deployment choice made by whoever builds this Registry (see app.New),
+// not something this package defaults on its own. nil (the default) means
+// a job with a non-nil Graph fails clearly rather than silently no-oping.
+func (s *Service) SetNodeRegistry(registry *dataflow.Registry) {
+	s.nodeRegistry = registry
+}
+
+// SetExpressionEvaluator wires in expression resolution (dataflow.
+// ResolveParam/ResolveValue) for cloud-targeted Job.Graph execution — an
+// http_request node's "=..." url/body/header, or any other node type that
+// opts into ResolveParam, then works the same way filter/if/switch/set
+// already did. Called once at app startup, after both services exist — see
+// app.New, which passes the very same *dataflowexpr.Pool it already gives
+// SetNodeRegistry's own dataflownodes.Register call, so both share one
+// expression engine. nil (the default) means Graph nodes see their "="
+// parameters unresolved (literal), not an error — see dataflow.ResolveValue.
+func (s *Service) SetExpressionEvaluator(e dataflow.ExpressionEvaluator) {
+	s.exprEval = e
+}
+
+// NodeTypes lists the node types a Job.Graph on this deployment can
+// reference (see SetNodeRegistry) - nil-safe, returns nil if no registry is
+// configured. Backs GET /api/v1/dataflow/node-types, so a graph-building
+// UI can populate its node palette from whatever's actually registered
+// instead of a hand-maintained list that can drift - mirrors
+// inbox.Service.NodeTypes's exact same reasoning on the seshat-backend side.
+func (s *Service) NodeTypes() []dataflow.NodeDescription {
+	if s == nil || s.nodeRegistry == nil {
+		return nil
+	}
+	return s.nodeRegistry.Types()
 }
 
 // DoclingStatus reports whether this server has a docling-serve instance

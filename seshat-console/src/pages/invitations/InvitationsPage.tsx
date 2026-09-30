@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button, Drawer, Empty, Form, Input, InputNumber, message, Popconfirm, Segmented, Space, Tag, Typography } from 'antd'
+import { Button, Drawer, Empty, Form, Input, InputNumber, message, Popconfirm, Segmented, Tag, Typography } from 'antd'
 import type { TableProps } from 'antd'
 import { PlusOutlined, StopOutlined, MailOutlined } from '@ant-design/icons'
 import { useInvitationsList,
@@ -27,7 +27,7 @@ export function InvitationsPage() { const organizationId = useScopedOrganization
   const [status, setStatus] = useState<'all' | InvitationStatus>('all')
   const [creating, setCreating] = useState(false)
 
-  const { data, isLoading, isFetching } = useInvitationsList(
+  const { data, isLoading, isFetching, error } = useInvitationsList(
     organizationId ?? undefined,
     status === 'all' ? undefined : status,
     { sort: 'created_at', order: 'desc', limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE },
@@ -72,9 +72,20 @@ export function InvitationsPage() { const organizationId = useScopedOrganization
   return (
     <div>
       <PageHeader
-        title="Invitations"
-        description="Pending, accepted, revoked and expired invites to join an organization."
-        actions={ <Space>
+        actions={
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <Segmented
+              value={status}
+              onChange={(v) => { setPage(1)
+                setStatus(v as 'all' | InvitationStatus) }}
+              options={[
+                { label: 'All', value: 'all' },
+                { label: 'Pending', value: 'pending' },
+                { label: 'Accepted', value: 'accepted' },
+                { label: 'Revoked', value: 'revoked' },
+                { label: 'Expired', value: 'expired' },
+              ]}
+            />
             <Button
               type="primary"
               icon={<PlusOutlined />}
@@ -83,42 +94,29 @@ export function InvitationsPage() { const organizationId = useScopedOrganization
             >
               Invite
             </Button>
-          </Space> }
+          </div>
+        }
       />
 
-      <>
-          <Segmented
-            style={{ marginBottom: 16 }}
-            value={status}
-            onChange={(v) => { setPage(1)
-              setStatus(v as 'all' | InvitationStatus) }}
-            options={[
-              { label: 'All', value: 'all' },
-              { label: 'Pending', value: 'pending' },
-              { label: 'Accepted', value: 'accepted' },
-              { label: 'Revoked', value: 'revoked' },
-              { label: 'Expired', value: 'expired' },
-            ]}
-          />
-          <ConsoleTable<Invitation>
-            rowKey="id"
-            columns={columns}
-            dataSource={data?.invitations ?? []}
-            loading={isLoading || isFetching}
-            locale={{ emptyText: (
-                <Empty
-                  image={<MailOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}
-                  description="No invitations yet"
-                  style={{ padding: '32px 0' }}
-                />
-              ), }}
-            pagination={{ current: page,
-              pageSize: PAGE_SIZE,
-              total: data?.total ?? 0,
-              onChange: setPage,
-              showTotal: (total) => `${total} invitations`, }}
-          />
-        </>
+      <ConsoleTable<Invitation>
+        rowKey="id"
+        columns={columns}
+        dataSource={data?.invitations ?? []}
+        loading={isLoading || isFetching}
+        queryError={error}
+        locale={{ emptyText: (
+            <Empty
+              image={<MailOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}
+              description="No invitations yet"
+              style={{ padding: '32px 0' }}
+            />
+          ), }}
+        pagination={{ current: page,
+          pageSize: PAGE_SIZE,
+          total: data?.total ?? 0,
+          onChange: setPage,
+          showTotal: (total) => `${total} invitations`, }}
+      />
 
       <InvitationFormDrawer
         organizationId={organizationId}
@@ -136,7 +134,7 @@ export function InvitationsPage() { const organizationId = useScopedOrganization
                 if (invitation?.token) {
                   const link = `${window.location.origin}/accept-invitation?token=${invitation.token}`
                   navigator.clipboard?.writeText(link).catch(() => {})
-                  message.success(`Invitation sent to ${values.email} — accept link also copied to your clipboard`)
+                  message.success(`Invitation sent to ${values.email}. Accept link also copied to your clipboard.`)
                 } else {
                   message.success(`Invitation sent to ${values.email}`)
                 } },

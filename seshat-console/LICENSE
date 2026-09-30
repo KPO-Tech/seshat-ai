@@ -1,0 +1,6 @@
+This directory is licensed under the same terms as `seshat-server/` — see
+`../seshat-server/LICENSE` (DRAFT, not final — see that file for the notice
+about lawyer review and unfilled placeholders).
+
+`seshat-console` is the admin web frontend for `seshat-server`; the two are
+licensed together because they ship and are gated as one product surface.

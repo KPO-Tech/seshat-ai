@@ -30,11 +30,17 @@ func main() {
 	app.IngestionRunner.Start()
 	defer app.IngestionRunner.Stop()
 
+	app.ConnectorSyncRunner.Start()
+	defer app.ConnectorSyncRunner.Stop()
+
 	app.WorkspaceChatCleanup.Start()
 	defer app.WorkspaceChatCleanup.Stop()
 
 	app.MembershipExpiry.Start()
 	defer app.MembershipExpiry.Stop()
+
+	app.JobRunPurge.Start()
+	defer app.JobRunPurge.Stop()
 
 	router := serverapi.CreateRouter(serverapi.Config{
 		Port:               cfg.Port,

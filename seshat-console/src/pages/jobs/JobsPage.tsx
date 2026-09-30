@@ -46,7 +46,7 @@ export function JobsPage() { const organizationId = useScopedOrganizationId()
   const deviceIdFilter = searchParams.get('device_id') ?? undefined
   const [editing, setEditing] = useState<Job | 'new' | null>(null)
 
-  const { data, isLoading } = useJobsList(organizationId ?? undefined)
+  const { data, isLoading, error } = useJobsList(organizationId ?? undefined)
   const filteredData = deviceIdFilter ? (data ?? []).filter((job) => job.target_device_id === deviceIdFilter) : data
   const createJob = useCreateJob()
   const updateJob = useUpdateJob()
@@ -122,8 +122,6 @@ export function JobsPage() { const organizationId = useScopedOrganizationId()
   return (
     <div>
       <PageHeader
-        title="Jobs"
-        description={deviceIdFilter ? 'Jobs targeting this device.' : 'Scheduled and on-demand automations.'}
         actions={ <Space>
             {deviceIdFilter && <Button onClick={() => setSearchParams({})}>Clear device filter</Button>}
             <Button
@@ -142,6 +140,7 @@ export function JobsPage() { const organizationId = useScopedOrganizationId()
           columns={columns}
           dataSource={filteredData ?? []}
           loading={isLoading}
+          queryError={error}
           pagination={false}
           locale={{ emptyText: (
               <Empty
@@ -230,6 +229,16 @@ function JobFormDrawer({ job,
               { value: 'interval', label: 'Interval' },
               { value: 'once', label: 'One-off' },
             ]}
+            // Only the field matching the newly selected trigger stays
+            // visible, but antd keeps an unmounted Form.Item's value in the
+            // form's internal state — without this, switching e.g. cron ->
+            // once while editing a job silently carries the old cron_expr
+            // along in the submitted payload next to the new run_at. Server
+            // validation only reads the fields matching the current
+            // trigger_type/execution_target (see automation/jobs_test.go),
+            // so this was tolerated rather than rejected — but relying on
+            // that leniency staying that way is fragile.
+            onChange={() => form.setFieldsValue({ cron_expr: undefined, interval_seconds: undefined, run_at_picker: undefined })}
           />
         </Form.Item>
         {triggerType === 'cron' && (
@@ -253,6 +262,9 @@ function JobFormDrawer({ job,
               { value: 'cloud', label: 'Cloud' },
               { value: 'device', label: 'Device' },
             ]}
+            // Same reasoning as trigger_type's onChange above, for the other
+            // pair of mutually-exclusive fields.
+            onChange={() => form.setFieldsValue({ target_device_id: undefined, model_override: undefined })}
           />
         </Form.Item>
         {executionTarget === 'device' && (

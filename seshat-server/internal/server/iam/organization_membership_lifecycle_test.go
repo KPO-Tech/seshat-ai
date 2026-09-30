@@ -214,6 +214,40 @@ func TestDeleteOrganizationRequiresManagePermission(t *testing.T) {
 	}
 }
 
+// TestDeleteOrganizationRequiresFreshAuth proves the step-up gate itself
+// (see docs/helps/audit-2026-08-29-openwork-den-comparison.md § 9) - a
+// principal with full organization.delete permission is still rejected if
+// their session hasn't proven identity recently enough, and the
+// organization survives untouched.
+func TestDeleteOrganizationRequiresFreshAuth(t *testing.T) {
+	service := newLifecycleService(t)
+
+	boot, err := service.Bootstrap(context.Background(), BootstrapParams{
+		Email: "admin@example.com", Password: "password123", DisplayName: "Admin",
+		OrganizationName: "Seshat", OrganizationSlug: "seshat",
+	})
+	if err != nil {
+		t.Fatalf("bootstrap: %v", err)
+	}
+	adminPrincipal, err := service.ResolvePrincipal(context.Background(), boot.Token)
+	if err != nil {
+		t.Fatalf("resolve principal: %v", err)
+	}
+	orgID := boot.Organizations[0].ID
+	// RequireFreshAuth only ever reads the in-memory Session already
+	// attached to Principal (no DB round trip - see its own doc comment),
+	// so the stale session is simulated by backdating that in-memory field
+	// directly, the same way step_up_test.go does.
+	adminPrincipal.Session.ReauthenticatedAt = time.Now().UTC().Add(-stepUpFreshnessTTL - time.Minute)
+
+	if err := service.DeleteOrganization(context.Background(), adminPrincipal, orgID); err == nil {
+		t.Fatal("expected a stale session to be denied organization deletion")
+	}
+	if _, err := service.GetOrganization(context.Background(), adminPrincipal, orgID); err != nil {
+		t.Fatalf("expected the organization to still exist after a rejected deletion, got: %v", err)
+	}
+}
+
 func TestNonAdminUserCanLeaveTheirOwnOrganization(t *testing.T) {
 	service := newLifecycleService(t)
 

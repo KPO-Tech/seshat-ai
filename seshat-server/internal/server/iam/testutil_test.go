@@ -2,11 +2,25 @@ package iam
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
+	"golang.org/x/crypto/bcrypt"
+
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 )
+
+// TestMain lowers bcryptCost for this package's whole test binary - see
+// SetBcryptCostForTesting's doc comment for why (CI's -race run of this
+// package was timing out at 8 minutes purely from the accumulated cost-12
+// bcrypt hashes across ~70 call sites).
+func TestMain(m *testing.M) {
+	restore := SetBcryptCostForTesting(bcrypt.MinCost)
+	code := m.Run()
+	restore()
+	os.Exit(code)
+}
 
 // newTestService opens a throwaway in-memory SQLite database, migrates it,
 // and returns a Service backed by it. Every iam test exercises the real

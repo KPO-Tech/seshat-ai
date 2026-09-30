@@ -4,6 +4,7 @@ import {
   TeamOutlined,
   SafetyCertificateOutlined,
   ClockCircleOutlined,
+  CheckCircleFilled,
 } from '@ant-design/icons'
 import { PageHeader } from '@/components/PageHeader'
 import { StatTile } from '@/components/StatTile'
@@ -34,32 +35,64 @@ export function DashboardPage() {
 
   return (
     <div>
-      <PageHeader title="Platform overview" description="Platform summary." />
+      <PageHeader
+        badge={
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '3px 10px',
+              borderRadius: 999,
+              background: palette.successSoft,
+              border: `1px solid rgba(34, 197, 94, 0.25)`,
+              color: palette.success,
+              fontSize: 12,
+              fontWeight: 600,
+            }}
+          >
+            <CheckCircleFilled style={{ fontSize: 11 }} /> Systems Operational
+          </span>
+        }
+      />
 
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
           gap: 16,
           marginBottom: 24,
         }}
       >
-        <StatTile label="Organizations" value={orgs.data} loading={orgs.isLoading} icon={<ApartmentOutlined />} />
-        <StatTile label="Users" value={users.data} loading={users.isLoading} icon={<TeamOutlined />} />
         <StatTile
-          label="Active sessions"
+          label="Organizations"
+          value={orgs.data}
+          loading={orgs.isLoading}
+          icon={<ApartmentOutlined />}
+          sublabel="Active tenants"
+        />
+        <StatTile
+          label="Platform Users"
+          value={users.data}
+          loading={users.isLoading}
+          icon={<TeamOutlined />}
+          sublabel="Total registered"
+        />
+        <StatTile
+          label="Active Sessions"
           value={sessions.data}
           loading={sessions.isLoading}
           icon={<SafetyCertificateOutlined />}
+          sublabel="Authenticated"
         />
       </div>
 
       <Card
         title={
-          <span style={{ fontSize: 14, fontWeight: 600 }}>
-            <ClockCircleOutlined style={{ marginRight: 8, color: palette.inkTertiary }} />
-            Recent platform activity
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, color: palette.ink }}>
+            <ClockCircleOutlined style={{ color: palette.accentHover }} />
+            <span>Recent Platform Activity</span>
+          </div>
         }
         styles={{ body: { padding: 0 } }}
       >
@@ -78,19 +111,34 @@ export function DashboardPage() {
                   justifyContent: 'space-between',
                   gap: 16,
                   padding: '12px 20px',
-                  borderTop: index === 0 ? 'none' : `1px solid ${palette.border}`,
+                  borderTop: index === 0 ? 'none' : `1px solid ${palette.borderSubtle}`,
+                  transition: 'background 0.15s ease',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                  <Tag color="default" style={{ fontFamily: monoStack, fontSize: 12, margin: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                  <Tag
+                    style={{
+                      fontFamily: monoStack,
+                      fontSize: 11.5,
+                      margin: 0,
+                      background: 'rgba(30, 28, 26, 0.04)',
+                      border: `1px solid ${palette.borderSubtle}`,
+                      color: palette.inkSecondary,
+                      borderRadius: 6,
+                    }}
+                  >
                     {event.action}
                   </Tag>
                   <Typography.Text
-                    style={{ fontSize: 13, color: palette.inkSecondary }}
+                    style={{ fontSize: 13, color: palette.ink }}
                     ellipsis={{ tooltip: `${event.resource_type} ${event.resource_id}` }}
                   >
-                    {event.resource_type}
-                    {event.resource_id ? ` · ${event.resource_id}` : ''}
+                    <span style={{ color: palette.inkSecondary }}>{event.resource_type}</span>
+                    {event.resource_id ? (
+                      <span style={{ color: palette.accentSecondary, marginLeft: 6, fontFamily: monoStack, fontSize: 12 }}>
+                        {event.resource_id}
+                      </span>
+                    ) : ''}
                   </Typography.Text>
                 </div>
                 <Typography.Text style={{ fontSize: 12, color: palette.inkTertiary, flexShrink: 0 }}>
@@ -106,3 +154,4 @@ export function DashboardPage() {
     </div>
   )
 }
+

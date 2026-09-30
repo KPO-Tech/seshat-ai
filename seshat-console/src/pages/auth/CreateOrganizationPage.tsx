@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Alert, Button, Form, Input, message, Typography } from 'antd'
 import { UserOutlined, MailOutlined, LockOutlined, ApartmentOutlined, LinkOutlined } from '@ant-design/icons'
-import { Link, useNavigate } from 'react-router'
+import { Link, Navigate, useNavigate } from 'react-router'
 import { api } from '@/api/client'
-import { useRegister } from '@/api/auth'
+import { useRegister, useOrganizationCreationLocked } from '@/api/auth'
 import { useCreateOrganization } from '@/api/organizations'
 import { useAuthStore } from '@/store/auth'
 import { getErrorMessage } from '@/api/errors'
@@ -30,8 +30,16 @@ export function CreateOrganizationPage() {
   const register = useRegister()
   const createOrg = useCreateOrganization()
   const navigate = useNavigate()
+  const orgCreationLocked = useOrganizationCreationLocked()
   const [pendingOrg, setPendingOrg] = useState<{ name: string; slug: string } | null>(null)
   const [orgError, setOrgError] = useState<string | null>(null)
+
+  // Single org_mode, and this deployment's one organization already exists:
+  // this public self-serve "found a new org" flow no longer makes sense -
+  // the server would reject the create-organization call with a 409 anyway.
+  if (orgCreationLocked) {
+    return <Navigate to="/login" replace />
+  }
 
   const submitOrganization = (name: string, slug: string) => {
     createOrg.mutate(
@@ -51,7 +59,13 @@ export function CreateOrganizationPage() {
               memberships: data.memberships ?? [],
             })
           }
-          navigate(org?.id ? `/orgs/${org.id}/overview` : '/workspace', { replace: true })
+          // Fallback only matters if the create call somehow returned no org
+          // id (shouldn't happen in practice) - Workspace requires an org id
+          // in its URL now, so there's nowhere workspace-shaped to send this
+          // user without one; let LandingRedirect (mounted at "/") work out
+          // where they belong from their refreshed session instead of
+          // guessing here.
+          navigate(org?.id ? `/orgs/${org.id}/overview` : '/', { replace: true })
         },
         onError: (error) => {
           setPendingOrg({ name, slug })
@@ -75,7 +89,7 @@ export function CreateOrganizationPage() {
     return (
       <AuthLayout
         title="Almost there"
-        subtitle="Your account was created and you're signed in — we just couldn't create your organization yet."
+        subtitle="Your account was created and you're signed in. We just couldn't create your organization yet."
       >
         <Alert type="error" showIcon message={orgError} style={{ marginBottom: 24 }} />
         <Button
@@ -94,7 +108,7 @@ export function CreateOrganizationPage() {
   return (
     <AuthLayout
       title="Create your organization"
-      subtitle="Start your own Seshat organization — you'll be its owner, with full control over its members and settings."
+      subtitle="Start your own Seshat organization. You'll be its owner, with full control over its members and settings."
     >
       <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 24 }}>
         Create an organization

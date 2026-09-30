@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
+	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
 )
 
 func TestRegisterListRevokeDeviceFlow(t *testing.T) {
@@ -173,5 +174,166 @@ func TestHeartbeatUpdatesLastSeenAt(t *testing.T) {
 	}
 	if device.LastSeenAt == nil {
 		t.Fatal("expected last_seen_at to be set after a heartbeat")
+	}
+}
+
+// TestHeartbeatReturnsResolvedDesktopPolicies and
+// TestHeartbeatReflectsDesktopPolicyRestriction cover the desktop policies
+// plan's Étape 4 delivery mechanism: the heartbeat response carries this
+// device's resolved policy bundle, keyed off whoever registered it.
+func TestHeartbeatReturnsResolvedDesktopPolicies(t *testing.T) {
+	env := newTestEnv(t)
+	result, err := env.automation.RegisterDevice(context.Background(), env.adminPrincipal, RegisterDeviceParams{
+		OrganizationID: env.orgID, Name: "Admin's Laptop",
+	})
+	if err != nil {
+		t.Fatalf("register device: %v", err)
+	}
+
+	heartbeat, err := env.automation.Heartbeat(context.Background(), result.Token)
+	if err != nil {
+		t.Fatalf("heartbeat: %v", err)
+	}
+	if len(heartbeat.Policies) != 4 {
+		t.Fatalf("expected 4 resolved policies, got %+v", heartbeat.Policies)
+	}
+	for code, allowed := range heartbeat.Policies {
+		if !allowed {
+			t.Fatalf("expected %s to default to allowed with no bindings, got %+v", code, heartbeat.Policies)
+		}
+	}
+}
+
+func TestHeartbeatReflectsDesktopPolicyRestriction(t *testing.T) {
+	env := newTestEnv(t)
+	result, err := env.automation.RegisterDevice(context.Background(), env.adminPrincipal, RegisterDeviceParams{
+		OrganizationID: env.orgID, Name: "Admin's Laptop",
+	})
+	if err != nil {
+		t.Fatalf("register device: %v", err)
+	}
+
+	if _, err := env.iam.SetDesktopPolicyBinding(context.Background(), env.adminPrincipal, iam.SetDesktopPolicyBindingParams{
+		OrganizationID: env.orgID, PolicyCode: iam.DesktopPolicyAllowCustomProviders, SubjectType: "org", Value: false,
+	}); err != nil {
+		t.Fatalf("set desktop policy binding: %v", err)
+	}
+
+	heartbeat, err := env.automation.Heartbeat(context.Background(), result.Token)
+	if err != nil {
+		t.Fatalf("heartbeat: %v", err)
+	}
+	if heartbeat.Policies[iam.DesktopPolicyAllowCustomProviders] {
+		t.Fatal("expected the org-wide restriction to be reflected in the heartbeat's resolved policies")
+	}
+	if !heartbeat.Policies[iam.DesktopPolicyAllowLocalModels] {
+		t.Fatal("expected an unrelated policy to remain at its default")
+	}
+}
+
+// setMinAppVersion is a small test helper round-tripping through
+// GetOrganization/UpdateOrganization so it exercises the same validation
+// path a real admin request would, instead of writing to sdb.Organization
+// directly.
+func (env testEnv) setMinAppVersion(t *testing.T, minAppVersion string) {
+	t.Helper()
+	org, err := env.iam.GetOrganization(context.Background(), env.adminPrincipal, env.orgID)
+	if err != nil {
+		t.Fatalf("get organization: %v", err)
+	}
+	if _, err := env.iam.UpdateOrganization(context.Background(), env.adminPrincipal, env.orgID, iam.UpdateOrganizationParams{
+		Name: org.Name, Slug: org.Slug, MinAppVersion: minAppVersion,
+	}); err != nil {
+		t.Fatalf("update organization: %v", err)
+	}
+}
+
+// TestHeartbeatFlagsOutdatedAppVersionAsWarningOnly and
+// TestHeartbeatDoesNotFlagAppVersionWithoutRestriction cover Étape 8: the
+// heartbeat surfaces whether a device is below the organization's minimum
+// app version, but this is advisory only - the device is not blocked (there
+// is nothing here that could reject the heartbeat itself).
+func TestHeartbeatFlagsOutdatedAppVersionAsWarningOnly(t *testing.T) {
+	env := newTestEnv(t)
+	env.setMinAppVersion(t, "1.0.0")
+
+	result, err := env.automation.RegisterDevice(context.Background(), env.adminPrincipal, RegisterDeviceParams{
+		OrganizationID: env.orgID, Name: "Old Laptop", AppVersion: "0.9.0",
+	})
+	if err != nil {
+		t.Fatalf("register device: %v", err)
+	}
+
+	heartbeat, err := env.automation.Heartbeat(context.Background(), result.Token)
+	if err != nil {
+		t.Fatalf("heartbeat: %v", err)
+	}
+	if heartbeat.MinAppVersion == nil || *heartbeat.MinAppVersion != "1.0.0" {
+		t.Fatalf("expected min_app_version to be reflected, got %+v", heartbeat.MinAppVersion)
+	}
+	if !heartbeat.AppVersionOutdated {
+		t.Fatal("expected a device below the configured minimum to be flagged outdated")
+	}
+}
+
+func TestHeartbeatDoesNotFlagAppVersionWithoutRestriction(t *testing.T) {
+	env := newTestEnv(t)
+
+	result, err := env.automation.RegisterDevice(context.Background(), env.adminPrincipal, RegisterDeviceParams{
+		OrganizationID: env.orgID, Name: "Any Laptop", AppVersion: "0.1.0",
+	})
+	if err != nil {
+		t.Fatalf("register device: %v", err)
+	}
+
+	heartbeat, err := env.automation.Heartbeat(context.Background(), result.Token)
+	if err != nil {
+		t.Fatalf("heartbeat: %v", err)
+	}
+	if heartbeat.MinAppVersion != nil {
+		t.Fatalf("expected no min_app_version with no restriction configured, got %+v", heartbeat.MinAppVersion)
+	}
+	if heartbeat.AppVersionOutdated {
+		t.Fatal("expected no outdated flag with no restriction configured")
+	}
+}
+
+func TestHeartbeatDoesNotFlagAppVersionAtOrAboveMinimum(t *testing.T) {
+	env := newTestEnv(t)
+	env.setMinAppVersion(t, "1.0.0")
+
+	result, err := env.automation.RegisterDevice(context.Background(), env.adminPrincipal, RegisterDeviceParams{
+		OrganizationID: env.orgID, Name: "Current Laptop", AppVersion: "1.2.0",
+	})
+	if err != nil {
+		t.Fatalf("register device: %v", err)
+	}
+
+	heartbeat, err := env.automation.Heartbeat(context.Background(), result.Token)
+	if err != nil {
+		t.Fatalf("heartbeat: %v", err)
+	}
+	if heartbeat.AppVersionOutdated {
+		t.Fatal("expected a device at or above the configured minimum to not be flagged outdated")
+	}
+}
+
+func TestHeartbeatDoesNotFlagAppVersionWhenDeviceVersionIsMalformed(t *testing.T) {
+	env := newTestEnv(t)
+	env.setMinAppVersion(t, "1.0.0")
+
+	result, err := env.automation.RegisterDevice(context.Background(), env.adminPrincipal, RegisterDeviceParams{
+		OrganizationID: env.orgID, Name: "Unknown Laptop", AppVersion: "",
+	})
+	if err != nil {
+		t.Fatalf("register device: %v", err)
+	}
+
+	heartbeat, err := env.automation.Heartbeat(context.Background(), result.Token)
+	if err != nil {
+		t.Fatalf("heartbeat: %v", err)
+	}
+	if heartbeat.AppVersionOutdated {
+		t.Fatal("expected no outdated flag when the device's own app version doesn't parse")
 	}
 }

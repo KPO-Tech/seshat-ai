@@ -3,10 +3,12 @@ import { AppLayout } from '@/layout/AppLayout'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
 import { RequireSuperAdmin } from '@/routes/RequireSuperAdmin'
 import { RequireOrganizationManager } from '@/routes/RequireOrganizationManager'
+import { RedirectIfOrgModeSingle } from '@/routes/RedirectIfOrgModeSingle'
 import { LandingRedirect } from '@/routes/LandingRedirect'
 import { lazyPage, renderLazyPage } from '@/routes/lazyPage'
 
 const LoginPage = lazyPage(() => import('@/pages/auth/LoginPage').then((module) => ({ default: module.LoginPage })))
+const BootstrapPage = lazyPage(() => import('@/pages/auth/BootstrapPage').then((module) => ({ default: module.BootstrapPage })))
 const RegisterPage = lazyPage(() => import('@/pages/auth/RegisterPage').then((module) => ({ default: module.RegisterPage })))
 const CreateOrganizationPage = lazyPage(() =>
   import('@/pages/auth/CreateOrganizationPage').then((module) => ({ default: module.CreateOrganizationPage })),
@@ -20,9 +22,13 @@ const ForgotPasswordPage = lazyPage(() =>
 const ResetPasswordPage = lazyPage(() =>
   import('@/pages/auth/ResetPasswordPage').then((module) => ({ default: module.ResetPasswordPage })),
 )
+const SSOCallbackPage = lazyPage(() =>
+  import('@/pages/auth/SSOCallbackPage').then((module) => ({ default: module.SSOCallbackPage })),
+)
 const PlatformOverviewPage = lazyPage(() => import('@/pages/dashboard/DashboardPage').then((module) => ({ default: module.DashboardPage })))
 const WorkspaceOverviewPage = lazyPage(() => import('@/pages/workspace/WorkspaceOverviewPage').then((module) => ({ default: module.WorkspaceOverviewPage })))
 const WorkspaceChatPage = lazyPage(() => import('@/pages/workspace/WorkspaceChatPage').then((module) => ({ default: module.WorkspaceChatPage })))
+const ConnectionsPage = lazyPage(() => import('@/pages/workspace/ConnectionsPage').then((module) => ({ default: module.ConnectionsPage })))
 const OrganizationOverviewPage = lazyPage(() => import('@/pages/organization/OrganizationOverviewPage').then((module) => ({ default: module.OrganizationOverviewPage })))
 const OrganizationsPage = lazyPage(() => import('@/pages/organizations/OrganizationsPage').then((module) => ({ default: module.OrganizationsPage })))
 const MyOrganizationsPage = lazyPage(() => import('@/pages/myOrganizations/MyOrganizationsPage').then((module) => ({ default: module.MyOrganizationsPage })))
@@ -39,8 +45,13 @@ const RolesPage = lazyPage(() => import('@/pages/roles/RolesPage').then((module)
 const PolicyBindingsPage = lazyPage(() => import('@/pages/policyBindings/PolicyBindingsPage').then((module) => ({ default: module.PolicyBindingsPage })))
 const ApplicationsPage = lazyPage(() => import('@/pages/applications/ApplicationsPage').then((module) => ({ default: module.ApplicationsPage })))
 const ProvidersPage = lazyPage(() => import('@/pages/providers/ProvidersPage').then((module) => ({ default: module.ProvidersPage })))
+const ScimSettingsPage = lazyPage(() => import('@/pages/scim/ScimSettingsPage').then((module) => ({ default: module.ScimSettingsPage })))
+const NetworkDiagnosticsPage = lazyPage(() => import('@/pages/networkDiagnostics/NetworkDiagnosticsPage').then((module) => ({ default: module.NetworkDiagnosticsPage })))
 const SessionsPage = lazyPage(() => import('@/pages/sessions/SessionsPage').then((module) => ({ default: module.SessionsPage })))
 const DevicesPage = lazyPage(() => import('@/pages/devices/DevicesPage').then((module) => ({ default: module.DevicesPage })))
+const DesktopPoliciesPage = lazyPage(() => import('@/pages/desktopPolicies/DesktopPoliciesPage').then((module) => ({ default: module.DesktopPoliciesPage })))
+const HooksPage = lazyPage(() => import('@/pages/hooks/HooksPage').then((module) => ({ default: module.HooksPage })))
+const BundlesPage = lazyPage(() => import('@/pages/bundles/BundlesPage').then((module) => ({ default: module.BundlesPage })))
 const JobsPage = lazyPage(() => import('@/pages/jobs/JobsPage').then((module) => ({ default: module.JobsPage })))
 const RunsPage = lazyPage(() => import('@/pages/runs/RunsPage').then((module) => ({ default: module.RunsPage })))
 const ProviderSettingsPage = lazyPage(() => import('@/pages/providerSettings/ProviderSettingsPage').then((module) => ({ default: module.ProviderSettingsPage })))
@@ -48,9 +59,12 @@ const MCPServersPage = lazyPage(() => import('@/pages/mcpServers/MCPServersPage'
 const SkillReposPage = lazyPage(() => import('@/pages/skillRepos/SkillReposPage').then((module) => ({ default: module.SkillReposPage })))
 const AgentPresetsPage = lazyPage(() => import('@/pages/agentPresets/AgentPresetsPage').then((module) => ({ default: module.AgentPresetsPage })))
 const AuditEventsPage = lazyPage(() => import('@/pages/auditEvents/AuditEventsPage').then((module) => ({ default: module.AuditEventsPage })))
+const ChatSessionsPage = lazyPage(() => import('@/pages/chatSessions/ChatSessionsPage').then((module) => ({ default: module.ChatSessionsPage })))
 const CorporaPage = lazyPage(() => import('@/pages/knowledge/CorporaPage').then((module) => ({ default: module.CorporaPage })))
 const CorpusDetailPage = lazyPage(() => import('@/pages/knowledge/CorpusDetailPage').then((module) => ({ default: module.CorpusDetailPage })))
 const EmbedderSettingsPage = lazyPage(() => import('@/pages/knowledge/EmbedderSettingsPage').then((module) => ({ default: module.EmbedderSettingsPage })))
+const RerankerSettingsPage = lazyPage(() => import('@/pages/knowledge/RerankerSettingsPage').then((module) => ({ default: module.RerankerSettingsPage })))
+const ConnectorsPage = lazyPage(() => import('@/pages/connectors/ConnectorsPage').then((module) => ({ default: module.ConnectorsPage })))
 const WebSearchSettingsPage = lazyPage(() => import('@/pages/webSearch/WebSearchSettingsPage').then((module) => ({ default: module.WebSearchSettingsPage })))
 const OrganizationPreferencesPage = lazyPage(() =>
   import('@/pages/organizationPreferences/OrganizationPreferencesPage').then((module) => ({ default: module.OrganizationPreferencesPage })),
@@ -61,11 +75,13 @@ const NoAccessPage = lazyPage(() => import('@/pages/errors/NoAccessPage').then((
 
 export const router = createBrowserRouter([
   { path: '/login', element: renderLazyPage(LoginPage) },
+  { path: '/bootstrap', element: renderLazyPage(BootstrapPage) },
   { path: '/register', element: renderLazyPage(RegisterPage) },
   { path: '/create-organization', element: renderLazyPage(CreateOrganizationPage) },
   { path: '/accept-invitation', element: renderLazyPage(AcceptInvitationPage) },
   { path: '/forgot-password', element: renderLazyPage(ForgotPasswordPage) },
   { path: '/reset-password', element: renderLazyPage(ResetPasswordPage) },
+  { path: '/auth/sso-callback', element: renderLazyPage(SSOCallbackPage) },
   {
     element: <ProtectedRoute />,
     children: [
@@ -73,10 +89,10 @@ export const router = createBrowserRouter([
         element: <AppLayout />,
         children: [
           { index: true, element: <LandingRedirect /> },
-          { path: '/my-organizations', element: renderLazyPage(MyOrganizationsPage) },
-          { path: '/workspace', element: <Navigate to="/workspace/overview" replace /> },
-          { path: '/workspace/overview', element: renderLazyPage(WorkspaceOverviewPage) },
-          { path: '/workspace/chat', element: renderLazyPage(WorkspaceChatPage) },
+          {
+            element: <RedirectIfOrgModeSingle />,
+            children: [{ path: '/my-organizations', element: renderLazyPage(MyOrganizationsPage) }],
+          },
           { path: '/profile', element: <Navigate to="/me/profile" replace /> },
           { path: '/me', element: <Navigate to="/me/profile" replace /> },
           { path: '/me/profile', element: renderLazyPage(MyProfilePage) },
@@ -91,7 +107,10 @@ export const router = createBrowserRouter([
             children: [
               { path: '/platform', element: <Navigate to="/platform/overview" replace /> },
               { path: '/platform/overview', element: renderLazyPage(PlatformOverviewPage) },
-              { path: '/platform/organizations', element: renderLazyPage(OrganizationsPage) },
+              {
+                element: <RedirectIfOrgModeSingle />,
+                children: [{ path: '/platform/organizations', element: renderLazyPage(OrganizationsPage) }],
+              },
               { path: '/platform/security/sessions', element: renderLazyPage(SessionsPage) },
               { path: '/platform/security/audit', element: renderLazyPage(AuditEventsPage) },
               { path: '/platform/security/system', element: renderLazyPage(SystemStatusPage) },
@@ -99,30 +118,58 @@ export const router = createBrowserRouter([
           },
           {
             path: '/orgs/:organizationId',
-            element: <RequireOrganizationManager />,
             children: [
-              { index: true, element: <Navigate to="overview" replace /> },
-              { path: 'overview', element: renderLazyPage(OrganizationOverviewPage) },
-              { path: 'team/memberships', element: renderLazyPage(MembershipsPage) },
-              { path: 'team/invitations', element: renderLazyPage(InvitationsPage) },
-              { path: 'team/teams', element: renderLazyPage(TeamsPage) },
-              { path: 'team/roles', element: renderLazyPage(RolesPage) },
-              { path: 'team/policies', element: renderLazyPage(PolicyBindingsPage) },
-              { path: 'ai/provider-settings', element: renderLazyPage(ProviderSettingsPage) },
-              { path: 'ai/embedder', element: renderLazyPage(EmbedderSettingsPage) },
-              { path: 'ai/web-search', element: renderLazyPage(WebSearchSettingsPage) },
-              { path: 'ai/mcp-servers', element: renderLazyPage(MCPServersPage) },
-              { path: 'preferences', element: renderLazyPage(OrganizationPreferencesPage) },
-              { path: 'catalog/agent-presets', element: renderLazyPage(AgentPresetsPage) },
-              { path: 'catalog/skill-repos', element: renderLazyPage(SkillReposPage) },
-              { path: 'automation/devices', element: renderLazyPage(DevicesPage) },
-              { path: 'automation/jobs', element: renderLazyPage(JobsPage) },
-              { path: 'automation/runs', element: renderLazyPage(RunsPage) },
-              { path: 'knowledge/corpora', element: renderLazyPage(CorporaPage) },
-              { path: 'knowledge/corpora/:corpusId', element: renderLazyPage(CorpusDetailPage) },
-              { path: 'integrations/applications', element: renderLazyPage(ApplicationsPage) },
-              { path: 'integrations/providers', element: renderLazyPage(ProvidersPage) },
-              { path: 'activity/audit', element: renderLazyPage(AuditEventsPage) },
+              // Workspace (Chat, Connections) is deliberately NOT behind
+              // RequireOrganizationManager below - it's the self-service area
+              // any authenticated member of this organization can reach, not
+              // an admin-only console page. RequireOrganizationManager's own
+              // 403 page links here for exactly that reason ("Go to my
+              // workspace") - nesting it under the guard would break that
+              // escape hatch for a plain member.
+              {
+                path: 'workspace',
+                children: [
+                  { index: true, element: <Navigate to="overview" replace /> },
+                  { path: 'overview', element: renderLazyPage(WorkspaceOverviewPage) },
+                  { path: 'chat', element: renderLazyPage(WorkspaceChatPage) },
+                  { path: 'connections', element: renderLazyPage(ConnectionsPage) },
+                ],
+              },
+              {
+                element: <RequireOrganizationManager />,
+                children: [
+                  { index: true, element: <Navigate to="overview" replace /> },
+                  { path: 'overview', element: renderLazyPage(OrganizationOverviewPage) },
+                  { path: 'team/memberships', element: renderLazyPage(MembershipsPage) },
+                  { path: 'team/invitations', element: renderLazyPage(InvitationsPage) },
+                  { path: 'team/teams', element: renderLazyPage(TeamsPage) },
+                  { path: 'team/roles', element: renderLazyPage(RolesPage) },
+                  { path: 'team/policies', element: renderLazyPage(PolicyBindingsPage) },
+                  { path: 'ai/provider-settings', element: renderLazyPage(ProviderSettingsPage) },
+                  { path: 'ai/embedder', element: renderLazyPage(EmbedderSettingsPage) },
+                  { path: 'ai/reranker', element: renderLazyPage(RerankerSettingsPage) },
+                  { path: 'ai/web-search', element: renderLazyPage(WebSearchSettingsPage) },
+                  { path: 'mcp-servers', element: renderLazyPage(MCPServersPage) },
+                  { path: 'preferences', element: renderLazyPage(OrganizationPreferencesPage) },
+                  { path: 'catalog/agent-presets', element: renderLazyPage(AgentPresetsPage) },
+                  { path: 'catalog/skill-repos', element: renderLazyPage(SkillReposPage) },
+                  { path: 'automation/devices', element: renderLazyPage(DevicesPage) },
+                  { path: 'automation/desktop-policies', element: renderLazyPage(DesktopPoliciesPage) },
+                  { path: 'automation/hooks', element: renderLazyPage(HooksPage) },
+                  { path: 'automation/bundles', element: renderLazyPage(BundlesPage) },
+                  { path: 'automation/jobs', element: renderLazyPage(JobsPage) },
+                  { path: 'automation/runs', element: renderLazyPage(RunsPage) },
+                  { path: 'knowledge/corpora', element: renderLazyPage(CorporaPage) },
+                  { path: 'knowledge/corpora/:corpusId', element: renderLazyPage(CorpusDetailPage) },
+                  { path: 'connectors', element: renderLazyPage(ConnectorsPage) },
+                  { path: 'integrations/applications', element: renderLazyPage(ApplicationsPage) },
+                  { path: 'integrations/providers', element: renderLazyPage(ProvidersPage) },
+                  { path: 'integrations/scim', element: renderLazyPage(ScimSettingsPage) },
+                  { path: 'integrations/network-diagnostics', element: renderLazyPage(NetworkDiagnosticsPage) },
+                  { path: 'activity/audit', element: renderLazyPage(AuditEventsPage) },
+                  { path: 'activity/chat-sessions', element: renderLazyPage(ChatSessionsPage) },
+                ],
+              },
             ],
           },
           { path: '*', element: renderLazyPage(NotFoundPage) },

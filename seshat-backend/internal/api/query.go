@@ -48,6 +48,9 @@ type createSessionRequest struct {
 	ModelID           string `json:"model_id,omitempty"`
 	PermissionMode    string `json:"permission_mode,omitempty"`
 	ExecutionOrigin   string `json:"execution_origin,omitempty"`
+	// Source is a UI-only hint ("knowledge" for sessions created by the
+	// Knowledge search page) - see query.Service.CreateSession.
+	Source string `json:"source,omitempty"`
 }
 
 type updateSessionRequest struct {
@@ -404,6 +407,13 @@ func (app *App) handleQueryStream(w http.ResponseWriter, r *http.Request) {
 		AppendSystemPrompt: req.AppendSystemPrompt,
 		AgentSlug:          req.AgentSlug,
 		Principal:          principal,
+		OnStage: func(stage, label string) {
+			onRuntimeEvent(sdk.RuntimeEvent{
+				Type:       sdk.RuntimeEventTypeStage,
+				SessionID:  sdk.SessionID(req.SessionID),
+				StageEvent: &sdk.StageRuntimeEvent{Stage: stage, Label: label},
+			})
+		},
 	})
 	if app.titleBroker != nil {
 		titleCh, unsubscribeTitle := app.titleBroker.Subscribe(streamInput.SessionID)
@@ -413,8 +423,6 @@ func (app *App) handleQueryStream(w http.ResponseWriter, r *http.Request) {
 		go func() {
 			for {
 				select {
-				case <-titleRelayDone:
-					return
 				case title, ok := <-titleCh:
 					if !ok {
 						return
@@ -426,9 +434,22 @@ func (app *App) handleQueryStream(w http.ResponseWriter, r *http.Request) {
 					if err == nil {
 						writeSSE("session_titled", data)
 					}
+				case <-titleRelayDone:
+					return
+				case <-r.Context().Done():
+					return
 				}
 			}
 		}()
+	}
+	if title, err := app.backend.Query.EnsureInitialSessionTitle(r.Context(), principal, streamInput.SessionID, req.Prompt); err == nil && title != "" {
+		data, err := json.Marshal(map[string]string{
+			"session_id": streamInput.SessionID,
+			"title":      title,
+		})
+		if err == nil {
+			writeSSE("session_titled", data)
+		}
 	}
 	// Inject the event emitter and the user's sub-agent depth preference.
 	baseCtx := app.enrichContextWithAgentPrefs(r.Context(), principal)

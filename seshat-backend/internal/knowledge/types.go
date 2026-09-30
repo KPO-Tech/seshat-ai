@@ -23,15 +23,46 @@ type CorpusFile struct {
 	CreatedAt  time.Time  `json:"created_at"`
 }
 
+// DownloadedFile carries a corpus file's raw bytes and the metadata needed
+// to serve them (Content-Type/Content-Disposition) - kept separate from
+// CorpusFile since content type isn't part of that API-facing type.
+type DownloadedFile struct {
+	Data        []byte
+	Filename    string
+	ContentType string
+}
+
 type CreateCorpusParams struct {
 	Name        string
 	Description string
 	WorkspaceID string // optional
 }
 
+type UpdateCorpusParams struct {
+	Name        string
+	Description string
+}
+
 type IngestParams struct {
 	CorpusID string
 	FileID   string
+}
+
+// ExternalIngestParams is IngestExternal's input - text pulled live from a
+// Knowledge connector rather than an already-uploaded db.File.
+type ExternalIngestParams struct {
+	CorpusID string
+	// ExternalID is a synthetic FileID identifying this resource at its
+	// source (e.g. "gdrive-{driveFileID}") - stable across re-syncs so a
+	// re-ingest replaces the same corpus_files/vector rows in place.
+	ExternalID string
+	Filename   string
+	Text       string
+	// AccessControl lists the identities allowed to see this resource
+	// (e.g. "user:alice@example.com", "group:eng-team"), mirroring the
+	// source system's own permissions. Empty falls back to the corpus's
+	// own scope (workspace, else owner) - see IngestExternal's doc comment.
+	AccessControl []string
 }
 
 type IngestionJob struct {

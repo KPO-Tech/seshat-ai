@@ -3,6 +3,7 @@ package iam
 import (
 	"context"
 	"testing"
+	"time"
 
 	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 )
@@ -248,5 +249,43 @@ func TestDeleteUserRejectsDeletingTheLastOrganizationOwner(t *testing.T) {
 	}
 	if err := service.DeleteUser(context.Background(), secondAdminPrincipal, ownerPrincipal.User.ID); err != nil {
 		t.Fatalf("expected deleting the user to succeed once another owner exists: %v", err)
+	}
+}
+
+// TestDeleteUserRequiresFreshAuth proves the step-up gate itself (see
+// docs/helps/audit-2026-08-29-openwork-den-comparison.md § 9) - a
+// platform-admin with full requireAdmin standing is still rejected if
+// their own session hasn't proven identity recently enough, and the
+// target user survives untouched.
+func TestDeleteUserRequiresFreshAuth(t *testing.T) {
+	service := newTestService(t)
+
+	boot, err := service.Bootstrap(context.Background(), BootstrapParams{
+		Email: "admin@example.com", Password: "password123", DisplayName: "Admin",
+		OrganizationName: "Seshat", OrganizationSlug: "seshat",
+	})
+	if err != nil {
+		t.Fatalf("bootstrap: %v", err)
+	}
+	adminPrincipal, err := service.ResolvePrincipal(context.Background(), boot.Token)
+	if err != nil {
+		t.Fatalf("resolve admin principal: %v", err)
+	}
+	orgID := boot.Organizations[0].ID
+
+	member, err := service.CreateUser(context.Background(), adminPrincipal, CreateUserParams{
+		Email: "member@example.com", Password: "password123", DisplayName: "Member",
+		OrganizationID: orgID, Role: "member",
+	})
+	if err != nil {
+		t.Fatalf("create member: %v", err)
+	}
+	adminPrincipal.Session.ReauthenticatedAt = time.Now().UTC().Add(-stepUpFreshnessTTL - time.Minute)
+
+	if err := service.DeleteUser(context.Background(), adminPrincipal, member.ID); err == nil {
+		t.Fatal("expected a stale session to be denied user deletion")
+	}
+	if _, err := service.GetUser(context.Background(), adminPrincipal, member.ID); err != nil {
+		t.Fatalf("expected the user to still exist after a rejected deletion, got: %v", err)
 	}
 }

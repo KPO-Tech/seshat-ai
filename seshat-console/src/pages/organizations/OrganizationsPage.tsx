@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Avatar, Button, Card, Empty, Input, message, Popconfirm, Popover, Space, Switch, Tag, Typography } from 'antd'
+import { Avatar, Button, Empty, Input, message, Popconfirm, Popover, Space, Switch, Tag, Tooltip, Typography } from 'antd'
 import type { TableProps } from 'antd'
 import {
   ApartmentOutlined,
@@ -11,7 +11,6 @@ import {
   PlusOutlined,
   RightOutlined,
   ShareAltOutlined,
-  WarningOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router'
 import {
@@ -24,10 +23,10 @@ import {
   useSetOrganizationSharedDomains,
   type Organization,
 } from '@/api/organizations'
+import { useOrganizationCreationLocked } from '@/api/auth'
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
 import { ConsoleTable } from '@/components/ConsoleTable'
-import { StatTile } from '@/components/StatTile'
 import { OrganizationFormDrawer } from '@/components/OrganizationFormDrawer'
 import { presentDateTime, presentText } from '@/lib/present'
 import { getOrganizationChecklist } from '@/lib/organizationProfile'
@@ -44,8 +43,9 @@ export function OrganizationsPage() {
     order: 'asc',
   })
   const [editing, setEditing] = useState<Organization | 'new' | null>(null)
+  const orgCreationLocked = useOrganizationCreationLocked()
 
-  const { data, isLoading, isFetching } = useOrganizationsList({
+  const { data, isLoading, isFetching, error } = useOrganizationsList({
     q: search || undefined,
     sort: sort.field,
     order: sort.order,
@@ -60,9 +60,6 @@ export function OrganizationsPage() {
   const setSharedDomains = useSetOrganizationSharedDomains()
 
   const organizations = data?.organizations ?? []
-  const defaultOrg = organizations.find((org) => org.is_default)
-  const inactiveCount = organizations.filter((org) => org.is_active === false).length
-  const organizationsNeedingAttention = organizations.filter((org) => !getOrganizationChecklist(org).isReady).length
 
   const handleTableChange: TableProps<Organization>['onChange'] = (_pagination, _filters, sorter) => {
     const single = Array.isArray(sorter) ? sorter[0] : sorter
@@ -195,6 +192,7 @@ export function OrganizationsPage() {
                       { key: 'share_web_search_settings', label: 'Web search settings' },
                       { key: 'share_mcp_servers', label: 'MCP servers' },
                       { key: 'share_skill_repos', label: 'Skill repos' },
+                      { key: 'share_connector_apps', label: 'Connector OAuth apps' },
                     ] as const
                   ).map((domain) => (
                     <div key={domain.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -270,8 +268,6 @@ export function OrganizationsPage() {
   return (
     <div>
       <PageHeader
-        title="Organizations"
-        description="Create and manage the companies that use your Seshat platform."
         actions={
           <Space>
             <Input.Search
@@ -283,44 +279,32 @@ export function OrganizationsPage() {
               }}
               style={{ width: 260 }}
             />
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing('new')}>
-              New organization
-            </Button>
+            <Tooltip title={orgCreationLocked ? 'This deployment is restricted to a single organization' : undefined}>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                disabled={orgCreationLocked}
+                onClick={() => setEditing('new')}
+              >
+                New organization
+              </Button>
+            </Tooltip>
           </Space>
         }
       />
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: 16,
-          marginBottom: 24,
-        }}
-      >
-        <StatTile label="Organizations" value={data?.total} loading={isLoading} icon={<ApartmentOutlined />} />
-        <StatTile label="Default org" value={defaultOrg?.name ?? 'None set'} loading={isLoading} icon={<CrownOutlined />} />
-        <StatTile label="Inactive" value={inactiveCount} loading={isLoading} icon={<PauseCircleOutlined />} />
-        <StatTile
-          label="Need details"
-          value={organizationsNeedingAttention}
-          loading={isLoading}
-          icon={<WarningOutlined />}
-        />
-      </div>
-
-      <Card title="All organizations" styles={{ body: { padding: 0 } }}>
-        <ConsoleTable<Organization>
-          rowKey="id"
-          columns={columns}
-          dataSource={organizations}
-          loading={isLoading || isFetching}
-          onChange={handleTableChange}
-          onRow={(record) => ({
-            onClick: () => navigate(`/orgs/${record.id}/overview`),
-            style: { cursor: 'pointer' },
-          })}
-          locale={{
+      <ConsoleTable<Organization>
+        rowKey="id"
+        columns={columns}
+        dataSource={organizations}
+        loading={isLoading || isFetching}
+        queryError={error}
+        onChange={handleTableChange}
+        onRow={(record) => ({
+          onClick: () => navigate(`/orgs/${record.id}/overview`),
+          style: { cursor: 'pointer' },
+        })}
+        locale={{
             emptyText: (
               <Empty
                 image={<ApartmentOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}
@@ -337,7 +321,6 @@ export function OrganizationsPage() {
             showTotal: (total) => `${total} organizations`,
           }}
         />
-      </Card>
 
       <OrganizationFormDrawer
         organization={editing === 'new' ? null : editing}

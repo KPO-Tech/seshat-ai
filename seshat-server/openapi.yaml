@@ -75,6 +75,16 @@ tags:
     description: OAuth/OIDC client applications registered with the control plane.
   - name: providers
     description: Upstream identity providers (OIDC/OAuth2/SAML).
+  - name: scim-connections
+    description: >-
+      Per-organization SCIM 2.0 provisioning connection (RFC 7643/7644) — an
+      enterprise IdP (Okta, Entra ID, ...) pushes user/group changes here
+      instead of an admin managing membership by hand. One connection per
+      organization. These are admin-facing management endpoints for the
+      connection itself (name, enabled flag, sync options, bearer token
+      rotation); the SCIM protocol endpoints the IdP actually calls
+      (/scim/v2/Users, /scim/v2/Groups, ...) are a separate, not-yet-built
+      surface (see docs/helps in the seshat-ai repo for the staged plan).
   - name: provider-settings
     description: >-
       Per-organization LLM provider credentials (Anthropic, OpenAI, ...) —
@@ -95,13 +105,16 @@ tags:
       domains are always applied, allowed domains are additive.
   - name: mcp-server-configs
     description: >-
-      An organization's shared MCP server definitions (stdio/http/sse) —
-      config only, execution always happens locally on the connected
-      member's own machine, never here. Read/resolve is open to any org
-      member; write requires mcp_registry.manage. A connected
-      seshat-backend requires the user to explicitly approve each server
-      before loading it locally (stdio servers spawn an arbitrary command
-      on the user's machine).
+      An organization's shared MCP server definitions (stdio/http/sse).
+      Read/resolve is open to any org member; write requires
+      mcp_registry.manage. Mainly config a connected seshat-backend fetches
+      and, once the user explicitly approves each server, loads locally
+      (stdio servers spawn an arbitrary command on the user's machine) —
+      but the workspace chat's own agent session also resolves and executes
+      these servers directly server-side. A server whose connector_kind is
+      set (gdrive/sharepoint/slack/outlook/teams/gmail) has a per-caller Authorization: Bearer header
+      bridged in from that person's own connected account when resolved —
+      see ResolvedMCPServerConfig.connected.
   - name: devices
     description: Registered seshat-backend (local desktop) instances that the cloud can target.
   - name: jobs
@@ -113,7 +126,6 @@ tags:
       Device-bearer-token-authenticated endpoints (a registered device's own
       token, not a user session) used by seshat-backend to claim and report
       on its assigned runs.
-
 paths:
   /health:
     get:
@@ -148,6 +160,8 @@ paths:
                 type: object
                 properties:
                   initialized: { type: boolean }
+                  org_mode: { type: string, enum: [single, multi], example: multi }
+                  has_organization: { type: boolean }
 
   /api/v1/auth/bootstrap:
     post:
@@ -530,6 +544,33 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Organization" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/organizations/{organizationID}/verify-domain:
+    post:
+      operationId: verifyOrganizationDomain
+      tags: [organizations]
+      summary: Verify ownership of this organization's claimed email domain
+      description: >-
+        Resolves a DNS TXT record at _seshat-challenge.<domain> (expected
+        value "seshat-verification=<domain_verification_token>") and marks
+        the domain verified on a match. Requires organization.manage.
+        Closes a real gap: claiming a domain alone previously granted no
+        proof of ownership, and self-service registration
+        (POST /auth/register) trusted it anyway for auto-join — that
+        auto-join now requires domain_verified_at to be set. 400 if the
+        organization has no domain pending verification, or if the TXT
+        record is missing/mismatched/not yet propagated.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDPath"
+      responses:
+        "200":
+          description: Domain verified
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Organization" }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
@@ -1354,6 +1395,93 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/desktop-policies/catalog:
+    get:
+      operationId: listDesktopPolicyCatalog
+      tags: [desktop-policies]
+      summary: List the fixed desktop policy catalog
+      description: >
+        Any authenticated member can read this — it's a fixed, code-defined
+        catalog (not organization-specific data), not the per-organization
+        assignment of it.
+      responses:
+        "200":
+          description: Desktop policy catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  desktop_policies:
+                    type: array
+                    items: { $ref: "#/components/schemas/DesktopPolicy" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/desktop-policy-bindings:
+    get:
+      operationId: listDesktopPolicyBindings
+      tags: [desktop-policies]
+      summary: List desktop policy bindings for an organization
+      description: Requires `desktop_policies.read`, `desktop_policies.manage` or `organization.manage`.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Desktop policy binding list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  desktop_policy_bindings:
+                    type: array
+                    items: { $ref: "#/components/schemas/DesktopPolicyBinding" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      operationId: setDesktopPolicyBinding
+      tags: [desktop-policies]
+      summary: Create or update a desktop policy binding
+      description: >
+        Upsert by (organization_id, policy_code, subject_type, subject_id) —
+        posting again for the same subject updates its value in place rather
+        than creating a duplicate. Requires `desktop_policies.manage` or
+        `organization.manage`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DesktopPolicyBindingInput" }
+      responses:
+        "200":
+          description: Desktop policy binding created or updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DesktopPolicyBinding" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/desktop-policy-bindings/{bindingID}:
+    parameters:
+      - name: bindingID
+        in: path
+        required: true
+        schema: { type: string }
+    delete:
+      operationId: deleteDesktopPolicyBinding
+      tags: [desktop-policies]
+      summary: Delete a desktop policy binding
+      description: >
+        The affected subject falls back to the next-most-specific applicable
+        binding, or the catalog default if none remain.
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/sessions:
     get:
       operationId: listSessions
@@ -1467,6 +1595,64 @@ paths:
           description: Password updated
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/auth/step-up/password:
+    post:
+      operationId: stepUpWithPassword
+      tags: [users]
+      summary: Re-prove my identity with my current password
+      description: >-
+        Marks the caller's own already-existing session as freshly
+        authenticated (see docs/helps/audit-2026-08-29-openwork-den-comparison.md
+        § 9) - never rotates the password, never issues a new session.
+        Fails the same way a wrong password would for an account that has
+        no password it knows (OIDC/SAML/SCIM-provisioned, never used
+        "forgot password").
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password]
+              properties:
+                current_password: { type: string }
+      responses:
+        "204":
+          description: Session marked freshly authenticated
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/auth/sso-lookup:
+    post:
+      operationId: lookupSSOProvider
+      tags: [users]
+      summary: Discover whether an email's domain matches a configured SSO provider
+      description: >-
+        Public, unauthenticated - a pre-login discovery step (see
+        docs/helps/audit-2026-08-29-openwork-den-comparison.md § 9bis) so
+        the console's login page can offer "Continue with {IdP}" before the
+        visitor sees a password field. Never errors just because nothing
+        matched - returns an empty object in that case.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        "200":
+          description: A matching provider, or an empty object if none matched
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/SSOProviderMatch"
+                  - type: object
+        "400": { $ref: "#/components/responses/BadRequest" }
 
   /api/v1/users/me/preferences:
     get:
@@ -1776,6 +1962,42 @@ paths:
               schema: { $ref: "#/components/schemas/WorkspaceChatSessionHistory" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/workspace-chat/sessions:
+    get:
+      operationId: listWorkspaceChatSessions
+      tags: [workspace-chat]
+      summary: List an organization's Workspace Chat sessions across every member
+      description: >-
+        The admin-visibility counterpart to getWorkspaceChatSession above -
+        metadata (who, when, how many messages) across an organization's
+        members, not any one person's own conversation content. Requires
+        organization.manage. Sessions past the 48-hour retention window are
+        excluded, same as getWorkspaceChatSession's own "gone once past the
+        window" behavior.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+        - $ref: "#/components/parameters/sort"
+        - $ref: "#/components/parameters/order"
+        - $ref: "#/components/parameters/q"
+      responses:
+        "200":
+          description: Workspace Chat session list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ListMeta"
+                  - type: object
+                    properties:
+                      sessions:
+                        type: array
+                        items: { $ref: "#/components/schemas/WorkspaceChatSessionSummary" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
   /api/v1/skill-repos:
     get:
@@ -2183,6 +2405,202 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
 
+  /api/v1/scim-connections:
+    get:
+      operationId: getScimConnection
+      tags: [scim-connections]
+      summary: Get an organization's SCIM connection
+      description: >-
+        A singleton per organization_id, like GET /web-search-org-policy —
+        not a path-parameterized collection. Returns `{"connection": null}`
+        (200, not 404) when the organization has not configured SCIM yet;
+        "not configured" is a normal state for this resource. Never
+        includes the bearer token. Requires scim_connections.read/.manage
+        or organization.manage.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: The organization's SCIM connection, or null
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  connection:
+                    oneOf:
+                      - $ref: "#/components/schemas/ScimConnection"
+                      - type: "null"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      operationId: createScimConnection
+      tags: [scim-connections]
+      summary: Create an organization's SCIM connection
+      description: >-
+        One connection per organization — a second call for an org that
+        already has one is rejected with 409; delete the existing one or
+        rotate its token instead. Returns the bearer token in the
+        `token` field — the only time it is ever readable again, same
+        "shown once" contract as an Invitation or Device registration
+        token. Requires scim_connections.manage or organization.manage.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ScimConnectionInput" }
+      responses:
+        "201":
+          description: SCIM connection created, with its one-time bearer token
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ScimConnectionWithToken" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    put:
+      operationId: updateScimConnection
+      tags: [scim-connections]
+      summary: Update an organization's SCIM connection
+      description: >-
+        Edits name/enabled/sync options only — never touches the bearer
+        token, use the rotate-token operation for that. 404 if the
+        organization has no SCIM connection configured yet. Requires
+        scim_connections.manage or organization.manage.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ScimConnectionUpdateInput" }
+      responses:
+        "200":
+          description: SCIM connection updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ScimConnection" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      operationId: deleteScimConnection
+      tags: [scim-connections]
+      summary: Delete an organization's SCIM connection
+      description: >-
+        Any IdP still configured with the old token starts getting 401s
+        immediately. Does not touch previously provisioned users/
+        memberships/groups — it only stops future pushes from being
+        accepted. Requires scim_connections.manage or organization.manage.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "204": { description: SCIM connection deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/scim-connections/rotate-token:
+    post:
+      operationId: rotateScimConnectionToken
+      tags: [scim-connections]
+      summary: Rotate an organization's SCIM connection bearer token
+      description: >-
+        Replaces the bearer token — the previous one stops working
+        immediately, the IdP's configured secret must be updated to match.
+        Returns the new raw token, the one and only time it is readable
+        again. Requires scim_connections.manage or organization.manage.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Token rotated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ScimConnectionWithToken" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/scim-connections/events:
+    get:
+      operationId: listScimConnectionEvents
+      tags: [scim-connections]
+      summary: List an organization's SCIM connection's recent protocol activity
+      description: >-
+        The "recent activity" feed backing ScimConnection's health fields —
+        most recent first. Requires scim_connections.read/.manage or
+        organization.manage.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+        - name: limit
+          in: query
+          schema: { type: integer }
+        - name: offset
+          in: query
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Recent SCIM sync events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items: { $ref: "#/components/schemas/ScimSyncEvent" }
+                  total: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/network-diagnostics:
+    get:
+      operationId: runNetworkDiagnostics
+      tags: [network-diagnostics]
+      summary: Run a live connectivity check against this server's own outbound dependencies
+      description: >-
+        Probes the SMTP relay (if configured) and each of this
+        organization's enabled OIDC/SAML providers with a layered DNS/TCP/
+        TLS/HTTP check, reporting which layer fails and a targeted
+        suggestion - self-service troubleshooting for enterprise IT, see
+        docs/helps/audit-2026-08-29-openwork-den-comparison.md § 6. Requires
+        network_diagnostics.read or organization.manage.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Diagnostic checks for this organization's outbound dependencies
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NetworkDiagnosticsResult" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/provider-catalog:
+    get:
+      operationId: listProviderCatalog
+      tags: [provider-settings]
+      summary: List the providers/models the connected SDK build supports
+      description: >-
+        Static, non-secret metadata resolved live from the seshat SDK's own
+        registry rather than a hand-maintained copy — seshat-console
+        previously hardcoded its own copy of this list, which had already
+        drifted out of sync with the SDK once. Returned in the SDK's own
+        curated display order. Any authenticated user may read this; it
+        carries no organization-specific data.
+      responses:
+        "200":
+          description: Provider catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  providers:
+                    type: array
+                    items: { $ref: "#/components/schemas/ProviderCatalogEntry" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
   /api/v1/provider-settings:
     get:
       operationId: listProviderSettings
@@ -2247,8 +2665,11 @@ paths:
         Authorization is deliberately looser than provider_settings.read/
         manage: any member of the organization (or a platform admin) can
         resolve "what should I use", the same trust level as using their own
-        session. Falls back to the platform default when the organization has
-        no setting of its own for this provider; 404 if neither exists.
+        session — unless an admin has scoped one or more policy bindings to
+        this specific provider setting, in which case only matching
+        subjects may resolve it (403 otherwise). Falls back to the platform
+        default when the organization has no setting of its own for this
+        provider; 404 if neither exists.
       parameters:
         - $ref: "#/components/parameters/organizationIDQuery"
         - name: provider
@@ -2265,6 +2686,39 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/provider-settings/usable:
+    get:
+      operationId: listUsableProviderSettings
+      tags: [provider-settings]
+      summary: List the provider settings the caller may pick from (e.g. a chat provider dropdown)
+      description: >-
+        Unlike GET /provider-settings (admin-only, for the settings/
+        credentials page), authorization here is the same loose "any member
+        of the organization" trust level as /provider-settings/resolve — no
+        secret is included, just which providers are configured and their
+        default model. A provider setting is usable by every member by
+        default; an admin can restrict a specific one to chosen members or
+        teams by scoping one or more policy bindings to it
+        (resource_type=provider_setting, resource_id=<setting id>) — the
+        moment any such binding exists, that setting is hidden from this
+        list for every other subject.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Usable provider setting list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  provider_settings:
+                    type: array
+                    items: { $ref: "#/components/schemas/ProviderSetting" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "400": { $ref: "#/components/responses/BadRequest" }
 
   /api/v1/provider-settings/{providerSettingID}:
     parameters:
@@ -2379,6 +2833,47 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/DetectedProviderModels" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/provider-settings/probe:
+    post:
+      operationId: probeProviderSetting
+      tags: [provider-settings]
+      summary: Test an API key against its provider's real endpoint before saving it
+      description: >-
+        See docs/helps/audit-2026-08-29-openwork-den-comparison.md § 1. A
+        minimal live GET (a models-list endpoint, never a chat/completion
+        call - no tokens spent) using the exact auth header this provider
+        actually expects. Authenticated only, like detect-models - the
+        credential tested here may not be saved anywhere yet, so there is
+        no organization-scoped permission to check. status is one of ok
+        (credential accepted), invalid_credential (provider returned
+        401/403), unknown (network error or an unexpected response - never
+        confidently reported as either ok or invalid_credential), or
+        unsupported (this provider isn't a simple-API-key one, e.g. Ollama,
+        Codex, or a cloud-account provider like Bedrock/Vertex).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, api_key]
+              properties:
+                provider: { type: string, example: openai }
+                base_url: { type: string }
+                api_key: { type: string }
+      responses:
+        "200":
+          description: Probe result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [ok, invalid_credential, unknown, unsupported] }
+                  detail: { type: string }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   /api/v1/web-search-provider-settings:
@@ -2596,6 +3091,45 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "409": { $ref: "#/components/responses/Conflict" }
 
+  /api/v1/mcp-server-configs/probe:
+    post:
+      operationId: probeMCPServerConfig
+      tags: [mcp-server-configs]
+      summary: "Smart-Add: probe a candidate MCP server URL and classify its auth requirement"
+      description: >-
+        Sends a real MCP JSON-RPC "initialize" handshake to url (optionally
+        with one credential header attached, to confirm a credential works
+        before saving it), and classifies the result - never creates
+        anything. Requires mcp_registry.manage or organization.manage, same
+        gate as create. Deliberately shallow: a 401/403 always means
+        "supply a credential you already have," this never performs OAuth
+        discovery or Dynamic Client Registration - see
+        docs/helps/audit-2026-08-29-openwork-den-comparison.md § 8.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [organization_id, url]
+              properties:
+                organization_id: { type: string }
+                url: { type: string }
+                credential_header:
+                  type: string
+                  description: e.g. "Authorization" - omit on the first (unauthenticated) probe.
+                credential_value:
+                  type: string
+                  description: e.g. "Bearer sk-..." - omit on the first (unauthenticated) probe.
+      responses:
+        "200":
+          description: Probe classification
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MCPProbeResult" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
   /api/v1/mcp-server-configs/resolve:
     get:
       operationId: resolveMCPServerConfigs
@@ -2672,6 +3206,205 @@ paths:
         "204": { description: Deleted }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/hook-configs:
+    get:
+      operationId: listHookConfigs
+      tags: [hook-configs]
+      summary: List an organization's shared PreToolUse hooks
+      description: >-
+        Requires hooks_registry.read/.manage or organization.manage. See
+        HookConfig - desktop-only by design, never resolved/executed by
+        seshat-server's own workspacechat.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Hook config list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hook_configs:
+                    type: array
+                    items: { $ref: "#/components/schemas/HookConfig" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      operationId: createHookConfig
+      tags: [hook-configs]
+      summary: Define a new shared PreToolUse hook for an organization
+      description: Requires hooks_registry.manage or organization.manage. One hook per (organization, name) pair.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/HookConfigInput" }
+      responses:
+        "201":
+          description: Hook config created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HookConfig" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/hook-configs/resolve:
+    get:
+      operationId: resolveHookConfigs
+      tags: [hook-configs]
+      summary: Resolve every enabled hook an organization has shared
+      description: >-
+        Open to any org member - the point is for a connected seshat-backend
+        device to present each org-defined hook to its own user for explicit
+        local approval before ever running it. Only Enabled hooks are
+        returned.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Resolved hook configs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hook_configs:
+                    type: array
+                    items: { $ref: "#/components/schemas/HookConfig" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/hook-configs/{hookConfigID}:
+    parameters:
+      - name: hookConfigID
+        in: path
+        required: true
+        schema: { type: string }
+    put:
+      operationId: updateHookConfig
+      tags: [hook-configs]
+      summary: Update a shared hook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/HookConfigUpdateInput" }
+      responses:
+        "200":
+          description: Updated hook config
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HookConfig" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      operationId: deleteHookConfig
+      tags: [hook-configs]
+      summary: Delete a shared hook
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/bundles/export:
+    post:
+      operationId: exportBundle
+      tags: [bundles]
+      summary: Export a chosen selection of skills/MCP servers/hooks/agent presets as one portable manifest
+      description: >-
+        Builds the manifest from the current rows of each of the four
+        registries, filtered to the given IDs - each registry's own List
+        method self-gates read permission, degrading to an empty list rather
+        than a 403, so a requested ID absent from that list (nonexistent or
+        inaccessible) is rejected as 404. Never includes MCP server
+        Env/Headers (encrypted secrets) or ConnectorKind (meaningless outside
+        the org). There is no server-side "bundle" record to fetch later -
+        the manifest only ever exists as this response.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExportBundleInput" }
+      responses:
+        "200":
+          description: Portable bundle manifest
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BundleManifest" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/bundles/import:
+    post:
+      operationId: importBundle
+      tags: [bundles]
+      summary: Import a manifest's items into an organization
+      description: >-
+        Preflights *_registry.manage for every category actually present in
+        the manifest before creating anything - a single missing permission
+        rejects the whole import, nothing created. Each item is then created
+        through its own registry's normal Create method, so a per-item
+        naming conflict is reported in `failed` without aborting the rest of
+        the manifest - never a silent partial import. Every row actually
+        created is tagged into a BundleImport record for later traceability.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ImportBundleInput" }
+      responses:
+        "200":
+          description: Import result - what was created and what failed, explicitly
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BundleImportResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/bundles/provenance:
+    get:
+      operationId: resolveBundleProvenance
+      tags: [bundles]
+      summary: Report which of the given resource IDs were created by a bundle import, and by which one
+      description: >-
+        Membership-only check - this only ever reveals which of the caller's
+        own already-visible rows (normally exactly the IDs a registry's own
+        List endpoint just returned) came from a bundle import, the third
+        provenance signal alongside a registry's own CreatedByUserID/Source
+        fields. A resource ID absent from the response was never imported
+        via a bundle.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+        - name: resource_type
+          in: query
+          required: true
+          schema: { type: string, enum: [mcp_server_config, hook_config, skill_repo, agent_preset] }
+        - name: resource_ids
+          in: query
+          required: true
+          description: Comma-separated resource IDs.
+          schema: { type: string }
+      responses:
+        "200":
+          description: Provenance map, keyed by resource ID
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  provenance:
+                    type: object
+                    additionalProperties: { $ref: "#/components/schemas/BundleProvenanceEntry" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
   /api/v1/knowledge/corpora:
     get:
@@ -2849,6 +3582,35 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/knowledge/corpora/{corpusID}/files/{fileID}/ingest:
+    parameters:
+      - name: corpusID
+        in: path
+        required: true
+        schema: { type: string }
+      - name: fileID
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      operationId: ingestCorpusFile
+      tags: [knowledge]
+      summary: Re-trigger ingestion for an already-uploaded file
+      description: >-
+        Requires knowledge.manage or organization.manage. Upgrades a file
+        ingested vectorless (no embedder configured at the time) to real
+        vectors once one is set up, or retries one that never got a job at
+        all — returns the existing queued/running job unchanged if one is
+        already in flight for this file.
+      responses:
+        "200":
+          description: Ingestion job queued (or the existing in-flight one)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IngestionJob" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/knowledge/corpora/{corpusID}/ingestion-jobs:
     parameters:
       - name: corpusID
@@ -2956,6 +3718,364 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/connectors/accounts:
+    get:
+      operationId: listConnectorAccounts
+      tags: [connectors]
+      summary: List an organization's connector accounts
+      description: >-
+        Scoped visibility like every other list endpoint: a caller lacking
+        knowledge.read/knowledge.manage/organization.manage gets an empty
+        list, not a 403.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Connector account list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  connector_accounts:
+                    type: array
+                    items: { $ref: "#/components/schemas/ConnectorAccount" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+    post:
+      operationId: createConnectorAccount
+      tags: [connectors]
+      summary: Connect a new external source
+      description: >-
+        Requires knowledge.manage or organization.manage. Only kind "s3" is
+        available today (Google Drive/SharePoint are a fast-follow, see
+        docs/architecture.md's "Example: Knowledge connectors") — an
+        S3-compatible bucket is connected and starts syncing immediately, no
+        OAuth step. Secrets are encrypted at rest and never returned.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConnectorAccountInput" }
+      responses:
+        "201":
+          description: Connector account created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConnectorAccount" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/connectors/accounts/{accountID}:
+    parameters:
+      - name: accountID
+        in: path
+        required: true
+        schema: { type: string }
+    put:
+      operationId: updateConnectorAccount
+      tags: [connectors]
+      summary: Edit an existing s3 or azureblob connector account's configuration
+      description: >-
+        Requires knowledge.manage or organization.manage. Closes a real gap:
+        a connected account's own configuration (bucket/endpoint/prefix or
+        account_name/container, plus credentials) was stored server-side but
+        never exposed or editable — the only way to fix a typo'd endpoint or
+        rotate a leaked key was to delete and reconnect from scratch. kind is
+        fixed (not part of this body, same convention as every other
+        *UpdateInput here) — only s3/azureblob accounts have static config
+        to edit; every OAuth-based kind (gdrive/sharepoint/onedrive/
+        confluence/slack/outlook/teams/gmail) is rejected here, since
+        reconnecting via the OAuth flow already handles credential rotation
+        for those. access_key_id/secret_access_key (s3) or account_key
+        (azureblob) are optional — leave blank to keep the existing
+        encrypted credential(s) unchanged; for s3, access_key_id and
+        secret_access_key must be provided together, not one at a time.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConnectorAccountUpdateInput" }
+      responses:
+        "200":
+          description: Connector account updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConnectorAccount" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      operationId: deleteConnectorAccount
+      tags: [connectors]
+      summary: Disconnect an external source
+      description: >-
+        Requires knowledge.manage or organization.manage. Removes the
+        connector account and its sync job history — already-ingested corpus
+        files are left in place (detach them individually if that's the
+        intent).
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/connectors/accounts/{accountID}/sync:
+    parameters:
+      - name: accountID
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      operationId: triggerConnectorSync
+      tags: [connectors]
+      summary: Queue an immediate sync for a connector account
+      description: >-
+        Requires knowledge.manage or organization.manage. In addition to the
+        account's own periodic sync_interval_seconds schedule. Returns the
+        already-queued/running job unchanged if one exists.
+      responses:
+        "200":
+          description: Sync job (queued or already in flight)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConnectorSyncJob" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/connectors/accounts/{accountID}/sync-jobs:
+    parameters:
+      - name: accountID
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: listConnectorSyncJobs
+      tags: [connectors]
+      summary: List a connector account's sync job history, newest first
+      responses:
+        "200":
+          description: Sync job list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sync_jobs:
+                    type: array
+                    items: { $ref: "#/components/schemas/ConnectorSyncJob" }
+                  count: { type: integer }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/connectors/my-accounts:
+    get:
+      operationId: listMyConnectorAccounts
+      tags: [connectors]
+      summary: List the caller's own agent_action-purposed connector accounts
+      description: >-
+        Self-service counterpart to listConnectorAccounts — any org member
+        may call this for their own accounts, no knowledge.read/manage or
+        organization.manage required. Only returns purpose=agent_action
+        accounts created by the caller.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: The caller's own connector account list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  connector_accounts:
+                    type: array
+                    items: { $ref: "#/components/schemas/ConnectorAccount" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /api/v1/connectors/my-accounts/{accountID}:
+    parameters:
+      - name: accountID
+        in: path
+        required: true
+        schema: { type: string }
+    delete:
+      operationId: deleteMyConnectorAccount
+      tags: [connectors]
+      summary: Disconnect one of the caller's own agent_action accounts
+      description: >-
+        Self-service counterpart to deleteConnectorAccount — succeeds only
+        for an agent_action account the caller themselves created; 404 (not
+        403) for any other account, including one owned by someone else.
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/connectors/oauth-apps:
+    get:
+      operationId: listConnectorOAuthApps
+      tags: [connectors]
+      summary: List an organization's registered connector OAuth apps
+      description: >-
+        Scoped visibility like every other list endpoint: a caller lacking
+        knowledge.read/knowledge.manage/organization.manage gets an empty
+        list, not a 403. Client secrets are never returned, only whether one
+        is configured.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: OAuth app list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  oauth_apps:
+                    type: array
+                    items: { $ref: "#/components/schemas/ConnectorOAuthApp" }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /api/v1/connectors/oauth-apps/{kind}:
+    parameters:
+      - name: kind
+        in: path
+        required: true
+        schema: { type: string, enum: [gdrive, sharepoint, onedrive, confluence, slack, outlook, teams, gmail, notion, gsheets, gcalendar, jira, github, asana, linear, hubspot, intercom, pipedrive, zendesk, salesforce] }
+    put:
+      operationId: registerConnectorOAuthApp
+      tags: [connectors]
+      summary: Register or update an organization's OAuth app for gdrive/sharepoint/slack/outlook/teams/gmail
+      description: >-
+        Requires knowledge.manage or organization.manage. client_secret is
+        required the first time an app is registered for this
+        (organization, kind); omit it on a later update to keep the existing
+        one.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConnectorOAuthAppInput" }
+      responses:
+        "200":
+          description: OAuth app registered/updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConnectorOAuthApp" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/connectors/{kind}/oauth/start:
+    parameters:
+      - name: kind
+        in: path
+        required: true
+        schema: { type: string, enum: [gdrive, sharepoint, onedrive, confluence, slack, outlook, teams, gmail, notion, gsheets, gcalendar, jira, github, asana, linear, hubspot, intercom, pipedrive, zendesk, salesforce] }
+    post:
+      operationId: beginConnectorOAuth
+      tags: [connectors]
+      summary: Start a "connect an account" OAuth flow for gdrive/sharepoint/onedrive/confluence/slack/outlook/teams/gmail
+      description: >-
+        Requires that the organization has already registered an OAuth app
+        for kind. With purpose=knowledge_sync (the default), also requires
+        knowledge.manage or organization.manage and a valid corpus_id -
+        this is the admin-run flow for gdrive/sharepoint/onedrive/confluence. With
+        purpose=agent_action, only requires organization membership and no
+        corpus_id - any employee connects their own account for their own
+        future MCP-backed agent actions; slack/outlook/teams/gmail only
+        support this purpose.
+        Returns a URL to open in a new browser tab; the resulting
+        ConnectorAccount is created by the callback once the user completes
+        the provider's consent screen, not by this call.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BeginConnectorOAuthInput" }
+      responses:
+        "200":
+          description: Authorization URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authorization_url: { type: string }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/v1/connectors/{kind}/oauth/callback:
+    parameters:
+      - name: kind
+        in: path
+        required: true
+        schema: { type: string, enum: [gdrive, sharepoint, onedrive, confluence, slack, outlook, teams, gmail, notion, gsheets, gcalendar, jira, github, asana, linear, hubspot, intercom, pipedrive, zendesk, salesforce] }
+    get:
+      operationId: completeConnectorOAuth
+      tags: [connectors]
+      summary: OAuth redirect target - not called directly by API clients
+      description: >-
+        Public, unauthenticated - the identity provider redirects the
+        browser here after consent. Trust comes from the single-use signed
+        state issued by the start endpoint. Returns an HTML page, not JSON.
+      parameters:
+        - name: code
+          in: query
+          schema: { type: string }
+        - name: state
+          in: query
+          schema: { type: string }
+        - name: error
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: HTML result page
+          content:
+            text/html:
+              schema: { type: string }
+
+  /api/v1/connectors/{kind}/static-account:
+    parameters:
+      - name: kind
+        in: path
+        required: true
+        schema: { type: string, enum: [stripe, sendgrid, mailgun, postmark, telegram, discord, trello, airtable] }
+    post:
+      operationId: createStaticAgentAccount
+      tags: [connectors]
+      summary: Connect a static-secret account (e.g. Stripe) for self-service agent_action use
+      description: >-
+        The synchronous, no-redirect counterpart to the OAuth start/callback
+        pair, for a kind that authenticates with a single static secret
+        instead of an OAuth2 flow. Only requires organization membership, no
+        corpus_id, same as an agent_action OAuth connect. Resubmitting for a
+        kind the caller already connected overwrites the existing secret in
+        place (key rotation) rather than creating a second account.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [organization_id, secret]
+              properties:
+                organization_id: { type: string }
+                display_name: { type: string }
+                secret: { type: string, description: "Never returned by any endpoint once stored." }
+      responses:
+        "201":
+          description: The created/updated connector account
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConnectorAccount" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
   /api/v1/embedder-settings:
     get:
       operationId: getEmbedderSetting
@@ -3042,6 +4162,92 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/DetectedEmbedderModels" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/reranker-settings:
+    get:
+      operationId: getRerankerSetting
+      tags: [knowledge]
+      summary: Get an organization's reranker configuration
+      description: >-
+        A singleton per organization. Unlike embedder-settings, 404 here is
+        a fully normal "no second pass configured" state, not a fallback
+        trigger - search works fine without one.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "200":
+          description: Reranker setting
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RerankerSetting" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      operationId: setRerankerSetting
+      tags: [knowledge]
+      summary: Create or update an organization's reranker configuration
+      description: >-
+        Requires knowledge.manage or organization.manage. Upsert - creates
+        the organization's reranker setting if none exists yet, otherwise
+        updates it in place. api_key empty means "no key" on first create
+        (the common case for a self-hosted TEI/vLLM instance) and "keep the
+        existing key unchanged" when a setting already exists. enabled lets
+        an org keep a configured endpoint on record while temporarily
+        turning reranking off.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RerankerSettingInput" }
+      responses:
+        "200":
+          description: Reranker setting created or updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RerankerSetting" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    delete:
+      operationId: deleteRerankerSetting
+      tags: [knowledge]
+      summary: Delete an organization's reranker configuration
+      description: >-
+        Requires knowledge.manage or organization.manage. Search reverts to
+        the platform-wide RAG_RERANK_* env var (if any) for this
+        organization's subsequent requests.
+      parameters:
+        - $ref: "#/components/parameters/organizationIDQuery"
+      responses:
+        "204": { description: Deleted }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/reranker-settings/detect-model:
+    post:
+      operationId: detectRerankerModel
+      tags: [knowledge]
+      summary: Detect the model a self-hosted TEI reranker is serving
+      description: >-
+        Probes base_url's TEI /info endpoint and returns the model_id it
+        reports - TEI always serves exactly one model per instance, so
+        unlike embedder detection there's nothing to classify, just one
+        answer to look up. A non-TEI endpoint (or any other failure) comes
+        back as an error string, never an HTTP error status, so the console
+        can fall back to manual model entry.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DetectRerankerModelInput" }
+      responses:
+        "200":
+          description: Detected model (or an error string if detection failed)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DetectedRerankerModel" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   /api/v1/organization-preferences:
@@ -3187,10 +4393,10 @@ paths:
         - deviceBearerAuth: []
       responses:
         "200":
-          description: Updated device
+          description: Updated device, plus its resolved desktop policy bundle
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Device" }
+              schema: { $ref: "#/components/schemas/HeartbeatResult" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   /api/v1/jobs:
@@ -3730,6 +4936,17 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
+    StepUpRequired:
+      description: >-
+        Authenticated, but this session hasn't proven fresh identity
+        recently enough for this action - see POST
+        /auth/step-up/password (or /auth/step-up/oidc, /auth/step-up/saml).
+        Distinct from Unauthorized/Forbidden: the body's error.code is
+        "step_up_required", telling a client to prompt for re-auth rather
+        than a login screen or a permission-denied message.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
 
   schemas:
     Error:
@@ -3739,6 +4956,15 @@ components:
           type: object
           properties:
             message: { type: string }
+            code:
+              type: string
+              description: >-
+                Machine-readable discriminator, only ever present for a
+                handful of error kinds a client needs to react to
+                differently than a plain message (currently just
+                "step_up_required" on a 428 - see StepUpRequired). Absent
+                for every other error response.
+              enum: [step_up_required]
 
     ListMeta:
       type: object
@@ -3773,7 +4999,7 @@ components:
         support_email: { type: string, format: email }
         is_default:
           type: boolean
-          description: Whether this organization's own ProviderSetting/EmbedderSetting/WebSearchProviderSetting/MCPServerConfig rows are used as the platform-wide fallback for organizations with no config of their own. At most one organization holds this at a time.
+          description: Whether this organization's own ProviderSetting/EmbedderSetting/WebSearchProviderSetting/MCPServerConfig/ConnectorOAuthApp rows are used as the platform-wide fallback for organizations with no config of their own. At most one organization holds this at a time.
         is_active:
           type: boolean
           description: Administrative/visual flag only - not enforced on any request path yet.
@@ -3795,9 +5021,39 @@ components:
         share_organization_preferences:
           type: boolean
           description: Only meaningful while is_default is true - whether this organization's preference defaults are shared as the platform-wide fallback.
+        share_connector_apps:
+          type: boolean
+          description: Only meaningful while is_default is true - whether this organization's connector OAuth apps (client_id/secret registered per kind) are shared as the platform-wide fallback for organizations with no app of their own for a given kind.
         domain:
           type: string
-          description: This organization's own email domain (e.g. "acmecorp.com"), if set. Self-service registration (POST /auth/register) auto-joins a new user to this organization as a pending member when their email matches. At most one organization holds a given domain.
+          description: >-
+            This organization's own email domain (e.g. "acmecorp.com"), if
+            set. Self-service registration (POST /auth/register) auto-joins
+            a new user to this organization as a pending member when their
+            email matches — but only once domain_verified_at is set; a
+            claimed-but-unverified domain grants no auto-join. At most one
+            organization holds a given domain.
+        domain_verification_token:
+          type: string
+          description: >-
+            The value to publish as a DNS TXT record at
+            _seshat-challenge.<domain> (as "seshat-verification=<token>") to
+            prove ownership — see POST .../verify-domain. Regenerated
+            whenever domain changes to a new value. Absent once verified or
+            when no domain is set.
+        domain_verified_at:
+          type: string
+          format: date-time
+          description: Absent until POST .../verify-domain succeeds. Reset to unset whenever domain changes to a different value.
+        min_app_version:
+          type: string
+          description: >-
+            Lowest seshat-ui version this organization's desktop devices are
+            expected to report, as a plain "major.minor.patch" string (e.g.
+            "1.4.0") - no "v" prefix, no pre-release suffix. Absent when no
+            restriction is configured. Enforced as a WARNING only: a device
+            reporting a lower version is flagged via
+            HeartbeatResult.app_version_outdated, never blocked.
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
 
@@ -3811,6 +5067,9 @@ components:
         website_url: { type: string }
         support_email: { type: string, format: email }
         domain: { type: string }
+        min_app_version:
+          type: string
+          description: Plain "major.minor.patch" string, or omit/empty to clear any configured restriction. See Organization.min_app_version.
 
     # All fields optional - omit one to leave that domain's flag unchanged.
     OrganizationSharedDomainsInput:
@@ -3822,6 +5081,7 @@ components:
         share_mcp_servers: { type: boolean }
         share_skill_repos: { type: boolean }
         share_organization_preferences: { type: boolean }
+        share_connector_apps: { type: boolean }
 
     Membership:
       type: object
@@ -4020,6 +5280,12 @@ components:
         permission_codes:
           type: array
           items: { type: string }
+        resource_type:
+          type: string
+          description: Optional resource kind this binding is scoped to ("corpus" or "provider_setting"). Empty means organization-wide.
+        resource_id:
+          type: string
+          description: ID of the specific resource this binding is scoped to. Empty when resource_type is empty.
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
 
@@ -4035,6 +5301,12 @@ components:
         permission_codes:
           type: array
           items: { type: string }
+        resource_type:
+          type: string
+          description: Optional resource kind to scope this binding to ("corpus" or "provider_setting"). Omit for an organization-wide binding.
+        resource_id:
+          type: string
+          description: ID of the specific resource to scope this binding to. Required when resource_type is set.
 
     # Distinct from PolicyBindingInput: same organization_id/unknown-fields
     # reasoning as GroupUpdateInput above.
@@ -4046,9 +5318,68 @@ components:
         description: { type: string }
         subject_type: { type: string, enum: [user, group, role] }
         subject_id: { type: string }
+        resource_type:
+          type: string
+          description: Optional resource kind to scope this binding to ("corpus" or "provider_setting"). Omit for an organization-wide binding.
+        resource_id:
+          type: string
+          description: ID of the specific resource to scope this binding to. Required when resource_type is set.
         permission_codes:
           type: array
           items: { type: string }
+
+    DesktopPolicy:
+      type: object
+      description: >
+        One entry from the fixed, code-defined desktop policy catalog - this
+        is not admin-editable data, only its per-organization assignment
+        (DesktopPolicyBinding) is.
+      properties:
+        code: { type: string }
+        admin_description: { type: string }
+        user_blocked_message:
+          type: string
+          description: Shown to the end user when this policy blocks an action.
+        default_value:
+          type: boolean
+          description: Effective value when no DesktopPolicyBinding applies to a given subject at all.
+
+    DesktopPolicyBinding:
+      type: object
+      description: >
+        Assigns a value for one policy_code from the fixed catalog to one
+        subject. Resolution ANDs every applicable binding together with the
+        catalog's own default ("most restrictive wins") - see
+        DesktopPolicyBindingInput's description for the subject vocabulary.
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        policy_code: { type: string }
+        subject_type: { type: string, enum: [org, role, user, group] }
+        subject_id:
+          type: string
+          description: Empty when subject_type is "org".
+        value: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    DesktopPolicyBindingInput:
+      type: object
+      required: [organization_id, policy_code, subject_type, value]
+      properties:
+        organization_id: { type: string }
+        policy_code: { type: string }
+        subject_type:
+          type: string
+          enum: [org, role, user, group]
+          description: >
+            "org" restricts every member of the organization and requires
+            subject_id to be empty; "role"/"user"/"group" narrow the
+            restriction to that specific role code, member, or team.
+        subject_id:
+          type: string
+          description: Required for every subject_type except "org".
+        value: { type: boolean }
 
     AuditEvent:
       type: object
@@ -4485,6 +5816,18 @@ components:
           additionalProperties: { type: string }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+        last_login_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When a completed OIDC/SAML login round trip through this connection last finished, success or failure. Null if never attempted.
+        last_login_success:
+          type: boolean
+          nullable: true
+          description: Whether that last completed login succeeded. Null if never attempted.
+        last_error:
+          type: string
+          description: Error message from the last failed login attempt, empty if the last attempt succeeded or none has happened yet.
 
     ProviderInput:
       type: object
@@ -4596,6 +5939,97 @@ components:
         is_default:
           type: boolean
           description: Administrative/UI marker for this organization's "main" provider setting - not consumed by job execution.
+
+    ScimConnection:
+      type: object
+      description: Never includes the bearer token — see ScimConnectionWithToken for the one-time reveal on create/rotate.
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        created_by_user_id: { type: string }
+        name: { type: string, example: Okta }
+        enabled: { type: boolean }
+        sync_groups:
+          type: boolean
+          description: When false, every /Groups write is rejected outright (403) — the connection never agreed to accept group pushes at all.
+        auto_create_teams:
+          type: boolean
+          description: >-
+            Only has an effect when sync_groups is true. false ("metadata
+            only"): a /Groups push is recorded for admin visibility but
+            never creates or modifies a real team. true: a real team is
+            created/updated, fully addressable afterward.
+        last_sync_at:
+          type: string
+          format: date-time
+          description: Timestamp of the most recent SCIM protocol operation against this connection, of any kind. Absent if none has ever occurred.
+        last_sync_success:
+          type: boolean
+          description: Whether that most recent operation succeeded. Absent if none has ever occurred.
+        last_error:
+          type: string
+          description: The most recent operation's error message — only present when last_sync_success is false. A later success clears it.
+
+    ScimConnectionWithToken:
+      allOf:
+        - $ref: "#/components/schemas/ScimConnection"
+        - type: object
+          properties:
+            token:
+              type: string
+              description: The raw bearer token — shown exactly once, on create or rotate. Never returned by any other operation.
+
+    ScimConnectionInput:
+      type: object
+      required: [organization_id, name]
+      properties:
+        organization_id: { type: string }
+        name: { type: string, example: Okta }
+        sync_groups: { type: boolean }
+        auto_create_teams: { type: boolean }
+
+    ScimConnectionUpdateInput:
+      type: object
+      required: [name, enabled]
+      properties:
+        name: { type: string }
+        enabled: { type: boolean }
+        sync_groups: { type: boolean }
+        auto_create_teams: { type: boolean }
+
+    ScimSyncEvent:
+      type: object
+      description: One SCIM protocol operation against a connection — the "recent activity" feed, and the source health is derived from (see ScimConnection.last_sync_at/last_sync_success).
+      properties:
+        id: { type: string }
+        operation: { type: string, example: user.create }
+        resource_type: { type: string, enum: [User, Group] }
+        external_id: { type: string }
+        success: { type: boolean }
+        error_message: { type: string }
+        created_at: { type: string, format: date-time }
+
+    ProviderCatalogModel:
+      type: object
+      properties:
+        id: { type: string, example: claude-sonnet-4-20250514 }
+        description: { type: string }
+        context_window: { type: integer }
+        max_output: { type: integer }
+
+    ProviderCatalogEntry:
+      type: object
+      properties:
+        name: { type: string, example: anthropic }
+        display_name: { type: string, example: Anthropic }
+        description: { type: string }
+        auth_type: { type: string, enum: [api_key, oauth, none, aws, gcp] }
+        auth_types:
+          type: array
+          items: { type: string }
+        models:
+          type: array
+          items: { $ref: "#/components/schemas/ProviderCatalogModel" }
 
     ResolvedProviderSetting:
       type: object
@@ -4786,6 +6220,16 @@ components:
         query:
           type: string
           description: The tool's input query, when it has one (e.g. web_search).
+        input:
+          type: object
+          additionalProperties: true
+          description: The tool's full input arguments, as sent to the tool. Present once the call starts.
+        result:
+          type: string
+          description: The tool's raw output content, once it completes (truncated for very large results). Absent for pending/running stages.
+        duration_ms:
+          type: integer
+          description: How long the tool call took to run, in milliseconds. Present once completed or failed.
         web_search:
           $ref: "#/components/schemas/WorkspaceChatWebSearchTrace"
 
@@ -4824,6 +6268,24 @@ components:
           description: Present for assistant messages only - the ordered event log of that turn, replayable through the same client-side reducer used for live streaming to reconstruct identical content/trace.
           items: { $ref: "#/components/schemas/WorkspaceChatEvent" }
 
+    WorkspaceChatSessionSummary:
+      type: object
+      description: >-
+        Metadata only - no message content. The admin-visibility list
+        (listWorkspaceChatSessions) shows this across every member of an
+        organization; a specific conversation's actual messages stay behind
+        the owner-scoped getWorkspaceChatSession, which has no admin-override
+        path at all.
+      properties:
+        id: { type: string }
+        user_id: { type: string }
+        user_email: { type: string }
+        user_display_name: { type: string }
+        title: { type: string }
+        message_count: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
     MCPServerConfig:
       type: object
       description: Never includes env/headers values — they're a caller-supplied secret, redacted in every response including create.
@@ -4839,6 +6301,184 @@ components:
         url: { type: string, description: Only meaningful for server_type=http/sse/websocket. }
         timeout_secs: { type: integer }
         icon: { type: string }
+        connector_kind: { type: string, enum: ["", gdrive, sharepoint, onedrive, slack, outlook, teams, gmail, notion, gsheets, gcalendar, github, linear, hubspot, jira, confluence, asana, intercom, pipedrive, salesforce, stripe, trello, airtable], description: "When set, this server's headers are personalized per caller at resolve time - see ResolvedMCPServerConfig.connected." }
+
+    HookConfig:
+      type: object
+      description: >-
+        An org-scoped PreToolUse hook - see
+        docs/helps/audit-2026-08-29-openwork-den-comparison.md § 7.
+        Desktop-only: never resolved or executed by seshat-server's own
+        workspacechat, since the SDK's hook runner executes Command via
+        plain os/exec with no sandboxing.
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        created_by_user_id: { type: string }
+        name: { type: string, example: block-rm }
+        matcher: { type: string, description: "Regex against the tool name - empty matches every tool." }
+        command: { type: string, description: Shell command executed on the connected device, after explicit local user approval. }
+        timeout_secs: { type: integer }
+        enabled: { type: boolean, description: A disabled hook is excluded from resolve entirely, not just paused. }
+
+    HookConfigInput:
+      type: object
+      required: [organization_id, name, command]
+      properties:
+        organization_id: { type: string }
+        name: { type: string, example: block-rm }
+        matcher: { type: string }
+        command: { type: string }
+        timeout_secs: { type: integer, default: 30 }
+        enabled: { type: boolean, default: true }
+
+    HookConfigUpdateInput:
+      type: object
+      required: [command]
+      description: Unlike creation, organization_id/name are not part of this body - an existing hook's organization and name are fixed.
+      properties:
+        matcher: { type: string }
+        command: { type: string }
+        timeout_secs: { type: integer }
+        enabled: { type: boolean }
+
+    BundleManifestSkillRepo:
+      type: object
+      required: [name, url]
+      properties:
+        name: { type: string, example: seshat-skills }
+        url: { type: string, example: "https://github.com/EngineerProjects/seshat-skills" }
+        description: { type: string }
+
+    BundleManifestMCPServer:
+      type: object
+      description: Never carries Env/Headers (encrypted secrets) or connector_kind (org-specific) - see Manifest's own doc comment.
+      required: [name]
+      properties:
+        name: { type: string, example: internal-jira }
+        display_name: { type: string }
+        server_type: { type: string, enum: [stdio, http, sse, websocket] }
+        command: { type: string }
+        args: { type: array, items: { type: string } }
+        url: { type: string }
+        timeout_secs: { type: integer }
+        icon: { type: string }
+
+    BundleManifestHook:
+      type: object
+      required: [name, command]
+      properties:
+        name: { type: string, example: block-rm }
+        matcher: { type: string }
+        command: { type: string, description: Exported in full - authored source code, not a secret. }
+        timeout_secs: { type: integer }
+
+    BundleManifestAgentPreset:
+      type: object
+      required: [slug, system_prompt]
+      properties:
+        slug: { type: string, example: researcher }
+        name: { type: string }
+        when_to_use: { type: string }
+        system_prompt: { type: string }
+        model: { type: string }
+        tools: { type: array, items: { type: string } }
+        disallowed_tools: { type: array, items: { type: string } }
+        max_turns: { type: integer }
+        permission_mode: { type: string }
+        isolation: { type: string }
+        mcp_servers: { type: array, items: { type: string } }
+        icon: { type: string }
+
+    BundleManifest:
+      type: object
+      description: >-
+        The portable exported/imported unit - each item is the resource's
+        own definition fields, never a database ID (an ID is only meaningful
+        inside the organization that created it).
+      required: [name]
+      properties:
+        name: { type: string, example: Jira Integration }
+        description: { type: string }
+        mcp_servers: { type: array, items: { $ref: "#/components/schemas/BundleManifestMCPServer" } }
+        hooks: { type: array, items: { $ref: "#/components/schemas/BundleManifestHook" } }
+        skills: { type: array, items: { $ref: "#/components/schemas/BundleManifestSkillRepo" } }
+        agent_presets: { type: array, items: { $ref: "#/components/schemas/BundleManifestAgentPreset" } }
+
+    ExportBundleInput:
+      type: object
+      required: [organization_id, name]
+      properties:
+        organization_id: { type: string }
+        name: { type: string, example: Jira Integration }
+        description: { type: string }
+        skill_repo_ids: { type: array, items: { type: string } }
+        mcp_server_ids: { type: array, items: { type: string } }
+        agent_preset_ids: { type: array, items: { type: string } }
+        hook_config_ids: { type: array, items: { type: string } }
+
+    ImportBundleInput:
+      type: object
+      required: [organization_id, manifest]
+      properties:
+        organization_id: { type: string }
+        manifest: { $ref: "#/components/schemas/BundleManifest" }
+
+    BundleImportedItem:
+      type: object
+      properties:
+        resource_type: { type: string, enum: [mcp_server_config, hook_config, skill_repo, agent_preset] }
+        resource_id: { type: string }
+        name: { type: string }
+
+    BundleImportItemError:
+      type: object
+      properties:
+        resource_type: { type: string, enum: [mcp_server_config, hook_config, skill_repo, agent_preset] }
+        name: { type: string }
+        error: { type: string }
+
+    SSOProviderMatch:
+      type: object
+      properties:
+        provider_id: { type: string }
+        kind: { type: string, enum: [oidc, saml] }
+        name: { type: string }
+        organization_name: { type: string }
+
+    BundleProvenanceEntry:
+      type: object
+      properties:
+        bundle_import_id: { type: string }
+        bundle_name: { type: string }
+
+    BundleImportResult:
+      type: object
+      description: What an import actually did - never a generic "ok" the caller must guess from.
+      properties:
+        bundle_import_id: { type: string }
+        created: { type: array, items: { $ref: "#/components/schemas/BundleImportedItem" } }
+        failed: { type: array, items: { $ref: "#/components/schemas/BundleImportItemError" } }
+
+    MCPProbeResult:
+      type: object
+      properties:
+        auth_mode:
+          type: string
+          enum: [none, credential, unknown]
+          description: >-
+            "none": the target answered successfully, nothing more needed.
+            "credential": it responded 401/403 - supply one and re-probe to
+            confirm before saving. "unknown": an ambiguous response or a
+            transport failure - see detail, no credential requirement was
+            confirmed either way.
+        server_type:
+          type: string
+          enum: [http, sse]
+          description: Best-effort transport guess from the response Content-Type. Only present when auth_mode is "none".
+        detail:
+          type: string
+          description: A short human-readable explanation (status code, WWW-Authenticate header, or transport error).
 
     ResolvedMCPServerConfig:
       type: object
@@ -4854,9 +6494,11 @@ components:
         args: { type: array, items: { type: string } }
         env: { type: object, additionalProperties: { type: string } }
         url: { type: string }
-        headers: { type: object, additionalProperties: { type: string } }
+        headers: { type: object, additionalProperties: { type: string }, description: "May include an Authorization: Bearer entry personalized for the calling principal when connector_kind is set - see connected." }
         timeout_secs: { type: integer }
         icon: { type: string }
+        connector_kind: { type: string, enum: ["", gdrive, sharepoint, onedrive, slack, outlook, teams, gmail, notion, gsheets, gcalendar, github, linear, hubspot, jira, confluence, asana, intercom, pipedrive, salesforce, stripe, trello, airtable] }
+        connected: { type: boolean, description: "Always true when connector_kind is empty. When connector_kind is set, true only if the calling principal has their own connected agent_action ConnectorAccount for that kind - false means this server was returned but has no Bearer header injected (the calling employee hasn't connected their own account yet)." }
 
     MCPServerConfigInput:
       type: object
@@ -4879,6 +6521,7 @@ components:
           description: Encrypted at rest. Optional on create.
         timeout_secs: { type: integer, default: 30 }
         icon: { type: string }
+        connector_kind: { type: string, enum: ["", gdrive, sharepoint, onedrive, slack, outlook, teams, gmail, notion, gsheets, gcalendar, github, linear, hubspot, jira, confluence, asana, intercom, pipedrive, salesforce, stripe, trello, airtable], description: "See MCPServerConfig.connector_kind. Empty (default) means static config only." }
 
     # Distinct from MCPServerConfigInput: the update handler's request
     # struct has neither organization_id nor name (an existing config's
@@ -4902,6 +6545,7 @@ components:
           description: Omit to keep the existing stored headers unchanged.
         timeout_secs: { type: integer }
         icon: { type: string }
+        connector_kind: { type: string, enum: ["", gdrive, sharepoint, onedrive, slack, outlook, teams, gmail, notion, gsheets, gcalendar, github, linear, hubspot, jira, confluence, asana, intercom, pipedrive, salesforce, stripe, trello, airtable] }
 
     Corpus:
       type: object
@@ -4943,6 +6587,129 @@ components:
         chunk_count: { type: integer }
         ingested_at: { type: string, format: date-time }
         created_at: { type: string, format: date-time }
+        source: { type: string, enum: [upload, connector], description: "\"connector\" for a file pulled in by a Knowledge connector sync, \"upload\" for a manually uploaded one." }
+        connector_account_id: { type: string, description: "Set only when source is \"connector\"." }
+
+    ConnectorAccount:
+      type: object
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        corpus_id: { type: string, description: "Set only for a knowledge_sync-purposed account - empty for agent_action." }
+        kind: { type: string, enum: [s3, azureblob, gdrive, sharepoint, onedrive, confluence, slack, outlook, teams, gmail, notion, gsheets, gcalendar, jira, github, asana, linear, hubspot, intercom, pipedrive, zendesk, salesforce, stripe, sendgrid, mailgun, postmark, telegram, discord, trello, airtable] }
+        purpose: { type: string, enum: [knowledge_sync, agent_action], description: "knowledge_sync: admin-run, feeds a corpus. agent_action: self-service, one employee's own account for their own future MCP-backed agent actions - see connectors' package doc." }
+        display_name: { type: string }
+        external_account_id: { type: string }
+        status: { type: string, enum: [connected, error, disconnected] }
+        sync_interval_seconds: { type: integer }
+        last_synced_at: { type: string, format: date-time }
+        last_error: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        bucket: { type: string, description: "s3 only." }
+        region: { type: string, description: "s3 only." }
+        endpoint: { type: string, description: "s3 only." }
+        prefix: { type: string, description: "s3 and azureblob only." }
+        account_name: { type: string, description: "azureblob only: the storage account name." }
+        container: { type: string, description: "azureblob only: the blob container name." }
+
+    ConnectorAccountInput:
+      type: object
+      description: >-
+        Kinds "s3" and "azureblob" are supported here. For "s3":
+        bucket/region/endpoint/prefix and access_key_id/secret_access_key
+        apply (region defaults to "us-east-1" if omitted). For "azureblob":
+        account_name/container/prefix and account_key apply. Each kind only
+        requires its own fields - the required list below is a union.
+      properties:
+        organization_id: { type: string }
+        corpus_id: { type: string }
+        kind: { type: string, enum: [s3, azureblob], description: "Defaults to \"s3\"." }
+        display_name: { type: string }
+        bucket: { type: string }
+        region: { type: string }
+        endpoint: { type: string }
+        prefix: { type: string }
+        access_key_id: { type: string }
+        secret_access_key: { type: string }
+        account_name: { type: string, description: "azureblob only: the storage account name." }
+        container: { type: string, description: "azureblob only: the blob container name." }
+        account_key: { type: string, description: "azureblob only: the storage account's shared key." }
+        sync_interval_seconds: { type: integer, description: "Defaults to 3600 (1 hour)." }
+      required: [organization_id, corpus_id, display_name]
+
+    ConnectorAccountUpdateInput:
+      type: object
+      description: >-
+        Same shape as ConnectorAccountInput minus the create-only,
+        immutable fields (organization_id/corpus_id/kind - kind comes from
+        the existing account, not this body). access_key_id/
+        secret_access_key (s3) or account_key (azureblob) are optional -
+        leave blank to keep the existing encrypted credential(s) unchanged;
+        for s3, access_key_id and secret_access_key must be provided
+        together, not one at a time.
+      properties:
+        display_name: { type: string }
+        bucket: { type: string }
+        region: { type: string }
+        endpoint: { type: string }
+        prefix: { type: string }
+        access_key_id: { type: string }
+        secret_access_key: { type: string }
+        account_name: { type: string, description: "azureblob only: the storage account name." }
+        container: { type: string, description: "azureblob only: the blob container name." }
+        account_key: { type: string, description: "azureblob only: the storage account's shared key." }
+        sync_interval_seconds: { type: integer, description: "Defaults to 3600 (1 hour)." }
+      required: [display_name]
+
+    ConnectorSyncJob:
+      type: object
+      properties:
+        id: { type: string }
+        connector_account_id: { type: string }
+        corpus_id: { type: string }
+        status: { type: string, enum: [queued, running, completed, failed] }
+        attempt_count: { type: integer }
+        max_attempts: { type: integer }
+        items_synced: { type: integer }
+        last_error: { type: string }
+        started_at: { type: string, format: date-time }
+        completed_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+
+    ConnectorOAuthApp:
+      type: object
+      description: The client secret is never returned, only whether one is configured.
+      properties:
+        kind: { type: string, enum: [gdrive, sharepoint, onedrive, confluence, slack, outlook, teams, gmail, notion, gsheets, gcalendar, jira, github, asana, linear, hubspot, intercom, pipedrive, zendesk, salesforce] }
+        client_id: { type: string }
+        configured: { type: boolean }
+        updated_at: { type: string, format: date-time }
+        subdomain: { type: string, description: "Only ever set for kind \"zendesk\" - the org's own Zendesk account subdomain." }
+
+    ConnectorOAuthAppInput:
+      type: object
+      properties:
+        organization_id: { type: string }
+        client_id: { type: string }
+        client_secret: { type: string, description: "Required the first time an app is registered for this (organization, kind); omit on a later update to keep the existing one." }
+        subdomain: { type: string, description: "Required for kind \"zendesk\" only - the org's own Zendesk account subdomain (e.g. \"acme\" for acme.zendesk.com). Rejected for every other kind." }
+      required: [organization_id, client_id]
+
+    BeginConnectorOAuthInput:
+      type: object
+      description: >-
+        purpose=knowledge_sync (default, omit to get this) requires
+        corpus_id and knowledge.manage/organization.manage. purpose=
+        agent_action is self-service (any org member, no special
+        permission) - corpus_id must be omitted, rejected if present.
+      properties:
+        organization_id: { type: string }
+        corpus_id: { type: string, description: "Required for purpose=knowledge_sync, must be omitted for purpose=agent_action." }
+        purpose: { type: string, enum: [knowledge_sync, agent_action], default: knowledge_sync }
+        display_name: { type: string, description: "Optional - defaults to the connected account's email/UPN once the flow completes." }
+        sync_interval_seconds: { type: integer, description: "Defaults to 3600 (1 hour). Ignored for purpose=agent_action." }
+      required: [organization_id]
 
     IngestionJob:
       type: object
@@ -4996,6 +6763,44 @@ components:
           type: string
           description: Optional (e.g. a local Ollama needs none). Empty on update keeps the existing key unchanged.
       required: [provider, model, base_url]
+
+    RerankerSetting:
+      type: object
+      description: Never includes the API key — same redaction stance as EmbedderSetting/ProviderSetting.
+      properties:
+        id: { type: string }
+        organization_id: { type: string }
+        base_url: { type: string, example: "http://tei-rerank/rerank" }
+        model: { type: string, example: "BAAI/bge-reranker-v2-m3" }
+        has_api_key: { type: boolean }
+        enabled: { type: boolean }
+
+    RerankerSettingInput:
+      type: object
+      properties:
+        organization_id: { type: string }
+        base_url: { type: string, example: "http://tei-rerank/rerank" }
+        model: { type: string, example: "BAAI/bge-reranker-v2-m3" }
+        api_key:
+          type: string
+          description: Optional (self-hosted TEI/vLLM typically needs none). Empty on update keeps the existing key unchanged.
+        enabled: { type: boolean }
+      required: [base_url, enabled]
+
+    DetectRerankerModelInput:
+      type: object
+      required: [base_url]
+      properties:
+        base_url: { type: string, example: "http://tei-rerank/rerank" }
+
+    DetectedRerankerModel:
+      type: object
+      properties:
+        model: { type: string, example: "BAAI/bge-reranker-v2-m3" }
+        error:
+          type: string
+          nullable: true
+          description: Set instead of model when base_url isn't a reachable TEI /info endpoint.
 
     OrganizationPreferences:
       type: object
@@ -5055,6 +6860,28 @@ components:
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
 
+    HeartbeatResult:
+      description: >
+        The Device fields, plus this device's resolved desktop policy
+        bundle - keyed by policy code (see DesktopPolicy.code), value is
+        whether that policy currently allows the action. A code absent from
+        this map (an old server predating a newer client's expectations)
+        should be treated as allowed by the client - see the desktop
+        policies plan's fail-open design.
+      allOf:
+        - $ref: "#/components/schemas/Device"
+        - type: object
+          properties:
+            policies:
+              type: object
+              additionalProperties: { type: boolean }
+            min_app_version:
+              type: string
+              description: This device's organization's configured minimum app version (see Organization.min_app_version), absent when none is configured.
+            app_version_outdated:
+              type: boolean
+              description: True when this device's own app_version is below min_app_version. Warning-only - never a reason this heartbeat call itself fails.
+
     RegisterDeviceResult:
       type: object
       properties:
@@ -5062,6 +6889,48 @@ components:
         token:
           type: string
           description: Full device bearer token, shown in full only in this response.
+
+    NetworkDiagnosticStep:
+      type: object
+      description: One named layer of a connectivity check (see internal/server/netdiag).
+      properties:
+        name:
+          type: string
+          enum: [dns, tcp, tls, http]
+        status:
+          type: string
+          enum: [pass, fail, skipped]
+        duration_ms: { type: integer }
+        detail:
+          type: string
+          description: Resolved IPs, HTTP status code, or an error message - informational, not itself a pass/fail signal.
+        suggestion:
+          type: string
+          description: Present only on failure - a targeted, human-readable next step.
+        act_on:
+          type: string
+          enum: [network_admin, it_security, support]
+          description: Present only on failure - who should act on this suggestion.
+
+    NetworkDiagnosticResult:
+      type: object
+      description: One target's full layered check sequence.
+      properties:
+        name:
+          type: string
+          description: 'e.g. "Seshat Server", "Email delivery (SMTP relay)", or "SSO provider: Okta".'
+        target: { type: string }
+        steps:
+          type: array
+          items: { $ref: "#/components/schemas/NetworkDiagnosticStep" }
+        ok: { type: boolean }
+
+    NetworkDiagnosticsResult:
+      type: object
+      properties:
+        checks:
+          type: array
+          items: { $ref: "#/components/schemas/NetworkDiagnosticResult" }
 
     Job:
       type: object
@@ -5176,3 +7045,10 @@ components:
         configuration:
           type: object
           additionalProperties: { type: string }
+
+    GeoPoint:
+      type: object
+      properties:
+        lat: { type: number }
+        lng: { type: number }
+

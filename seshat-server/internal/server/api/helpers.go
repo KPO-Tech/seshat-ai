@@ -5,10 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/apperr"
-	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
 )
 
@@ -62,6 +60,15 @@ func writeControlPlaneError(w http.ResponseWriter, err error) {
 		writeJSONError(w, http.StatusConflict, typed.Message)
 	case "not_found":
 		writeJSONError(w, http.StatusNotFound, typed.Message)
+	case "step_up_required":
+		// The only Kind whose response body carries a machine-readable
+		// "code" field - see apperr.StepUpRequired's doc comment. Every
+		// other Kind keeps the plain {"error":{"message":...}} shape
+		// unchanged, so no existing consumer that reads only .error.message
+		// is affected.
+		writeJSON(w, http.StatusPreconditionRequired, map[string]any{
+			"error": map[string]any{"message": typed.Message, "code": "step_up_required"},
+		})
 	default:
 		writeJSONError(w, http.StatusInternalServerError, typed.Message)
 	}
@@ -70,21 +77,4 @@ func writeControlPlaneError(w http.ResponseWriter, err error) {
 func authPrincipalFromContext(ctx context.Context) (*iam.Principal, bool) {
 	principal, ok := ctx.Value(authPrincipalContextKey).(*iam.Principal)
 	return principal, ok
-}
-
-// redactSecret masks a credential value everywhere except the one response
-// that first hands it out, so listing/reading a resource never leaks a
-// usable copy of its client secret.
-func redactSecret(secret string) string {
-	const prefixLen = 6
-	if secret == "" {
-		return ""
-	}
-	if plaintext, err := sdb.DecryptSecret(secret); err == nil {
-		secret = plaintext
-	}
-	if len(secret) <= prefixLen {
-		return strings.Repeat("*", len(secret))
-	}
-	return secret[:prefixLen] + strings.Repeat("*", 8)
 }

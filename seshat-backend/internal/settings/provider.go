@@ -26,6 +26,10 @@ type Provider interface {
 	Update(ctx context.Context, principal *backendauth.Principal, id string, p UpdateSettingParams) (*ProviderSetting, error)
 	Delete(ctx context.Context, principal *backendauth.Principal, id string) error
 	SetDefault(ctx context.Context, principal *backendauth.Principal, id string) (*ProviderSetting, error)
+	StartOAuth(ctx context.Context, principal *backendauth.Principal, id string) (*OAuthChallenge, error)
+	PollOAuth(ctx context.Context, principal *backendauth.Principal, id string) (*ProviderSetting, error)
+	DisconnectOAuth(ctx context.Context, principal *backendauth.Principal, id string) (*ProviderSetting, error)
+	GetDecryptedAPIKey(ctx context.Context, principal *backendauth.Principal, id string) (string, error)
 	ResolveRuntimeConfig(ctx context.Context, principal *backendauth.Principal, id string) (*ResolvedProviderConfig, error)
 	ResolveDefaultForUser(ctx context.Context, principal *backendauth.Principal) (*ResolvedProviderConfig, error)
 }

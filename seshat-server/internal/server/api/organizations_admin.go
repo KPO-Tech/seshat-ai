@@ -74,6 +74,7 @@ type organizationSharedDomainsRequest struct {
 	ShareMCPServers              *bool `json:"share_mcp_servers"`
 	ShareSkillRepos              *bool `json:"share_skill_repos"`
 	ShareOrganizationPreferences *bool `json:"share_organization_preferences"`
+	ShareConnectorApps           *bool `json:"share_connector_apps"`
 }
 
 // handleOrganizationSharedDomains lets a superadmin choose which settings
@@ -99,7 +100,7 @@ func (app *App) handleOrganizationSharedDomains(w http.ResponseWriter, r *http.R
 	organization, err := app.backend.IAM.SetOrganizationSharedDomains(
 		r.Context(), principal, organizationID,
 		req.ShareProviderSettings, req.ShareEmbedderSettings, req.ShareWebSearchSettings, req.ShareMCPServers, req.ShareSkillRepos,
-		req.ShareOrganizationPreferences,
+		req.ShareOrganizationPreferences, req.ShareConnectorApps,
 	)
 	if err != nil {
 		writeIAMError(w, err)

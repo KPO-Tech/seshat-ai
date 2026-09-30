@@ -16,7 +16,7 @@ export function DevicesPage() { const organizationId = useScopedOrganizationId()
   const [registering, setRegistering] = useState(false)
   const [issuedToken, setIssuedToken] = useState<{ name: string; token: string } | null>(null)
 
-  const { data, isLoading } = useDevicesList(organizationId ?? undefined)
+  const { data, isLoading, error } = useDevicesList(organizationId ?? undefined)
   const { data: jobs } = useJobsList(organizationId ?? undefined)
   const registerDevice = useRegisterDevice()
   const revokeDevice = useRevokeDevice()
@@ -78,8 +78,6 @@ export function DevicesPage() { const organizationId = useScopedOrganizationId()
   return (
     <div>
       <PageHeader
-        title="Devices"
-        description="Machines registered to run device-targeted jobs for this organization."
         actions={ <Space>
             <Button
               type="primary"
@@ -97,6 +95,7 @@ export function DevicesPage() { const organizationId = useScopedOrganizationId()
           columns={columns}
           dataSource={data ?? []}
           loading={isLoading}
+          queryError={error}
           pagination={false}
           locale={{ emptyText: (
               <Empty

@@ -93,6 +93,29 @@ const keyFile = ".seshat_secret"
 
 // loadOrCreateEncryptionKey returns the 32-byte AES key from ~/.seshat_secret,
 // creating and writing it with mode 0600 on first use.
+//
+// Threat model, documented deliberately (2026-08-06 audit): this is a single
+// installation-wide key, shared by every user and organization on this
+// seshat-backend instance, encrypting provider API keys, OAuth tokens, and
+// other credentials across provider_settings, mcp_servers,
+// search_provider_configs, embedder_config, and this generic credentials
+// store. It protects against the DB file being read on its own (backup
+// mismanagement, SQL injection limited to data access, etc.) — the key lives
+// outside the DB, in a separate 0600 file — but NOT against a full host
+// compromise: anyone who reads both the DB and this file decrypts every
+// secret for every user on the instance, not just one.
+//
+// A real fix for that second case is a different, larger design — envelope
+// encryption where each user's secrets are wrapped under key material
+// derived from their own login credentials and never persisted server-side
+// in recoverable form — not a per-user key merely re-derived (e.g. via
+// HKDF) from this same master file, which wouldn't reduce the blast radius
+// at all: an attacker holding the master file can re-derive every "per-user"
+// subkey exactly as the server does. That redesign needs its own scoping
+// pass (migration of already-encrypted secrets, password-change/reset
+// handling, recovery story) and is deliberately not attempted here — see
+// project/strategy notes from the 2026-08-06 audit. Treat the single-key
+// model as an accepted risk for this deployment shape until then.
 func loadOrCreateEncryptionKey() ([]byte, error) {
 	path, err := encryptionKeyPath()
 	if err != nil {

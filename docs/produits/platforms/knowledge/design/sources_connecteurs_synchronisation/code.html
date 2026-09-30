@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Plus+Jakarta+Sans:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-secondary-container": "#007353", "surface-variant": "#dae2fd", "background": "#faf8ff", "on-primary": "#ffffff", "surface-container-highest": "#dae2fd", "inverse-surface": "#283044", "surface-dim": "#d2d9f4", "on-background": "#131b2e", "inverse-primary": "#b7c4ff", "tertiary-container": "#712ae2", "secondary": "#006c4e", "on-error-container": "#93000a", "on-tertiary-fixed": "#25005a", "primary": "#0037b0", "surface-tint": "#2151da", "on-tertiary": "#ffffff", "error-container": "#ffdad6", "secondary-container": "#97f5cc", "on-tertiary-fixed-variant": "#5a00c6", "surface": "#faf8ff", "secondary-fixed-dim": "#7bd8b1", "on-tertiary-container": "#dfccff", "tertiary-fixed": "#eaddff", "on-primary-fixed-variant": "#0039b5", "surface-bright": "#faf8ff", "on-secondary-fixed": "#002115", "tertiary-fixed-dim": "#d2bbff", "on-primary-fixed": "#001551", "primary-container": "#1d4ed8", "on-surface-variant": "#434655", "surface-container-low": "#f2f3ff", "surface-container": "#eaedff", "on-primary-container": "#cad3ff", "error": "#ba1a1a", "primary-fixed": "#dce1ff", "primary-fixed-dim": "#b7c4ff", "outline": "#747686", "on-surface": "#131b2e", "surface-container-high": "#e2e7ff", "tertiary": "#5700c0", "on-secondary-fixed-variant": "#00513a", "surface-container-lowest": "#ffffff", "on-error": "#ffffff", "outline-variant": "#c4c5d7", "inverse-on-surface": "#eef0ff", "on-secondary": "#ffffff", "secondary-fixed": "#97f5cc" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "density-input-h": "2rem", "space-2xs": "0.125rem", "space-3xl": "3rem", "gutter-app": "1rem", "space-xl": "1.5rem", "space-2xl": "2rem", "density-table-row-h": "2.25rem", "sidebar-width": "17.5rem", "space-sm": "0.5rem", "space-lg": "1rem", "space-md": "0.75rem", "space-xs": "0.25rem" }, "fontFamily": { "body-lg": ["Inter"], "label-md": ["Inter"], "data-mono-md": ["JetBrains Mono"], "headline-md": ["Plus Jakarta Sans"], "headline-xl": ["Plus Jakarta Sans"], "body-sm": ["Inter"], "headline-lg": ["Plus Jakarta Sans"], "headline-sm": ["Plus Jakarta Sans"], "body-md": ["Inter"], "data-mono-sm": ["JetBrains Mono"], "label-sm": ["Inter"] }, "fontSize": { "body-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "-0.011em", "fontWeight": "400" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "500" }], "data-mono-md": ["13px", { "lineHeight": "18px", "letterSpacing": "-0.01em", "fontWeight": "400" }], "headline-md": ["18px", { "lineHeight": "26px", "letterSpacing": "-0.015em", "fontWeight": "600" }], "headline-xl": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.025em", "fontWeight": "700" }], "body-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0em", "fontWeight": "400" }], "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600" }], "headline-sm": ["15px", { "lineHeight": "22px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "body-md": ["14px", { "lineHeight": "20px", "letterSpacing": "-0.006em", "fontWeight": "400" }], "data-mono-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0em", "fontWeight": "500" }], "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.025em", "fontWeight": "600" }] } } } }</script></head><body class="bg-background font-body-md text-body-md text-on-surface min-h-screen"><aside class="fixed left-0 top-0 h-full w-[17.5rem] bg-surface-container-low border-r border-outline-variant/30 z-50 flex flex-col justify-between select-none"><div class="flex flex-col flex-1 overflow-y-auto"><div class="h-16 px-space-lg flex items-center gap-space-sm border-b border-outline-variant/20 bg-surface-container-lowest"><img alt="SeshatOS Geometric Glyph Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1VmZs8sohnfr1vFLB9IDYmCMmeG9T8lUAf8BfhvjQAYUVZZipLU5lSpSH6P5b7HZODnjn9WQa677hfC6rJIlJPCTDcgZDjm_Zu_iFVuXd1aQ4y2yG3XsMP2S2sYKqlkz6dGhPHLXs7hf9xwuVKcQ4yaW8H3PTAyHafeG95tbiJPs63WBSMUmKvovYaZgar_R9m7VKygDZn5DjF9NBXIGCbZ3CKxpmQu2RwKQiR2tw-MY_9YY-QAmAULlmuk"/><div class="flex items-center gap-space-xs"><span class="font-headline-sm text-headline-sm text-on-surface tracking-tight font-semibold">SeshatOS</span><span class="px-1.5 py-0.5 rounded-lg bg-surface-container-high text-primary font-data-mono-sm text-data-mono-sm uppercase">Knowledge</span></div></div><div class="px-space-md py-space-sm border-b border-outline-variant/20 bg-surface-container/40"><div class="flex items-center justify-between"><span class="font-label-sm text-label-sm text-on-surface-variant truncate font-medium">Acme Global Corp</span><span class="px-1 rounded bg-secondary-container text-on-secondary-container font-data-mono-sm text-data-mono-sm">PROD</span></div><div class="flex items-center gap-1.5 mt-1"><span class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span><span class="font-data-mono-sm text-data-mono-sm text-secondary font-medium truncate">All Connectors Syncing</span></div></div><nav class="flex-1 px-space-sm py-space-md space-y-space-md" data-active-classes="bg-primary-container text-on-primary font-medium rounded-lg"><div class="space-y-space-2xs"><div class="px-space-sm py-1 font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold">Discover</div><a class="flex items-center px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="overview" href="#"><span class="font-body-md text-body-md">Overview</span></a><a class="flex items-center px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="discover" href="#"><span class="font-body-md text-body-md">Discover</span></a><a class="flex items-center px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="knowledge-graph" href="#"><span class="font-body-md text-body-md">Knowledge Graph</span></a></div><div class="space-y-space-2xs"><div class="px-space-sm py-1 font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold">Ask</div><a class="flex items-center px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="search" href="#"><span class="font-body-md text-body-md">Search</span></a><a class="flex items-center px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="chat-knowledge" href="#"><span class="font-body-md text-body-md">Chat Knowledge</span></a></div><div class="space-y-space-2xs"><div class="px-space-sm py-1 font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold">Act</div><a class="flex items-center px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="actions" href="#"><span class="font-body-md text-body-md">Actions</span></a><a aria-current="page" class="flex items-center px-space-sm py-1.5 transition-colors bg-primary-container text-on-primary font-medium rounded-lg" data-path="sources" href="#"><span class="font-body-md text-body-md">Sources</span></a><a class="flex items-center px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="collections" href="#"><span class="font-body-md text-body-md">Collections</span></a></div></nav></div><div class="p-space-sm border-t border-outline-variant/30 bg-surface-container-lowest"><nav class="space-y-space-2xs" data-active-classes="bg-primary-container text-on-primary font-medium rounded-lg"><a class="flex items-center px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="audit-compliance" href="#"><span class="font-body-md text-body-md">Audit &amp; Compliance</span></a><a class="flex items-center px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="help-center" href="#"><span class="font-body-md text-body-md">Help Center</span></a></nav></div></aside><div class="pl-[17.5rem] flex flex-col min-h-screen"><header class="fixed top-0 left-[17.5rem] right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-md border-b border-outline-variant/30 z-40 flex items-center justify-between px-space-xl"><div class="flex items-center gap-space-md w-full max-w-lg"><button class="flex items-center justify-between w-full h-density-input-h px-space-md rounded-lg bg-surface-container-low border border-outline-variant/50 text-on-surface-variant hover:border-outline hover:bg-surface-container transition-all group" type="button"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-outline text-[18px] group-hover:text-on-surface">search</span><span class="font-body-sm text-body-sm text-outline group-hover:text-on-surface">Search knowledge entities, facts, sources...</span></div><div class="flex items-center gap-1 font-data-mono-sm text-data-mono-sm px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant border border-outline-variant/50"><kbd>⌘</kbd><kbd>K</kbd></div></button></div><div class="flex items-center gap-space-lg"><div class="flex items-center gap-space-sm"><button class="relative p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" title="3 Governance Alerts" type="button"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1 right-1 flex items-center justify-center w-4 h-4 rounded-full bg-error text-on-error font-data-mono-sm text-data-mono-sm">3</span></button><a class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="audit-compliance" href="#" title="Audit Logs"><span class="material-symbols-outlined text-[20px]">history_toggle_off</span></a></div><div class="h-6 w-px bg-outline-variant/40"></div><div class="flex items-center gap-space-sm"><img alt="Profile" class="w-8 h-8 rounded-full object-cover ring-1 ring-outline-variant/50" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBGFqXlFUN1Js5y5dnc5mabMSlMmelH7xyY_k-QvDQMJbr2JkvYwTT4-Tyt9VCaIdZ5rkafDNU7rlFhmq0VCQpGj_rLLDYPZ4IDx-wzcZ2QLG3-gsnRJimnTLfalpE5_YZzVxwSRyf2cGqqnkYuGTeS1yShsBFygh1KEOYbiLAvC8YLhJZyYits5e5JGokQJD6S_dU9TZJL9Z-1RFFhtnqvrmiaVObg6S3EVBeynIY1AvjqDRAxsOdBpA"/><div class="flex flex-col text-left"><span class="font-body-sm text-body-sm font-semibold text-on-surface leading-tight">Éléonore de Vance</span><span class="font-label-sm text-label-sm text-on-surface-variant leading-tight">Knowledge Lead &amp; Admin</span></div></div></div></header><main class="w-full pt-16 bg-background flex-1"><div class="flex flex-col w-full">
+<!-- Security & Zero-Trust Notice Bar -->
+<div class="w-full bg-surface-container-high px-space-xl py-space-sm flex items-center justify-between shadow-sm">
+<div class="flex items-center gap-space-md">
+<div class="w-7 h-7 rounded-lg bg-secondary-container flex items-center justify-center text-on-secondary-container">
+<span class="material-symbols-outlined text-[18px]">verified_user</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm text-on-surface">Garantie Zero-Trust &amp; Héritage des Droits</span>
+<span class="text-outline text-body-sm">—</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Toute restriction d'accès définie sur les systèmes sources est strictement appliquée lors de l'inférence et des requêtes RAG contextuelles.</p>
+</div>
+</div>
+<div class="flex items-center gap-space-sm">
+<span class="px-2 py-0.5 rounded-lg bg-secondary-container text-on-secondary-container font-data-mono-sm text-data-mono-sm font-medium">ACLs Entra ID &amp; IAM Enforced</span>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">v4.8-audit-pass</span>
+</div>
+</div>
+<div class="p-space-xl space-y-space-xl">
+<!-- Header Block with Visual Contrast & Primary Call to Action -->
+<div class="flex flex-col xl:flex-row xl:items-end justify-between gap-space-xl bg-surface-container-lowest p-space-xl rounded-xl shadow-sm relative overflow-hidden">
+<div class="absolute -top-24 -right-24 w-80 h-80 bg-primary/5 rounded-full blur-3xl pointer-events-none"></div>
+<div class="space-y-space-xs max-w-3xl relative">
+<div class="flex items-center gap-space-sm">
+<span class="px-2 py-0.5 rounded-lg bg-surface-container-highest text-primary font-data-mono-sm text-data-mono-sm uppercase font-semibold tracking-wide">Enterprise Data Ingestion</span>
+<span class="text-outline text-body-sm">•</span>
+<span class="font-data-mono-sm text-data-mono-sm text-secondary font-medium">Cluster Sync State: HEALTHY</span>
+</div>
+<h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight">Sources &amp; Connecteurs — Gouvernance des Flux d'Ingestion</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Centralisation, synchronisation sécurisée et respect strict des ACLs d'accès sur l'ensemble du patrimoine documentaire de l'organisation.</p>
+</div>
+<div class="flex items-center gap-space-sm shrink-0">
+<button class="h-density-input-h px-space-md rounded-lg bg-surface-container-low text-on-surface font-label-md text-label-md hover:bg-surface-container hover:text-primary transition-all flex items-center gap-space-xs shadow-sm" type="button">
+<span class="material-symbols-outlined text-[18px]">sync</span>
+<span>Actualiser Métriques</span>
+</button>
+<button class="h-density-input-h px-space-md rounded-lg bg-primary text-on-primary font-label-md text-label-md hover:bg-primary-container transition-all flex items-center gap-space-xs shadow-md" type="button">
+<span class="material-symbols-outlined text-[18px]">add_link</span>
+<span>+ Connecter une nouvelle source</span>
+</button>
+</div>
+</div>
+<!-- 4 High-Density Operational Metrics Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-lg">
+<div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between group hover:bg-surface-container-low transition-colors">
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Flotte Active</span>
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+</div>
+<div class="flex items-baseline justify-between">
+<div class="font-headline-xl text-headline-xl text-on-surface font-bold">18</div>
+<span class="font-label-sm text-label-sm text-secondary font-medium">Connecteurs Actifs</span>
+</div>
+<div class="mt-space-md pt-space-xs flex items-center justify-between text-on-surface-variant font-data-mono-sm text-data-mono-sm">
+<span>0 En échec bloquant</span>
+<span class="text-primary font-semibold">100% DISPO</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between group hover:bg-surface-container-low transition-colors">
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Multi-Tenant Reach</span>
+<span class="material-symbols-outlined text-outline text-[18px]">cloud_queue</span>
+</div>
+<div class="flex items-baseline justify-between">
+<div class="font-headline-xl text-headline-xl text-on-surface font-bold">5</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-medium">Écosystèmes Cloud</span>
+</div>
+<div class="mt-space-md pt-space-xs flex items-center gap-1.5 font-data-mono-sm text-data-mono-sm text-on-surface-variant">
+<span class="px-1 py-0.5 rounded bg-surface-container text-on-surface">M365</span>
+<span class="px-1 py-0.5 rounded bg-surface-container text-on-surface">Atlassian</span>
+<span class="px-1 py-0.5 rounded bg-surface-container text-on-surface">AWS</span>
+<span class="px-1 py-0.5 rounded bg-surface-container text-on-surface">G-Workspace</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between group hover:bg-surface-container-low transition-colors">
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Latence Indexation</span>
+<span class="material-symbols-outlined text-secondary text-[18px]">timelapse</span>
+</div>
+<div class="flex items-baseline justify-between">
+<div class="font-headline-xl text-headline-xl text-on-surface font-bold">12 <span class="text-headline-md font-semibold text-outline">min</span></div>
+<span class="font-label-sm text-label-sm text-secondary font-medium">Sync Moyenne</span>
+</div>
+<div class="mt-space-md pt-space-xs flex items-center justify-between font-data-mono-sm text-data-mono-sm">
+<span class="text-on-surface-variant">Plus court: 45s (Webhooks)</span>
+<span class="text-secondary font-semibold">−18% vs M-1</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between group hover:bg-surface-container-low transition-colors">
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Sécurité des Portées</span>
+<span class="material-symbols-outlined text-secondary text-[18px]">lock_clock</span>
+</div>
+<div class="flex items-baseline justify-between">
+<div class="font-headline-xl text-headline-xl text-secondary font-bold">100%</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-medium">Respect ACLs</span>
+</div>
+<div class="mt-space-md pt-space-xs flex items-center justify-between font-data-mono-sm text-data-mono-sm">
+<span class="text-on-surface-variant">Matrice Zero-Trust</span>
+<span class="text-on-secondary-container bg-secondary-container px-1 rounded">NATIF ENTRA</span>
+</div>
+</div>
+</div>
+<!-- Main Workspace Split: Connector List & Deep Diagnostic Inspector -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-space-lg items-start">
+<!-- Left Column: Filter Tabs & Connectors Inventory (8 cols) -->
+<div class="xl:col-span-8 space-y-space-lg">
+<!-- Interactive Category Switcher -->
+<div class="bg-surface-container-lowest p-space-xs rounded-xl shadow-sm flex flex-wrap items-center gap-1">
+<button class="px-space-md py-1.5 rounded-lg bg-primary text-on-primary font-label-md text-label-md font-medium shadow-sm transition-all" type="button">Tous les connecteurs (18)</button>
+<button class="px-space-md py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-label-md text-label-md font-medium transition-all" type="button">Stockage Cloud &amp; Suites (8)</button>
+<button class="px-space-md py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-label-md text-label-md font-medium transition-all" type="button">Wikis &amp; Documentation (5)</button>
+<button class="px-space-md py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-label-md text-label-md font-medium transition-all" type="button">Datalakes &amp; S3 (3)</button>
+<button class="px-space-md py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface font-label-md text-label-md font-medium transition-all" type="button">Connecteurs MCP (2)</button>
+</div>
+<!-- Connector Cards Collection -->
+<div class="space-y-space-md">
+<!-- Connector 1 : SharePoint Online (Active Selected Inspector) -->
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm hover:shadow-md transition-all relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-primary"></div>
+<div class="flex flex-col sm:flex-row sm:items-start justify-between gap-space-md">
+<div class="flex items-start gap-space-md">
+<div class="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center shrink-0 shadow-inner text-primary">
+<span class="material-symbols-outlined text-[28px]">domain_verification</span>
+</div>
+<div>
+<div class="flex flex-wrap items-center gap-2">
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">SharePoint Online Enterprise</h3>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-data-mono-sm text-data-mono-sm">Tenant Office 365</span>
+<span class="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-secondary-container text-on-secondary-container font-data-mono-sm text-data-mono-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                      En ligne &amp; Synchronisé
+                    </span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Ingestion récursive des sites métiers, listes métadonnées et protocoles de classification DLP Microsoft Purview.</p>
+</div>
+</div>
+<div class="flex items-center gap-2 self-start sm:self-center">
+<button class="p-1.5 rounded-lg bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors" title="Audit des droits" type="button">
+<span class="material-symbols-outlined text-[18px]">verified</span>
+</button>
+<button class="p-1.5 rounded-lg bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors" title="Paramètres" type="button">
+<span class="material-symbols-outlined text-[18px]">tune</span>
+</button>
+</div>
+</div>
+<!-- Detailed Metrics Strip -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-md mt-space-lg p-space-md rounded-lg bg-surface-container-low">
+<div>
+<span class="font-label-sm text-label-sm text-outline uppercase block">Périmètre Ingestion</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold mt-0.5 block">6 Sites • 42 Bibliothèques</span>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">64,800 fichiers surveillés</span>
+</div>
+<div>
+<span class="font-label-sm text-label-sm text-outline uppercase block">Mode de Synchronisation</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold mt-0.5 block">Continu (Webhooks Graph API)</span>
+<span class="font-data-mono-sm text-data-mono-sm text-secondary font-medium">Dernier passage: il y a 8 min</span>
+</div>
+<div>
+<span class="font-label-sm text-label-sm text-outline uppercase block">Gouvernance &amp; Droits</span>
+<span class="font-headline-sm text-headline-sm text-secondary font-semibold mt-0.5 block">Sync Dynamique ACLs</span>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">Azure Entra ID / Groupes M365</span>
+</div>
+</div>
+<!-- Action Toolbar Footer -->
+<div class="mt-space-md pt-space-xs flex flex-wrap items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<span class="font-data-mono-sm text-data-mono-sm text-outline">Indexation ID: <code class="text-on-surface">sp-prod-corp-01</code></span>
+<span class="text-outline">•</span>
+<span class="font-data-mono-sm text-data-mono-sm text-secondary">mTLS Actif</span>
+</div>
+<div class="flex items-center gap-space-sm">
+<button class="h-8 px-3 rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md hover:bg-surface-container-highest transition-colors" type="button">Configurer les bibliothèques</button>
+<button class="h-8 px-3 rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md hover:bg-surface-container-highest transition-colors flex items-center gap-1" type="button">
+<span class="material-symbols-outlined text-[16px]">restart_alt</span>
+<span>Forcer un rescan</span>
+</button>
+<button class="h-8 px-3 rounded-lg bg-surface-container-high text-primary font-label-md text-label-md hover:bg-surface-container-highest transition-colors" type="button">Historique d'audit</button>
+</div>
+</div>
+</div>
+<!-- Connector 2 : Atlassian Confluence -->
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm hover:shadow-md transition-all">
+<div class="flex flex-col sm:flex-row sm:items-start justify-between gap-space-md">
+<div class="flex items-start gap-space-md">
+<div class="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center shrink-0 text-primary">
+<span class="material-symbols-outlined text-[28px]">menu_book</span>
+</div>
+<div>
+<div class="flex flex-wrap items-center gap-2">
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Atlassian Confluence DC &amp; Cloud</h3>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-data-mono-sm text-data-mono-sm">R&amp;D • Architecture</span>
+<span class="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-secondary-container text-on-secondary-container font-data-mono-sm text-data-mono-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                      En ligne
+                    </span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Extraction hiérarchique des arbres d'espaces, macros de code, diagrammes et restrictions au niveau de la page.</p>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-1.5 rounded-lg bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-md mt-space-lg p-space-md rounded-lg bg-surface-container-low">
+<div>
+<span class="font-label-sm text-label-sm text-outline uppercase block">Périmètre Ingestion</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold mt-0.5 block">14 Espaces de Travail</span>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">22,400 pages indexées hiérarchisées</span>
+</div>
+<div>
+<span class="font-label-sm text-label-sm text-outline uppercase block">Mode de Synchronisation</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold mt-0.5 block">Polling incrémental 15 min</span>
+<span class="font-data-mono-sm text-data-mono-sm text-secondary font-medium">Dernier passage: il y a 3 min</span>
+</div>
+<div>
+<span class="font-label-sm text-label-sm text-outline uppercase block">Gouvernance &amp; Droits</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold mt-0.5 block">Groupes Atlassian Access</span>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">SSO SAML / Okta Sync</span>
+</div>
+</div>
+<div class="mt-space-md pt-space-xs flex items-center justify-between">
+<span class="font-data-mono-sm text-data-mono-sm text-outline">Connecteur ID: <code class="text-on-surface">conf-atlassian-cloud</code></span>
+<div class="flex items-center gap-space-sm">
+<button class="h-8 px-3 rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md hover:bg-surface-container-highest transition-colors" type="button">Gérer Espaces</button>
+<button class="h-8 px-3 rounded-lg bg-surface-container-high text-primary font-label-md text-label-md hover:bg-surface-container-highest transition-colors" type="button">Détails</button>
+</div>
+</div>
+</div>
+<!-- Connector 3 : Google Drive Governance Vault (Active Sync State) -->
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm hover:shadow-md transition-all">
+<div class="flex flex-col sm:flex-row sm:items-start justify-between gap-space-md">
+<div class="flex items-start gap-space-md">
+<div class="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center shrink-0 text-primary">
+<span class="material-symbols-outlined text-[28px]">folder_shared</span>
+</div>
+<div>
+<div class="flex flex-wrap items-center gap-2">
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Google Drive Governance Vault</h3>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-data-mono-sm text-data-mono-sm">Shared Drives Corporate</span>
+<span class="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-surface-container-highest text-primary font-data-mono-sm text-data-mono-sm font-semibold">
+<span class="w-2 h-2 rounded-full bg-primary animate-ping"></span>
+                      Sync en cours (82%)
+                    </span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Shared Drives Entreprise dédiés aux instances de Direction, Finances et Ressources Humaines.</p>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-1.5 rounded-lg bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">pause</span>
+</button>
+</div>
+</div>
+<!-- Ingestion Progress Bar Visual -->
+<div class="mt-space-md p-space-md rounded-lg bg-surface-container-low space-y-space-xs">
+<div class="flex justify-between font-label-sm text-label-sm">
+<span class="text-on-surface-variant">Ingestion incrémentielle : Lot 18,400 / 22,440 objets</span>
+<span class="font-data-mono-sm text-data-mono-sm font-semibold text-primary">82%</span>
+</div>
+<div class="w-full bg-surface-container-highest h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full rounded-full transition-all duration-500" style="width: 82%;"></div>
+</div>
+<div class="flex justify-between font-data-mono-sm text-data-mono-sm text-outline pt-1">
+<span>Vitesse : 412 docs/min</span>
+<span>Temps restant estimé : 2 min 40s</span>
+</div>
+</div>
+<div class="mt-space-md pt-space-xs flex items-center justify-between">
+<span class="font-data-mono-sm text-data-mono-sm text-outline">Drives: <code>Direction-Générale</code>, <code>Finance-Ops</code>, <code>RH-Confidentiel</code></span>
+<button class="h-8 px-3 rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md hover:bg-surface-container-highest transition-colors" type="button">Journal d'activité</button>
+</div>
+</div>
+<!-- Connector 4 : AWS S3 Archival & Compliance -->
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm hover:shadow-md transition-all">
+<div class="flex flex-col sm:flex-row sm:items-start justify-between gap-space-md">
+<div class="flex items-start gap-space-md">
+<div class="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center shrink-0 text-primary">
+<span class="material-symbols-outlined text-[28px]">inventory_2</span>
+</div>
+<div>
+<div class="flex flex-wrap items-center gap-2">
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Amazon Web Services - S3 Cold Archival &amp; Compliance</h3>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-data-mono-sm text-data-mono-sm">us-east-1</span>
+<span class="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-secondary-container text-on-secondary-container font-data-mono-sm text-data-mono-sm font-semibold">
+<span class="material-symbols-outlined text-[14px]">key</span>
+                      En ligne - Chiffré KMS
+                    </span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Bucket <code class="text-on-surface">acme-compliance-raw-v3</code> contenant 38,100 rapports audités et attestations réglementaires.</p>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-1.5 rounded-lg bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">shield</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-md mt-space-lg p-space-md rounded-lg bg-surface-container-low">
+<div>
+<span class="font-label-sm text-label-sm text-outline uppercase block">Volume Documentaire</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold mt-0.5 block">38,100 Rapports</span>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">OCR &amp; Embeddings Générés</span>
+</div>
+<div>
+<span class="font-label-sm text-label-sm text-outline uppercase block">Chiffrement Clés</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold mt-0.5 block">AWS KMS Cust-Managed</span>
+<span class="font-data-mono-sm text-data-mono-sm text-secondary font-medium">Rotation automatique 90j</span>
+</div>
+<div>
+<span class="font-label-sm text-label-sm text-outline uppercase block">Mécanisme</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold mt-0.5 block">S3 Event Notifications</span>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">Queue SQS • Ingestion zéro-délai</span>
+</div>
+</div>
+<div class="mt-space-md pt-space-xs flex items-center justify-between">
+<span class="font-data-mono-sm text-data-mono-sm text-outline">Bucket ARN: <code>arn:aws:s3:::acme-compliance-raw-v3</code></span>
+<button class="h-8 px-3 rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md hover:bg-surface-container-highest transition-colors" type="button">Contrôle IAM</button>
+</div>
+</div>
+<!-- Connector 5 : Model Context Protocol (MCP) -->
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm hover:shadow-md transition-all">
+<div class="flex flex-col sm:flex-row sm:items-start justify-between gap-space-md">
+<div class="flex items-start gap-space-md">
+<div class="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center shrink-0 text-primary">
+<span class="material-symbols-outlined text-[28px]">hub</span>
+</div>
+<div>
+<div class="flex flex-wrap items-center gap-2">
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Seshat MCP Enterprise Connector</h3>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-data-mono-sm text-data-mono-sm">Model Context Protocol v1</span>
+<span class="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-secondary-container text-on-secondary-container font-data-mono-sm text-data-mono-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                      Actif - 2 Runtimes Connectés
+                    </span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Intégration directe des serveurs MCP internes pour context injection dynamique et interrogation temps-réel d'outils métiers.</p>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-2 py-1 rounded bg-surface-container text-on-surface font-data-mono-sm text-data-mono-sm">STDIO / SSE Secure</span>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-md mt-space-lg p-space-md rounded-lg bg-surface-container-low">
+<div class="flex items-center gap-space-sm">
+<div class="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[18px]">terminal</span>
+</div>
+<div>
+<div class="font-label-md text-label-md font-semibold text-on-surface">mcp-erp-core-bridge</div>
+<div class="font-data-mono-sm text-data-mono-sm text-outline">Endpoint: sse://mcp.internal.acme.corp/erp</div>
+</div>
+</div>
+<div class="flex items-center gap-space-sm">
+<div class="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[18px]">database</span>
+</div>
+<div>
+<div class="font-label-md text-label-md font-semibold text-on-surface">mcp-customer-sql-readonly</div>
+<div class="font-data-mono-sm text-data-mono-sm text-outline">Endpoint: sse://mcp.internal.acme.corp/crm</div>
+</div>
+</div>
+</div>
+<div class="mt-space-md pt-space-xs flex items-center justify-between">
+<span class="font-data-mono-sm text-data-mono-sm text-secondary font-medium">Injection contextuelle active sur RAG Pipeline</span>
+<button class="h-8 px-3 rounded-lg bg-surface-container-high text-primary font-label-md text-label-md hover:bg-surface-container-highest transition-colors" type="button">Gérer les schémas d'outils MCP</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Contextual Inspector & Telemetry Drawer (4 cols) -->
+<div class="xl:col-span-4 space-y-space-lg sticky top-20">
+<!-- Inspector Panel Card -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+<div class="p-space-lg bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary text-[20px]">monitor_heart</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Télémétrie en Direct</h2>
+</div>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-highest text-primary font-data-mono-sm text-data-mono-sm">SP-PROD-01</span>
+</div>
+<!-- Selected Source Visual Identity -->
+<div class="p-space-lg space-y-space-md">
+<div>
+<span class="font-label-sm text-label-sm text-outline uppercase block">Connecteur Inspecté</span>
+<h3 class="font-headline-md text-headline-md text-on-surface font-bold mt-0.5">SharePoint Online Tenant</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Tenant ID: <code class="text-on-surface font-data-mono-sm">8fa19e34-c482-4112-9ab2-094bf821</code></p>
+</div>
+<!-- Ingestion Rate Realtime Chart Visual -->
+<div class="p-space-md rounded-lg bg-surface-container-low space-y-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-outline">Débit moyen d'ingestion</span>
+<span class="font-data-mono-md text-data-mono-md font-semibold text-primary">340 docs/min</span>
+</div>
+<div class="h-16 w-full flex items-end gap-1.5 pt-2">
+<div class="flex-1 bg-surface-container-highest hover:bg-primary transition-all rounded-t h-[45%]" title="T-60m: 153 docs"></div>
+<div class="flex-1 bg-surface-container-highest hover:bg-primary transition-all rounded-t h-[60%]" title="T-50m: 204 docs"></div>
+<div class="flex-1 bg-surface-container-highest hover:bg-primary transition-all rounded-t h-[80%]" title="T-40m: 272 docs"></div>
+<div class="flex-1 bg-surface-container-highest hover:bg-primary transition-all rounded-t h-[70%]" title="T-30m: 238 docs"></div>
+<div class="flex-1 bg-surface-container-highest hover:bg-primary transition-all rounded-t h-[95%]" title="T-20m: 323 docs"></div>
+<div class="flex-1 bg-primary rounded-t h-[100%]" title="T-10m: 340 docs"></div>
+<div class="flex-1 bg-primary/80 rounded-t h-[85%]" title="Maintenant: 289 docs"></div>
+</div>
+<div class="flex justify-between font-data-mono-sm text-data-mono-sm text-outline pt-1">
+<span>-60 min</span>
+<span>Temps réel</span>
+</div>
+</div>
+<!-- Protocols & Security Attributes -->
+<div class="space-y-space-xs">
+<span class="font-label-sm text-label-sm text-outline uppercase block">Architecture de Connexion</span>
+<div class="p-space-sm rounded-lg bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-secondary text-[18px]">verified_user</span>
+<span class="font-body-sm text-body-sm text-on-surface">Protocole Auth</span>
+</div>
+<span class="font-data-mono-sm text-data-mono-sm font-semibold text-on-surface">OAuth2.0 + mTLS</span>
+</div>
+<div class="p-space-sm rounded-lg bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-secondary text-[18px]">vpn_key</span>
+<span class="font-body-sm text-body-sm text-on-surface">Certificat x509</span>
+</div>
+<span class="font-data-mono-sm text-data-mono-sm text-secondary font-medium">Valide (318j restants)</span>
+</div>
+<div class="p-space-sm rounded-lg bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-secondary text-[18px]">fact_check</span>
+<span class="font-body-sm text-body-sm text-on-surface">Audit des Droits</span>
+</div>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface">100% Synchronisé</span>
+</div>
+</div>
+<!-- Filtered Errors & Discarded Files Counter -->
+<div class="p-space-md rounded-lg bg-surface-container-high space-y-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm font-semibold text-on-surface">Santé du pipeline</span>
+<span class="px-1.5 py-0.5 rounded bg-secondary-container text-on-secondary-container font-data-mono-sm text-data-mono-sm font-bold">0 Bloquant</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">2 fichiers contournés car protégés par mot de passe ou corrompus à l'origine.</p>
+<div class="pt-1 flex items-center gap-2">
+<a class="font-label-sm text-label-sm text-primary hover:underline font-semibold flex items-center gap-1" href="#">
+<span>Voir le registre d'exceptions</span>
+<span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</a>
+</div>
+</div>
+<!-- Recent Synchronisation Log Trace (Last 5 events) -->
+<div class="space-y-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-outline uppercase">5 Derniers Événements Sync</span>
+<span class="font-data-mono-sm text-data-mono-sm text-secondary animate-pulse">• Live feed</span>
+</div>
+<div class="space-y-2 font-data-mono-sm text-data-mono-sm">
+<div class="p-2 rounded bg-surface-container-low flex items-start justify-between gap-2">
+<div class="flex items-start gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[16px] shrink-0 mt-0.5">check_circle</span>
+<div>
+<span class="text-on-surface font-medium block">Webhook delta processed</span>
+<span class="text-outline text-body-sm">412 docs • 0 err</span>
+</div>
+</div>
+<span class="text-outline shrink-0">14:32:08</span>
+</div>
+<div class="p-2 rounded bg-surface-container-low flex items-start justify-between gap-2">
+<div class="flex items-start gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[16px] shrink-0 mt-0.5">sync_alt</span>
+<div>
+<span class="text-on-surface font-medium block">ACLs Entra ID Refresh</span>
+<span class="text-outline text-body-sm">18 security groups</span>
+</div>
+</div>
+<span class="text-outline shrink-0">14:24:19</span>
+</div>
+<div class="p-2 rounded bg-surface-container-low flex items-start justify-between gap-2">
+<div class="flex items-start gap-1.5">
+<span class="material-symbols-outlined text-outline text-[16px] shrink-0 mt-0.5">filter_alt</span>
+<div>
+<span class="text-on-surface font-medium block">Password Protected Skipped</span>
+<span class="text-outline text-body-sm">fin_q3_budget_lock.xlsx</span>
+</div>
+</div>
+<span class="text-outline shrink-0">14:18:02</span>
+</div>
+<div class="p-2 rounded bg-surface-container-low flex items-start justify-between gap-2">
+<div class="flex items-start gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[16px] shrink-0 mt-0.5">check_circle</span>
+<div>
+<span class="text-on-surface font-medium block">Embedding chunking batch</span>
+<span class="text-outline text-body-sm">849 vectors indexed</span>
+</div>
+</div>
+<span class="text-outline shrink-0">14:10:45</span>
+</div>
+<div class="p-2 rounded bg-surface-container-low flex items-start justify-between gap-2">
+<div class="flex items-start gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[16px] shrink-0 mt-0.5">refresh</span>
+<div>
+<span class="text-on-surface font-medium block">OAuth2 Token Renewed</span>
+<span class="text-outline text-body-sm">Bearer scoped /Sites.Read</span>
+</div>
+</div>
+<span class="text-outline shrink-0">14:00:00</span>
+</div>
+</div>
+</div>
+<!-- Action Button inside drawer -->
+<button class="w-full h-density-input-h rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md hover:bg-surface-container-highest transition-colors flex items-center justify-center gap-1.5" type="button">
+<span class="material-symbols-outlined text-[16px]">download</span>
+<span>Exporter Rapport d'Audit JSON</span>
+</button>
+</div>
+</div>
+<!-- System Architecture Visual Note -->
+<div class="p-space-lg rounded-xl bg-surface-container-lowest shadow-sm space-y-space-sm">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary text-[20px]">account_tree</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">Topologie des Connecteurs</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Les connecteurs SeshatOS opèrent dans un conteneur sécurisé isolé avec clés de chiffrement déléguées. Chaque chunk vectorisé conserve l'identifiant de sécurité source originel (SID / Security Identifier) garantissant l'étanchéité totale des accès utilisateurs lors de la restitution RAG.</p>
+<div class="pt-2 flex items-center justify-between text-outline font-data-mono-sm text-data-mono-sm">
+<span>Isolation: Niveau L3/eBPF</span>
+<span class="text-secondary font-medium">Vérifié ISO 27001</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div></main></div></body></html>

@@ -85,6 +85,33 @@ func (env testEnv) addMember(t *testing.T, role string) *iam.Principal {
 	return principal
 }
 
+// addSecondMember is addMember with a caller-chosen email prefix, for tests
+// that need two distinct "member"-role principals in the same org (addMember
+// alone would collide on "member@example.com" for both).
+func (env testEnv) addSecondMember(t *testing.T, emailPrefix string) *iam.Principal {
+	t.Helper()
+	email := emailPrefix + "@example.com"
+	user, err := env.iam.CreateUser(context.Background(), env.adminPrincipal, iam.CreateUserParams{
+		Email:          email,
+		Password:       "password123",
+		DisplayName:    emailPrefix,
+		OrganizationID: env.orgID,
+		Role:           "member",
+	})
+	if err != nil {
+		t.Fatalf("create %s user: %v", emailPrefix, err)
+	}
+	login, err := env.iam.Login(context.Background(), user.Email, "password123")
+	if err != nil {
+		t.Fatalf("login %s: %v", emailPrefix, err)
+	}
+	principal, err := env.iam.ResolvePrincipal(context.Background(), login.Token)
+	if err != nil {
+		t.Fatalf("resolve %s principal: %v", emailPrefix, err)
+	}
+	return principal
+}
+
 // addOutsider creates a second organization and a member inside it, with no
 // membership at all in env.orgID — for tests asserting that a genuine
 // non-member gets rejected, as opposed to a member merely lacking a

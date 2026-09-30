@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Plus+Jakarta+Sans:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-secondary-container": "#007353", "surface-variant": "#dae2fd", "background": "#faf8ff", "on-primary": "#ffffff", "surface-container-highest": "#dae2fd", "inverse-surface": "#283044", "surface-dim": "#d2d9f4", "on-background": "#131b2e", "inverse-primary": "#b7c4ff", "tertiary-container": "#712ae2", "secondary": "#006c4e", "on-error-container": "#93000a", "on-tertiary-fixed": "#25005a", "primary": "#0037b0", "surface-tint": "#2151da", "on-tertiary": "#ffffff", "error-container": "#ffdad6", "secondary-container": "#97f5cc", "on-tertiary-fixed-variant": "#5a00c6", "surface": "#faf8ff", "secondary-fixed-dim": "#7bd8b1", "on-tertiary-container": "#dfccff", "tertiary-fixed": "#eaddff", "on-primary-fixed-variant": "#0039b5", "surface-bright": "#faf8ff", "on-secondary-fixed": "#002115", "tertiary-fixed-dim": "#d2bbff", "on-primary-fixed": "#001551", "primary-container": "#1d4ed8", "on-surface-variant": "#434655", "surface-container-low": "#f2f3ff", "surface-container": "#eaedff", "on-primary-container": "#cad3ff", "error": "#ba1a1a", "primary-fixed": "#dce1ff", "primary-fixed-dim": "#b7c4ff", "outline": "#747686", "on-surface": "#131b2e", "surface-container-high": "#e2e7ff", "tertiary": "#5700c0", "on-secondary-fixed-variant": "#00513a", "surface-container-lowest": "#ffffff", "on-error": "#ffffff", "outline-variant": "#c4c5d7", "inverse-on-surface": "#eef0ff", "on-secondary": "#ffffff", "secondary-fixed": "#97f5cc" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "density-input-h": "2rem", "space-2xs": "0.125rem", "space-3xl": "3rem", "gutter-app": "1rem", "space-xl": "1.5rem", "space-2xl": "2rem", "density-table-row-h": "2.25rem", "sidebar-width": "17.5rem", "space-sm": "0.5rem", "space-lg": "1rem", "space-md": "0.75rem", "space-xs": "0.25rem" }, "fontFamily": { "body-lg": ["Inter"], "label-md": ["Inter"], "data-mono-md": ["JetBrains Mono"], "headline-md": ["Plus Jakarta Sans"], "headline-xl": ["Plus Jakarta Sans"], "body-sm": ["Inter"], "headline-lg": ["Plus Jakarta Sans"], "headline-sm": ["Plus Jakarta Sans"], "body-md": ["Inter"], "data-mono-sm": ["JetBrains Mono"], "label-sm": ["Inter"] }, "fontSize": { "body-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "-0.011em", "fontWeight": "400" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "500" }], "data-mono-md": ["13px", { "lineHeight": "18px", "letterSpacing": "-0.01em", "fontWeight": "400" }], "headline-md": ["18px", { "lineHeight": "26px", "letterSpacing": "-0.015em", "fontWeight": "600" }], "headline-xl": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.025em", "fontWeight": "700" }], "body-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0em", "fontWeight": "400" }], "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600" }], "headline-sm": ["15px", { "lineHeight": "22px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "body-md": ["14px", { "lineHeight": "20px", "letterSpacing": "-0.006em", "fontWeight": "400" }], "data-mono-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0em", "fontWeight": "500" }], "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.025em", "fontWeight": "600" }] } } } }</script></head><body class="bg-background font-body-md text-body-md text-on-surface min-h-screen"><aside class="fixed left-0 top-0 h-full w-[17.5rem] bg-surface-container-low border-r border-outline-variant/30 z-50 flex flex-col justify-between select-none"><div class="flex flex-col flex-1 overflow-y-auto"><div class="h-16 px-space-lg flex items-center gap-space-sm border-b border-outline-variant/20 bg-surface-container-lowest"><img alt="SeshatOS Geometric Glyph Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1VmZs8sohnfr1vFLB9IDYmCMmeG9T8lUAf8BfhvjQAYUVZZipLU5lSpSH6P5b7HZODnjn9WQa677hfC6rJIlJPCTDcgZDjm_Zu_iFVuXd1aQ4y2yG3XsMP2S2sYKqlkz6dGhPHLXs7hf9xwuVKcQ4yaW8H3PTAyHafeG95tbiJPs63WBSMUmKvovYaZgar_R9m7VKygDZn5DjF9NBXIGCbZ3CKxpmQu2RwKQiR2tw-MY_9YY-QAmAULlmuk"/><div class="flex items-center gap-space-xs"><span class="font-headline-sm text-headline-sm text-on-surface tracking-tight font-semibold">SeshatOS</span><span class="px-1.5 py-0.5 rounded-lg bg-surface-container-high text-primary font-data-mono-sm text-data-mono-sm uppercase">Knowledge</span></div></div><div class="px-space-md py-space-sm border-b border-outline-variant/20 bg-surface-container/40"><div class="flex items-center justify-between"><span class="font-label-sm text-label-sm text-on-surface-variant truncate font-medium">Acme Global Corp</span><span class="px-1 rounded bg-secondary-container text-on-secondary-container font-data-mono-sm text-data-mono-sm">PROD</span></div><div class="flex items-center gap-1.5 mt-1"><span class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span><span class="font-data-mono-sm text-data-mono-sm text-secondary font-medium truncate">All Connectors Syncing</span></div></div><nav class="flex-1 px-space-sm py-space-md space-y-space-md" data-active-classes="bg-primary-container text-on-primary font-medium rounded-lg"><div class="space-y-space-2xs"><div class="px-space-sm py-1 font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold">Discover</div><a class="flex items-center px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="overview" href="#"><span class="font-body-md text-body-md">Overview</span></a><a class="flex items-center px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="discover" href="#"><span class="font-body-md text-body-md">Discover</span></a><a aria-current="page" class="flex items-center px-space-sm py-1.5 transition-colors bg-primary-container text-on-primary font-medium rounded-lg" data-path="knowledge-graph" href="#"><span class="font-body-md text-body-md">Knowledge Graph</span></a></div><div class="space-y-space-2xs"><div class="px-space-sm py-1 font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold">Ask</div><a class="flex items-center px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="search" href="#"><span class="font-body-md text-body-md">Search</span></a><a class="flex items-center px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="chat-knowledge" href="#"><span class="font-body-md text-body-md">Chat Knowledge</span></a></div><div class="space-y-space-2xs"><div class="px-space-sm py-1 font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold">Act</div><a class="flex items-center px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="actions" href="#"><span class="font-body-md text-body-md">Actions</span></a><a class="flex items-center px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="sources" href="#"><span class="font-body-md text-body-md">Sources</span></a><a class="flex items-center px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="collections" href="#"><span class="font-body-md text-body-md">Collections</span></a></div></nav></div><div class="p-space-sm border-t border-outline-variant/30 bg-surface-container-lowest"><nav class="space-y-space-2xs" data-active-classes="bg-primary-container text-on-primary font-medium rounded-lg"><a class="flex items-center px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="audit-compliance" href="#"><span class="font-body-md text-body-md">Audit &amp; Compliance</span></a><a class="flex items-center px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="help-center" href="#"><span class="font-body-md text-body-md">Help Center</span></a></nav></div></aside><div class="pl-[17.5rem] flex flex-col min-h-screen"><header class="fixed top-0 left-[17.5rem] right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-md border-b border-outline-variant/30 z-40 flex items-center justify-between px-space-xl"><div class="flex items-center gap-space-md w-full max-w-lg"><button class="flex items-center justify-between w-full h-density-input-h px-space-md rounded-lg bg-surface-container-low border border-outline-variant/50 text-on-surface-variant hover:border-outline hover:bg-surface-container transition-all group" type="button"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-outline text-[18px] group-hover:text-on-surface">search</span><span class="font-body-sm text-body-sm text-outline group-hover:text-on-surface">Search knowledge entities, facts, sources...</span></div><div class="flex items-center gap-1 font-data-mono-sm text-data-mono-sm px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant border border-outline-variant/50"><kbd>⌘</kbd><kbd>K</kbd></div></button></div><div class="flex items-center gap-space-lg"><div class="flex items-center gap-space-sm"><button class="relative p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" title="3 Governance Alerts" type="button"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1 right-1 flex items-center justify-center w-4 h-4 rounded-full bg-error text-on-error font-data-mono-sm text-data-mono-sm">3</span></button><a class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="audit-compliance" href="#" title="Audit Logs"><span class="material-symbols-outlined text-[20px]">history_toggle_off</span></a></div><div class="h-6 w-px bg-outline-variant/40"></div><div class="flex items-center gap-space-sm"><img alt="Profile" class="w-8 h-8 rounded-full object-cover ring-1 ring-outline-variant/50" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBGFqXlFUN1Js5y5dnc5mabMSlMmelH7xyY_k-QvDQMJbr2JkvYwTT4-Tyt9VCaIdZ5rkafDNU7rlFhmq0VCQpGj_rLLDYPZ4IDx-wzcZ2QLG3-gsnRJimnTLfalpE5_YZzVxwSRyf2cGqqnkYuGTeS1yShsBFygh1KEOYbiLAvC8YLhJZyYits5e5JGokQJD6S_dU9TZJL9Z-1RFFhtnqvrmiaVObg6S3EVBeynIY1AvjqDRAxsOdBpA"/><div class="flex flex-col text-left"><span class="font-body-sm text-body-sm font-semibold text-on-surface leading-tight">Éléonore de Vance</span><span class="font-label-sm text-label-sm text-on-surface-variant leading-tight">Knowledge Lead &amp; Admin</span></div></div></div></header><main class="w-full pt-16 bg-background flex-1"><div class="flex flex-col w-full">
+<!-- Sub-navigation / Breadcrumb & View Mode Bar -->
+<div class="flex items-center justify-between px-space-xl py-space-sm bg-surface-container-lowest border-b border-outline-variant/30">
+<div class="flex items-center gap-space-sm">
+<div class="flex items-center gap-1 text-on-surface-variant font-label-md text-label-md">
+<span>SeshatOS</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span>Knowledge</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-on-surface font-semibold">Knowledge Graph</span>
+</div>
+<span class="px-1.5 py-0.5 rounded-lg bg-surface-container-high text-primary font-data-mono-sm text-data-mono-sm uppercase font-semibold">Ontology v4.8</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-data-mono-sm text-data-mono-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary animate-ping"></span>
+        Active Inference: Neo4j Synced
+      </span>
+</div>
+<div class="flex items-center gap-space-sm">
+<div class="flex items-center bg-surface-container-low rounded-lg p-0.5 text-on-surface-variant font-label-md text-label-md">
+<button class="px-2.5 py-1 rounded bg-surface-container-lowest text-on-surface font-medium shadow-sm flex items-center gap-1.5" type="button">
+<span class="material-symbols-outlined text-[16px] text-primary">hub</span>
+          2D Topology
+        </button>
+<button class="px-2.5 py-1 rounded text-on-surface-variant hover:text-on-surface flex items-center gap-1.5" type="button">
+<span class="material-symbols-outlined text-[16px]">account_tree</span>
+          Radial Hierarchy
+        </button>
+<button class="px-2.5 py-1 rounded text-on-surface-variant hover:text-on-surface flex items-center gap-1.5" type="button">
+<span class="material-symbols-outlined text-[16px]">schema</span>
+          Ontology Matrix
+        </button>
+</div>
+<div class="h-4 w-px bg-outline-variant/40"></div>
+<button class="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-label-md text-label-md transition-colors" title="Configuration de la projection vectorielle" type="button">
+<span class="material-symbols-outlined text-[16px] text-outline">tune</span>
+        Settings
+      </button>
+</div>
+</div>
+<!-- Page Header & Global Context -->
+<div class="px-space-xl pt-space-lg pb-space-sm bg-surface-container-lowest border-b border-outline-variant/20">
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight font-bold">
+          Knowledge Graph — Topologie Relationnelle &amp; Ontologie d'Entreprise
+        </h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-0.5">
+          Cartographie interactive des relations sémantiques entre politiques, procédures, systèmes, personnes et risques de conformité.
+        </p>
+</div>
+<div class="flex items-center gap-space-sm flex-wrap">
+<div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-container-low border border-outline-variant/40 text-on-surface font-data-mono-sm text-data-mono-sm">
+<span class="text-outline">Engine:</span>
+<span class="font-semibold text-primary">GraphRAG Hybrid (Dense + Neo4j)</span>
+</div>
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-on-primary font-label-md text-label-md hover:bg-primary-container transition-all shadow-sm" type="button">
+<span class="material-symbols-outlined text-[18px]">download</span>
+          Exporter la topologie (SVG / Cypher)
+        </button>
+</div>
+</div>
+<!-- Graph Controls & Multi-Filters Toolbar -->
+<div class="mt-space-md pt-space-md border-t border-outline-variant/20 flex flex-wrap items-center justify-between gap-space-md">
+<!-- Search inside graph -->
+<div class="flex items-center gap-space-sm flex-1 min-w-[280px] max-w-md">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-outline text-[18px]">travel_explore</span>
+<input class="w-full h-density-input-h pl-8 pr-20 rounded-lg bg-surface-container-low border border-outline-variant/50 text-on-surface font-body-sm text-body-sm placeholder:text-outline focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" id="graphSearchInput" placeholder="Chercher une entité, directive, système..." type="text" value="Politique RGPD v3.2"/>
+<div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+<span class="px-1 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-data-mono-sm text-data-mono-sm">1/9</span>
+</div>
+</div>
+</div>
+<!-- Active Filter Badges & Configuration Parameters -->
+<div class="flex items-center gap-space-xs flex-wrap">
+<!-- Pole filter badge -->
+<div class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary-fixed text-on-primary-fixed font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[14px]">assured_workload</span>
+<span>Pôle: Juridique &amp; Conformité</span>
+<button class="hover:text-primary transition-colors ml-1" type="button"><span class="material-symbols-outlined text-[14px]">close</span></button>
+</div>
+<!-- Algorithm filter badge -->
+<div class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-container-high text-on-surface font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[14px] text-tertiary">scatter_plot</span>
+<span>Force-directed Neo4j</span>
+</div>
+<!-- Depth filter badge -->
+<div class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-container-high text-on-surface font-label-sm text-label-sm">
+<span class="text-outline font-data-mono-sm text-data-mono-sm">HOPS:</span>
+<span class="font-semibold">2 sauts</span>
+</div>
+<!-- Confidence threshold -->
+<div class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-container-high text-on-surface font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[14px] text-secondary">verified</span>
+<span>Certitude ≥ 90%</span>
+</div>
+<div class="h-5 w-px bg-outline-variant/40 mx-1"></div>
+<!-- Tool buttons -->
+<button class="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-error-container text-on-error-container font-label-sm text-label-sm hover:opacity-90 transition-all font-medium" id="toggleRiskMode" title="Surligner les conflits normatifs et orphelins" type="button">
+<span class="material-symbols-outlined text-[16px] text-error">warning</span>
+          Mode Conflits &amp; Risques
+        </button>
+<button class="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-label-sm text-label-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px] text-outline">group_work</span>
+          Clusteriser par Dépt.
+        </button>
+<button class="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-label-sm text-label-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px] text-outline">filter_alt_off</span>
+          Filtrer orphelins
+        </button>
+<button class="p-1 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors" title="Réinitialiser vue et zoom" type="button">
+<span class="material-symbols-outlined text-[18px]">restart_alt</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Main Canvas & Inspector Work Area -->
+<div class="relative flex flex-1 w-full min-h-[calc(100vh-14.5rem)] overflow-hidden bg-surface-container-lowest">
+<!-- GRAPH CANVAS INTERACTIF (SVG Vector Engine) -->
+<div class="relative flex-1 h-full min-h-[640px] bg-[#0c1222] overflow-hidden select-none" id="viewportContainer">
+<!-- Background Ambient Grid Pattern -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none opacity-20" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<pattern height="40" id="grid" patternunits="userSpaceOnUse" width="40">
+<path d="M 40 0 L 0 0 0 40" fill="none" stroke="#3b82f6" stroke-opacity="0.3" stroke-width="0.5"></path>
+<circle cx="0" cy="0" fill="#60a5fa" fill-opacity="0.6" r="1"></circle>
+</pattern>
+</defs>
+<rect fill="url(#grid)" height="100%" width="100%"></rect>
+</svg>
+<!-- Interactive SVG Nodes and Links Graph View -->
+<svg class="w-full h-full cursor-grab active:cursor-grabbing" id="interactiveGraphSvg" preserveaspectratio="xMidYMid meet" viewbox="0 0 1180 780">
+<defs>
+<!-- Neon glow filters -->
+<filter height="140%" id="glow-primary" width="140%" x="-20%" y="-20%">
+<fegaussianblur result="blur" stddeviation="6"></fegaussianblur>
+<fecomposite in="SourceGraphic" in2="blur" operator="over"></fecomposite>
+</filter>
+<filter height="160%" id="glow-risk" width="160%" x="-30%" y="-30%">
+<fegaussianblur result="blur" stddeviation="8"></fegaussianblur>
+<fecomposite in="SourceGraphic" in2="blur" operator="over"></fecomposite>
+</filter>
+<filter height="140%" id="glow-cyan" width="140%" x="-20%" y="-20%">
+<fegaussianblur result="blur" stddeviation="5"></fegaussianblur>
+<fecomposite in="SourceGraphic" in2="blur" operator="over"></fecomposite>
+</filter>
+<!-- Marker Arrows for semantic directed edges -->
+<marker id="arrow-standard" markerheight="6" markerwidth="6" orient="auto-start-reverse" refx="28" refy="5" viewbox="0 0 10 10">
+<path d="M 0 1 L 10 5 L 0 9 z" fill="#64748b"></path>
+</marker>
+<marker id="arrow-active" markerheight="6" markerwidth="6" orient="auto-start-reverse" refx="28" refy="5" viewbox="0 0 10 10">
+<path d="M 0 1 L 10 5 L 0 9 z" fill="#3b82f6"></path>
+</marker>
+<marker id="arrow-risk" markerheight="7" markerwidth="7" orient="auto-start-reverse" refx="28" refy="5" viewbox="0 0 10 10">
+<path d="M 0 1 L 10 5 L 0 9 z" fill="#ef4444"></path>
+</marker>
+<marker id="arrow-system" markerheight="6" markerwidth="6" orient="auto-start-reverse" refx="28" refy="5" viewbox="0 0 10 10">
+<path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981"></path>
+</marker>
+<!-- Radial Gradients for Nodes -->
+<radialgradient cx="40%" cy="40%" id="grad-core-policy" r="60%">
+<stop offset="0%" stop-color="#3b82f6"></stop>
+<stop offset="100%" stop-color="#1d4ed8"></stop>
+</radialgradient>
+<radialgradient cx="40%" cy="40%" id="grad-regulation" r="60%">
+<stop offset="0%" stop-color="#a855f7"></stop>
+<stop offset="100%" stop-color="#6b21a8"></stop>
+</radialgradient>
+<radialgradient cx="40%" cy="40%" id="grad-system" r="60%">
+<stop offset="0%" stop-color="#06b6d4"></stop>
+<stop offset="100%" stop-color="#0e7490"></stop>
+</radialgradient>
+<radialgradient cx="40%" cy="40%" id="grad-person" r="60%">
+<stop offset="0%" stop-color="#f59e0b"></stop>
+<stop offset="100%" stop-color="#b45309"></stop>
+</radialgradient>
+<radialgradient cx="40%" cy="40%" id="grad-risk" r="60%">
+<stop offset="0%" stop-color="#ef4444"></stop>
+<stop offset="100%" stop-color="#991b1b"></stop>
+</radialgradient>
+</defs>
+<!-- Edges Background Group -->
+<g class="transition-opacity duration-300" id="edgesGroup">
+<!-- Active Central Links -->
+<!-- RGPD v3.2 -> Art. 17 RGPD -->
+<g class="group">
+<line marker-end="url(#arrow-active)" stroke="#3b82f6" stroke-dasharray="4 2" stroke-width="2.5" x1="590" x2="330" y1="360" y2="240"></line>
+<rect fill="#0f172a" height="18" rx="4" stroke="#1e293b" stroke-width="1" width="70" x="420" y="285"></rect>
+<text fill="#93c5fd" font-family="JetBrains Mono" font-size="10" font-weight="600" text-anchor="middle" x="455" y="298">Dérive de</text>
+</g>
+<!-- RGPD v3.2 -> SOP Sécurité -->
+<g class="group">
+<line marker-end="url(#arrow-active)" stroke="#60a5fa" stroke-width="2" x1="590" x2="830" y1="360" y2="220"></line>
+<rect fill="#0f172a" height="18" rx="4" stroke="#1e293b" stroke-width="1" width="86" x="685" y="275"></rect>
+<text fill="#cbd5e1" font-family="JetBrains Mono" font-size="10" text-anchor="middle" x="728" y="288">Sous-spécifie</text>
+</g>
+<!-- RGPD v3.2 -> DPA Fournisseurs -->
+<g class="group">
+<line marker-end="url(#arrow-standard)" stroke="#64748b" stroke-width="2" x1="590" x2="790" y1="360" y2="470"></line>
+<rect fill="#0f172a" height="18" rx="4" stroke="#1e293b" stroke-width="1" width="56" x="670" y="405"></rect>
+<text fill="#94a3b8" font-family="JetBrains Mono" font-size="10" text-anchor="middle" x="698" y="418">Régit</text>
+</g>
+<!-- RGPD v3.2 -> Me. Marc Valois (DPO) -->
+<g class="group">
+<line marker-end="url(#arrow-standard)" stroke="#f59e0b" stroke-dasharray="3 3" stroke-width="1.8" x1="590" x2="380" y1="360" y2="520"></line>
+<rect fill="#0f172a" height="18" rx="4" stroke="#1e293b" stroke-width="1" width="86" x="440" y="445"></rect>
+<text fill="#fbbf24" font-family="JetBrains Mono" font-size="10" text-anchor="middle" x="483" y="458">Supervisé par</text>
+</g>
+<!-- RGPD v3.2 -> Éléonore de Vance -->
+<g class="group">
+<line marker-end="url(#arrow-standard)" stroke="#f59e0b" stroke-width="2" x1="590" x2="620" y1="360" y2="560"></line>
+<rect fill="#0f172a" height="18" rx="4" stroke="#1e293b" stroke-width="1" width="76" x="585" y="465"></rect>
+<text fill="#fbbf24" font-family="JetBrains Mono" font-size="10" text-anchor="middle" x="623" y="478">Propriétaire</text>
+</g>
+<!-- RGPD v3.2 -> Snowflake DWH -->
+<g class="group">
+<line marker-end="url(#arrow-system)" stroke="#10b981" stroke-width="2.5" x1="590" x2="320" y1="360" y2="400"></line>
+<rect fill="#0f172a" height="18" rx="4" stroke="#1e293b" stroke-width="1" width="80" x="420" y="370"></rect>
+<text fill="#6ee7b7" font-family="JetBrains Mono" font-size="10" text-anchor="middle" x="460" y="383">Appliqué sur</text>
+</g>
+<!-- CONFLICT EDGE (Vivid Red Pulsing) : SOP Sécurité <-> DPA Logs Retention -->
+<g class="animate-pulse">
+<line marker-end="url(#arrow-risk)" stroke="#ef4444" stroke-dasharray="6 3" stroke-width="2.5" x1="830" x2="980" y1="220" y2="350"></line>
+<rect fill="#450a0a" height="20" rx="4" stroke="#ef4444" stroke-width="1.5" width="124" x="860" y="275"></rect>
+<text fill="#fca5a5" font-family="JetBrains Mono" font-size="10" font-weight="700" text-anchor="middle" x="922" y="289">En contradiction avec</text>
+</g>
+<!-- Conflict -> Snowflake -->
+<line stroke="#ef4444" stroke-dasharray="4 2" stroke-width="1.5" x1="980" x2="790" y1="350" y2="470"></line>
+<!-- Snowflake -> Milvus Vector -->
+<line marker-end="url(#arrow-standard)" stroke="#0284c7" stroke-width="1.5" x1="320" x2="160" y1="400" y2="510"></line>
+<text fill="#64748b" font-family="JetBrains Mono" font-size="9" x="215" y="445">Alimente</text>
+<!-- Snowflake -> AWS S3 Logs -->
+<line marker-end="url(#arrow-standard)" stroke="#0284c7" stroke-width="1.5" x1="320" x2="170" y1="400" y2="310"></line>
+<!-- ISO 27001 -> SOP Sécurité -->
+<line marker-end="url(#arrow-standard)" stroke="#8b5cf6" stroke-width="1.5" x1="970" x2="830" y1="140" y2="220"></line>
+<text fill="#a78bfa" font-family="JetBrains Mono" font-size="9" x="910" y="170">Exige A.8.10</text>
+<!-- SOC 2 -> SOP Sécurité -->
+<line marker-end="url(#arrow-standard)" stroke="#8b5cf6" stroke-width="1.5" x1="720" x2="830" y1="110" y2="220"></line>
+<!-- DevSecOps Guild -> AWS S3 -->
+<line marker-end="url(#arrow-standard)" stroke="#f59e0b" stroke-width="1.5" x1="160" x2="170" y1="170" y2="310"></line>
+<text fill="#fbbf24" font-family="JetBrains Mono" font-size="9" x="140" y="240">Opère</text>
+</g>
+<!-- Nodes Group with Rich Holographic Cards & Anchors -->
+<g id="nodesGroup">
+<!-- 1. CENTRAL ACTIVE NODE: "Politique RGPD v3.2 - Cycle de Vie" -->
+<g class="cursor-pointer transition-transform hover:scale-105" id="nodeActiveCentral" transform="translate(590, 360)">
+<!-- Outer focus aura -->
+<circle class="animate-spin" fill="none" r="46" stroke="#2563eb" stroke-dasharray="6 4" stroke-width="2" style="animation-duration: 18s;"></circle>
+<circle fill="url(#grad-core-policy)" filter="url(#glow-primary)" r="38"></circle>
+<circle fill="#1d4ed8" r="34" stroke="#93c5fd" stroke-width="2"></circle>
+<!-- Inner Icon -->
+<text fill="#ffffff" font-family="Material Symbols Outlined" font-size="24" text-anchor="middle" x="0" y="7">policy</text>
+<!-- Badge & Title -->
+<rect fill="#0f172a" height="38" rx="6" stroke="#3b82f6" stroke-width="1.5" width="210" x="-105" y="44"></rect>
+<text fill="#ffffff" font-family="Plus Jakarta Sans" font-size="12" font-weight="700" text-anchor="middle" x="0" y="60">Politique RGPD v3.2</text>
+<text fill="#93c5fd" font-family="Inter" font-size="10" text-anchor="middle" x="0" y="74">Conservation &amp; Purge (Direct)</text>
+</g>
+<!-- 2. REGULATION NODE: "Art. 17 Droit à l'effacement" -->
+<g class="cursor-pointer hover:scale-105 transition-transform" transform="translate(330, 240)">
+<circle fill="url(#grad-regulation)" r="30" stroke="#c084fc" stroke-width="1.5"></circle>
+<text fill="#ffffff" font-family="Material Symbols Outlined" font-size="20" text-anchor="middle" x="0" y="6">gavel</text>
+<rect fill="#0f172a" height="34" rx="5" stroke="#7e22ce" stroke-width="1" width="190" x="-95" y="34"></rect>
+<text fill="#f3e8ff" font-family="Plus Jakarta Sans" font-size="11" font-weight="600" text-anchor="middle" x="0" y="48">Art. 17 RGPD — Effacement</text>
+<text fill="#c084fc" font-family="Inter" font-size="9.5" text-anchor="middle" x="0" y="61">Règlement UE 2016/679</text>
+</g>
+<!-- 3. DOCUMENT NODE: "SOP Sécurité Données 2024" -->
+<g class="cursor-pointer hover:scale-105 transition-transform" transform="translate(830, 220)">
+<circle fill="url(#grad-core-policy)" r="30" stroke="#60a5fa" stroke-width="1.5"></circle>
+<text fill="#ffffff" font-family="Material Symbols Outlined" font-size="20" text-anchor="middle" x="0" y="6">description</text>
+<rect fill="#0f172a" height="34" rx="5" stroke="#1d4ed8" stroke-width="1" width="190" x="-95" y="34"></rect>
+<text fill="#eff6ff" font-family="Plus Jakarta Sans" font-size="11" font-weight="600" text-anchor="middle" x="0" y="48">SOP Sécurité Données 2024</text>
+<text fill="#93c5fd" font-family="Inter" font-size="9.5" text-anchor="middle" x="0" y="61">Directive Opérationnelle</text>
+</g>
+<!-- 4. DOCUMENT NODE: "DPA Fournisseurs Cloud" -->
+<g class="cursor-pointer hover:scale-105 transition-transform" transform="translate(790, 470)">
+<circle fill="#1e293b" r="28" stroke="#38bdf8" stroke-width="2"></circle>
+<text fill="#38bdf8" font-family="Material Symbols Outlined" font-size="19" text-anchor="middle" x="0" y="6">contract</text>
+<rect fill="#0f172a" height="32" rx="4" stroke="#334155" stroke-width="1" width="170" x="-85" y="32"></rect>
+<text fill="#e2e8f0" font-family="Plus Jakarta Sans" font-size="11" font-weight="600" text-anchor="middle" x="0" y="46">DPA Fournisseurs Cloud</text>
+<text fill="#94a3b8" font-family="Inter" font-size="9" text-anchor="middle" x="0" y="58">Contrats Cadre B2B</text>
+</g>
+<!-- 5. CRITICAL CONFLICT NODE: "Contradiction Rétention Logs (12m vs 36m)" -->
+<g class="cursor-pointer hover:scale-105 transition-transform" transform="translate(980, 350)">
+<circle class="animate-pulse" fill="url(#grad-risk)" filter="url(#glow-risk)" r="36" stroke="#fca5a5" stroke-width="2"></circle>
+<circle class="animate-spin" fill="none" r="42" stroke="#ef4444" stroke-dasharray="5 3" stroke-width="2" style="animation-duration: 8s;"></circle>
+<text fill="#ffffff" font-family="Material Symbols Outlined" font-size="22" text-anchor="middle" x="0" y="7">error</text>
+<rect fill="#450a0a" height="42" rx="6" stroke="#ef4444" stroke-width="1.5" width="230" x="-115" y="44"></rect>
+<text fill="#fecaca" font-family="Plus Jakarta Sans" font-size="11" font-weight="700" text-anchor="middle" x="0" y="60">CONFLIT NORMATIF RÉTENTION</text>
+<text fill="#ffffff" font-family="JetBrains Mono" font-size="9.5" text-anchor="middle" x="0" y="74">SOP: 12 mois ≠ DPA: 36 mois</text>
+<circle cx="100" cy="44" fill="#ef4444" r="6"></circle>
+</g>
+<!-- 6. SYSTEM NODE: "Snowflake DWH" -->
+<g class="cursor-pointer hover:scale-105 transition-transform" transform="translate(320, 400)">
+<circle fill="url(#grad-system)" filter="url(#glow-cyan)" r="30" stroke="#67e8f9" stroke-width="1.5"></circle>
+<text fill="#ffffff" font-family="Material Symbols Outlined" font-size="20" text-anchor="middle" x="0" y="6">database</text>
+<rect fill="#0f172a" height="34" rx="5" stroke="#0891b2" stroke-width="1" width="170" x="-85" y="34"></rect>
+<text fill="#ecfeff" font-family="Plus Jakarta Sans" font-size="11" font-weight="600" text-anchor="middle" x="0" y="48">Snowflake Production DWH</text>
+<text fill="#67e8f9" font-family="Inter" font-size="9" text-anchor="middle" x="0" y="61">EU-West-1 (4.2 PB)</text>
+</g>
+<!-- 7. SYSTEM NODE: "Bucket AWS S3 Logs" -->
+<g class="cursor-pointer hover:scale-105 transition-transform" transform="translate(170, 310)">
+<circle fill="#0f172a" r="26" stroke="#06b6d4" stroke-width="1.5"></circle>
+<text fill="#22d3ee" font-family="Material Symbols Outlined" font-size="18" text-anchor="middle" x="0" y="5">cloud_done</text>
+<rect fill="#0f172a" height="28" rx="4" stroke="#164e63" stroke-width="1" width="140" x="-70" y="30"></rect>
+<text fill="#e0f2fe" font-family="Plus Jakarta Sans" font-size="10.5" font-weight="500" text-anchor="middle" x="0" y="44">AWS S3 Audit Logs</text>
+<text fill="#7dd3fc" font-family="Inter" font-size="8.5" text-anchor="middle" x="0" y="54">Auto-delete 365d</text>
+</g>
+<!-- 8. SYSTEM NODE: "Cluster Milvus Vector" -->
+<g class="cursor-pointer hover:scale-105 transition-transform" transform="translate(160, 510)">
+<circle fill="#0f172a" r="26" stroke="#06b6d4" stroke-width="1.5"></circle>
+<text fill="#22d3ee" font-family="Material Symbols Outlined" font-size="18" text-anchor="middle" x="0" y="5">grain</text>
+<rect fill="#0f172a" height="28" rx="4" stroke="#164e63" stroke-width="1" width="150" x="-75" y="30"></rect>
+<text fill="#e0f2fe" font-family="Plus Jakarta Sans" font-size="10.5" font-weight="500" text-anchor="middle" x="0" y="44">Cluster Milvus Vector</text>
+<text fill="#7dd3fc" font-family="Inter" font-size="8.5" text-anchor="middle" x="0" y="54">1536-dim Cohere</text>
+</g>
+<!-- 9. ROLE NODE: "Éléonore de Vance (Knowledge Lead)" -->
+<g class="cursor-pointer hover:scale-105 transition-transform" transform="translate(620, 560)">
+<circle fill="url(#grad-person)" r="28" stroke="#fde68a" stroke-width="1.5"></circle>
+<text fill="#ffffff" font-family="Material Symbols Outlined" font-size="19" text-anchor="middle" x="0" y="6">person_check</text>
+<rect fill="#0f172a" height="34" rx="5" stroke="#d97706" stroke-width="1" width="190" x="-95" y="32"></rect>
+<text fill="#fef3c7" font-family="Plus Jakarta Sans" font-size="11" font-weight="600" text-anchor="middle" x="0" y="47">Éléonore de Vance</text>
+<text fill="#fcd34d" font-family="Inter" font-size="9" text-anchor="middle" x="0" y="59">Knowledge Lead &amp; Admin</text>
+</g>
+<!-- 10. ROLE NODE: "Me. Marc Valois (DPO)" -->
+<g class="cursor-pointer hover:scale-105 transition-transform" transform="translate(380, 520)">
+<circle fill="#0f172a" r="26" stroke="#f59e0b" stroke-width="1.5"></circle>
+<text fill="#fbbf24" font-family="Material Symbols Outlined" font-size="18" text-anchor="middle" x="0" y="6">badge</text>
+<rect fill="#0f172a" height="30" rx="4" stroke="#78350f" stroke-width="1" width="160" x="-80" y="30"></rect>
+<text fill="#fef3c7" font-family="Plus Jakarta Sans" font-size="10.5" font-weight="500" text-anchor="middle" x="0" y="45">Me. Marc Valois</text>
+<text fill="#d97706" font-family="Inter" font-size="8.5" text-anchor="middle" x="0" y="56">Data Protection Officer</text>
+</g>
+<!-- 11. REGULATION NODE: "ISO 27001 A.8.10" -->
+<g class="cursor-pointer hover:scale-105 transition-transform" transform="translate(970, 140)">
+<circle fill="#0f172a" r="26" stroke="#a855f7" stroke-width="1.5"></circle>
+<text fill="#c084fc" font-family="Material Symbols Outlined" font-size="18" text-anchor="middle" x="0" y="6">security</text>
+<rect fill="#0f172a" height="30" rx="4" stroke="#581c87" stroke-width="1" width="170" x="-85" y="30"></rect>
+<text fill="#f3e8ff" font-family="Plus Jakarta Sans" font-size="10.5" font-weight="600" text-anchor="middle" x="0" y="44">ISO 27001 — A.8.10</text>
+<text fill="#c084fc" font-family="Inter" font-size="8.5" text-anchor="middle" x="0" y="55">Information Deletion Control</text>
+</g>
+<!-- 12. REGULATION NODE: "SOC 2 Type II" -->
+<g class="cursor-pointer hover:scale-105 transition-transform" transform="translate(720, 110)">
+<circle fill="#0f172a" r="24" stroke="#a855f7" stroke-width="1.2"></circle>
+<text fill="#c084fc" font-family="Material Symbols Outlined" font-size="16" text-anchor="middle" x="0" y="5">verified_user</text>
+<rect fill="#0f172a" height="26" rx="4" stroke="#581c87" stroke-width="1" width="130" x="-65" y="28"></rect>
+<text fill="#f3e8ff" font-family="Plus Jakarta Sans" font-size="10" font-weight="500" text-anchor="middle" x="0" y="42">SOC 2 Type II CC6.1</text>
+</g>
+<!-- 13. ROLE NODE: "DevSecOps Guild" -->
+<g class="cursor-pointer hover:scale-105 transition-transform" transform="translate(160, 170)">
+<circle fill="#0f172a" r="24" stroke="#f59e0b" stroke-width="1.2"></circle>
+<text fill="#fbbf24" font-family="Material Symbols Outlined" font-size="16" text-anchor="middle" x="0" y="5">terminal</text>
+<rect fill="#0f172a" height="26" rx="4" stroke="#78350f" stroke-width="1" width="130" x="-65" y="28"></rect>
+<text fill="#fef3c7" font-family="Plus Jakarta Sans" font-size="10" font-weight="500" text-anchor="middle" x="0" y="42">DevSecOps Guild</text>
+</g>
+</g>
+</svg>
+<!-- FLOATING HUD: Legend of Node Archetypes (Top Left) -->
+<div class="absolute top-4 left-4 bg-surface-container-lowest/90 backdrop-blur-md rounded-xl p-3 shadow-xl border border-outline-variant/30 flex flex-col gap-2 max-w-xs select-none">
+<div class="flex items-center justify-between pb-1.5 border-b border-outline-variant/20">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold">Ontology Legend</span>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">5 Typologies</span>
+</div>
+<div class="grid grid-cols-2 gap-x-3 gap-y-1.5 font-label-md text-label-md">
+<div class="flex items-center gap-1.5">
+<span class="w-3 h-3 rounded-full bg-primary ring-2 ring-primary/20"></span>
+<span class="text-on-surface text-body-sm font-body-sm">Politiques &amp; Directives</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-3 h-3 rounded-full bg-tertiary ring-2 ring-tertiary/20"></span>
+<span class="text-on-surface text-body-sm font-body-sm">Règles &amp; Normes</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-3 h-3 rounded-full bg-secondary ring-2 ring-secondary/20"></span>
+<span class="text-on-surface text-body-sm font-body-sm">Systèmes &amp; Data</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-3 h-3 rounded-full bg-amber-500 ring-2 ring-amber-500/20"></span>
+<span class="text-on-surface text-body-sm font-body-sm">Rôles &amp; Owners</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5 pt-1 border-t border-outline-variant/20">
+<span class="w-3 h-3 rounded-full bg-error ring-2 ring-error/40 animate-pulse"></span>
+<span class="text-error font-body-sm text-body-sm font-semibold">Risque &amp; Contradiction Normative</span>
+</div>
+</div>
+<!-- FLOATING HUD: Radar Minimap & Zoom Controls (Bottom Left) -->
+<div class="absolute bottom-4 left-4 flex flex-col gap-2 select-none">
+<div class="w-44 h-32 bg-surface-container-lowest/90 backdrop-blur-md rounded-xl p-2 shadow-xl border border-outline-variant/30 flex flex-col justify-between">
+<div class="flex items-center justify-between text-on-surface-variant">
+<span class="font-data-mono-sm text-data-mono-sm font-medium">RADAR OVERVIEW</span>
+<span class="font-data-mono-sm text-data-mono-sm text-primary">100%</span>
+</div>
+<!-- Mini simplified projection -->
+<div class="relative flex-1 my-1 bg-surface-container-low rounded border border-outline-variant/20 overflow-hidden">
+<div class="absolute inset-0 opacity-40 bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:8px_8px]"></div>
+<!-- Node representations -->
+<div class="absolute w-2 h-2 rounded-full bg-primary top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 shadow"></div>
+<div class="absolute w-1.5 h-1.5 rounded-full bg-tertiary top-4 left-6"></div>
+<div class="absolute w-1.5 h-1.5 rounded-full bg-secondary bottom-4 left-8"></div>
+<div class="absolute w-1.5 h-1.5 rounded-full bg-primary top-6 right-8"></div>
+<div class="absolute w-2 h-2 rounded-full bg-error top-8 right-4 animate-ping"></div>
+<!-- Viewport rectangle frame -->
+<div class="absolute inset-1.5 border border-primary/60 bg-primary/10 rounded-sm pointer-events-none"></div>
+</div>
+<div class="flex items-center justify-between font-data-mono-sm text-data-mono-sm text-outline">
+<span>Projection: 2.5D</span>
+<span>x: 590 y: 360</span>
+</div>
+</div>
+<!-- Canvas Zoom/Pan Controls -->
+<div class="flex items-center gap-1 bg-surface-container-lowest/90 backdrop-blur-md p-1 rounded-xl shadow-lg border border-outline-variant/30 w-fit">
+<button class="w-7 h-7 flex items-center justify-center rounded hover:bg-surface-container text-on-surface transition-colors" title="Zoom avant" type="button">
+<span class="material-symbols-outlined text-[18px]">add</span>
+</button>
+<span class="px-1.5 font-data-mono-sm text-data-mono-sm text-on-surface font-medium">1.0x</span>
+<button class="w-7 h-7 flex items-center justify-center rounded hover:bg-surface-container text-on-surface transition-colors" title="Zoom arrière" type="button">
+<span class="material-symbols-outlined text-[18px]">remove</span>
+</button>
+<div class="h-4 w-px bg-outline-variant/40"></div>
+<button class="w-7 h-7 flex items-center justify-center rounded hover:bg-surface-container text-on-surface transition-colors" title="Recentrer le graphe" type="button">
+<span class="material-symbols-outlined text-[18px]">filter_center_focus</span>
+</button>
+<button class="w-7 h-7 flex items-center justify-center rounded hover:bg-surface-container text-on-surface transition-colors" title="Plein écran" type="button">
+<span class="material-symbols-outlined text-[18px]">fullscreen</span>
+</button>
+</div>
+</div>
+</div>
+<!-- RIGHT INSPECTOR PANEL: Active Node Details & Live Graph Diagnostics -->
+<aside class="w-[24rem] xl:w-[26rem] h-full bg-surface-container-lowest border-l border-outline-variant/30 flex flex-col justify-between overflow-y-auto z-10 shadow-lg">
+<div class="flex flex-col">
+<!-- Inspector Title & Close -->
+<div class="p-space-lg border-b border-outline-variant/20 flex items-start justify-between bg-surface-container-low/40">
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded bg-primary text-on-primary font-data-mono-sm text-data-mono-sm uppercase font-semibold">Policy Node</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-secondary-container text-on-secondary-container font-data-mono-sm text-data-mono-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                Certifié valide
+              </span>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface font-bold mt-1.5 leading-snug">
+              Politique RGPD v3.2
+            </h2>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Cycle de Vie &amp; Rétention des Données</span>
+</div>
+<button class="p-1 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" title="Fermer l'inspecteur" type="button">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<!-- Node Metadata Specifications -->
+<div class="p-space-lg space-y-space-md">
+<!-- Key Metrics Grid -->
+<div class="grid grid-cols-2 gap-space-sm">
+<div class="p-space-md rounded-lg bg-surface-container-low border border-outline-variant/30">
+<div class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Connexions Directes</div>
+<div class="font-headline-lg text-headline-lg font-bold text-on-surface mt-0.5">14 <span class="font-body-sm text-body-sm text-outline font-normal">nœuds</span></div>
+<div class="font-data-mono-sm text-data-mono-sm text-secondary mt-0.5">Degré entrant: 6 | sortant: 8</div>
+</div>
+<div class="p-space-md rounded-lg bg-surface-container-low border border-outline-variant/30">
+<div class="font-label-sm text-label-sm text-outline uppercase tracking-wider">Score Centralité</div>
+<div class="font-headline-lg text-headline-lg font-bold text-primary mt-0.5">0.962</div>
+<div class="font-data-mono-sm text-data-mono-sm text-outline mt-0.5">PageRank: Top 1% Org</div>
+</div>
+</div>
+<!-- Cryptographic Hash & Version -->
+<div class="space-y-1.5 p-space-md rounded-lg bg-surface-container-low/60 border border-outline-variant/20 font-data-mono-sm text-data-mono-sm">
+<div class="flex items-center justify-between text-on-surface-variant">
+<span>SHA-256 HASH:</span>
+<span class="font-medium text-primary cursor-pointer hover:underline" title="Copier le hash">a89f...9c41 ⧉</span>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant">
+<span>CANONICAL SOURCE:</span>
+<span class="text-on-surface truncate max-w-[180px]">Confluence / POL-SEC-2024-32</span>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant">
+<span>DERNIÈRE SYNCHRO:</span>
+<span class="text-on-surface">Aujourd'hui, 04:12 UTC</span>
+</div>
+</div>
+<!-- Active Risk / Conflict Alert Section -->
+<div class="p-space-md rounded-lg bg-error-container/60 border border-error/30 space-y-2">
+<div class="flex items-center gap-2 text-on-error-container">
+<span class="material-symbols-outlined text-error text-[20px]">report_problem</span>
+<span class="font-headline-sm text-headline-sm font-semibold text-error">1 Conflit d'Alignement Détecté</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+              La clause de rétention stipule <strong class="text-on-surface">12 mois</strong> pour les logs nominatifs, mais le sous-traitant AWS hébergeant le bucket d'audit applique une règle IAM de conservation de <strong class="text-error font-semibold">36 mois</strong> dans le contrat DPA B2B.
+            </p>
+<div class="flex items-center justify-between pt-1">
+<span class="px-2 py-0.5 rounded bg-error/10 text-error font-data-mono-sm text-data-mono-sm font-semibold">Sévérité: MAJEURE</span>
+<button class="text-error hover:underline font-label-md text-label-md font-semibold flex items-center gap-0.5" type="button">
+                Voir l'arbitrage
+                <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Sémantique des Relations (Inbound & Outbound) -->
+<div class="space-y-space-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold">Relations Sémantiques Clés</span>
+<span class="font-data-mono-sm text-data-mono-sm text-primary cursor-pointer hover:underline">Voir les 14</span>
+</div>
+<div class="space-y-1.5">
+<!-- Outgoing relation 1 -->
+<div class="flex items-center justify-between p-2 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors group cursor-pointer">
+<div class="flex items-center gap-2 min-w-0">
+<span class="material-symbols-outlined text-tertiary text-[18px]">gavel</span>
+<div class="truncate">
+<div class="font-body-sm text-body-sm font-medium text-on-surface group-hover:text-primary transition-colors truncate">Art. 17 RGPD — Effacement</div>
+<div class="font-data-mono-sm text-data-mono-sm text-outline">OUT: Dérive de (Certitude 99%)</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-on-surface text-[16px]">chevron_right</span>
+</div>
+<!-- Outgoing relation 2 -->
+<div class="flex items-center justify-between p-2 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors group cursor-pointer">
+<div class="flex items-center gap-2 min-w-0">
+<span class="material-symbols-outlined text-secondary text-[18px]">database</span>
+<div class="truncate">
+<div class="font-body-sm text-body-sm font-medium text-on-surface group-hover:text-primary transition-colors truncate">Snowflake Production DWH</div>
+<div class="font-data-mono-sm text-data-mono-sm text-outline">OUT: Appliqué sur (Table User_PII)</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-on-surface text-[16px]">chevron_right</span>
+</div>
+<!-- Ingoing relation 3 -->
+<div class="flex items-center justify-between p-2 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors group cursor-pointer">
+<div class="flex items-center gap-2 min-w-0">
+<span class="material-symbols-outlined text-amber-500 text-[18px]">person</span>
+<div class="truncate">
+<div class="font-body-sm text-body-sm font-medium text-on-surface group-hover:text-primary transition-colors truncate">Éléonore de Vance</div>
+<div class="font-data-mono-sm text-data-mono-sm text-outline">IN: Est Propriétaire &amp; Rédacteur</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-on-surface text-[16px]">chevron_right</span>
+</div>
+<!-- Conflict relation 4 -->
+<div class="flex items-center justify-between p-2 rounded-lg bg-error-container/40 hover:bg-error-container/60 transition-colors group cursor-pointer border border-error/20">
+<div class="flex items-center gap-2 min-w-0">
+<span class="material-symbols-outlined text-error text-[18px]">flash_on</span>
+<div class="truncate">
+<div class="font-body-sm text-body-sm font-semibold text-error group-hover:text-error transition-colors truncate">DPA Fournisseurs Cloud</div>
+<div class="font-data-mono-sm text-data-mono-sm text-error/80">IN: Contradiction Rétention</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-error text-[16px]">open_in_new</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Action Commands for Inspected Node -->
+<div class="p-space-lg border-t border-outline-variant/30 bg-surface-container-lowest flex flex-col gap-2">
+<a class="flex items-center justify-center gap-2 w-full h-density-input-h px-3 rounded-lg bg-primary text-on-primary font-label-md text-label-md hover:bg-primary-container transition-all shadow-sm" data-path="chat-knowledge" href="#">
+<span class="material-symbols-outlined text-[18px]">forum</span>
+          Ouvrir dans Chat Knowledge
+        </a>
+<div class="grid grid-cols-2 gap-2">
+<button class="flex items-center justify-center gap-1.5 h-density-input-h px-2 rounded-lg bg-surface-container-low hover:bg-surface-container border border-outline-variant/50 text-on-surface font-label-sm text-label-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px] text-outline">account_tree</span>
+            Isoler le sous-graphe
+          </button>
+<button class="flex items-center justify-center gap-1.5 h-density-input-h px-2 rounded-lg bg-surface-container-low hover:bg-surface-container border border-outline-variant/50 text-on-surface font-label-sm text-label-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px] text-outline">balance</span>
+            Règle d'arbitrage
+          </button>
+</div>
+</div>
+</aside>
+</div>
+<!-- Bottom Topology Analytics & Live Status Bar -->
+<div class="flex flex-col md:flex-row items-center justify-between px-space-xl py-space-sm bg-surface-container-lowest border-t border-outline-variant/30 gap-space-sm text-on-surface-variant font-data-mono-sm text-data-mono-sm">
+<div class="flex items-center gap-space-lg flex-wrap">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-primary">scatter_plot</span>
+<span class="text-on-surface font-semibold">18,492</span> entités indexées
+      </div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-secondary">share</span>
+<span class="text-on-surface font-semibold">46,210</span> relations actives
+      </div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-error">notification_important</span>
+<span class="text-error font-semibold">3</span> clusters critiques
+      </div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-outline">analytics</span>
+<span>Densité sémantique:</span>
+<span class="text-on-surface font-semibold">0.84</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-outline">hub</span>
+<span>Indice de centralité moyen:</span>
+<span class="text-on-surface font-semibold">4.1</span>
+</div>
+</div>
+<div class="flex items-center gap-space-md">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="text-secondary font-medium">Inférence graphe active</span>
+</div>
+<div class="h-3.5 w-px bg-outline-variant/40"></div>
+<span class="text-outline">Calcul de partition: Louvain Modularity (Q=0.71)</span>
+</div>
+</div>
+<!-- Interactive JavaScript Micro-actions -->
+<script>
+    (function() {
+      const toggleRiskBtn = document.getElementById('toggleRiskMode');
+      const edgesGroup = document.getElementById('edgesGroup');
+      let riskMode = false;
+
+      if (toggleRiskBtn && edgesGroup) {
+        toggleRiskBtn.addEventListener('click', () => {
+          riskMode = !riskMode;
+          if (riskMode) {
+            toggleRiskBtn.classList.remove('bg-error-container', 'text-on-error-container');
+            toggleRiskBtn.classList.add('bg-error', 'text-on-error', 'shadow-md');
+            // Dim non-risk edges
+            const lines = edgesGroup.querySelectorAll('line:not([stroke="#ef4444"])');
+            lines.forEach(line => line.setAttribute('opacity', '0.15'));
+          } else {
+            toggleRiskBtn.classList.remove('bg-error', 'text-on-error', 'shadow-md');
+            toggleRiskBtn.classList.add('bg-error-container', 'text-on-error-container');
+            const lines = edgesGroup.querySelectorAll('line');
+            lines.forEach(line => line.removeAttribute('opacity'));
+          }
+        });
+      }
+
+      // Quick highlight on search input enter
+      const searchInput = document.getElementById('graphSearchInput');
+      if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            const centralNode = document.getElementById('nodeActiveCentral');
+            if (centralNode) {
+              centralNode.classList.add('scale-110');
+              setTimeout(() => {
+                centralNode.classList.remove('scale-110');
+              }, 400);
+            }
+          }
+        });
+      }
+    })();
+  </script>
+</div></main></div></body></html>

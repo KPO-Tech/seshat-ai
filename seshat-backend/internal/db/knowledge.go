@@ -49,6 +49,11 @@ type CreateCorpusParams struct {
 	Description string
 }
 
+type UpdateCorpusParams struct {
+	Name        string
+	Description string
+}
+
 type UpsertCorpusFileParams struct {
 	CorpusID   string
 	FileID     string
@@ -171,6 +176,27 @@ func (s *CorpusStore) GetByID(ctx context.Context, id string) (*Corpus, error) {
 	}
 	c := corpusFromGorm(row)
 	return &c, nil
+}
+
+func (s *CorpusStore) Update(ctx context.Context, id string, params UpdateCorpusParams) (*Corpus, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, fmt.Errorf("id is required")
+	}
+	updates := map[string]any{}
+	if strings.TrimSpace(params.Name) != "" {
+		updates["name"] = params.Name
+	}
+	updates["description"] = params.Description
+	if len(updates) == 0 {
+		return s.GetByID(ctx, id)
+	}
+	if err := s.db.GormDB().WithContext(ctx).
+		Model(&gCorpus{}).
+		Where("id = ?", id).
+		Updates(updates).Error; err != nil {
+		return nil, fmt.Errorf("update corpus: %w", err)
+	}
+	return s.GetByID(ctx, id)
 }
 
 func (s *CorpusStore) ListByUserID(ctx context.Context, userID string) ([]Corpus, error) {

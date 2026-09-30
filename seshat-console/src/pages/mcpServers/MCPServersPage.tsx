@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Alert, Button, Drawer, Empty, Form, Input, InputNumber, message, Popconfirm, Select, Space, Tag, Typography } from 'antd'
+import { Button, Drawer, Empty, Form, Input, InputNumber, message, Popconfirm, Select, Space, Tag, Typography } from 'antd'
 import type { TableProps } from 'antd'
 import { ApiOutlined, DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
 import {
@@ -7,16 +7,27 @@ import {
   useCreateMCPServerConfig,
   useUpdateMCPServerConfig,
   useDeleteMCPServerConfig,
-  useResolvedMCPServerConfigs,
   type MCPServerConfig,
   type MCPServerConfigInput,
   type MCPServerConfigUpdateInput,
 } from '@/api/mcpServerConfigs'
 import { getErrorMessage } from '@/api/errors'
+import { useBundleProvenance } from '@/api/bundles'
 import { PageHeader } from '@/components/PageHeader'
 import { ConsoleTable } from '@/components/ConsoleTable'
+import { ProvenanceTag } from '@/components/ProvenanceTag'
 import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
 import { monoStack, palette } from '@/theme/tokens'
+import { SmartAddMCPServerDrawer } from './SmartAddMCPServerDrawer'
+import {
+  MCP_BRIDGEABLE_OAUTH_KINDS,
+  MCP_BRIDGEABLE_STATIC_KINDS,
+  CONNECTOR_KIND_LABELS,
+  SELF_HOSTED_MCP_PATH,
+  VENDOR_HOSTED_MCP_URL,
+  type OAuthConnectorKind,
+  type AnyConnectorKind,
+} from '@seshat/connector-catalog'
 
 // "sdk" is deliberately not offered here: it identifies an MCP tool built
 // into the SDK's own binary (see seshat/internal/tools/system/mcp -
@@ -32,14 +43,43 @@ const SERVER_TYPE_OPTIONS = [
   { value: 'websocket', label: 'websocket' },
 ]
 
+// See sdb.MCPServerConfig.ConnectorKind's doc comment - when set, resolving
+// this server injects a per-caller Authorization: Bearer header from that
+// person's own connected agent_action account (Workspace → Connections).
+// The kind set, labels, and SELF_HOSTED_MCP_PATH/VENDOR_HOSTED_MCP_URL
+// pre-fills all come from @seshat/connector-catalog now (single source of
+// truth shared with seshat-ui, see that package's own doc comment for
+// why) rather than being hand-copied here - only the Atlassian Rovo label
+// annotation below is specific to this picker.
+const LABEL_OVERRIDES: Partial<Record<string, string>> = {
+  jira: 'Jira (Atlassian Rovo)',
+  confluence: 'Confluence (Atlassian Rovo)',
+}
+
+const CONNECTOR_KIND_OPTIONS = [
+  { value: '', label: 'None (static config only)' },
+  ...MCP_BRIDGEABLE_OAUTH_KINDS.map((kind) => ({ value: kind, label: LABEL_OVERRIDES[kind] ?? CONNECTOR_KIND_LABELS[kind] })),
+  ...MCP_BRIDGEABLE_STATIC_KINDS.map((kind) => ({ value: kind, label: CONNECTOR_KIND_LABELS[kind] })),
+]
+
 export function MCPServersPage() {
   const organizationId = useScopedOrganizationId()
   const [editing, setEditing] = useState<MCPServerConfig | 'new' | null>(null)
-  const { data, isLoading } = useMCPServerConfigsList(organizationId ?? undefined)
-  const resolved = useResolvedMCPServerConfigs(organizationId ?? undefined)
+  // Smart-Add (see docs/helps/audit-2026-08-29-openwork-den-comparison.md
+  // § 8) is the default "New MCP server" entry point - the manual drawer
+  // (editing='new') is still reachable via its own "switch to manual setup"
+  // link, kept as a separate piece of state since the two drawers are
+  // mutually exclusive but neither is a subset of the other's fields.
+  const [smartAddOpen, setSmartAddOpen] = useState(false)
+  const { data, isLoading, error } = useMCPServerConfigsList(organizationId ?? undefined)
   const createConfig = useCreateMCPServerConfig()
   const updateConfig = useUpdateMCPServerConfig()
   const deleteConfig = useDeleteMCPServerConfig()
+  const provenance = useBundleProvenance(
+    organizationId ?? undefined,
+    'mcp_server_config',
+    (data ?? []).map((r) => r.id!).filter(Boolean),
+  )
 
   const columns: TableProps<MCPServerConfig>['columns'] = [
     {
@@ -47,10 +87,15 @@ export function MCPServersPage() {
       key: 'name',
       render: (_, record) => (
         <div>
-          <div style={{ fontWeight: 500 }}>{record.display_name || record.name}</div>
-          <Typography.Text style={{ fontSize: 12, color: palette.inkTertiary, fontFamily: monoStack }}>
-            {record.name}
-          </Typography.Text>
+          <Space size={6}>
+            <span style={{ fontWeight: 500 }}>{record.display_name || record.name}</span>
+            {record.connector_kind && <Tag color="blue">🔗 {record.connector_kind}</Tag>}
+          </Space>
+          <div>
+            <Typography.Text style={{ fontSize: 12, color: palette.inkTertiary, fontFamily: monoStack }}>
+              {record.name}
+            </Typography.Text>
+          </div>
         </div>
       ),
     },
@@ -80,6 +125,14 @@ export function MCPServersPage() {
       render: (value: number | undefined) => `${value ?? 30}s`,
     },
     {
+      title: 'Provenance',
+      key: 'provenance',
+      width: 160,
+      render: (_, record) => (
+        <ProvenanceTag createdByUserId={record.created_by_user_id} provenance={record.id ? provenance.data?.[record.id] : undefined} />
+      ),
+    },
+    {
       title: '',
       key: 'actions',
       width: 100,
@@ -104,28 +157,19 @@ export function MCPServersPage() {
   return (
     <div>
       <PageHeader
-        title="MCP Servers"
-        description="Organization-shared MCP server definitions. Secrets are encrypted at rest and never echoed back in list responses. Falls back to this platform's default organization's servers when this organization has none of its own."
         actions={
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing('new')} disabled={!organizationId}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setSmartAddOpen(true)} disabled={!organizationId}>
             New MCP server
           </Button>
         }
-      />
-
-      <Alert
-        showIcon
-        type="info"
-        style={{ marginBottom: 20 }}
-        title="Connected backends resolve these configs locally"
-        description={`Resolved entries available to connected devices: ${resolved.data?.length ?? 0}. stdio servers still require explicit user approval on the desktop before they can run locally.`}
       />
 
       <ConsoleTable<MCPServerConfig>
         rowKey="id"
         columns={columns}
         dataSource={data ?? []}
-        loading={isLoading || resolved.isLoading}
+        loading={isLoading}
+        queryError={error}
         pagination={false}
         locale={{
           emptyText: (
@@ -135,6 +179,16 @@ export function MCPServersPage() {
               style={{ padding: '32px 0' }}
             />
           ),
+        }}
+      />
+
+      <SmartAddMCPServerDrawer
+        organizationId={organizationId}
+        open={smartAddOpen}
+        onClose={() => setSmartAddOpen(false)}
+        onSwitchToManual={() => {
+          setSmartAddOpen(false)
+          setEditing('new')
         }}
       />
 
@@ -202,6 +256,7 @@ function MCPServerFormDrawer({
       headers_json: '',
       timeout_secs: config?.timeout_secs ?? 30,
       icon: config?.icon ?? '',
+      connector_kind: config?.connector_kind ?? '',
     })
   }, [config, form, open])
 
@@ -281,6 +336,27 @@ function MCPServerFormDrawer({
         <Form.Item name="icon" label="Icon">
           <Input placeholder="Optional icon name or URL" />
         </Form.Item>
+        <Form.Item
+          name="connector_kind"
+          label="Bridged account"
+          extra="When set, each member's own connected account (Workspace → Connections) is injected as a Bearer header when this server resolves - lets an agent action run under that person's own permissions."
+        >
+          <Select
+            options={CONNECTOR_KIND_OPTIONS}
+            onChange={(value: string) => {
+              if (form.getFieldValue('url')) return
+              const selfHostedPath = SELF_HOSTED_MCP_PATH[value as OAuthConnectorKind]
+              if (selfHostedPath) {
+                form.setFieldsValue({ url: window.location.origin + selfHostedPath, server_type: 'http' })
+                return
+              }
+              const vendorURL = VENDOR_HOSTED_MCP_URL[value as AnyConnectorKind]
+              if (vendorURL) {
+                form.setFieldsValue({ url: vendorURL, server_type: 'http' })
+              }
+            }}
+          />
+        </Form.Item>
       </Form>
     </Drawer>
   )
@@ -290,6 +366,8 @@ function buildPayload(values: Record<string, unknown>, organizationId: string | 
   const args = parseStringList(values.args_text)
   const env = parseRecord(values.env_json, 'environment variables')
   const headers = parseRecord(values.headers_json, 'headers')
+
+  const connectorKind = String(values.connector_kind ?? '').trim() as MCPServerConfigInput['connector_kind']
 
   const create: MCPServerConfigInput = {
     organization_id: organizationId ?? '',
@@ -303,6 +381,7 @@ function buildPayload(values: Record<string, unknown>, organizationId: string | 
     headers,
     timeout_secs: Number(values.timeout_secs ?? 30),
     icon: String(values.icon ?? '').trim() || undefined,
+    connector_kind: connectorKind,
   }
 
   const update: MCPServerConfigUpdateInput = {
@@ -315,6 +394,7 @@ function buildPayload(values: Record<string, unknown>, organizationId: string | 
     headers,
     timeout_secs: Number(values.timeout_secs ?? 30),
     icon: String(values.icon ?? '').trim() || undefined,
+    connector_kind: connectorKind,
   }
 
   return { create, update }

@@ -70,6 +70,16 @@ func (app *App) handleEmbedderSettingsDetectModels(w http.ResponseWriter, r *htt
 	if !decodeJSONBody(w, r, &req) {
 		return
 	}
+	if strings.ToLower(strings.TrimSpace(req.Provider)) == "tei" {
+		modelID, err := detectTEIModel(r.Context(), req.BaseURL)
+		if err != nil {
+			writeJSON(w, http.StatusOK, map[string]any{"embedding_models": []string{}, "error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"embedding_models": []string{modelID}})
+		return
+	}
+
 	if strings.ToLower(strings.TrimSpace(req.Provider)) != "ollama" {
 		writeJSON(w, http.StatusOK, map[string]any{
 			"embedding_models": []string{

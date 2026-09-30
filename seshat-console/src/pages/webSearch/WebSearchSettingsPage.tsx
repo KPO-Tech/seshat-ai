@@ -25,7 +25,7 @@ import { palette, monoStack } from '@/theme/tokens'
 // ddg needs no credential of any kind - it's a keyless, always-available
 // fallback, not something to "Configure".
 const SUPPORTED_PROVIDERS = [
-  { id: 'tavily', name: 'Tavily', desc: 'AI-powered search — high-quality results', needsConfig: true, requiresBaseURL: false },
+  { id: 'tavily', name: 'Tavily', desc: 'AI-powered search, high-quality results', needsConfig: true, requiresBaseURL: false },
   { id: 'exa', name: 'Exa', desc: 'Neural search engine built for AI apps', needsConfig: true, requiresBaseURL: false },
   { id: 'jina', name: 'Jina', desc: 'AI-native search with a reader API', needsConfig: true, requiresBaseURL: false },
   { id: 'langsearch', name: 'LangSearch', desc: 'Free API key, AI-optimized results', needsConfig: true, requiresBaseURL: false },
@@ -37,7 +37,7 @@ const SUPPORTED_PROVIDERS = [
     requiresBaseURL: true,
     defaultBaseURL: 'http://localhost:8080',
   },
-  { id: 'ddg', name: 'DuckDuckGo', desc: 'Always-available fallback — no key needed', needsConfig: false, requiresBaseURL: false },
+  { id: 'ddg', name: 'DuckDuckGo', desc: 'Always-available fallback, no key needed', needsConfig: false, requiresBaseURL: false },
 ]
 
 export function WebSearchSettingsPage() {
@@ -54,10 +54,7 @@ export function WebSearchSettingsPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Web Search Settings"
-        description="This organization's own web-search credentials. They override this platform's default web-search credentials when present."
-      />
+      <PageHeader />
 
       <Space orientation="vertical" size={12} style={{ width: '100%' }}>
         {SUPPORTED_PROVIDERS.map((entry) => {

@@ -41,7 +41,16 @@ func (app *App) handleBootstrapStatus(w http.ResponseWriter, r *http.Request) {
 		writeIAMError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"initialized": initialized})
+	hasOrganization, err := app.backend.IAM.HasAnyOrganization(r.Context())
+	if err != nil {
+		writeIAMError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"initialized":      initialized,
+		"org_mode":         app.backend.IAM.OrgMode(),
+		"has_organization": hasOrganization,
+	})
 }
 
 func (app *App) handleBootstrap(w http.ResponseWriter, r *http.Request) {

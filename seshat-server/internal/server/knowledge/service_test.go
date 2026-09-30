@@ -11,13 +11,23 @@ func TestCreateAndGetCorpus(t *testing.T) {
 	env := newTestEnv(t)
 
 	corpus, err := env.knowledge.CreateCorpus(context.Background(), env.adminPrincipal, CreateCorpusParams{
-		OrganizationID: env.orgID, Name: "Supplier Policies", Description: "Internal supplier policy documents",
+		OrganizationID: env.orgID,
+		Name:           "Supplier Policies",
+		Description:    "Internal supplier policy documents",
+		Tags:           []string{"hr", "policy", "hr"},
+		Metadata:       map[string]string{"owner": "People Ops", " region ": " EU "},
 	})
 	if err != nil {
 		t.Fatalf("create corpus: %v", err)
 	}
 	if corpus.OrganizationID != env.orgID || corpus.Name != "Supplier Policies" {
 		t.Fatalf("unexpected corpus: %+v", corpus)
+	}
+	if !hasString(corpus.Tags, "hr") || !hasString(corpus.Tags, "policy") || len(corpus.Tags) != 2 {
+		t.Fatalf("expected normalized corpus tags, got %+v", corpus.Tags)
+	}
+	if corpus.Metadata["owner"] != "People Ops" || corpus.Metadata["region"] != "EU" {
+		t.Fatalf("expected normalized corpus metadata, got %+v", corpus.Metadata)
 	}
 
 	fetched, err := env.knowledge.GetCorpus(context.Background(), env.adminPrincipal, corpus.ID)
@@ -26,6 +36,18 @@ func TestCreateAndGetCorpus(t *testing.T) {
 	}
 	if fetched.ID != corpus.ID {
 		t.Fatalf("unexpected fetched corpus: %+v", fetched)
+	}
+	updated, err := env.knowledge.UpdateCorpus(context.Background(), env.adminPrincipal, corpus.ID, UpdateCorpusParams{
+		Name:        "Supplier Knowledge",
+		Description: "Curated supplier policies",
+		Tags:        []string{"supplier", "compliance"},
+		Metadata:    map[string]string{"owner": "Procurement"},
+	})
+	if err != nil {
+		t.Fatalf("update corpus: %v", err)
+	}
+	if updated.Name != "Supplier Knowledge" || !hasString(updated.Tags, "supplier") || updated.Metadata["owner"] != "Procurement" {
+		t.Fatalf("unexpected updated corpus: %+v", updated)
 	}
 }
 
@@ -56,6 +78,15 @@ func TestListCorporaIsScopedByOrganizationAndPermission(t *testing.T) {
 	if len(corpora) != 1 || total != 1 {
 		t.Fatalf("expected the admin to see the one corpus in their org, got %d", len(corpora))
 	}
+}
+
+func hasString(values []string, expected string) bool {
+	for _, value := range values {
+		if value == expected {
+			return true
+		}
+	}
+	return false
 }
 
 func TestCreateCorpusRequiresKnowledgeManage(t *testing.T) {

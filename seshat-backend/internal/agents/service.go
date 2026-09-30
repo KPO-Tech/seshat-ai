@@ -7,7 +7,7 @@ import (
 
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
-	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloudagents"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/agents"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	pkgagent "github.com/KPO-Tech/seshat/pkg/agent"
 	"github.com/KPO-Tech/seshat/pkg/types"
@@ -35,6 +35,10 @@ func NewService(store *db.AgentDefinitionStore, cloudClient *cloudagents.Client)
 	return &Service{store: store, cloudClient: cloudClient}
 }
 
+// List returns every Companion-visible agent - excludes "workflow" rows
+// (an Automation graph's own "agent" node creates these inline; they're
+// scoped to that one workflow, not meant to show up as a reusable
+// Companion persona - see agents.CreateParams.Source).
 func (s *Service) List(ctx context.Context) ([]Agent, error) {
 	if s == nil || s.store == nil {
 		return nil, bkerr.Unavailable("agent store not available", nil)
@@ -45,7 +49,11 @@ func (s *Service) List(ctx context.Context) ([]Agent, error) {
 	}
 	out := make([]Agent, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, fromDB(r))
+		a := fromDB(r)
+		if a.Source == "workflow" {
+			continue
+		}
+		out = append(out, a)
 	}
 	return out, nil
 }
@@ -63,6 +71,21 @@ func (s *Service) GetBySlug(ctx context.Context, slug string) (*Agent, error) {
 	}
 	a := fromDB(*row)
 	return &a, nil
+}
+
+// EnsureDefault idempotently provisions a default agent by slug - creates
+// it if absent, is a no-op if it already exists. Used for agents with no
+// natural "first use" trigger to hook into (e.g. the Knowledge Agent,
+// unlike the Inbox Agent which provisions on first channel connection).
+func (s *Service) EnsureDefault(ctx context.Context, params CreateParams) error {
+	if s == nil || s.store == nil {
+		return nil
+	}
+	if _, err := s.GetBySlug(ctx, params.Slug); err == nil {
+		return nil
+	}
+	_, err := s.Create(ctx, params)
+	return err
 }
 
 func (s *Service) GetByID(ctx context.Context, id string) (*Agent, error) {
@@ -109,6 +132,7 @@ func (s *Service) Create(ctx context.Context, p CreateParams) (*Agent, error) {
 		McpServers:      p.McpServers,
 		Icon:            strings.TrimSpace(p.Icon),
 		Enabled:         p.Enabled,
+		Source:          strings.TrimSpace(p.Source),
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
@@ -291,7 +315,7 @@ func fromDB(r db.AgentDefinition) Agent {
 		McpServers:      r.McpServers,
 		Icon:            r.Icon,
 		Enabled:         r.Enabled,
-		Source:          "user",
+		Source:          r.Source,
 		CreatedAt:       r.CreatedAt,
 		UpdatedAt:       r.UpdatedAt,
 	}

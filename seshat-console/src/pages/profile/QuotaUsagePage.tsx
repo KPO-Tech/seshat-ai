@@ -11,7 +11,7 @@ import { palette } from '@/theme/tokens'
 type UsageEntry = components['schemas']['UsageEntry']
 
 export function QuotaUsagePage() {
-  const { data, isLoading } = useMyQuotaUsage()
+  const { data, isLoading, error } = useMyQuotaUsage()
   const entries = data?.entries ?? []
 
   const columns: TableProps<UsageEntry>['columns'] = [
@@ -34,13 +34,10 @@ export function QuotaUsagePage() {
 
   return (
     <div>
-      <PageHeader
-        title="Usage Counters"
-        description="Personal usage counters attached to your account. These are informational only and never become platform-wide defaults or shared organization settings."
-      />
+      <PageHeader />
 
       <Card style={{ marginBottom: 24 }}>
-        <Space direction="vertical" size={6}>
+        <Space orientation="vertical" size={6}>
           <Typography.Text strong>Total entries</Typography.Text>
           <Typography.Text style={{ fontSize: 24 }}>{entries.length}</Typography.Text>
           <Typography.Text type="secondary">
@@ -54,6 +51,7 @@ export function QuotaUsagePage() {
         columns={columns}
         dataSource={entries}
         loading={isLoading}
+        queryError={error}
         pagination={false}
         locale={{
           emptyText: (

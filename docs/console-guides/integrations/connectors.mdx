@@ -1,0 +1,52 @@
+# Connectors
+
+`/orgs/:id/connectors` — Organization → Integrations → Connectors
+
+## What it's for
+
+Two distinct pieces that share a page because they're both "external
+system access," not because they're the same thing:
+
+- **OAuth apps** — register this organization's own app credentials,
+  once per provider, for **any** of the 20 OAuth connector kinds (Google
+  Drive, Slack, Notion, Jira, Salesforce, ...). One registration serves
+  every account this org connects afterward for that kind, whether it's
+  used for knowledge_sync right below on this page, or a self-service
+  agent-tool connection from Workspace → Connections.
+- **Connected sources** — the actual synced accounts, each pulling
+  documents into one specific [Knowledge](../ai-core/knowledge.mdx)
+  corpus. This half is knowledge_sync-only: only 4 of the 20 OAuth kinds
+  (Google Drive, SharePoint, OneDrive, Confluence) support it at all -
+  the other 16 are agent-action tools, connected per-employee from
+  Workspace → Connections instead, never listed here.
+
+## How to use it
+
+**OAuth apps**: pick a kind's card, "Configure" opens a Client ID/secret
+form. Zendesk is the one kind that also needs its account subdomain
+(its OAuth endpoints are hosted per-account, e.g. `acme.zendesk.com` —
+every other provider here uses one fixed endpoint). The 8 static-secret
+kinds (Stripe, Telegram, Trello, ...) never appear here at all - they
+have no app to register; the connecting employee pastes their own
+secret directly.
+
+**Connected sources**: needs a corpus to sync into - **create one under
+Knowledge → Corpora first, or "New connector" stays disabled** (hovering
+it explains why, but it's easy to miss). S3-compatible/Azure Blob take static credentials entered
+directly; the 4 OAuth kinds need that kind's app registered above first,
+then "Connect with..." opens the real consent flow in a new tab. Per
+source: "Sync now" queues an immediate sync outside its normal interval,
+the history icon shows every past attempt including failures, and
+disconnecting only removes the connection - already-ingested files stay
+in the corpus.
+
+## See also
+
+- [Knowledge](../ai-core/knowledge.mdx) — the corpora a connected source
+  syncs into.
+- [MCP Servers](../ai-core/mcp-servers.mdx) — another consumer of the
+  OAuth apps registered here, for the kinds that also have a vendor MCP
+  tool server to bridge into.
+- [Workspace → Connections](../workspace/connections.mdx) — where an
+  individual employee connects their own account for one of the 16
+  agent-action kinds, using the app registered here.

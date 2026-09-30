@@ -24,7 +24,16 @@ type QueryInput struct {
 	// which then fails its own ownership check on every later read
 	// (Get/Patch compares against the real, non-empty principal.User.ID).
 	// Populated in prepareRuntimeInput from the request's principal.
-	UserID             string
+	UserID string
+	// RAGAllowedOwnerIDs scopes the rag_search/rag_ingest/rag_delete tools
+	// (wired onto the session whenever a RAGService is configured) to
+	// corpora this caller actually owns or shares a workspace with -
+	// mirrors knowledge.Service.checkAccess's own rule (corpus.UserID or
+	// corpus.WorkspaceID membership) so the model's own tool call can't
+	// reach a corpus_id belonging to someone else. Populated in
+	// prepareRuntimeInput from the request's principal; empty means no
+	// scoping is applied (headless/unscoped mode).
+	RAGAllowedOwnerIDs []string
 	PromptFn           types.PromptFn        // per-request permission bridge, optional
 	PermissionMode     types.PermissionMode  // effective tool approval mode for this turn/session
 	ExecutionOrigin    types.ExecutionOrigin // interactive vs automation provenance
@@ -34,6 +43,12 @@ type QueryInput struct {
 	// apply for this session. When set, the agent's system prompt, model, and
 	// permission mode override the defaults unless already explicitly provided.
 	AgentSlug string
+	// AllowedTools, when non-empty, restricts the session to exactly these
+	// tool names for this turn - populated from the resolved agent
+	// definition's Tools allowlist in BuildContextInput. Empty means no
+	// restriction (the full global tool set stays available), matching how
+	// AgentDefinition.Tools == nil means "unrestricted" elsewhere.
+	AllowedTools []string
 	// SystemPromptOverride fully replaces the engine's default system prompt
 	// (Seshat Core identity + rules + workflow). Used when an agent needs its
 	// own identity rather than layering on top of Seshat Core via AppendSystemPrompt.
@@ -86,6 +101,8 @@ type SessionInfo struct {
 	Title             string `json:"title"`
 	PermissionMode    string `json:"permission_mode,omitempty"`
 	ExecutionOrigin   string `json:"execution_origin,omitempty"`
+	ExecutionMode     string `json:"execution_mode,omitempty"`
+	Source            string `json:"source,omitempty"`
 	WorkspacePath     string `json:"workspace_path,omitempty"`
 	ProjectPath       string `json:"project_path,omitempty"`
 	Status            string `json:"status,omitempty"`
@@ -125,4 +142,10 @@ type ContextBuildParams struct {
 	AppendSystemPrompt *string
 	AgentSlug          string
 	Principal          *backendauth.Principal
+	// OnStage, when set, is called once right before the one sub-phase of
+	// context building slow enough to be worth naming individually to the
+	// client (the RAG search) - see the [perf] context_build timings this
+	// mirrors. Skills/memories/preferences stay bundled implicitly since
+	// they're fast relative to it.
+	OnStage func(stage, label string)
 }

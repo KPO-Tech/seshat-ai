@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/cloud/automation"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 )
 
@@ -54,23 +55,27 @@ type UpdateWorkspaceParams struct {
 // Service is a thin orchestrator over an injected Provider (Login/Register/
 // Logout/ResolvePrincipal/Users/Organizations — local or remote depending on
 // mode), plus identity-adjacent concerns that always stay local regardless of
-// mode: workspaces, API keys, group-based permission flags, and rich profile
-// fields that have no seshat-server equivalent.
+// mode: workspaces, API keys, and rich profile fields that have no
+// seshat-server equivalent.
 type Service struct {
 	provider Provider
 	identity *db.IdentityStore // workspaces + profile/settings: always local
 	apiKeys  *db.APIKeyStore   // always local
-	groups   *db.GroupStore    // always local, distinct concept from seshat-server's Group
 	config   ServiceConfig
+	// policies is this device's last-synced desktop policy bundle - nil-safe
+	// (a nil *cloudautomation.PolicyStore pointer used via a nil check, not a nil
+	// interface method call) so tests that construct a Service directly
+	// don't all need to wire one up. See CreateWorkspace's own check.
+	policies *cloudautomation.PolicyStore
 }
 
-func NewService(provider Provider, identity *db.IdentityStore, apiKeys *db.APIKeyStore, groups *db.GroupStore, cfg ServiceConfig) *Service {
+func NewService(provider Provider, identity *db.IdentityStore, apiKeys *db.APIKeyStore, cfg ServiceConfig, policies *cloudautomation.PolicyStore) *Service {
 	return &Service{
 		provider: provider,
 		identity: identity,
 		apiKeys:  apiKeys,
-		groups:   groups,
 		config:   cfg,
+		policies: policies,
 	}
 }
 
@@ -275,6 +280,20 @@ func (s *Service) CreateWorkspace(ctx context.Context, principal *Principal, par
 	if err := EnsureAdmin(principal); err != nil {
 		return nil, err
 	}
+	if s.policies != nil && !s.policies.Allowed(ctx, cloudautomation.DesktopPolicyAllowMultipleWorkspaces) {
+		// Workspaces are a whole-device concept (they scope chat sessions/
+		// artifacts locally, see Workspace's own doc comment), not scoped to
+		// params.OrganizationID - the count that matters is every workspace
+		// on this install, admin-wide, the same set ListWorkspaces returns
+		// for an admin caller.
+		existing, err := s.identity.ListWorkspaces(ctx)
+		if err != nil {
+			return nil, bkerr.Internal("failed to check existing workspaces", err)
+		}
+		if len(existing) >= 1 {
+			return nil, bkerr.Forbidden("your organization only allows a single workspace on this device", nil)
+		}
+	}
 	workspace, err := s.identity.CreateWorkspace(ctx, db.CreateWorkspaceParams{
 		OrganizationID: params.OrganizationID,
 		Name:           params.Name,
@@ -469,19 +488,4 @@ func (s *Service) UpdateUserSettings(ctx context.Context, userID string, setting
 		return nil, bkerr.Internal("failed to update settings", err)
 	}
 	return updated, nil
-}
-
-// GetEffectivePermissions returns the union of all group permissions for a
-// user. Always local — seshat-server's Group is a distinct concept (org-scoped
-// policy-binding subject, not a local feature-flag bundle); see
-// helps/seshat-architecture-target.md §2b.
-func (s *Service) GetEffectivePermissions(ctx context.Context, userID string) (db.GroupPermissions, error) {
-	if s == nil || s.groups == nil {
-		return db.DefaultGroupPermissions(), nil
-	}
-	perms, err := s.groups.GetEffectivePermissions(ctx, userID, db.DefaultGroupPermissions())
-	if err != nil {
-		return db.DefaultGroupPermissions(), bkerr.Internal("failed to get permissions", err)
-	}
-	return perms, nil
 }

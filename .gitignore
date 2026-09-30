@@ -20,9 +20,10 @@ Thumbs.db
 .nexus/
 .seshat/
 .claude/
+.worktrees/
 .gemini/
 private/
-helps/
+graphify-out/
 
 # Generic local artifacts
 *.log

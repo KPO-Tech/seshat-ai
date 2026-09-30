@@ -1,11 +1,10 @@
-import { Avatar, Card, Empty, Space, Tag, Typography } from 'antd'
+import { Avatar, Empty, Space, Tag, Typography } from 'antd'
 import type { TableProps } from 'antd'
-import { ApartmentOutlined, CrownOutlined, RightOutlined, TeamOutlined } from '@ant-design/icons'
+import { ApartmentOutlined, RightOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router'
 import type { Organization } from '@/api/organizations'
 import { PageHeader } from '@/components/PageHeader'
 import { ConsoleTable } from '@/components/ConsoleTable'
-import { StatTile } from '@/components/StatTile'
 import { useAuthStore } from '@/store/auth'
 import { ROLE_COLORS, formatRoleLabel } from '@/lib/roles'
 import { palette } from '@/theme/tokens'
@@ -21,7 +20,6 @@ export function MyOrganizationsPage() {
   const memberships = useAuthStore((s) => s.memberships)
 
   const roleByOrgId = new Map(memberships.map((m) => [m.organization_id, m.role]))
-  const ownerCount = organizations.filter((org) => roleByOrgId.get(org.id!) === 'owner').length
 
   const columns: TableProps<Organization>['columns'] = [
     {
@@ -65,42 +63,27 @@ export function MyOrganizationsPage() {
 
   return (
     <div>
-      <PageHeader title="My Organizations" description="Organizations you're a member of." />
+      <PageHeader />
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: 16,
-          marginBottom: 24,
+      <ConsoleTable<Organization>
+        rowKey="id"
+        columns={columns}
+        dataSource={organizations}
+        pagination={false}
+        onRow={(record) => ({
+          onClick: () => navigate(`/orgs/${record.id}/overview`),
+          style: { cursor: 'pointer' },
+        })}
+        locale={{
+          emptyText: (
+            <Empty
+              image={<ApartmentOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}
+              description="No organizations yet"
+              style={{ padding: '40px 0' }}
+            />
+          ),
         }}
-      >
-        <StatTile label="Organizations" value={organizations.length} icon={<ApartmentOutlined />} />
-        <StatTile label="Owner of" value={ownerCount} icon={<CrownOutlined />} />
-        <StatTile label="Member of" value={organizations.length - ownerCount} icon={<TeamOutlined />} />
-      </div>
-
-      <Card styles={{ body: { padding: 0 } }}>
-        <ConsoleTable<Organization>
-          rowKey="id"
-          columns={columns}
-          dataSource={organizations}
-          pagination={false}
-          onRow={(record) => ({
-            onClick: () => navigate(`/orgs/${record.id}/overview`),
-            style: { cursor: 'pointer' },
-          })}
-          locale={{
-            emptyText: (
-              <Empty
-                image={<ApartmentOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}
-                description="No organizations yet"
-                style={{ padding: '40px 0' }}
-              />
-            ),
-          }}
-        />
-      </Card>
+      />
     </div>
   )
 }

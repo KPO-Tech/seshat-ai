@@ -38,7 +38,7 @@ func TestCreateProviderSettingEncryptsTheAPIKeyAtRest(t *testing.T) {
 		t.Fatalf("expected the API key to be encrypted at rest, got %q", stored.EncryptedAPIKey)
 	}
 
-	decrypted, err := decryptSecret(stored.EncryptedAPIKey)
+	decrypted, err := decryptSecret(env.db.Gorm(), env.orgID, stored.EncryptedAPIKey)
 	if err != nil {
 		t.Fatalf("decrypt stored key: %v", err)
 	}
@@ -202,7 +202,7 @@ func TestResolveProviderSettingHonorsShareProviderSettingsOptOut(t *testing.T) {
 		t.Fatalf("create provider setting on the default org: %v", err)
 	}
 	shareProviderSettings := false
-	if _, err := env.iam.SetOrganizationSharedDomains(context.Background(), env.adminPrincipal, defaultOrg.ID, &shareProviderSettings, nil, nil, nil, nil, nil); err != nil {
+	if _, err := env.iam.SetOrganizationSharedDomains(context.Background(), env.adminPrincipal, defaultOrg.ID, &shareProviderSettings, nil, nil, nil, nil, nil, nil); err != nil {
 		t.Fatalf("opt out of sharing provider settings: %v", err)
 	}
 
@@ -256,7 +256,7 @@ func TestUpdateProviderSettingKeepsExistingKeyWhenNotSupplied(t *testing.T) {
 	if err != nil || !ok {
 		t.Fatalf("find provider setting: ok=%v err=%v", ok, err)
 	}
-	decrypted, err := decryptSecret(record.EncryptedAPIKey)
+	decrypted, err := decryptSecret(env.db.Gorm(), env.orgID, record.EncryptedAPIKey)
 	if err != nil {
 		t.Fatalf("decrypt: %v", err)
 	}

@@ -6,11 +6,20 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/iam"
 )
+
+// maskedSecretPattern matches iam.maskedStoredSecret's output shape: an
+// 8-hex-char SHA-256 fingerprint of the decrypted secret, followed by 8
+// literal asterisks. redactSecret (api/helpers.go) was removed 2026-08-06 as
+// a near-duplicate of that function — these tests now assert against the
+// single remaining implementation's output shape rather than recomputing it,
+// since it's unexported and lives in a different package.
+var maskedSecretPattern = regexp.MustCompile(`^[0-9a-f]{8}\*{8}$`)
 
 func TestApplicationSecretIsRevealedOnceThenRedacted(t *testing.T) {
 	handler, backend, token, orgID, principal := newTestServerRouter(t)
@@ -67,8 +76,26 @@ func TestApplicationSecretIsRevealedOnceThenRedacted(t *testing.T) {
 	if err := json.NewDecoder(getRecorder.Body).Decode(&fetched); err != nil {
 		t.Fatalf("decode fetched application: %v", err)
 	}
-	if fetched.ClientSecret != redactSecret(application.ClientSecret) {
-		t.Fatalf("expected get response to redact the client secret, got %q", fetched.ClientSecret)
+	if !maskedSecretPattern.MatchString(fetched.ClientSecret) {
+		t.Fatalf("expected get response to return a masked fingerprint, got %q", fetched.ClientSecret)
+	}
+	if fetched.ClientSecret == application.ClientSecret || strings.Contains(fetched.ClientSecret, application.ClientSecret) {
+		t.Fatalf("expected get response to never contain the real secret, got %q", fetched.ClientSecret)
+	}
+
+	// The fingerprint must be deterministic — the same underlying secret
+	// masks to the same value across independent requests, or it stops being
+	// useful for spotting "did this get changed" at a glance.
+	repeatRequest := httptest.NewRequest(http.MethodGet, "/api/v1/applications/"+application.ID, nil)
+	repeatRequest.Header.Set("Authorization", "Bearer "+token)
+	repeatRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(repeatRecorder, repeatRequest)
+	var fetchedAgain iam.Application
+	if err := json.NewDecoder(repeatRecorder.Body).Decode(&fetchedAgain); err != nil {
+		t.Fatalf("decode re-fetched application: %v", err)
+	}
+	if fetchedAgain.ClientSecret != fetched.ClientSecret {
+		t.Fatalf("expected the masked secret to be stable across requests, got %q then %q", fetched.ClientSecret, fetchedAgain.ClientSecret)
 	}
 
 	listRequest := httptest.NewRequest(http.MethodGet, "/api/v1/applications", nil)
@@ -114,8 +141,11 @@ func TestProviderSecretIsNeverRevealedOverAPI(t *testing.T) {
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatalf("decode created provider: %v", err)
 	}
-	if created.ClientSecret != redactSecret("client-secret-value") {
-		t.Fatalf("expected create response to redact the caller-supplied secret, got %q", created.ClientSecret)
+	if !maskedSecretPattern.MatchString(created.ClientSecret) {
+		t.Fatalf("expected create response to return a masked fingerprint, got %q", created.ClientSecret)
+	}
+	if strings.Contains(created.ClientSecret, "client-secret-value") {
+		t.Fatalf("expected create response to never contain the real caller-supplied secret, got %q", created.ClientSecret)
 	}
 
 	getRequest := httptest.NewRequest(http.MethodGet, "/api/v1/providers/"+created.ID, nil)
@@ -129,8 +159,16 @@ func TestProviderSecretIsNeverRevealedOverAPI(t *testing.T) {
 	if err := json.NewDecoder(getRecorder.Body).Decode(&fetched); err != nil {
 		t.Fatalf("decode fetched provider: %v", err)
 	}
-	if fetched.ClientSecret != redactSecret("client-secret-value") {
-		t.Fatalf("expected get response to redact the client secret, got %q", fetched.ClientSecret)
+	if !maskedSecretPattern.MatchString(fetched.ClientSecret) {
+		t.Fatalf("expected get response to return a masked fingerprint, got %q", fetched.ClientSecret)
+	}
+	if strings.Contains(fetched.ClientSecret, "client-secret-value") {
+		t.Fatalf("expected get response to never contain the real secret, got %q", fetched.ClientSecret)
+	}
+	// Same underlying secret, fetched via create-then-get: the fingerprint
+	// must match, proving it's deterministic rather than randomized per call.
+	if fetched.ClientSecret != created.ClientSecret {
+		t.Fatalf("expected the masked secret to be stable between create and get, got %q then %q", created.ClientSecret, fetched.ClientSecret)
 	}
 }
 

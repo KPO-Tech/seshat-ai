@@ -273,6 +273,225 @@ func TestResolveServerConfigsFallsBackToPlatformDefault(t *testing.T) {
 	}
 }
 
+// stubConnectorTokenResolver is a fake ConnectorTokenResolver - tests need
+// no real connectors.Service dependency, matching the whole point of the
+// interface (composition, no cross-import). tokensByUser lets a test give
+// different principals different tokens, proving injection is genuinely
+// per-caller and not accidentally shared/cached.
+type stubConnectorTokenResolver struct {
+	tokensByUser map[string]string // userID -> token; absent/empty = not connected
+	err          error
+	calls        []string // organizationID+":"+kind+":"+userID, for call-count assertions
+}
+
+func (r *stubConnectorTokenResolver) AccessTokenForUser(ctx context.Context, organizationID, kind, userID string) (string, bool, error) {
+	r.calls = append(r.calls, organizationID+":"+kind+":"+userID)
+	if r.err != nil {
+		return "", false, r.err
+	}
+	token, ok := r.tokensByUser[userID]
+	if !ok || token == "" {
+		return "", false, nil
+	}
+	return token, true, nil
+}
+
+func TestResolveServerConfigsInjectsConnectorTokenPerPrincipal(t *testing.T) {
+	t.Setenv(testEncryptionEnvVar, testEncryptionKey)
+	env := newTestEnv(t)
+	member := env.addMember(t, "member")
+
+	if _, err := env.svc.CreateServerConfig(context.Background(), env.adminPrincipal, CreateServerConfigParams{
+		OrganizationID: env.orgID, Name: "gdrive-actions", ServerType: "http", URL: "https://mcp.example.com/gdrive",
+		Headers:       map[string]string{"X-Static": "always-present"},
+		ConnectorKind: "gdrive",
+	}); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	stub := &stubConnectorTokenResolver{tokensByUser: map[string]string{
+		env.adminPrincipal.User.ID: "admin-token",
+		// member deliberately absent - not connected.
+	}}
+	env.svc.SetConnectorTokenResolver(stub)
+
+	adminResolved, err := env.svc.ResolveServerConfigs(context.Background(), env.adminPrincipal, env.orgID)
+	if err != nil || len(adminResolved) != 1 {
+		t.Fatalf("resolve as admin: %v %+v", err, adminResolved)
+	}
+	if !adminResolved[0].Connected {
+		t.Fatalf("expected admin's resolved config to be marked connected, got %+v", adminResolved[0])
+	}
+	if adminResolved[0].Headers["Authorization"] != "Bearer admin-token" {
+		t.Fatalf("expected admin's own token injected as a Bearer header, got %+v", adminResolved[0].Headers)
+	}
+	if adminResolved[0].Headers["X-Static"] != "always-present" {
+		t.Fatalf("expected the static header to survive injection, got %+v", adminResolved[0].Headers)
+	}
+
+	memberResolved, err := env.svc.ResolveServerConfigs(context.Background(), member, env.orgID)
+	if err != nil || len(memberResolved) != 1 {
+		t.Fatalf("resolve as member: %v %+v", err, memberResolved)
+	}
+	if memberResolved[0].Connected {
+		t.Fatalf("expected member (no connected account) to resolve as not connected, got %+v", memberResolved[0])
+	}
+	if _, ok := memberResolved[0].Headers["Authorization"]; ok {
+		t.Fatalf("expected no Authorization header for a member with no connected account, got %+v", memberResolved[0].Headers)
+	}
+	if memberResolved[0].Headers["X-Static"] != "always-present" {
+		t.Fatalf("expected the static header to still be present, got %+v", memberResolved[0].Headers)
+	}
+
+	if len(stub.calls) != 2 {
+		t.Fatalf("expected AccessTokenForUser to be called once per ResolveServerConfigs call (2 total), got %v", stub.calls)
+	}
+}
+
+func TestResolveServerConfigsWithoutConnectorKindNeverCallsResolver(t *testing.T) {
+	t.Setenv(testEncryptionEnvVar, testEncryptionKey)
+	env := newTestEnv(t)
+
+	if _, err := env.svc.CreateServerConfig(context.Background(), env.adminPrincipal, CreateServerConfigParams{
+		OrganizationID: env.orgID, Name: "plain-jira", ServerType: "stdio", Command: "echo",
+	}); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	stub := &stubConnectorTokenResolver{}
+	env.svc.SetConnectorTokenResolver(stub)
+
+	resolved, err := env.svc.ResolveServerConfigs(context.Background(), env.adminPrincipal, env.orgID)
+	if err != nil || len(resolved) != 1 {
+		t.Fatalf("resolve: %v %+v", err, resolved)
+	}
+	if !resolved[0].Connected {
+		t.Fatalf("expected a plain (no ConnectorKind) server to resolve as connected, got %+v", resolved[0])
+	}
+	if len(stub.calls) != 0 {
+		t.Fatalf("expected the resolver to never be called for a server with no ConnectorKind, got %v", stub.calls)
+	}
+}
+
+func TestResolveServerConfigsToleratesNoResolverWired(t *testing.T) {
+	t.Setenv(testEncryptionEnvVar, testEncryptionKey)
+	env := newTestEnv(t)
+	// Deliberately never calling SetConnectorTokenResolver - production
+	// default, must not panic or error.
+
+	if _, err := env.svc.CreateServerConfig(context.Background(), env.adminPrincipal, CreateServerConfigParams{
+		OrganizationID: env.orgID, Name: "gdrive-actions", ServerType: "http", URL: "https://mcp.example.com/gdrive",
+		ConnectorKind: "gdrive",
+	}); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	resolved, err := env.svc.ResolveServerConfigs(context.Background(), env.adminPrincipal, env.orgID)
+	if err != nil || len(resolved) != 1 {
+		t.Fatalf("resolve: %v %+v", err, resolved)
+	}
+	if resolved[0].Connected {
+		t.Fatalf("expected not connected with no resolver wired, got %+v", resolved[0])
+	}
+	if _, ok := resolved[0].Headers["Authorization"]; ok {
+		t.Fatalf("expected no Authorization header with no resolver wired, got %+v", resolved[0].Headers)
+	}
+}
+
+// stubStaticSecretResolver mirrors stubConnectorTokenResolver above, for
+// StaticSecretResolver instead - same fake-not-real-connectors.Service
+// reasoning.
+type stubStaticSecretResolver struct {
+	secretsByUser map[string]string
+	err           error
+	calls         []string
+}
+
+func (r *stubStaticSecretResolver) StaticSecretForUser(ctx context.Context, organizationID, kind, userID string) (string, bool, error) {
+	r.calls = append(r.calls, organizationID+":"+kind+":"+userID)
+	if r.err != nil {
+		return "", false, r.err
+	}
+	secret, ok := r.secretsByUser[userID]
+	if !ok || secret == "" {
+		return "", false, nil
+	}
+	return secret, true, nil
+}
+
+// TestResolveServerConfigsInjectsStaticSecretWhenOAuthResolverFindsNothing
+// proves the fallback this fix adds: a static-secret connector kind
+// (stripe/trello/airtable) has no OAuth account by definition, so the OAuth
+// resolver alone would always leave it unconnected - the static resolver
+// must be consulted too, not instead.
+func TestResolveServerConfigsInjectsStaticSecretWhenOAuthResolverFindsNothing(t *testing.T) {
+	t.Setenv(testEncryptionEnvVar, testEncryptionKey)
+	env := newTestEnv(t)
+
+	if _, err := env.svc.CreateServerConfig(context.Background(), env.adminPrincipal, CreateServerConfigParams{
+		OrganizationID: env.orgID, Name: "stripe-actions", ServerType: "http", URL: "https://mcp.stripe.com",
+		ConnectorKind: "stripe",
+	}); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	oauthStub := &stubConnectorTokenResolver{} // no accounts at all - stripe is never OAuth
+	staticStub := &stubStaticSecretResolver{secretsByUser: map[string]string{
+		env.adminPrincipal.User.ID: "sk_live_admin",
+	}}
+	env.svc.SetConnectorTokenResolver(oauthStub)
+	env.svc.SetStaticSecretResolver(staticStub)
+
+	resolved, err := env.svc.ResolveServerConfigs(context.Background(), env.adminPrincipal, env.orgID)
+	if err != nil || len(resolved) != 1 {
+		t.Fatalf("resolve: %v %+v", err, resolved)
+	}
+	if !resolved[0].Connected {
+		t.Fatalf("expected static-secret fallback to mark this connected, got %+v", resolved[0])
+	}
+	if resolved[0].Headers["Authorization"] != "Bearer sk_live_admin" {
+		t.Fatalf("expected the static secret injected as a Bearer header, got %+v", resolved[0].Headers)
+	}
+	if len(oauthStub.calls) != 1 {
+		t.Fatalf("expected the OAuth resolver to still be tried first (and once), got %v", oauthStub.calls)
+	}
+	if len(staticStub.calls) != 1 {
+		t.Fatalf("expected the static resolver to be tried after the OAuth one came back empty, got %v", staticStub.calls)
+	}
+}
+
+// TestResolveServerConfigsPrefersOAuthOverStaticWhenBothWired proves the two
+// resolvers don't double-inject or fight when a genuinely OAuth kind (never
+// having a static account) is resolved with both wired, as production does.
+func TestResolveServerConfigsPrefersOAuthOverStaticWhenBothWired(t *testing.T) {
+	t.Setenv(testEncryptionEnvVar, testEncryptionKey)
+	env := newTestEnv(t)
+
+	if _, err := env.svc.CreateServerConfig(context.Background(), env.adminPrincipal, CreateServerConfigParams{
+		OrganizationID: env.orgID, Name: "slack-actions", ServerType: "http", URL: "https://mcp.slack.com/mcp",
+		ConnectorKind: "slack",
+	}); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	oauthStub := &stubConnectorTokenResolver{tokensByUser: map[string]string{
+		env.adminPrincipal.User.ID: "oauth-token",
+	}}
+	staticStub := &stubStaticSecretResolver{} // slack is never a static kind - no accounts
+	env.svc.SetConnectorTokenResolver(oauthStub)
+	env.svc.SetStaticSecretResolver(staticStub)
+
+	resolved, err := env.svc.ResolveServerConfigs(context.Background(), env.adminPrincipal, env.orgID)
+	if err != nil || len(resolved) != 1 {
+		t.Fatalf("resolve: %v %+v", err, resolved)
+	}
+	if resolved[0].Headers["Authorization"] != "Bearer oauth-token" {
+		t.Fatalf("expected the OAuth token injected, got %+v", resolved[0].Headers)
+	}
+	if len(staticStub.calls) != 0 {
+		t.Fatalf("expected the static resolver to never be tried once the OAuth one already connected, got %v", staticStub.calls)
+	}
+}
+
 func TestHeadersEncryptionRoundTrip(t *testing.T) {
 	t.Setenv(testEncryptionEnvVar, testEncryptionKey)
 	env := newTestEnv(t)

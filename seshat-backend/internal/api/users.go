@@ -54,28 +54,6 @@ type apiKeyResponse struct {
 	UpdatedAt  time.Time  `json:"updated_at"`
 }
 
-type permissionsResponse struct {
-	Workspace workspacePermsResponse `json:"workspace"`
-	Chat      chatPermsResponse      `json:"chat"`
-	Features  featurePermsResponse   `json:"features"`
-}
-
-type workspacePermsResponse struct {
-	Models    bool `json:"models"`
-	Knowledge bool `json:"knowledge"`
-	Prompts   bool `json:"prompts"`
-}
-
-type chatPermsResponse struct {
-	FileUpload bool `json:"file_upload"`
-	Delete     bool `json:"delete"`
-}
-
-type featurePermsResponse struct {
-	APIKeys   bool `json:"api_keys"`
-	WebSearch bool `json:"web_search"`
-}
-
 type adminUpdateUserRequest struct {
 	DisplayName *string `json:"display_name,omitempty"`
 	Password    *string `json:"password,omitempty"`
@@ -247,34 +225,11 @@ func (app *App) handleUserMeSettings(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleUserMePermissions handles GET /api/v1/users/me/permissions
-func (app *App) handleUserMePermissions(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	principal, ok := authPrincipalFromContext(r.Context())
-	if !ok {
-		writeJSONError(w, http.StatusUnauthorized, "authentication required")
-		return
-	}
-
-	perms, err := app.backend.Auth.GetEffectivePermissions(r.Context(), principal.User.ID)
-	if err != nil {
-		writeBackendError(w, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, toPermissionsResponse(perms))
-}
-
 // handleUserMeAPIKeys handles GET/POST /api/v1/users/me/api-keys
 func (app *App) handleUserMeAPIKeys(w http.ResponseWriter, r *http.Request) {
 	principal, ok := authPrincipalFromContext(r.Context())
 	if !ok {
 		writeJSONError(w, http.StatusUnauthorized, "authentication required")
-		return
-	}
-	if !app.requireAPIKeysPermission(w, r, principal) {
 		return
 	}
 
@@ -327,10 +282,6 @@ func (app *App) handleUserMeAPIKeyByID(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusUnauthorized, "authentication required")
 		return
 	}
-	if !app.requireAPIKeysPermission(w, r, principal) {
-		return
-	}
-
 	keyID := strings.TrimPrefix(r.URL.Path, "/users/me/api-keys/")
 	keyID = strings.Trim(keyID, "/")
 	if keyID == "" {
@@ -399,8 +350,26 @@ func (app *App) handleUserByID(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Use legacy resource update for core fields
-		app.handleUserByIDLegacy(w, r)
+		user, err := app.backend.Auth.UpdateUser(r.Context(), principal, userID, backendauth.UpdateUserParams{
+			DisplayName: req.DisplayName,
+			Password:    req.Password,
+			Status:      req.Status,
+			Role:        req.Role,
+		})
+		if err != nil {
+			writeBackendError(w, err)
+			return
+		}
+		app.backend.Audit.Log(r.Context(), backendaudit.LogParams{
+			ActorUserID:  principal.User.ID,
+			Action:       backendaudit.ActionAdminUserUpdate,
+			ResourceType: "user",
+			ResourceID:   userID,
+			IPAddress:    app.clientIP(r),
+			Status:       backendaudit.StatusSuccess,
+			Metadata:     map[string]any{"target_user_id": userID},
+		})
+		writeJSON(w, http.StatusOK, toAuthUserResponse(*user))
 
 	case http.MethodDelete:
 		if !isAdmin {
@@ -418,7 +387,7 @@ func (app *App) handleUserByID(w http.ResponseWriter, r *http.Request) {
 			Status:      backendaudit.StatusSuccess,
 			Metadata:    map[string]any{"target_user_id": userID},
 		})
-		app.handleUserByIDLegacy(w, r)
+		app.handleUserDelete(w, r)
 
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -465,22 +434,4 @@ func toAPIKeyResponse(k db.APIKey, includeKey bool) apiKeyResponse {
 		r.Key = k.Key
 	}
 	return r
-}
-
-func toPermissionsResponse(p db.GroupPermissions) permissionsResponse {
-	return permissionsResponse{
-		Workspace: workspacePermsResponse{
-			Models:    p.Workspace.Models,
-			Knowledge: p.Workspace.Knowledge,
-			Prompts:   p.Workspace.Prompts,
-		},
-		Chat: chatPermsResponse{
-			FileUpload: p.Chat.FileUpload,
-			Delete:     p.Chat.Delete,
-		},
-		Features: featurePermsResponse{
-			APIKeys:   p.Features.APIKeys,
-			WebSearch: p.Features.WebSearch,
-		},
-	}
 }

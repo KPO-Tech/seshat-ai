@@ -120,13 +120,7 @@ func (s *LocalProvider) List(ctx context.Context, principal *backendauth.Princip
 		return nil, bkerr.Unauthorized("authentication required", nil)
 	}
 
-	var records []db.ProviderSetting
-	var err error
-	if principal.HasRole("admin") {
-		records, err = s.store.ListAll(ctx)
-	} else {
-		records, err = s.store.ListByUserID(ctx, principal.User.ID)
-	}
+	records, err := s.store.ListByUserID(ctx, principal.User.ID)
 	if err != nil {
 		return nil, bkerr.Internal("list provider settings: "+err.Error(), err)
 	}
@@ -574,9 +568,6 @@ func (s *LocalProvider) ResolveDefaultForUserID(ctx context.Context, userID stri
 func (s *LocalProvider) checkAccess(principal *backendauth.Principal, rec *db.ProviderSetting) error {
 	if principal == nil {
 		return bkerr.Unauthorized("authentication required", nil)
-	}
-	if principal.HasRole("admin") {
-		return nil
 	}
 	if rec.UserID != principal.User.ID {
 		return bkerr.Forbidden("provider setting belongs to another user", nil)

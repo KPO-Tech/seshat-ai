@@ -2,11 +2,13 @@ package query
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 	"time"
 
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
+	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/db"
 	"github.com/KPO-Tech/seshat/pkg/sdk"
 	"github.com/KPO-Tech/seshat/pkg/types"
 )
@@ -305,5 +307,204 @@ func TestSearchSessionsByContentFallsBackToInspector(t *testing.T) {
 	}
 	if len(results) != 1 || results[0].SessionID != "session-b" {
 		t.Fatalf("expected fallback to find session-b, got %#v", results)
+	}
+}
+
+func TestInitialTitleFromPromptCleansPrompt(t *testing.T) {
+	got := initialTitleFromPrompt("Salut, cherche en ligne toutes les nouveautes et evolution sur la generation d'image. https://example.com")
+	want := "En ligne toutes les nouveautes et evolution sur la generation"
+	if got != want {
+		t.Fatalf("initialTitleFromPrompt() = %q, want %q", got, want)
+	}
+}
+
+func TestEnsureInitialSessionTitleDoesNotOverwriteExistingTitle(t *testing.T) {
+	ctx := context.Background()
+	database, err := db.Open(ctx, db.DefaultSQLiteConfig(filepath.Join(t.TempDir(), "sessions.db")))
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	ownership, err := db.NewSessionOwnershipStore(database)
+	if err != nil {
+		t.Fatalf("new ownership store: %v", err)
+	}
+	principal := &backendauth.Principal{User: backendauth.User{ID: "user-42"}}
+	if _, err := ownership.Create(ctx, db.CreateSessionOwnershipParams{
+		SessionID: "sess-1",
+		UserID:    principal.User.ID,
+		Title:     "Manual Title",
+	}); err != nil {
+		t.Fatalf("create ownership: %v", err)
+	}
+
+	svc := NewService(ServiceConfig{Ownership: ownership})
+	title, err := svc.EnsureInitialSessionTitle(ctx, principal, "sess-1", "explain the French real estate market")
+	if err != nil {
+		t.Fatalf("ensure title: %v", err)
+	}
+	if title != "" {
+		t.Fatalf("expected no replacement title, got %q", title)
+	}
+	row, err := ownership.GetBySessionID(ctx, "sess-1")
+	if err != nil {
+		t.Fatalf("get ownership: %v", err)
+	}
+	if row.Title != "Manual Title" {
+		t.Fatalf("expected manual title to remain, got %q", row.Title)
+	}
+}
+
+func TestEnsureInitialSessionTitleUpdatesUntitledSession(t *testing.T) {
+	ctx := context.Background()
+	database, err := db.Open(ctx, db.DefaultSQLiteConfig(filepath.Join(t.TempDir(), "sessions.db")))
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	ownership, err := db.NewSessionOwnershipStore(database)
+	if err != nil {
+		t.Fatalf("new ownership store: %v", err)
+	}
+	principal := &backendauth.Principal{User: backendauth.User{ID: "user-42"}}
+	if _, err := ownership.Create(ctx, db.CreateSessionOwnershipParams{
+		SessionID: "sess-1",
+		UserID:    principal.User.ID,
+		Title:     "Untitled conversation",
+	}); err != nil {
+		t.Fatalf("create ownership: %v", err)
+	}
+
+	svc := NewService(ServiceConfig{Ownership: ownership})
+	title, err := svc.EnsureInitialSessionTitle(ctx, principal, "sess-1", "compare les rendements locatifs en france")
+	if err != nil {
+		t.Fatalf("ensure title: %v", err)
+	}
+	if title != "Compare les rendements locatifs en france" {
+		t.Fatalf("unexpected title %q", title)
+	}
+	row, err := ownership.GetBySessionID(ctx, "sess-1")
+	if err != nil {
+		t.Fatalf("get ownership: %v", err)
+	}
+	if row.Title != title {
+		t.Fatalf("expected persisted title %q, got %q", title, row.Title)
+	}
+}
+
+// ─── UpdateSessionMetadata provider/model switching ───────────────────────────
+
+func TestEnsureInitialSessionTitleUpdatesSDKUntitledSession(t *testing.T) {
+	ctx := context.Background()
+	database, err := db.Open(ctx, db.DefaultSQLiteConfig(filepath.Join(t.TempDir(), "sessions.db")))
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	ownership, err := db.NewSessionOwnershipStore(database)
+	if err != nil {
+		t.Fatalf("new ownership store: %v", err)
+	}
+	principal := &backendauth.Principal{User: backendauth.User{ID: "user-42"}}
+	if _, err := ownership.Create(ctx, db.CreateSessionOwnershipParams{
+		SessionID: "sess-1",
+		UserID:    principal.User.ID,
+		Title:     "untitled_session_7",
+	}); err != nil {
+		t.Fatalf("create ownership: %v", err)
+	}
+
+	svc := NewService(ServiceConfig{Ownership: ownership})
+	title, err := svc.EnsureInitialSessionTitle(ctx, principal, "sess-1", "analyse mon cv et propose un titre")
+	if err != nil {
+		t.Fatalf("ensure title: %v", err)
+	}
+	if title != "Analyse mon cv et propose un titre" {
+		t.Fatalf("unexpected title %q", title)
+	}
+	row, err := ownership.GetBySessionID(ctx, "sess-1")
+	if err != nil {
+		t.Fatalf("get ownership: %v", err)
+	}
+	if row.Title != title {
+		t.Fatalf("expected persisted title %q, got %q", title, row.Title)
+	}
+}
+
+func newTestOwnershipStore(t *testing.T) *db.SessionOwnershipStore {
+	t.Helper()
+	database, err := db.Open(context.Background(), db.DefaultSQLiteConfig(filepath.Join(t.TempDir(), "test.db")))
+	if err != nil {
+		t.Fatalf("open test db: %v", err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	store, err := db.NewSessionOwnershipStore(database)
+	if err != nil {
+		t.Fatalf("new session ownership store: %v", err)
+	}
+	return store
+}
+
+// TestUpdateSessionMetadataRejectsProviderSwitchAfterFirstTurn is the
+// regression test for the unguarded rebind: prepareRuntimeInput already
+// enforces TotalTurns==0 before letting a query bind a session's
+// provider/model, but UpdateSessionMetadata's provider branch called
+// ownership.UpdateProviderSelection directly with no such check - a session
+// with existing turns could have its bound provider/model swapped at any
+// time via this endpoint.
+func TestUpdateSessionMetadataRejectsProviderSwitchAfterFirstTurn(t *testing.T) {
+	ctx := context.Background()
+	ownership := newTestOwnershipStore(t)
+	if _, err := ownership.Create(ctx, db.CreateSessionOwnershipParams{SessionID: "sess-1", UserID: "user-1"}); err != nil {
+		t.Fatalf("create session ownership: %v", err)
+	}
+	sessions := &stubSearchSessionManager{sessions: []*sdk.SessionInfo{
+		{ID: sdk.SessionID("sess-1"), TotalTurns: 2},
+	}}
+	svc := NewService(ServiceConfig{Ownership: ownership, Sessions: sessions})
+
+	newProviderID := "provider-2"
+	err := svc.UpdateSessionMetadata(ctx, nil, "sess-1", nil, nil, nil, &newProviderID, nil, nil, nil, nil)
+	if err == nil {
+		t.Fatal("expected switching provider on a session with existing turns to be rejected")
+	}
+	if bkerr.KindOf(err) != bkerr.ErrorKindConflict {
+		t.Fatalf("expected a conflict error, got kind=%v err=%v", bkerr.KindOf(err), err)
+	}
+
+	after, err := ownership.GetBySessionID(ctx, "sess-1")
+	if err != nil {
+		t.Fatalf("get session ownership: %v", err)
+	}
+	if after.ProviderSettingID != "" {
+		t.Fatalf("expected provider selection to remain unchanged, got %q", after.ProviderSettingID)
+	}
+}
+
+// TestUpdateSessionMetadataAllowsProviderSwitchBeforeFirstTurn is the sanity
+// check that a fresh session (no turns yet) can still bind its provider
+// through this endpoint - this fix must not block the legitimate case.
+func TestUpdateSessionMetadataAllowsProviderSwitchBeforeFirstTurn(t *testing.T) {
+	ctx := context.Background()
+	ownership := newTestOwnershipStore(t)
+	if _, err := ownership.Create(ctx, db.CreateSessionOwnershipParams{SessionID: "sess-1", UserID: "user-1"}); err != nil {
+		t.Fatalf("create session ownership: %v", err)
+	}
+	sessions := &stubSearchSessionManager{sessions: []*sdk.SessionInfo{
+		{ID: sdk.SessionID("sess-1"), TotalTurns: 0},
+	}}
+	svc := NewService(ServiceConfig{Ownership: ownership, Sessions: sessions})
+
+	newProviderID := "provider-2"
+	if err := svc.UpdateSessionMetadata(ctx, nil, "sess-1", nil, nil, nil, &newProviderID, nil, nil, nil, nil); err != nil {
+		t.Fatalf("unexpected error binding provider on a fresh session: %v", err)
+	}
+
+	after, err := ownership.GetBySessionID(ctx, "sess-1")
+	if err != nil {
+		t.Fatalf("get session ownership: %v", err)
+	}
+	if after.ProviderSettingID != newProviderID {
+		t.Fatalf("expected provider selection to update to %q, got %q", newProviderID, after.ProviderSettingID)
 	}
 }

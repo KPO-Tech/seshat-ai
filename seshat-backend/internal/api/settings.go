@@ -117,6 +117,10 @@ func (a *App) handleProviderSettings(w http.ResponseWriter, r *http.Request) {
 		// static registry so the response is instant regardless.
 		a.seedModelsForNewProvider(setting.ID, body.Provider, body.BaseURL)
 
+		// See capability_autolink.go: makes this provider's key usable for
+		// image/audio/embeddings automatically, without a separate manual step.
+		a.autoLinkCapabilitiesFromProvider(r.Context(), setting.ID, setting.Provider, setting.HasAPIKey)
+
 		writeJSON(w, http.StatusCreated, settingToResponse(*setting))
 
 	default:
@@ -223,12 +227,22 @@ func (a *App) handleProviderSettingByID(w http.ResponseWriter, r *http.Request) 
 			ResourceID:   id,
 			IPAddress:    a.clientIP(r),
 		})
+		// See capability_autolink.go - covers the case where a provider was
+		// created without a key and one is added later via edit.
+		a.autoLinkCapabilitiesFromProvider(r.Context(), id, updated.Provider, updated.HasAPIKey)
 		writeJSON(w, http.StatusOK, settingToResponse(*updated))
 
 	case http.MethodDelete:
 		if err := a.backend.Settings.Delete(r.Context(), principal, id); err != nil {
 			writeBackendError(w, err)
 			return
+		}
+		// A capability link pointing at this now-deleted provider must not
+		// linger — resolveCapabilityCredential would otherwise silently keep
+		// failing forever instead of falling back cleanly. Best-effort: this
+		// only matters in standalone mode where capabilityLinkStore is set.
+		if a.capabilityLinkStore != nil {
+			_ = a.capabilityLinkStore.DeleteByProviderSettingID(r.Context(), id)
 		}
 		a.backend.Audit.Log(r.Context(), backendaudit.LogParams{
 			ActorUserID:  principal.User.ID,

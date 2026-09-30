@@ -57,7 +57,7 @@ func (s *Service) ListApplications(ctx context.Context, principal *Principal, or
 	}
 	applications := make([]Application, 0, len(records))
 	for _, record := range records {
-		applications = append(applications, toApplication(record))
+		applications = append(applications, toApplication(tx, record))
 	}
 	return applications, total, nil
 }
@@ -134,7 +134,7 @@ func (s *Service) CreateApplication(ctx context.Context, principal *Principal, p
 			return err
 		}
 		rawClientSecret := "secret_" + clientSecretToken[:32]
-		encryptedClientSecret, err := sdb.EncryptSecret(rawClientSecret)
+		encryptedClientSecret, err := sdb.EncryptSecret(tx, organizationID, rawClientSecret)
 		if err != nil {
 			return fmt.Errorf("encrypt application client secret: %w", err)
 		}
@@ -186,7 +186,7 @@ func (s *Service) CreateApplication(ctx context.Context, principal *Principal, p
 		if err := appendAuditEvent(tx, principal, record.OrganizationID, "application.created", "application", record.ID, map[string]string{"slug": record.Slug, "protocol": record.Protocol}); err != nil {
 			return err
 		}
-		converted := toApplication(record)
+		converted := toApplication(tx, record)
 		converted.ClientSecret = rawClientSecret
 		application = &converted
 		return nil
@@ -237,7 +237,7 @@ func (s *Service) ListProviders(ctx context.Context, principal *Principal, organ
 	}
 	providers := make([]Provider, 0, len(records))
 	for _, record := range records {
-		providers = append(providers, toProvider(record))
+		providers = append(providers, toProvider(tx, record))
 	}
 	return providers, total, nil
 }
@@ -298,7 +298,7 @@ func (s *Service) CreateProvider(ctx context.Context, principal *Principal, para
 		now := time.Now().UTC()
 		storedClientSecret := config.ClientSecret
 		if storedClientSecret != "" {
-			encryptedClientSecret, err := sdb.EncryptSecret(storedClientSecret)
+			encryptedClientSecret, err := sdb.EncryptSecret(tx, organizationID, storedClientSecret)
 			if err != nil {
 				return fmt.Errorf("encrypt provider client secret: %w", err)
 			}
@@ -347,8 +347,13 @@ func (s *Service) CreateProvider(ctx context.Context, principal *Principal, para
 		if err := appendAuditEvent(tx, principal, record.OrganizationID, "provider.created", "provider", record.ID, map[string]string{"slug": record.Slug, "kind": record.Kind}); err != nil {
 			return err
 		}
-		converted := toProvider(record)
-		converted.ClientSecret = config.ClientSecret
+		// Unlike CreateApplication (server-generated secret, the caller's
+		// only chance to see it), the caller supplied this secret themselves
+		// — never echo it back, not even once. toProvider already masks it;
+		// previously this line overwrote that mask with the real plaintext,
+		// an actual bug silently papered over by a redundant re-mask at the
+		// API layer (removed 2026-08-06, see maskedStoredSecret's comment).
+		converted := toProvider(tx, record)
 		provider = &converted
 		return nil
 	})

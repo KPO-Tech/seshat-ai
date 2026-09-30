@@ -135,6 +135,27 @@ export function useUploadCorpusFile(corpusId: string) {
   })
 }
 
+// Re-triggers ingestion for an already-uploaded file — used to upgrade a
+// file ingested vectorless (no embedder configured yet) to real vectors
+// once one is set up, or to retry one that never got a job at all. Returns
+// the existing job unchanged if one is already queued/running.
+export function useIngestCorpusFile(corpusId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (fileId: string) => {
+      const { data, error } = await api.POST('/api/v1/knowledge/corpora/{corpusID}/files/{fileID}/ingest', {
+        params: { path: { corpusID: corpusId, fileID: fileId } },
+      })
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [JOBS_KEY, corpusId] })
+      queryClient.invalidateQueries({ queryKey: [FILES_KEY, corpusId] })
+    },
+  })
+}
+
 export function useDetachCorpusFile(corpusId: string) {
   const queryClient = useQueryClient()
   return useMutation({

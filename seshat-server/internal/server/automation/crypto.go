@@ -1,13 +1,17 @@
 package automation
 
-import sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
+import (
+	"gorm.io/gorm"
 
-func encryptSecret(plaintext string) (string, error) {
-	return sdb.EncryptSecret(plaintext)
+	sdb "github.com/EngineerProjects/seshat-ai/seshat-server/internal/server/db"
+)
+
+func encryptSecret(gormDB *gorm.DB, organizationID, plaintext string) (string, error) {
+	return sdb.EncryptSecret(gormDB, organizationID, plaintext)
 }
 
-func decryptSecret(encoded string) (string, error) {
-	plaintext, err := sdb.DecryptSecret(encoded)
+func decryptSecret(gormDB *gorm.DB, organizationID, encoded string) (string, error) {
+	plaintext, err := sdb.DecryptSecret(gormDB, organizationID, encoded)
 	if err != nil {
 		return "", ErrInvalidInput(err.Error())
 	}

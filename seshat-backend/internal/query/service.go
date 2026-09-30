@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"time"
+	"unicode"
 
 	backendauth "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/auth"
 	"github.com/EngineerProjects/seshat-ai/seshat-backend/internal/bkerr"
@@ -14,6 +16,7 @@ import (
 	backendfiles "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/files"
 	backendknowledge "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/knowledge"
 	backendmemories "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/memories"
+	backendprompt "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/prompt"
 	bksettings "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/settings"
 	bkwebsearch "github.com/EngineerProjects/seshat-ai/seshat-backend/internal/websearch"
 	"github.com/KPO-Tech/seshat/pkg/agent"
@@ -161,7 +164,7 @@ func (s *Service) RunPrompt(ctx context.Context, principal *backendauth.Principa
 
 	result, err := s.runtime.RunPrompt(ctx, runtimeInput)
 	if err != nil {
-		return nil, bkerr.Internal(err.Error(), err)
+		return nil, bkerr.WrapOrInternal(err)
 	}
 
 	s.trackSessionBinding(ctx, principal, input.SessionID, result.SessionID, bindAfterRun, input.PermissionMode, input.ExecutionOrigin)
@@ -192,7 +195,7 @@ func (s *Service) StreamPrompt(ctx context.Context, principal *backendauth.Princ
 
 	result, err := streamer.StreamPrompt(ctx, runtimeInput, onChunk, onRuntimeEvent)
 	if err != nil {
-		return nil, bkerr.Internal(err.Error(), err)
+		return nil, bkerr.WrapOrInternal(err)
 	}
 
 	s.trackSessionBinding(ctx, principal, input.SessionID, result.SessionID, bindAfterRun, input.PermissionMode, input.ExecutionOrigin)
@@ -201,8 +204,7 @@ func (s *Service) StreamPrompt(ctx context.Context, principal *backendauth.Princ
 
 // ListSessions returns sessions visible to the principal.
 //   - ownership nil: returns all runtime sessions (unscoped / headless mode)
-//   - admin principal: returns all owned sessions across all users
-//   - regular principal: returns only sessions owned by the principal
+//   - ownership configured: returns only sessions owned by the principal
 func (s *Service) ListSessions(ctx context.Context, principal *backendauth.Principal) ([]SessionInfo, error) {
 	if s == nil {
 		return nil, bkerr.Unavailable("query service not configured", nil)
@@ -217,13 +219,7 @@ func (s *Service) ListSessions(ctx context.Context, principal *backendauth.Princ
 		return nil, bkerr.Unauthorized("authentication required", nil)
 	}
 
-	var owned []db.SessionOwnership
-	var err error
-	if principal.HasRole("admin") {
-		owned, err = s.ownership.ListAll(ctx)
-	} else {
-		owned, err = s.ownership.ListByUserID(ctx, principal.User.ID)
-	}
+	owned, err := s.ownership.ListByUserID(ctx, principal.User.ID)
 	if err != nil {
 		return nil, bkerr.Internal("list sessions: "+err.Error(), err)
 	}
@@ -243,6 +239,8 @@ func (s *Service) ListSessions(ctx context.Context, principal *backendauth.Princ
 			Title:             o.Title,
 			PermissionMode:    o.PermissionMode,
 			ExecutionOrigin:   o.ExecutionOrigin,
+			ExecutionMode:     o.ForcedExecutionMode,
+			Source:            o.Source,
 			WorkspacePath:     o.WorkspacePath,
 			ProjectPath:       o.ProjectPath,
 			CreatedAt:         o.CreatedAt.Unix(),
@@ -283,32 +281,7 @@ func (s *Service) SearchSessionsByTitle(ctx context.Context, principal *backenda
 	if principal == nil {
 		return nil, bkerr.Unauthorized("authentication required", nil)
 	}
-	userID := principal.User.ID
-	if principal.HasRole("admin") {
-		userID = "" // admin searches across all users — fall back to full list
-	}
-	var (
-		owned []db.SessionOwnership
-		err   error
-	)
-	if userID != "" {
-		owned, err = s.ownership.SearchByTitle(ctx, userID, needle, limit)
-	} else {
-		// Admin: list all, filter in memory (rare code path, acceptable).
-		all, listErr := s.ownership.ListAll(ctx)
-		if listErr != nil {
-			return nil, bkerr.Internal("search sessions (admin): "+listErr.Error(), listErr)
-		}
-		lowerNeedle := strings.ToLower(needle)
-		for _, o := range all {
-			if strings.Contains(strings.ToLower(o.Title), lowerNeedle) {
-				owned = append(owned, o)
-				if limit > 0 && len(owned) >= limit {
-					break
-				}
-			}
-		}
-	}
+	owned, err := s.ownership.SearchByTitle(ctx, principal.User.ID, needle, limit)
 	if err != nil {
 		return nil, bkerr.Internal("search sessions by title: "+err.Error(), err)
 	}
@@ -360,7 +333,10 @@ func (s *Service) SearchSessionsByContent(ctx context.Context, principal *backen
 		if len(results) >= limit {
 			break
 		}
-		if s.ownership != nil && principal != nil && !principal.HasRole("admin") {
+		if s.ownership != nil {
+			if principal == nil {
+				continue
+			}
 			owned, oErr := s.ownership.GetBySessionID(ctx, rs.ID.String())
 			if oErr != nil || owned == nil || owned.UserID != principal.User.ID {
 				continue
@@ -416,12 +392,13 @@ func (s *Service) sessionInfosFromIDs(ctx context.Context, principal *backendaut
 			if err != nil || owned == nil {
 				continue
 			}
-			if !principal.HasRole("admin") && owned.UserID != principal.User.ID {
+			if owned.UserID != principal.User.ID {
 				continue
 			}
 			info.UserID = owned.UserID
 			info.Title = owned.Title
 			info.ExecutionOrigin = owned.ExecutionOrigin
+			info.ExecutionMode = owned.ForcedExecutionMode
 			info.WorkspacePath = owned.WorkspacePath
 			info.ProjectPath = owned.ProjectPath
 			info.CreatedAt = owned.CreatedAt.Unix()
@@ -472,6 +449,7 @@ func (s *Service) GetSession(ctx context.Context, principal *backendauth.Princip
 		info.Title = ownership.Title
 		info.PermissionMode = ownership.PermissionMode
 		info.ExecutionOrigin = ownership.ExecutionOrigin
+		info.ExecutionMode = ownership.ForcedExecutionMode
 		info.WorkspacePath = ownership.WorkspacePath
 		info.ProjectPath = ownership.ProjectPath
 		info.CreatedAt = ownership.CreatedAt.Unix()
@@ -497,8 +475,10 @@ func (s *Service) loadSessionMessages(ctx context.Context, sessionID string) ([]
 	return nil, nil
 }
 
-// CreateSession creates a runtime session and records ownership.
-func (s *Service) CreateSession(ctx context.Context, principal *backendauth.Principal, providerSettingID, modelID string, permissionMode types.PermissionMode, executionOrigin types.ExecutionOrigin) (string, error) {
+// CreateSession creates a runtime session and records ownership. source is a
+// UI-only hint ("" for a normal chat session, "knowledge" for one created by
+// the Knowledge search page) - see SessionOwnership.Source.
+func (s *Service) CreateSession(ctx context.Context, principal *backendauth.Principal, providerSettingID, modelID string, permissionMode types.PermissionMode, executionOrigin types.ExecutionOrigin, source string) (string, error) {
 	if s == nil || s.sessions == nil {
 		return "", bkerr.Unavailable("session store not available", nil)
 	}
@@ -537,6 +517,7 @@ func (s *Service) CreateSession(ctx context.Context, principal *backendauth.Prin
 			ModelID:           strings.TrimSpace(modelID),
 			PermissionMode:    string(effectiveMode),
 			ExecutionOrigin:   string(effectiveOrigin),
+			Source:            strings.TrimSpace(source),
 		}); err != nil {
 			// Ownership creation failed — delete the orphaned runtime session
 			_ = s.sessions.DeleteSession(sdk.SessionID(sessionID))
@@ -604,7 +585,7 @@ func (s *Service) DeleteSession(ctx context.Context, principal *backendauth.Prin
 		if err != nil {
 			return bkerr.NotFound("session not found", err)
 		}
-		if !principal.HasRole("admin") && ownership.UserID != principal.User.ID {
+		if ownership.UserID != principal.User.ID {
 			return bkerr.Forbidden("session belongs to another user", nil)
 		}
 		workspacePath = ownership.WorkspacePath
@@ -802,6 +783,22 @@ func (s *Service) UpdateSessionMetadata(ctx context.Context, principal *backenda
 		if modelID != nil {
 			mid = strings.TrimSpace(*modelID)
 		}
+		// A provider/model switch after the session already has turns would
+		// silently leave the runtime session bound to whatever it started
+		// with - only the ownership record's advertised provider/model would
+		// change, drifting out of sync with what the LLM actually continues
+		// using (and a genuine switch, if the runtime honored it mid-session,
+		// could hand a different provider a transcript full of tool calls in
+		// its predecessor's format). prepareRuntimeInput already enforces
+		// this same TotalTurns==0 rule for the query-time binding path; this
+		// closes the same gap on the session-metadata update path.
+		canBind, err := s.sessionCanBindProvider(ctx, sessionID)
+		if err != nil {
+			return err
+		}
+		if !canBind {
+			return bkerr.Conflict("cannot change provider/model after the session has started - create a new session instead", nil)
+		}
 		if err := s.ownership.UpdateProviderSelection(ctx, sessionID, pid, mid); err != nil {
 			return bkerr.Internal("update session provider: "+err.Error(), err)
 		}
@@ -840,6 +837,134 @@ func (s *Service) UpdateSessionMetadata(ctx context.Context, principal *backenda
 	return nil
 }
 
+// EnsureInitialSessionTitle gives a new chat a readable title before the first
+// assistant tokens arrive. The SDK can still replace it later with its richer
+// async title, but users should not stare at "Untitled conversation" during
+// the first generation.
+func (s *Service) EnsureInitialSessionTitle(ctx context.Context, principal *backendauth.Principal, sessionID, prompt string) (string, error) {
+	if s == nil {
+		return "", bkerr.Unavailable("query service not configured", nil)
+	}
+	sessionID = strings.TrimSpace(sessionID)
+	if sessionID == "" {
+		return "", bkerr.InvalidInput("session_id is required", nil)
+	}
+	if s.ownership == nil {
+		return "", nil
+	}
+	if err := s.checkSessionAccess(ctx, principal, sessionID); err != nil {
+		return "", err
+	}
+	ownership, err := s.ownership.GetBySessionID(ctx, sessionID)
+	if err != nil {
+		return "", bkerr.NotFound("session not found", err)
+	}
+	if !isUntitledSessionTitle(ownership.Title) {
+		return "", nil
+	}
+	title := initialTitleFromPrompt(prompt)
+	if title == "" || isUntitledSessionTitle(title) {
+		return "", nil
+	}
+	if err := s.ownership.UpdateTitle(ctx, sessionID, title); err != nil {
+		return "", bkerr.Internal("update session title: "+err.Error(), err)
+	}
+	return title, nil
+}
+
+func isUntitledSessionTitle(title string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(title))
+	switch normalized {
+	case "", "untitled conversation", "new chat":
+		return true
+	default:
+		return strings.HasPrefix(normalized, "untitled_session_")
+	}
+}
+
+func initialTitleFromPrompt(prompt string) string {
+	text := strings.TrimSpace(prompt)
+	if text == "" {
+		return ""
+	}
+	text = stripURLs(text)
+	text = strings.Map(func(r rune) rune {
+		switch {
+		case r == '\n' || r == '\r' || r == '\t':
+			return ' '
+		case unicode.IsLetter(r) || unicode.IsDigit(r):
+			return r
+		case r == '\'' || r == '-' || r == '_' || r == '/' || r == ':':
+			return r
+		case unicode.IsSpace(r):
+			return ' '
+		default:
+			return ' '
+		}
+	}, text)
+	words := strings.Fields(text)
+	for len(words) > 0 && isWeakTitleLead(words[0]) {
+		words = words[1:]
+	}
+	if len(words) == 0 {
+		return ""
+	}
+	title := strings.Join(words, " ")
+	if len([]rune(title)) > 64 {
+		title = truncateTitle(title, 64)
+	}
+	title = strings.Trim(title, " -_/:")
+	if title == "" {
+		return ""
+	}
+	return uppercaseFirst(title)
+}
+
+func stripURLs(text string) string {
+	parts := strings.Fields(text)
+	for i, part := range parts {
+		lower := strings.ToLower(part)
+		if strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://") {
+			parts[i] = ""
+		}
+	}
+	return strings.Join(parts, " ")
+}
+
+func isWeakTitleLead(word string) bool {
+	cleaned := strings.ToLower(strings.Trim(word, " -_/:"))
+	switch cleaned {
+	case "salut", "hello", "hi", "bonjour", "stp", "svp", "please", "peux", "peux-tu", "cherche", "cherches", "recherche", "fais", "donne", "explique", "aide":
+		return true
+	default:
+		return false
+	}
+}
+
+func truncateTitle(title string, maxRunes int) string {
+	runes := []rune(title)
+	if len(runes) <= maxRunes {
+		return title
+	}
+	cut := maxRunes
+	for cut > 36 && !unicode.IsSpace(runes[cut-1]) {
+		cut--
+	}
+	if cut <= 36 {
+		cut = maxRunes
+	}
+	return strings.TrimSpace(string(runes[:cut]))
+}
+
+func uppercaseFirst(title string) string {
+	runes := []rune(title)
+	if len(runes) == 0 {
+		return title
+	}
+	runes[0] = unicode.ToUpper(runes[0])
+	return string(runes)
+}
+
 func (s *Service) ResolveExecutionPolicy(ctx context.Context, principal *backendauth.Principal, sessionID string, requestedMode, fallbackMode types.PermissionMode, requestedOrigin types.ExecutionOrigin) (types.PermissionMode, types.ExecutionOrigin, error) {
 	if s == nil {
 		return "", "", bkerr.Unavailable("query service not configured", nil)
@@ -874,6 +999,13 @@ func (s *Service) ResolveExecutionPolicy(ctx context.Context, principal *backend
 
 // checkSessionAccess verifies that the principal can access the given session.
 // A blank sessionID means a new session will be created — no check needed.
+// checkSessionAccess deliberately does NOT grant an admin bypass, unlike
+// files.Service.checkAccess and settings' local_provider.go — an admin who
+// isn't the session owner still gets Forbidden here. This is intentional:
+// conversation content stays confidential even from admins, whereas file
+// metadata and provider settings are treated as operationally administrable.
+// Verified by TestSessionOwnership_AdminCannotOverride. If this ever needs to
+// change, change it here deliberately rather than "fixing an inconsistency".
 func (s *Service) checkSessionAccess(ctx context.Context, principal *backendauth.Principal, sessionID string) error {
 	if s.ownership == nil || strings.TrimSpace(sessionID) == "" {
 		return nil
@@ -882,8 +1014,8 @@ func (s *Service) checkSessionAccess(ctx context.Context, principal *backendauth
 	if err != nil {
 		return bkerr.NotFound("session not found", err)
 	}
-	// nil principal (headless/system call) bypasses ownership check
-	if principal != nil && !principal.HasRole("admin") && ownership.UserID != principal.User.ID {
+	// nil principal (headless/system call) bypasses ownership check.
+	if principal != nil && ownership.UserID != principal.User.ID {
 		return bkerr.Forbidden("session belongs to another user", nil)
 	}
 	return nil
@@ -939,6 +1071,7 @@ func (s *Service) prepareRuntimeInput(ctx context.Context, principal *backendaut
 	// asks.
 	if principal != nil {
 		runtimeInput.UserID = principal.User.ID
+		runtimeInput.RAGAllowedOwnerIDs = ragAllowedOwnerIDs(principal)
 	}
 
 	// Build a per-request web search runner that closes over the current principal
@@ -1238,6 +1371,13 @@ func (s *Service) ResolvePolicyFromRequest(ctx context.Context, principal *backe
 // user memories → long-term memory → RAG context → attachments.
 // Both blocking and streaming handlers call this to guarantee identical behaviour.
 func (s *Service) BuildContextInput(ctx context.Context, p ContextBuildParams) (QueryInput, []RAGSearchResult) {
+	// perf: this whole function runs synchronously before the first SSE byte
+	// can be sent (see handleQueryStream) - memoriesMs/ragMs are the two
+	// sub-costs most likely to dominate, since both can hit an embedding
+	// call plus a vector/keyword search. See docs/produits/chat/seshatos-main-chat-ui-audit.md.
+	buildStart := time.Now()
+	var skillsMs, memListMs, memLTMMs, ragMs int64
+
 	effectiveAgentSlug := strings.TrimSpace(p.AgentSlug)
 
 	userID := ""
@@ -1248,7 +1388,9 @@ func (s *Service) BuildContextInput(ctx context.Context, p ContextBuildParams) (
 	// Expand "/skillname [args]" prompt shortcuts.
 	prompt := p.Prompt
 	if s.skills != nil {
+		skillsStart := time.Now()
 		prompt = s.skills.ResolvePrompt(ctx, userID, prompt)
+		skillsMs = time.Since(skillsStart).Milliseconds()
 	}
 
 	input := QueryInput{
@@ -1290,7 +1432,19 @@ func (s *Service) BuildContextInput(ctx context.Context, p ContextBuildParams) (
 			if input.PermissionMode == "" && def.PermissionMode != "" {
 				input.PermissionMode = def.PermissionMode
 			}
+			if allowed, restrict := toolAllowlistFromPatterns(def.GetToolPatterns()); restrict {
+				input.AllowedTools = allowed
+			}
 		}
+	}
+
+	// No agent definition supplied its own system prompt (plain chat, or an
+	// agent_slug that didn't resolve to anything) - fall back to the
+	// product-owned General Agent prompt instead of silently letting the
+	// SDK's own internal default (seshat/internal/prompt) apply.
+	if input.SystemPromptOverride == nil {
+		defaultPrompt := backendprompt.DefaultCorePrompt()
+		input.SystemPromptOverride = &defaultPrompt
 	}
 
 	// Skill-agent mode appends its prompt on top of whatever system prompt is active.
@@ -1319,7 +1473,9 @@ func (s *Service) BuildContextInput(ctx context.Context, p ContextBuildParams) (
 
 	// Layer user memories (explicit user-defined knowledge) after preferences.
 	if p.Principal != nil && s.memories != nil {
+		memListStart := time.Now()
 		mems, err := s.memories.List(ctx, p.Principal)
+		memListMs = time.Since(memListStart).Milliseconds()
 		if err == nil && len(mems) > 0 {
 			const maxMemories = 30
 			if len(mems) > maxMemories {
@@ -1333,7 +1489,10 @@ func (s *Service) BuildContextInput(ctx context.Context, p ContextBuildParams) (
 
 	// Long-term memory: inject relevant entities found for the current prompt.
 	if p.Principal != nil && s.memories != nil {
-		if block, err := s.memories.BuildContextBlock(ctx, p.Principal, p.Prompt); err == nil && block != "" {
+		ltmStart := time.Now()
+		block, err := s.memories.BuildContextBlock(ctx, p.Principal, p.Prompt)
+		memLTMMs = time.Since(ltmStart).Milliseconds()
+		if err == nil && block != "" {
 			input.AppendSystemPrompt = appendBlock(input.AppendSystemPrompt, block)
 		}
 	}
@@ -1341,7 +1500,12 @@ func (s *Service) BuildContextInput(ctx context.Context, p ContextBuildParams) (
 	// RAG: build and append knowledge context block when a corpus is attached.
 	var ragResults []RAGSearchResult
 	if strings.TrimSpace(p.CorpusID) != "" && s.knowledge != nil {
+		if p.OnStage != nil {
+			p.OnStage("knowledge", "Searching knowledge base")
+		}
+		ragStart := time.Now()
 		ragBlock, results := buildRAGContext(ctx, p.Principal, s.knowledge, p.CorpusID, p.Prompt)
+		ragMs = time.Since(ragStart).Milliseconds()
 		ragResults = results
 		if ragBlock != "" {
 			input.AppendSystemPrompt = appendBlock(input.AppendSystemPrompt, ragBlock)
@@ -1367,7 +1531,7 @@ func (s *Service) BuildContextInput(ctx context.Context, p ContextBuildParams) (
 
 	// Per-turn attachments: split by category.
 	// - Images  → base64-encode and inject as multimodal content blocks.
-	// - Others  → list as attached files and let read_file/Docling extract on demand.
+	// - Others  → list as attached files and let read_file/document-reader extract on demand.
 	if len(p.FileIDs) > 0 && s.files != nil {
 		var imageIDs, textIDs []string
 		for _, fid := range p.FileIDs {
@@ -1411,5 +1575,24 @@ func (s *Service) BuildContextInput(ctx context.Context, p ContextBuildParams) (
 		}
 	}
 
+	log.Printf("[perf] context_build session=%q corpus=%q skills_ms=%d mem_list_ms=%d mem_ltm_ms=%d rag_ms=%d total_ms=%d",
+		p.SessionID, p.CorpusID, skillsMs, memListMs, memLTMMs, ragMs, time.Since(buildStart).Milliseconds())
+
 	return input, ragResults
+}
+
+// toolAllowlistFromPatterns turns GetToolPatterns() into an exact-name
+// allowlist. A bare "*" (AgentDefinition.Tools == nil) means fully
+// unrestricted. Any other glob (e.g. "inbox_*") isn't supported by this
+// exact-match filter yet - fail OPEN (no restriction) rather than silently
+// blocking every tool for an agent whose pattern can't be correctly
+// evaluated; extend this if a future agent definition actually needs
+// glob-style tool patterns.
+func toolAllowlistFromPatterns(patterns []string) (allowed []string, restrict bool) {
+	for _, p := range patterns {
+		if p == "*" || strings.Contains(p, "*") {
+			return nil, false
+		}
+	}
+	return patterns, len(patterns) > 0
 }

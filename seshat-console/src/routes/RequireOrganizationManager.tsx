@@ -27,7 +27,7 @@ export function RequireOrganizationManager() {
         title="Organization admin access required"
         subTitle="This console is for organization owners and admins. For day-to-day work, use the Seshat desktop app instead."
         extra={
-          <Button type="primary" onClick={() => navigate('/workspace')}>
+          <Button type="primary" onClick={() => navigate(`/orgs/${organizationId}/workspace`)}>
             Go to my workspace
           </Button>
         }

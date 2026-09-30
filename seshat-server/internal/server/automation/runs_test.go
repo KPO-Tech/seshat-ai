@@ -45,6 +45,58 @@ func TestTriggerJobNowForCloudTargetQueuesForAsyncExecution(t *testing.T) {
 	}
 }
 
+// TestTriggerJobNowSnapshotsGraphForReplay asserts queueRunForJob freezes
+// the job's graph onto the run at trigger time (Tier 2.6 replay needs this
+// to draw the canvas as it was, not as the job's graph might look after a
+// later edit) — and that a Prompt job's run carries none, same as
+// ScheduledJob.GraphJSON itself being empty for a Prompt job.
+func TestTriggerJobNowSnapshotsGraphForReplay(t *testing.T) {
+	env := newTestEnv(t)
+	job, err := env.automation.CreateJob(context.Background(), env.adminPrincipal, CreateJobParams{
+		OrganizationID:  env.orgID,
+		Name:            "Graph job",
+		TriggerType:     TriggerTypeInterval,
+		IntervalSeconds: 3600,
+		ExecutionTarget: ExecutionTargetCloud,
+		ModelOverride:   "anthropic:claude-sonnet-5",
+		Graph:           validTestGraph(),
+	})
+	if err != nil {
+		t.Fatalf("create graph job: %v", err)
+	}
+	run, err := env.automation.TriggerJobNow(context.Background(), env.adminPrincipal, job.ID)
+	if err != nil {
+		t.Fatalf("trigger job now: %v", err)
+	}
+	if run.GraphSnapshot == nil {
+		t.Fatal("expected a graph job's run to carry a graph snapshot")
+	}
+	want := validTestGraph()
+	if run.GraphSnapshot.Name != want.Name || len(run.GraphSnapshot.Nodes) != len(want.Nodes) {
+		t.Fatalf("expected the snapshot to match the job's graph at trigger time, got %+v", run.GraphSnapshot)
+	}
+
+	promptJob, err := env.automation.CreateJob(context.Background(), env.adminPrincipal, CreateJobParams{
+		OrganizationID:  env.orgID,
+		Name:            "Prompt job",
+		TriggerType:     TriggerTypeInterval,
+		IntervalSeconds: 3600,
+		ExecutionTarget: ExecutionTargetCloud,
+		ModelOverride:   "anthropic:claude-sonnet-5",
+		Prompt:          "Do cloud work.",
+	})
+	if err != nil {
+		t.Fatalf("create prompt job: %v", err)
+	}
+	promptRun, err := env.automation.TriggerJobNow(context.Background(), env.adminPrincipal, promptJob.ID)
+	if err != nil {
+		t.Fatalf("trigger prompt job now: %v", err)
+	}
+	if promptRun.GraphSnapshot != nil {
+		t.Fatalf("expected a Prompt job's run to carry no graph snapshot, got %+v", promptRun.GraphSnapshot)
+	}
+}
+
 func TestDeleteJobRemovesAssociatedRuns(t *testing.T) {
 	env := newTestEnv(t)
 	deviceResult, err := env.automation.RegisterDevice(context.Background(), env.adminPrincipal, RegisterDeviceParams{

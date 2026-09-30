@@ -224,6 +224,28 @@ func TestHealthEndpointEnriched(t *testing.T) {
 	}
 }
 
+func TestSystemStatusIncludesHostCapabilities(t *testing.T) {
+	app, _ := newAuditTestApp(t)
+	router := CreateRouter(defaultAPIConfig, app)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/system/status", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("system status: got %d, body=%s", rec.Code, rec.Body.String())
+	}
+	var resp map[string]any
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if resp["mode"] != "standalone" {
+		t.Fatalf("expected standalone mode, got %v", resp["mode"])
+	}
+	if _, ok := resp["sandbox_confined"].(bool); !ok {
+		t.Fatalf("expected sandbox_confined bool, got %T", resp["sandbox_confined"])
+	}
+}
+
 func TestRateLimiter(t *testing.T) {
 	limiter := NewRateLimiter(3, time.Hour) // long window so it doesn't expire during the test
 	// Allow 3 requests
@@ -371,6 +393,57 @@ func TestAuthLoginMeLogoutFlow(t *testing.T) {
 	}
 }
 
+// TestAuthMeIncludesOrganizationID is a regression test for a bug found
+// live: seshat-ui's useOrganizationStore has no other way to learn "which
+// organization" than GET /auth/me, but this endpoint used to omit
+// organization info entirely (its DTO only carried workspace_memberships'
+// slugs, never an id) - every org-scoped feature in the desktop app
+// (Variables, Automation's Overview/Projects) was permanently stuck with no
+// organization at all, regardless of network conditions, on every account.
+func TestAuthMeIncludesOrganizationID(t *testing.T) {
+	database, err := db.Open(context.Background(), db.DefaultSQLiteConfig(filepath.Join(t.TempDir(), "api-auth-me-org.db")))
+	if err != nil {
+		t.Fatalf("db.Open failed: %v", err)
+	}
+	defer database.Close()
+
+	store, err := db.NewIdentityStore(database)
+	if err != nil {
+		t.Fatalf("NewIdentityStore failed: %v", err)
+	}
+	bootstrap, err := store.EnsureBootstrap(context.Background(), db.BootstrapOptions{
+		AdminEmail:           "admin@example.com",
+		AdminPassword:        "secret-password",
+		AdminDisplayName:     "Admin",
+		DefaultOrgName:       "Acme",
+		DefaultOrgSlug:       "acme",
+		DefaultWorkspaceName: "Core",
+		DefaultWorkspaceSlug: "core",
+	})
+	if err != nil {
+		t.Fatalf("EnsureBootstrap failed: %v", err)
+	}
+
+	router := CreateRouter(APIConfig{}, newTestAPIApp(store, stubQueryRunner{}))
+	token := loginForToken(t, router, "admin@example.com", "secret-password")
+
+	meReq := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
+	meReq.Header.Set("Authorization", "Bearer "+token)
+	meResp := httptest.NewRecorder()
+	router.ServeHTTP(meResp, meReq)
+	if meResp.Code != http.StatusOK {
+		t.Fatalf("expected me 200, got %d: %s", meResp.Code, meResp.Body.String())
+	}
+
+	var payload authPrincipalResponse
+	if err := json.Unmarshal(meResp.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode /auth/me response: %v", err)
+	}
+	if payload.OrganizationID != bootstrap.Organization.ID {
+		t.Fatalf("expected organization_id %q, got %q (full body: %s)", bootstrap.Organization.ID, payload.OrganizationID, meResp.Body.String())
+	}
+}
+
 func TestAdminEndpointRejectsNonAdminUser(t *testing.T) {
 	database, err := db.Open(context.Background(), db.DefaultSQLiteConfig(filepath.Join(t.TempDir(), "api-member.db")))
 	if err != nil {
@@ -413,6 +486,86 @@ func TestAdminEndpointRejectsNonAdminUser(t *testing.T) {
 	router.ServeHTTP(resp, req)
 	if resp.Code != http.StatusForbidden {
 		t.Fatalf("expected admin ping 403 for member user, got %d: %s", resp.Code, resp.Body.String())
+	}
+}
+
+// TestAdminUpdateUser guards against a regression where PUT /api/v1/users/{id}
+// always failed with 400: the handler decoded the request body into
+// adminUpdateUserRequest, then delegated to a legacy handler that tried to
+// decode the same (already-consumed) r.Body again. It also verifies the Role
+// field — previously accepted by the request struct but never actually
+// wired to anything — now really changes the target user's role.
+func TestAdminUpdateUser(t *testing.T) {
+	database, err := db.Open(context.Background(), db.DefaultSQLiteConfig(filepath.Join(t.TempDir(), "api-admin-update-user.db")))
+	if err != nil {
+		t.Fatalf("db.Open failed: %v", err)
+	}
+	defer database.Close()
+
+	store, err := db.NewIdentityStore(database)
+	if err != nil {
+		t.Fatalf("NewIdentityStore failed: %v", err)
+	}
+	if _, err := store.EnsureBootstrap(context.Background(), db.BootstrapOptions{
+		AdminEmail:           "admin@update-user.test",
+		AdminPassword:        "adminpass",
+		AdminDisplayName:     "Admin",
+		DefaultOrgName:       "Acme",
+		DefaultOrgSlug:       "acme",
+		DefaultWorkspaceName: "Main",
+		DefaultWorkspaceSlug: "main",
+	}); err != nil {
+		t.Fatalf("EnsureBootstrap failed: %v", err)
+	}
+	memberHash, err := db.HashPassword("memberpass")
+	if err != nil {
+		t.Fatalf("HashPassword failed: %v", err)
+	}
+	member, err := store.CreateUser(context.Background(), db.CreateUserParams{
+		Email: "member@update-user.test", DisplayName: "Member", PasswordHash: memberHash,
+	})
+	if err != nil {
+		t.Fatalf("CreateUser failed: %v", err)
+	}
+	if err := store.AssignRoleToUser(context.Background(), member.ID, "member"); err != nil {
+		t.Fatalf("AssignRoleToUser failed: %v", err)
+	}
+
+	router := CreateRouter(APIConfig{}, newTestAPIApp(store, stubQueryRunner{}))
+	adminToken := loginForToken(t, router, "admin@update-user.test", "adminpass")
+
+	// A plain field update, with no role change, must succeed — this alone
+	// was broken before the fix (any non-empty PUT body 400'd).
+	body, _ := json.Marshal(map[string]any{"display_name": "Member Renamed"})
+	renameResp := doRequest(t, router, http.MethodPut, "/api/v1/users/"+member.ID, body, adminToken)
+	if renameResp.Code != http.StatusOK {
+		t.Fatalf("rename: expected 200, got %d: %s", renameResp.Code, renameResp.Body.String())
+	}
+	var renamed map[string]any
+	json.Unmarshal(renameResp.Body.Bytes(), &renamed)
+	if renamed["display_name"] != "Member Renamed" {
+		t.Fatalf("expected display_name updated, got: %s", renameResp.Body.String())
+	}
+
+	// Promoting to admin must actually take effect.
+	roleBody, _ := json.Marshal(map[string]any{"role": "admin"})
+	promoteResp := doRequest(t, router, http.MethodPut, "/api/v1/users/"+member.ID, roleBody, adminToken)
+	if promoteResp.Code != http.StatusOK {
+		t.Fatalf("promote: expected 200, got %d: %s", promoteResp.Code, promoteResp.Body.String())
+	}
+	var promoted map[string]any
+	json.Unmarshal(promoteResp.Body.Bytes(), &promoted)
+	roles, _ := promoted["roles"].([]any)
+	if len(roles) != 1 || roles[0] != "admin" {
+		t.Fatalf("expected roles [admin] after promotion, got: %s", promoteResp.Body.String())
+	}
+
+	dbRoles, err := store.ListUserRoles(context.Background(), member.ID)
+	if err != nil {
+		t.Fatalf("ListUserRoles: %v", err)
+	}
+	if len(dbRoles) != 1 || dbRoles[0].Name != "admin" {
+		t.Fatalf("expected member's stored roles to be exactly [admin], got: %+v", dbRoles)
 	}
 }
 
@@ -771,227 +924,6 @@ func TestMetricsEndpointMethodNotAllowed(t *testing.T) {
 	if rr.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("expected 405, got %d", rr.Code)
 	}
-}
-
-func newPermissionedTestApp(t *testing.T) (*App, *db.IdentityStore, *db.GroupStore) {
-	t.Helper()
-	database, err := db.Open(context.Background(), db.DefaultSQLiteConfig(filepath.Join(t.TempDir(), "authorization-test.db")))
-	if err != nil {
-		t.Fatalf("db.Open: %v", err)
-	}
-	t.Cleanup(func() { database.Close() })
-
-	identity, err := db.NewIdentityStore(database)
-	if err != nil {
-		t.Fatalf("NewIdentityStore: %v", err)
-	}
-	groupStore, err := db.NewGroupStore(database)
-	if err != nil {
-		t.Fatalf("NewGroupStore: %v", err)
-	}
-	apiKeyStore, err := db.NewAPIKeyStore(database)
-	if err != nil {
-		t.Fatalf("NewAPIKeyStore: %v", err)
-	}
-	fileStore, err := db.NewFileStore(database)
-	if err != nil {
-		t.Fatalf("NewFileStore: %v", err)
-	}
-	corpusStore, err := db.NewCorpusStore(database)
-	if err != nil {
-		t.Fatalf("NewCorpusStore: %v", err)
-	}
-	webSearchSettingStore, err := db.NewWebSearchSettingStore(database)
-	if err != nil {
-		t.Fatalf("NewWebSearchSettingStore: %v", err)
-	}
-	webSearchLogStore, err := db.NewWebSearchLogStore(database)
-	if err != nil {
-		t.Fatalf("NewWebSearchLogStore: %v", err)
-	}
-
-	if _, err := identity.EnsureBootstrap(context.Background(), db.BootstrapOptions{
-		AdminEmail:           "admin@authz.test",
-		AdminPassword:        "adminpass",
-		AdminDisplayName:     "Admin",
-		DefaultOrgName:       "Acme",
-		DefaultOrgSlug:       "acme",
-		DefaultWorkspaceName: "Core",
-		DefaultWorkspaceSlug: "core",
-	}); err != nil {
-		t.Fatalf("EnsureBootstrap: %v", err)
-	}
-
-	app := &App{
-		backend: seshat.NewApp(seshat.Dependencies{
-			Identity:          identity,
-			GroupStore:        groupStore,
-			APIKeyStore:       apiKeyStore,
-			FileStore:         fileStore,
-			ArtifactStore:     newStubArtifactStore(),
-			CorpusStore:       corpusStore,
-			WebSearchSettings: webSearchSettingStore,
-			WebSearchLogs:     webSearchLogStore,
-		}),
-		groupStore:    groupStore,
-		enableAPIKeys: true,
-	}
-	return app, identity, groupStore
-}
-
-func createMemberUser(t *testing.T, identity *db.IdentityStore, email, password string) *db.User {
-	t.Helper()
-	hash, err := db.HashPassword(password)
-	if err != nil {
-		t.Fatalf("HashPassword: %v", err)
-	}
-	user, err := identity.CreateUser(context.Background(), db.CreateUserParams{
-		Email:        email,
-		DisplayName:  email,
-		PasswordHash: hash,
-	})
-	if err != nil {
-		t.Fatalf("CreateUser: %v", err)
-	}
-	if err := identity.AssignRoleToUser(context.Background(), user.ID, "member"); err != nil {
-		t.Fatalf("AssignRoleToUser: %v", err)
-	}
-	return user
-}
-
-func grantPermissions(t *testing.T, groupStore *db.GroupStore, userID string, perms db.GroupPermissions) {
-	t.Helper()
-	group, err := groupStore.CreateGroup(context.Background(), fmt.Sprintf("group-%s", userID), "", perms)
-	if err != nil {
-		t.Fatalf("CreateGroup: %v", err)
-	}
-	if err := groupStore.AddGroupMember(context.Background(), group.ID, userID); err != nil {
-		t.Fatalf("AddGroupMember: %v", err)
-	}
-}
-
-func TestAPIGroupPermissions_FileUploadAndDelete(t *testing.T) {
-	app, identity, groupStore := newPermissionedTestApp(t)
-	router := CreateRouter(defaultAPIConfig, app)
-	user := createMemberUser(t, identity, "member-upload@authz.test", "memberpass")
-	token := loginAs(t, router, user.Email, "memberpass")
-
-	uploadRec := multipartUpload(t, router, token, "hello.txt", "text/plain", []byte("hello"))
-	if uploadRec.Code != http.StatusForbidden {
-		t.Fatalf("expected upload without permission to fail with 403, got %d body=%s", uploadRec.Code, uploadRec.Body.String())
-	}
-
-	grantPermissions(t, groupStore, user.ID, db.GroupPermissions{Chat: db.ChatPerms{FileUpload: true}})
-	uploadRec = multipartUpload(t, router, token, "hello.txt", "text/plain", []byte("hello"))
-	if uploadRec.Code != http.StatusCreated {
-		t.Fatalf("expected upload with permission to succeed, got %d body=%s", uploadRec.Code, uploadRec.Body.String())
-	}
-	var uploadResp map[string]any
-	if err := json.NewDecoder(uploadRec.Body).Decode(&uploadResp); err != nil {
-		t.Fatalf("decode upload response: %v", err)
-	}
-	fileID := uploadResp["id"].(string)
-
-	req := httptest.NewRequest(http.MethodDelete, "/api/v1/files/"+fileID, nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-	if rec.Code != http.StatusForbidden {
-		t.Fatalf("expected delete without permission to fail with 403, got %d body=%s", rec.Code, rec.Body.String())
-	}
-
-	grantPermissions(t, groupStore, user.ID, db.GroupPermissions{Chat: db.ChatPerms{Delete: true}})
-	req = httptest.NewRequest(http.MethodDelete, "/api/v1/files/"+fileID, nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-	rec = httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-	if rec.Code != http.StatusNoContent {
-		t.Fatalf("expected delete with permission to succeed, got %d body=%s", rec.Code, rec.Body.String())
-	}
-}
-
-func TestAPIGroupPermissions_KnowledgeRoutes(t *testing.T) {
-	app, identity, groupStore := newPermissionedTestApp(t)
-	router := CreateRouter(defaultAPIConfig, app)
-	user := createMemberUser(t, identity, "member-knowledge@authz.test", "memberpass")
-	token := loginAs(t, router, user.Email, "memberpass")
-
-	body, _ := json.Marshal(map[string]string{"name": "Restricted Corpus"})
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/corpora", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+token)
-	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-	if rec.Code != http.StatusForbidden {
-		t.Fatalf("expected corpus create without permission to fail with 403, got %d body=%s", rec.Code, rec.Body.String())
-	}
-
-	grantPermissions(t, groupStore, user.ID, db.GroupPermissions{Workspace: db.WorkspacePerms{Knowledge: true}})
-	req = httptest.NewRequest(http.MethodPost, "/api/v1/corpora", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+token)
-	rec = httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-	if rec.Code != http.StatusCreated {
-		t.Fatalf("expected corpus create with permission to succeed, got %d body=%s", rec.Code, rec.Body.String())
-	}
-
-	req = httptest.NewRequest(http.MethodGet, "/api/v1/corpora", nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-	rec = httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("expected corpus list with permission to succeed, got %d body=%s", rec.Code, rec.Body.String())
-	}
-}
-
-func TestAPIGroupPermissions_WebSearchRoutes(t *testing.T) {
-	app, identity, groupStore := newPermissionedTestApp(t)
-	router := CreateRouter(defaultAPIConfig, app)
-	user := createMemberUser(t, identity, "member-web@authz.test", "memberpass")
-	token := loginAs(t, router, user.Email, "memberpass")
-
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/web/search/settings", nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-	if rec.Code != http.StatusForbidden {
-		t.Fatalf("expected web search settings without permission to fail with 403, got %d body=%s", rec.Code, rec.Body.String())
-	}
-
-	grantPermissions(t, groupStore, user.ID, db.GroupPermissions{Features: db.FeaturePerms{WebSearch: true}})
-	req = httptest.NewRequest(http.MethodGet, "/api/v1/web/search/settings", nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-	rec = httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("expected web search settings with permission to succeed, got %d body=%s", rec.Code, rec.Body.String())
-	}
-}
-
-func TestAPIGroupPermissions_APIKeysRoutes(t *testing.T) {
-	app, identity, groupStore := newPermissionedTestApp(t)
-	router := CreateRouter(defaultAPIConfig, app)
-	user := createMemberUser(t, identity, "member-apikeys@authz.test", "memberpass")
-	token := loginAs(t, router, user.Email, "memberpass")
-
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/users/me/api-keys", nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-	if rec.Code != http.StatusForbidden {
-		t.Fatalf("expected api key list without permission to fail with 403, got %d body=%s", rec.Code, rec.Body.String())
-	}
-
-	grantPermissions(t, groupStore, user.ID, db.GroupPermissions{Features: db.FeaturePerms{APIKeys: true}})
-	req = httptest.NewRequest(http.MethodGet, "/api/v1/users/me/api-keys", nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-	rec = httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("expected api key list with permission to succeed, got %d body=%s", rec.Code, rec.Body.String())
-	}
-
 }
 
 func mustParseCIDR(t *testing.T, s string) *net.IPNet {
@@ -1707,7 +1639,11 @@ func newKnowledgeTestAppWithEmbedderAndVector(t *testing.T, embedder *stubEmbedd
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
-	runner := backendknowledge.NewRunner(app.backend.Knowledge, backendknowledge.RunnerConfig{
+	localKnowledge, ok := app.backend.Knowledge.(*backendknowledge.Service)
+	if !ok {
+		t.Fatalf("expected local *knowledge.Service, got %T", app.backend.Knowledge)
+	}
+	runner := backendknowledge.NewRunner(localKnowledge, backendknowledge.RunnerConfig{
 		PollInterval: 10 * time.Millisecond,
 		MaxPerTick:   4,
 	})
@@ -2008,6 +1944,72 @@ func TestCorpusIngestAndSearch(t *testing.T) {
 	}
 }
 
+func TestKnowledgeSearchAcrossCorpora(t *testing.T) {
+	app, _ := newKnowledgeTestApp(t)
+	router := CreateRouter(defaultAPIConfig, app)
+	token := loginAs(t, router, "admin@knowledge.test", "adminpass")
+
+	createCorpus := func(name string) string {
+		body, _ := json.Marshal(map[string]string{"name": name})
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/corpora", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+token)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		var corpus map[string]any
+		json.NewDecoder(rec.Body).Decode(&corpus)
+		return corpus["id"].(string)
+	}
+	ingest := func(corpusID, content, filename string) {
+		fileID := uploadTestFile(t, router, token, content, filename)
+		ingestBody, _ := json.Marshal(map[string]string{"file_id": fileID})
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/corpora/"+corpusID+"/ingest", bytes.NewReader(ingestBody))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+token)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		if rec.Code != http.StatusAccepted {
+			t.Fatalf("enqueue ingest: got %d, body=%s", rec.Code, rec.Body.String())
+		}
+		var enqueueResp map[string]any
+		json.NewDecoder(rec.Body).Decode(&enqueueResp)
+		waitForIngestionJobStatus(t, router, token, corpusID, enqueueResp["id"].(string), "completed")
+	}
+
+	corpusA := createCorpus("Engineering Docs")
+	corpusB := createCorpus("Sales Docs")
+	ingest(corpusA, "The Seshat engine is a powerful multi-agent AI framework that supports RAG retrieval.\n", "eng.txt")
+	ingest(corpusB, "Our sales team closed a multi-agent AI framework deal with a new enterprise customer.\n", "sales.txt")
+
+	searchBody, _ := json.Marshal(map[string]any{"query": "multi-agent AI framework", "top_k": 5})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/knowledge/search", bytes.NewReader(searchBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("knowledge search: got %d, body=%s", rec.Code, rec.Body.String())
+	}
+	var searchResp struct {
+		Results         []map[string]any `json:"results"`
+		CorporaSearched int              `json:"corpora_searched"`
+	}
+	json.NewDecoder(rec.Body).Decode(&searchResp)
+	if searchResp.CorporaSearched != 2 {
+		t.Fatalf("expected both corpora to be searched, got %d", searchResp.CorporaSearched)
+	}
+	if len(searchResp.Results) < 2 {
+		t.Fatalf("expected results from both corpora, got %d: %+v", len(searchResp.Results), searchResp.Results)
+	}
+	seenCorpora := map[string]bool{}
+	for _, r := range searchResp.Results {
+		seenCorpora[r["corpus_id"].(string)] = true
+	}
+	if !seenCorpora[corpusA] || !seenCorpora[corpusB] {
+		t.Fatalf("expected results tagged with both corpus IDs, got %+v", searchResp.Results)
+	}
+}
+
 func TestCorpusIngestionJobRetry(t *testing.T) {
 	embedder := &stubEmbedder{
 		dim:               8,
@@ -2264,7 +2266,11 @@ func TestCorpusDetachedPendingJobBecomesSkipped(t *testing.T) {
 		t.Fatalf("detach before processing: got %d, body=%s", rec.Code, rec.Body.String())
 	}
 
-	processed, err := app.backend.Knowledge.ProcessNextIngestionJob(context.Background())
+	localKnowledge, ok := app.backend.Knowledge.(*backendknowledge.Service)
+	if !ok {
+		t.Fatalf("expected local *knowledge.Service, got %T", app.backend.Knowledge)
+	}
+	processed, err := localKnowledge.ProcessNextIngestionJob(context.Background())
 	if err != nil {
 		t.Fatalf("ProcessNextIngestionJob: %v", err)
 	}
@@ -2416,10 +2422,6 @@ func newPlansTestApp(t *testing.T) (*App, *db.IdentityStore, *db.PlanDocumentSto
 	if err != nil {
 		t.Fatalf("NewIdentityStore: %v", err)
 	}
-	groupStore, err := db.NewGroupStore(database)
-	if err != nil {
-		t.Fatalf("NewGroupStore: %v", err)
-	}
 	apiKeyStore, err := db.NewAPIKeyStore(database)
 	if err != nil {
 		t.Fatalf("NewAPIKeyStore: %v", err)
@@ -2460,7 +2462,6 @@ func newPlansTestApp(t *testing.T) (*App, *db.IdentityStore, *db.PlanDocumentSto
 	app := &App{
 		backend: seshat.NewApp(seshat.Dependencies{
 			Identity:          identity,
-			GroupStore:        groupStore,
 			APIKeyStore:       apiKeyStore,
 			FileStore:         fileStore,
 			ArtifactStore:     newStubArtifactStore(),
@@ -4085,6 +4086,8 @@ func TestPromptResponseRejectsDifferentUserOrSession(t *testing.T) {
 
 func TestMCPConfigRequiresAdminAndRedactsSecrets(t *testing.T) {
 	fx := newSecurityTestFixture(t)
+	fx.app.connectedServerURL = "https://seshat-server.test"
+	fx.router = CreateRouter(APIConfig{}, fx.app)
 	_, err := fx.mcpStore.Create(context.Background(), db.CreateMCPServerParams{
 		Name:       "secure-server",
 		ServerType: "http",
@@ -4360,7 +4363,7 @@ func TestSessionOwnership_UserScopedList(t *testing.T) {
 		t.Fatal("member must not see admin session")
 	}
 
-	// Admin lists sessions — sees all (2)
+	// Admin lists sessions - sees only their own.
 	adminListResp := doRequest(t, router, http.MethodGet, "/api/v1/sessions", nil, adminToken)
 	if adminListResp.Code != http.StatusOK {
 		t.Fatalf("admin list sessions: expected 200, got %d: %s", adminListResp.Code, adminListResp.Body.String())
@@ -4368,8 +4371,124 @@ func TestSessionOwnership_UserScopedList(t *testing.T) {
 	var adminList map[string]any
 	json.Unmarshal(adminListResp.Body.Bytes(), &adminList)
 	adminCount := int(adminList["count"].(float64))
-	if adminCount != 2 {
-		t.Fatalf("expected admin to see 2 sessions, got %d: %s", adminCount, adminListResp.Body.String())
+	if adminCount != 1 {
+		t.Fatalf("expected admin to see 1 session, got %d: %s", adminCount, adminListResp.Body.String())
+	}
+	adminSessions := adminList["sessions"].([]any)
+	adminSess := adminSessions[0].(map[string]any)
+	if adminSess["session_id"] != adminSessionID {
+		t.Fatalf("expected admin session_id %q, got %q", adminSessionID, adminSess["session_id"])
+	}
+	if adminSess["session_id"] == memberSessionID {
+		t.Fatal("admin must not see member session")
+	}
+}
+
+// TestSessionFilesCrossUserAccess verifies that GET /api/v1/sessions/{id}/files
+// enforces session ownership the same way the POST (upload) side already does —
+// regression test for the IDOR where the GET branch listed any session's files
+// for any authenticated caller, without checking who the session belongs to.
+func TestSessionFilesCrossUserAccess(t *testing.T) {
+	database, err := db.Open(context.Background(), db.DefaultSQLiteConfig(filepath.Join(t.TempDir(), "session-files.db")))
+	if err != nil {
+		t.Fatalf("db.Open: %v", err)
+	}
+	defer database.Close()
+
+	ownershipStore, err := db.NewSessionOwnershipStore(database)
+	if err != nil {
+		t.Fatalf("NewSessionOwnershipStore: %v", err)
+	}
+	identityStore, err := db.NewIdentityStore(database)
+	if err != nil {
+		t.Fatalf("NewIdentityStore: %v", err)
+	}
+	fileStore, err := db.NewFileStore(database)
+	if err != nil {
+		t.Fatalf("NewFileStore: %v", err)
+	}
+	if _, err := identityStore.EnsureBootstrap(context.Background(), db.BootstrapOptions{
+		AdminEmail:           "admin@sessionfiles.test",
+		AdminPassword:        "adminpass",
+		AdminDisplayName:     "Admin",
+		DefaultOrgName:       "Acme",
+		DefaultOrgSlug:       "acme",
+		DefaultWorkspaceName: "Main",
+		DefaultWorkspaceSlug: "main",
+	}); err != nil {
+		t.Fatalf("EnsureBootstrap: %v", err)
+	}
+	otherHash, err := db.HashPassword("otherpass")
+	if err != nil {
+		t.Fatalf("HashPassword: %v", err)
+	}
+	other, err := identityStore.CreateUser(context.Background(), db.CreateUserParams{
+		Email: "other@sessionfiles.test", DisplayName: "Other", PasswordHash: otherHash,
+	})
+	if err != nil {
+		t.Fatalf("CreateUser: %v", err)
+	}
+	if err := identityStore.AssignRoleToUser(context.Background(), other.ID, "member"); err != nil {
+		t.Fatalf("AssignRoleToUser: %v", err)
+	}
+
+	mgr := newStubSessionManager()
+	app := &App{
+		backend: seshat.NewApp(seshat.Dependencies{
+			Identity:         identityStore,
+			QueryRuntime:     stubQueryRunner{},
+			SessionManager:   mgr,
+			SessionOwnership: ownershipStore,
+			FileStore:        fileStore,
+			ArtifactStore:    newStubArtifactStore(),
+		}),
+	}
+	router := CreateRouter(APIConfig{}, app)
+
+	adminToken := loginForToken(t, router, "admin@sessionfiles.test", "adminpass")
+	otherToken := loginForToken(t, router, "other@sessionfiles.test", "otherpass")
+
+	// Admin creates a session.
+	createResp := doRequest(t, router, http.MethodPost, "/api/v1/sessions", nil, adminToken)
+	if createResp.Code != http.StatusCreated {
+		t.Fatalf("create session: expected 201, got %d: %s", createResp.Code, createResp.Body.String())
+	}
+	var created map[string]any
+	json.Unmarshal(createResp.Body.Bytes(), &created)
+	sessionID, _ := created["session_id"].(string)
+	if sessionID == "" {
+		t.Fatalf("expected session_id in response, got: %s", createResp.Body.String())
+	}
+
+	// Seed a file record on that session directly against the store, bypassing
+	// the multipart upload path (irrelevant to what's under test here).
+	if _, err := fileStore.Create(context.Background(), db.CreateFileParams{
+		UserID:      other.ID, // deliberately not the session owner; only SessionID gates this endpoint
+		SessionID:   sessionID,
+		Filename:    "secret.txt",
+		ContentType: "text/plain",
+		Size:        4,
+		StorageKey:  "sessionfiles-test-key",
+	}); err != nil {
+		t.Fatalf("seed file: %v", err)
+	}
+
+	// Owner lists their session's files — OK.
+	ownerResp := doRequest(t, router, http.MethodGet, "/api/v1/sessions/"+sessionID+"/files", nil, adminToken)
+	if ownerResp.Code != http.StatusOK {
+		t.Fatalf("owner list session files: expected 200, got %d: %s", ownerResp.Code, ownerResp.Body.String())
+	}
+	var ownerList map[string]any
+	json.Unmarshal(ownerResp.Body.Bytes(), &ownerList)
+	if count, _ := ownerList["count"].(float64); count != 1 {
+		t.Fatalf("expected owner to see 1 file, got %v: %s", ownerList["count"], ownerResp.Body.String())
+	}
+
+	// A different, non-admin user must not be able to list another user's
+	// session files — this is the IDOR the fix closes.
+	otherResp := doRequest(t, router, http.MethodGet, "/api/v1/sessions/"+sessionID+"/files", nil, otherToken)
+	if otherResp.Code != http.StatusForbidden {
+		t.Fatalf("cross-user session files list: expected 403, got %d: %s", otherResp.Code, otherResp.Body.String())
 	}
 }
 
@@ -4447,8 +4566,9 @@ func TestSessionOwnership_DeleteEnforcement(t *testing.T) {
 	}
 }
 
-// TestSessionOwnership_AdminOverride verifies admin can delete any user's session.
-func TestSessionOwnership_AdminOverride(t *testing.T) {
+// TestSessionOwnership_AdminCannotOverride verifies conversations remain
+// owner-scoped even when the caller has an admin role.
+func TestSessionOwnership_AdminCannotOverride(t *testing.T) {
 	database, err := db.Open(context.Background(), db.DefaultSQLiteConfig(filepath.Join(t.TempDir(), "sessions-admin.db")))
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
@@ -4488,10 +4608,10 @@ func TestSessionOwnership_AdminOverride(t *testing.T) {
 	json.Unmarshal(memberCreateResp.Body.Bytes(), &memberSession)
 	memberSessionID, _ := memberSession["session_id"].(string)
 
-	// Admin deletes the member's session — must succeed (admin override)
+	// Admin cannot delete the member's session.
 	adminDeleteResp := doRequest(t, router, http.MethodDelete, "/api/v1/sessions/"+memberSessionID, nil, adminToken)
-	if adminDeleteResp.Code != http.StatusNoContent {
-		t.Fatalf("expected admin to delete member session (204), got %d: %s", adminDeleteResp.Code, adminDeleteResp.Body.String())
+	if adminDeleteResp.Code != http.StatusForbidden {
+		t.Fatalf("expected admin delete of member session to be forbidden, got %d: %s", adminDeleteResp.Code, adminDeleteResp.Body.String())
 	}
 }
 
@@ -4902,12 +5022,27 @@ func TestSettingCrossUserAccess(t *testing.T) {
 	}
 	bobToken := loginAs(t, router, "bob@settings.test", "bobpass")
 
+	// Bob creates his own personal setting first; admin must not see it through
+	// the normal personal settings endpoint.
+	bobBody, _ := json.Marshal(map[string]string{"provider": "mistral", "name": "Bob's Key"})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/settings/providers", bytes.NewReader(bobBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+bobToken)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("bob create setting: got %d, body=%s", rec.Code, rec.Body.String())
+	}
+	var bobCreated map[string]any
+	json.NewDecoder(rec.Body).Decode(&bobCreated)
+	bobSettingID := bobCreated["id"].(string)
+
 	// Admin creates a setting.
 	body, _ := json.Marshal(map[string]string{"provider": "openai", "name": "Admin's Key"})
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/settings/providers", bytes.NewReader(body))
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/settings/providers", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+adminToken)
-	rec := httptest.NewRecorder()
+	rec = httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 	var created map[string]any
 	json.NewDecoder(rec.Body).Decode(&created)
@@ -4931,25 +5066,42 @@ func TestSettingCrossUserAccess(t *testing.T) {
 		t.Errorf("cross-user DELETE: expected 403, got %d", rec.Code)
 	}
 
-	// Bob's own list is empty.
+	// Bob's own list only contains Bob's personal setting.
 	req = httptest.NewRequest(http.MethodGet, "/api/v1/settings/providers", nil)
 	req.Header.Set("Authorization", "Bearer "+bobToken)
 	rec = httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 	var list map[string]any
 	json.NewDecoder(rec.Body).Decode(&list)
-	if int(list["count"].(float64)) != 0 {
-		t.Errorf("bob's list should be empty, got %v", list["count"])
+	if int(list["count"].(float64)) != 1 {
+		t.Errorf("bob's list should only contain bob's own setting, got %v", list["count"])
 	}
 
-	// Admin list sees all settings (admin bypass).
+	// Admin's normal settings endpoint is also personal-only; it must not leak
+	// Bob's local provider into the admin account.
 	req = httptest.NewRequest(http.MethodGet, "/api/v1/settings/providers", nil)
 	req.Header.Set("Authorization", "Bearer "+adminToken)
 	rec = httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 	json.NewDecoder(rec.Body).Decode(&list)
 	if int(list["count"].(float64)) != 1 {
-		t.Errorf("admin list should see 1 setting, got %v", list["count"])
+		t.Errorf("admin list should only see admin's own setting, got %v", list["count"])
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/settings/providers/"+bobSettingID, nil)
+	req.Header.Set("Authorization", "Bearer "+adminToken)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("admin cross-user GET should be forbidden: got %d", rec.Code)
+	}
+
+	req = httptest.NewRequest(http.MethodDelete, "/api/v1/settings/providers/"+bobSettingID, nil)
+	req.Header.Set("Authorization", "Bearer "+adminToken)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("admin cross-user DELETE should be forbidden: got %d", rec.Code)
 	}
 }
 
@@ -5322,7 +5474,7 @@ func TestSkillsAreScopedPerUser(t *testing.T) {
 	}
 }
 
-func TestSkillReposRequireAdmin(t *testing.T) {
+func TestSkillReposAvailableToMembers(t *testing.T) {
 	t.Setenv("SESHAT_RUNTIME_ROOT", t.TempDir())
 
 	app, identity := newSkillsTestApp(t)
@@ -5345,16 +5497,16 @@ func TestSkillReposRequireAdmin(t *testing.T) {
 	req.Header.Set("Authorization", "Bearer "+memberToken)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
-	if rec.Code != http.StatusForbidden {
-		t.Fatalf("member repo list: expected 403, got %d body=%s", rec.Code, rec.Body.String())
+	if rec.Code != http.StatusOK {
+		t.Fatalf("member repo list: expected 200, got %d body=%s", rec.Code, rec.Body.String())
 	}
 
 	req = httptest.NewRequest(http.MethodDelete, "/api/v1/skills/repos/demo", nil)
 	req.Header.Set("Authorization", "Bearer "+memberToken)
 	rec = httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
-	if rec.Code != http.StatusForbidden {
-		t.Fatalf("member repo delete: expected 403, got %d body=%s", rec.Code, rec.Body.String())
+	if rec.Code == http.StatusForbidden || rec.Code == http.StatusUnauthorized {
+		t.Fatalf("member repo delete must not be role-gated, got %d body=%s", rec.Code, rec.Body.String())
 	}
 }
 

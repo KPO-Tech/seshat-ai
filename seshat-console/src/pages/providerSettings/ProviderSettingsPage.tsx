@@ -8,37 +8,48 @@ import {
   useDeleteProviderSetting,
   useSetProviderSettingDefault,
   useDetectProviderModels,
+  useProbeProviderSetting,
   type ProviderSetting,
   type ProviderSettingInput,
+  type ProviderProbeResult,
 } from '@/api/providerSettings'
 import { getErrorMessage } from '@/api/errors'
+import { useProviderCatalog, getProviderModels, type ProviderCatalogEntry } from '@/api/providerCatalog'
 import { AutofillGuard } from '@/components/AutofillGuard'
 import { PageHeader } from '@/components/PageHeader'
 import { ProviderIcon } from '@/components/ProviderIcon'
 import { useScopedOrganizationId } from '@/hooks/useOrganizationScope'
-import { getProviderModels } from '@/lib/providerCatalog'
-import { palette, monoStack } from '@/theme/tokens'
+import { monoStack } from '@/theme/tokens'
 
-const SUPPORTED_PROVIDERS = [
-  { id: 'anthropic', name: 'Anthropic', desc: 'Claude models — coding, reasoning, agents' },
-  { id: 'openai', name: 'OpenAI', desc: 'GPT models — pay-per-use API key' },
-  { id: 'mistral', name: 'Mistral AI', desc: 'Open & efficient European models' },
-  { id: 'gemini', name: 'Google Gemini', desc: 'Massive context windows' },
-  { id: 'z-ai', name: 'Z.ai', desc: 'GLM models' },
-  { id: 'minimax', name: 'MiniMax', desc: 'Agentic, long-context models' },
-  { id: 'openrouter', name: 'OpenRouter', desc: '300+ models through one API key' },
-  { id: 'ollama', name: 'Ollama', desc: 'Run models locally on your own infrastructure' },
-]
+// Auth types this page's Add/Edit form knows how to collect: a plain API
+// key (or none, for a local Ollama-style install). "oauth"/"aws"/"gcp"
+// providers from the SDK catalog (Codex, Bedrock, Vertex) need a different
+// setup flow this form doesn't offer yet, so they're filtered out below
+// rather than shown with a form that can't actually configure them.
+const SUPPORTED_AUTH_TYPES = new Set(['api_key', 'none'])
 
-const PROVIDER_DEFAULT_URLS: Record<string, string> = {
-  anthropic: 'https://api.anthropic.com',
-  openai: 'https://api.openai.com/v1',
-  mistral: 'https://api.mistral.ai/v1',
-  gemini: 'https://generativelanguage.googleapis.com/v1beta',
-  'z-ai': 'https://api.z.ai/api/paas/v4',
-  minimax: 'https://api.minimax.chat/v1',
-  openrouter: 'https://openrouter.ai/api/v1',
-  ollama: 'http://localhost:11434',
+// Ollama's fixed local default - not "catalog data" in the SDK sense (it
+// never varies by provider release), just a stable fact used for one
+// diagnostic message below.
+const OLLAMA_DEFAULT_URL = 'http://localhost:11434'
+
+const PROBE_STATUS_COLOR: Record<string, string> = {
+  ok: 'green',
+  invalid_credential: 'red',
+  unknown: 'orange',
+  unsupported: 'default',
+}
+const PROBE_STATUS_LABEL: Record<string, string> = {
+  ok: 'Credential accepted',
+  invalid_credential: 'Credential rejected',
+  unknown: 'Could not confirm',
+  unsupported: 'Not testable for this provider',
+}
+
+function toSupportedProviderEntries(catalog: ProviderCatalogEntry[] | undefined) {
+  return (catalog ?? [])
+    .filter((entry) => SUPPORTED_AUTH_TYPES.has(entry.auth_type ?? ''))
+    .map((entry) => ({ id: entry.name!, name: entry.display_name!, desc: entry.description ?? '' }))
 }
 
 export function ProviderSettingsPage() {
@@ -47,66 +58,50 @@ export function ProviderSettingsPage() {
   const [editing, setEditing] = useState<{ provider: string; setting: ProviderSetting | null } | null>(null)
 
   const { data } = useProviderSettingsList(organizationId ?? undefined)
+  const providerCatalog = useProviderCatalog()
   const createSetting = useCreateProviderSetting()
   const updateSetting = useUpdateProviderSetting()
   const deleteSetting = useDeleteProviderSetting()
   const setDefault = useSetProviderSettingDefault()
 
+  const supportedProviders = useMemo(() => toSupportedProviderEntries(providerCatalog.data), [providerCatalog.data])
   const settingByProvider = new Map((data ?? []).map((setting) => [setting.provider, setting]))
 
   return (
     <div>
-      <PageHeader
-        title="Provider Settings"
-        description="This organization's own LLM credentials. They override this platform's default organization's credentials when present."
-      />
+      <PageHeader />
 
-      <Space orientation="vertical" size={12} style={{ width: '100%' }}>
-        {SUPPORTED_PROVIDERS.map((entry) => {
+      <div className="pv-list">
+        {supportedProviders.map((entry) => {
           const setting = settingByProvider.get(entry.id)
           const isConfigured = Boolean(setting)
           const isExpanded = expanded === entry.id
 
           return (
-            <div
-              key={entry.id}
-              style={{
-                border: `1px solid ${isExpanded ? palette.accent : palette.border}`,
-                borderRadius: 12,
-                background: palette.surface,
-              }}
-            >
+            <div key={entry.id} className={`pv-card ${isExpanded ? 'expanded' : ''}`}>
               <div
+                className="pv-card-header"
                 onClick={() => isConfigured && setExpanded(isExpanded ? null : entry.id)}
-                style={{
-                  padding: '14px 18px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 16,
-                  cursor: isConfigured ? 'pointer' : 'default',
-                }}
+                style={{ cursor: isConfigured ? 'pointer' : 'default' }}
               >
-                <Space size={14} align="start">
-                  <ProviderIcon provider={entry.id} size={36} />
-                  <div>
+                <div className="pv-brand">
+                  <ProviderIcon provider={entry.id} size={30} />
+                  <div className="pv-meta">
                     <Space size={8} align="center">
-                      <Typography.Text strong>{entry.name}</Typography.Text>
+                      <span className="pv-name">{entry.name}</span>
                       {setting?.is_default && (
                         <Tag color="gold" icon={<CrownOutlined />} style={{ margin: 0 }}>
                           Default
                         </Tag>
                       )}
                     </Space>
-                    <Typography.Text style={{ display: 'block', fontSize: 12, color: palette.inkTertiary }}>
-                      {entry.desc}
-                    </Typography.Text>
+                    <span className="pv-id">{entry.desc}</span>
                   </div>
-                </Space>
-                <Space size={10} onClick={(event) => event.stopPropagation()}>
-                  <Tag color={isConfigured ? 'green' : 'default'} style={{ margin: 0 }}>
+                </div>
+                <div className="pv-card-controls" onClick={(event) => event.stopPropagation()}>
+                  <span className={`pv-status-pill ${isConfigured ? 'connected' : 'disconnected'}`}>
                     {isConfigured ? 'Connected' : 'Not configured'}
-                  </Tag>
+                  </span>
                   {isConfigured ? (
                     <>
                       {!setting!.is_default && (
@@ -120,15 +115,19 @@ export function ProviderSettingsPage() {
                             )
                           }
                         >
-                          <Button size="small" icon={<CrownOutlined />} aria-label={`Set ${entry.name} as default`} />
+                          <button type="button" className="pv-icon-btn" aria-label={`Set ${entry.name} as default`}>
+                            <CrownOutlined />
+                          </button>
                         </Popconfirm>
                       )}
-                      <Button
-                        size="small"
-                        icon={<EditOutlined />}
+                      <button
+                        type="button"
+                        className="pv-icon-btn"
                         onClick={() => setEditing({ provider: entry.id, setting: setting! })}
                         aria-label={`Edit ${entry.name} credential`}
-                      />
+                      >
+                        <EditOutlined />
+                      </button>
                       <Popconfirm
                         title={`Remove the ${entry.name} credential?`}
                         description="Cloud jobs configured for this provider will fall back to this platform's default organization's credentials (if any) or start failing at execution time."
@@ -136,40 +135,40 @@ export function ProviderSettingsPage() {
                           deleteSetting.mutate(setting!.id!, { onError: (error) => message.error(getErrorMessage(error)) })
                         }
                       >
-                        <Button size="small" danger icon={<DeleteOutlined />} aria-label={`Delete ${entry.name} credential`} />
+                        <button type="button" className="pv-icon-btn" aria-label={`Delete ${entry.name} credential`}>
+                          <DeleteOutlined />
+                        </button>
                       </Popconfirm>
-                      <Button
-                        size="small"
-                        icon={isExpanded ? <DownOutlined /> : <RightOutlined />}
+                      <button
+                        type="button"
+                        className="pv-icon-btn"
                         onClick={() => setExpanded(isExpanded ? null : entry.id)}
                         aria-label={isExpanded ? `Collapse ${entry.name} details` : `Expand ${entry.name} details`}
-                      />
+                      >
+                        {isExpanded ? <DownOutlined /> : <RightOutlined />}
+                      </button>
                     </>
                   ) : (
-                    <Button
-                      size="small"
-                      type="primary"
+                    <button
+                      type="button"
+                      className="pv-configure-btn"
                       disabled={!organizationId}
                       onClick={() => setEditing({ provider: entry.id, setting: null })}
                     >
                       Configure
-                    </Button>
+                    </button>
                   )}
-                </Space>
+                </div>
               </div>
 
               {isConfigured && isExpanded && (
-                <div style={{ borderTop: `1px solid ${palette.border}`, padding: '14px 18px', display: 'flex', gap: 32, flexWrap: 'wrap' }}>
+                <div className="pv-card-detail">
                   <div>
-                    <Typography.Text style={{ display: 'block', fontSize: 11, fontWeight: 700, color: palette.inkTertiary }}>
-                      DEFAULT MODEL
-                    </Typography.Text>
+                    <span className="pv-card-detail__label">DEFAULT MODEL</span>
                     <Typography.Text style={{ fontFamily: monoStack, fontSize: 13 }}>{setting!.default_model}</Typography.Text>
                   </div>
                   <div>
-                    <Typography.Text style={{ display: 'block', fontSize: 11, fontWeight: 700, color: palette.inkTertiary }}>
-                      BASE URL
-                    </Typography.Text>
+                    <span className="pv-card-detail__label">BASE URL</span>
                     <Typography.Text style={{ fontFamily: monoStack, fontSize: 13 }}>
                       {setting!.base_url || 'Provider default'}
                     </Typography.Text>
@@ -179,11 +178,11 @@ export function ProviderSettingsPage() {
             </div>
           )
         })}
-      </Space>
+      </div>
 
       <ProviderSettingFormDrawer
         provider={editing?.provider ?? null}
-        providerName={SUPPORTED_PROVIDERS.find((p) => p.id === editing?.provider)?.name ?? ''}
+        providerName={supportedProviders.find((p) => p.id === editing?.provider)?.name ?? ''}
         setting={editing?.setting ?? null}
         open={editing !== null}
         onClose={() => setEditing(null)}
@@ -228,23 +227,51 @@ function ProviderSettingFormDrawer({
   const [form] = Form.useForm<Omit<ProviderSettingInput, 'organization_id'>>()
   const watchedModelId = Form.useWatch('default_model', form)
   const watchedBaseURL = Form.useWatch('base_url', form)
+  const watchedApiKey = Form.useWatch('api_key', form)
   const isEdit = setting !== null
   const isOllama = provider === 'ollama'
-  const modelOptions = useMemo(() => getProviderModels(provider, setting?.default_model), [provider, setting?.default_model])
+  const providerCatalog = useProviderCatalog()
+  const modelOptions = useMemo(
+    () => getProviderModels(providerCatalog.data, provider, setting?.default_model),
+    [providerCatalog.data, provider, setting?.default_model],
+  )
   const selectedModel = modelOptions.find((model) => model.id === watchedModelId) ?? null
   const supportsStaticCatalog = modelOptions.length > 0
 
   const detectModels = useDetectProviderModels()
   const [detectedModels, setDetectedModels] = useState<string[]>([])
 
+  const probeConnection = useProbeProviderSetting()
+  const [probeResult, setProbeResult] = useState<ProviderProbeResult | null>(null)
+
   useEffect(() => {
     if (!open || !provider) return
     const fallbackModel = setting?.default_model ?? modelOptions[0]?.id ?? ''
-    form.setFieldsValue(
-      setting ?? { provider, default_model: fallbackModel, base_url: PROVIDER_DEFAULT_URLS[provider] ?? '' },
-    )
+    form.setFieldsValue(setting ?? { provider, default_model: fallbackModel, base_url: '' })
     setDetectedModels([])
+    setProbeResult(null)
   }, [open, provider, setting, form, modelOptions])
+
+  // A stale probe result from a previous key/URL would be misleading -
+  // clear it as soon as either changes, forcing a fresh test.
+  useEffect(() => {
+    setProbeResult(null)
+  }, [watchedApiKey, watchedBaseURL])
+
+  const handleTestConnection = () => {
+    if (!provider) return
+    if (!watchedApiKey) {
+      message.warning(isEdit ? 'Enter a new key to test it - the saved one is never resent.' : 'Enter an API key first.')
+      return
+    }
+    probeConnection.mutate(
+      { provider, base_url: watchedBaseURL || undefined, api_key: watchedApiKey },
+      {
+        onSuccess: setProbeResult,
+        onError: (error) => message.error(getErrorMessage(error)),
+      },
+    )
+  }
 
   const handleDetectModels = () => {
     if (!provider) return
@@ -256,7 +283,7 @@ function ProviderSettingFormDrawer({
           setDetectedModels(models)
           if (models.length === 0) {
             message.warning(
-              `No models found — check that Ollama is running and reachable at ${watchedBaseURL || PROVIDER_DEFAULT_URLS.ollama}`,
+              `No models found. Check that Ollama is running and reachable at ${watchedBaseURL || OLLAMA_DEFAULT_URL}`,
             )
           } else {
             message.success(`Found ${models.length} model${models.length === 1 ? '' : 's'}`)
@@ -286,7 +313,7 @@ function ProviderSettingFormDrawer({
           label="Base URL"
           extra={
             isOllama
-              ? "seshat-server itself runs in a container in this project's docker-compose stack — from inside it, localhost means the container, not your machine. Use http://host.docker.internal:11434 to reach an Ollama running on your host."
+              ? "seshat-server itself runs in a container in this project's docker-compose stack. From inside it, localhost means the container, not your machine. Use http://host.docker.internal:11434 to reach an Ollama running on your host."
               : undefined
           }
         >
@@ -355,6 +382,24 @@ function ProviderSettingFormDrawer({
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
             The key is encrypted at rest and never shown again after saving.
           </Typography.Text>
+        )}
+
+        {!isOllama && (
+          <div style={{ marginTop: 12, marginBottom: 16 }}>
+            <Button size="small" loading={probeConnection.isPending} onClick={handleTestConnection}>
+              Test connection
+            </Button>
+            {probeResult && (
+              <div style={{ marginTop: 8 }}>
+                <Tag color={PROBE_STATUS_COLOR[probeResult.status]}>{PROBE_STATUS_LABEL[probeResult.status]}</Tag>
+                {probeResult.status !== 'ok' && (
+                  <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>
+                    {probeResult.detail}
+                  </Typography.Text>
+                )}
+              </div>
+            )}
+          </div>
         )}
       </Form>
     </Drawer>

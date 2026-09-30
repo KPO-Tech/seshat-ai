@@ -54,6 +54,15 @@ func NewSMTPSender(cfg Config) *SMTPSender {
 	return &SMTPSender{cfg: cfg}
 }
 
+// SMTPTarget exposes just the host/port a network diagnostic can probe -
+// never Username/Password. Implements an optional capability interface a
+// caller can type-assert for (see iam.Service.RunNetworkDiagnostics), kept
+// out of the Sender interface itself since most Sender implementations
+// (test doubles included) have no meaningful target to report.
+func (s *SMTPSender) SMTPTarget() (host string, port int, ok bool) {
+	return s.cfg.Host, s.cfg.Port, s.cfg.Host != ""
+}
+
 func (s *SMTPSender) Send(ctx context.Context, msg Message) error {
 	// net/smtp has no context support - respect cancellation only at this
 	// boundary. The send itself is a single blocking call kept short by

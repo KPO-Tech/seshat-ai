@@ -18,6 +18,15 @@ interface AuthState {
     organizations: Organization[]
     memberships: Membership[]
   }) => void
+  /**
+   * Persists just the bearer token, leaving user/organizations/memberships
+   * unset - used by SSOCallbackPage, which only ever receives a raw token
+   * from the OIDC/SAML redirect. ProtectedRoute's own useCurrentPrincipal
+   * call (already run unconditionally whenever a token exists) hydrates
+   * the rest via /auth/me, exactly the same bootstrapping a page refresh
+   * after a normal login already relies on.
+   */
+  setToken: (token: string) => void
   clear: () => void
 }
 
@@ -29,6 +38,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   setSession: ({ token, user, organizations, memberships }) => {
     localStorage.setItem(TOKEN_STORAGE_KEY, token)
     set({ token, user, organizations, memberships })
+  },
+  setToken: (token) => {
+    localStorage.setItem(TOKEN_STORAGE_KEY, token)
+    set({ token })
   },
   clear: () => {
     localStorage.removeItem(TOKEN_STORAGE_KEY)

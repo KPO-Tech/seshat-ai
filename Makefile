@@ -6,7 +6,7 @@
 #   make test           -> run all Go tests in the workspace
 #   make install-python -> install / update docling-serve
 #   make start-docling  -> start docling-serve manually
-#   make deploy-up      -> build + start seshat-server/seshat-console/Postgres/SearXNG
+#   make deploy-up      -> build + start the default deploy stack
 #   make deploy-down    -> stop that stack
 #
 # Windows: works from PowerShell, cmd, or Git Bash. Two separate things need
@@ -34,9 +34,16 @@ ifeq ($(OS),Windows_NT)
   ifneq ($(GIT_ROOT_WIN),)
     SHELL := $(GIT_ROOT_WIN)/bin/sh.exe
     .SHELLFLAGS := -c
+    BASH := $(GIT_ROOT_WIN)/bin/bash.exe
     export PATH := $(GIT_ROOT_WIN)/usr/bin;$(PATH)
   endif
+  ifneq ($(wildcard C:/msys64/mingw64/bin/gcc.exe),)
+    export PATH := C:/msys64/mingw64/bin;$(PATH)
+  else ifneq ($(wildcard $(subst \,/,$(LOCALAPPDATA))/Programs/MSYS2/mingw64/bin/gcc.exe),)
+    export PATH := $(subst \,/,$(LOCALAPPDATA))/Programs/MSYS2/mingw64/bin;$(PATH)
+  endif
 endif
+BASH ?= bash
 
 # CURDIR is a Make built-in (no subprocess needed) - equivalent to `pwd` but
 # works even before the SHELL override above takes effect for $(shell ...).
@@ -53,13 +60,19 @@ SERVER_CMD        := ./cmd/server
 SERVER_BIN_DIR    := $(SERVER_DIR)/bin
 SERVER_BIN        := seshat-server
 SERVER_BIN_PATH   := $(SERVER_BIN_DIR)/$(SERVER_BIN)
-UI_DIR            := $(ROOT)/seshat-ui
+DESKTOP_DIR       := $(ROOT)/seshat-desktop
+UI_DIR            := $(DESKTOP_DIR)
+CONSOLE_DIR       := $(ROOT)/seshat-console
+WEBSITE_DIR       := $(ROOT)/website
 DAEMON_BIN        := seshat-automation
 DAEMON_BIN_DIR    := $(ROOT)/bin
 DAEMON_BIN_PATH   := $(DAEMON_BIN_DIR)/$(DAEMON_BIN)
 DAEMON_PKG        := github.com/KPO-Tech/seshat/cmd/automation-server
 SESHAT_VERSION    := v1.0.2
 DEPLOY_DIR        := $(ROOT)/deploy
+GO_BUILD_CACHE    := $(ROOT)/.cache/go-build
+GOLANGCI_CACHE    := $(ROOT)/.cache/golangci-lint
+DOCKER_COMPOSE    := $(shell $(SHELL) -c 'docker compose version >/dev/null 2>&1 && echo "docker compose" || echo docker-compose')
 
 # UI package manager: prefer bun (faster, what CI/most contributors use), but
 # fall back to npm when bun isn't installed - e.g. a fresh Windows machine.
@@ -70,17 +83,22 @@ DEPLOY_DIR        := $(ROOT)/deploy
 UI_PKG_MGR := $(shell $(SHELL) -c 'command -v bun >/dev/null 2>&1 && echo bun || echo npm')
 
 .PHONY: help \
-        setup \
+        setup setup-all setup-desktop setup-web setup-legacy \
         dev stop dev-full \
         build run build-server run-server \
         build-automation run-automation \
         test test-v test-race test-short test-pkg \
         fmt vet lint tidy hooks \
-        ui-install ui-build ui-dev \
+        install-all build-all \
+        ui-install ui-build ui-dev ui-package-win ui-package-linux \
+        desktop-install desktop-build desktop-dev desktop-package-win desktop-package-linux \
+        console-install console-build console-dev \
+        website-install website-build website-dev \
         install-python start-docling \
         logs logs-last logs-docling \
-        deploy-up deploy-down deploy-logs deploy-ps \
-        clean clean-all
+        deploy-env deploy-up deploy-up-core deploy-up-docs deploy-up-knowledge deploy-up-search deploy-up-s3 deploy-up-full deploy-up-tls deploy-smoke-core \
+        deploy-build deploy-pull deploy-down deploy-logs deploy-ps \
+        clean clean-all clean-tmp
 
 .DEFAULT_GOAL := help
 
@@ -94,11 +112,29 @@ help: ## Show available targets
 
 # Dev lifecycle
 
+install-cgo-windows: ## Install MSYS2/MinGW-w64 GCC for nativedoc CGO builds on Windows
+	powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(ROOT)/scripts/install-windows-cgo.ps1"
+
 dev: stop ui-install ## Start local backend + Electron UI
 	@printf "\033[32m[nexus]\033[0m starting local backend...\n"
-	@cd $(BACKEND_DIR) && go run $(BACKEND_CMD) &
 	@printf "\033[32m[nexus]\033[0m starting Electron UI...\n"
-	@cd $(UI_DIR) && $(UI_PKG_MGR) run start
+	@(cd $(BACKEND_DIR) && go run $(BACKEND_CMD)) & \
+	BACKEND_PID=$$!; \
+	trap 'kill $$BACKEND_PID 2>/dev/null || true' EXIT INT TERM; \
+	cd $(UI_DIR) && $(UI_PKG_MGR) run start
+
+dev-native: stop ui-install ## Start local backend with nativedoc CGO + Electron UI
+	@printf "\033[32m[nexus]\033[0m preparing nativedoc CGO dependencies...\n"
+	@printf "\033[32m[nexus]\033[0m starting local backend with native OCR support...\n"
+	@printf "\033[32m[nexus]\033[0m starting Electron UI...\n"
+	@NATIVEDOC_ENV="$$(mktemp)"; \
+	"$(BASH)" "$(ROOT)/scripts/setup-nativedoc-cgo.sh" > "$$NATIVEDOC_ENV"; \
+	. "$$NATIVEDOC_ENV"; \
+	rm -f "$$NATIVEDOC_ENV"; \
+	(cd $(BACKEND_DIR) && SESHAT_NATIVEDOC_AUTO_INIT=1 CGO_ENABLED=1 go run -tags "$$NATIVEDOC_BUILD_TAGS" $(BACKEND_CMD)) & \
+	BACKEND_PID=$$!; \
+	trap 'kill $$BACKEND_PID 2>/dev/null || true' EXIT INT TERM; \
+	cd $(UI_DIR) && $(UI_PKG_MGR) run start
 
 # `go run` executes a temp binary named after the last path segment of the
 # package (./cmd/api -> "api", ./cmd/server -> "server", .../automation-server
@@ -121,18 +157,21 @@ stop: ## Stop backend, server, automation, and UI processes
 	  pkill -x $(DAEMON_BIN) 2>/dev/null || true; \
 	elif command -v powershell.exe >/dev/null 2>&1; then \
 	  powershell.exe -NoProfile -Command \
-	    "Get-CimInstance Win32_Process | Where-Object { \$$_.Name -match '^(api|server|automation-server|go|seshat-api|seshat-server|seshat-automation)(\.exe)?\$$' -or (\$$_.Name -match '^(electron|node)(\.exe)?\$$' -and \$$_.CommandLine -match 'electron-vite|seshat-ui') } | ForEach-Object { Stop-Process -Id \$$_.ProcessId -Force -ErrorAction SilentlyContinue }" \
+	    "Get-CimInstance Win32_Process | Where-Object { \$$_.Name -match '^(api|server|automation-server|go|seshat-api|seshat-server|seshat-automation)(\.exe)?\$$' -or (\$$_.Name -match '^(electron|node)(\.exe)?\$$' -and \$$_.CommandLine -match 'electron-vite|seshat-desktop') } | ForEach-Object { Stop-Process -Id \$$_.ProcessId -Force -ErrorAction SilentlyContinue }" \
 	    2>/dev/null || true; \
 	fi
 	@printf "\033[32m[nexus]\033[0m stopped.\n"
 
 dev-full: stop ui-install ## Start local backend + automation daemon + Electron UI
 	@printf "\033[32m[nexus]\033[0m starting local backend...\n"
-	@cd $(BACKEND_DIR) && go run $(BACKEND_CMD) &
 	@printf "\033[32m[nexus]\033[0m starting automation daemon...\n"
-	@go run $(DAEMON_PKG)@$(SESHAT_VERSION) &
 	@printf "\033[32m[nexus]\033[0m starting Electron UI...\n"
-	@cd $(UI_DIR) && $(UI_PKG_MGR) run start
+	@(cd $(BACKEND_DIR) && go run $(BACKEND_CMD)) & \
+	BACKEND_PID=$$!; \
+	(go run $(DAEMON_PKG)@$(SESHAT_VERSION)) & \
+	DAEMON_PID=$$!; \
+	trap 'kill $$BACKEND_PID $$DAEMON_PID 2>/dev/null || true' EXIT INT TERM; \
+	cd $(UI_DIR) && $(UI_PKG_MGR) run start
 
 # Backend
 
@@ -142,8 +181,17 @@ build: ## Compile the local backend binary -> seshat-backend/bin/seshat-api
 	@cd $(BACKEND_DIR) && go build -o ./bin/$(BACKEND_BIN) $(BACKEND_CMD)
 	@printf "\033[32m[go]\033[0m binary ready: %s\n" $(BACKEND_BIN_PATH)
 
+build-native: ## Compile local backend with nativedoc CGO support
+	@printf "\033[32m[go]\033[0m preparing nativedoc CGO dependencies...\n"
+	@mkdir -p $(BACKEND_BIN_DIR)
+	@cd $(BACKEND_DIR) && eval "$$("$(BASH)" $(ROOT)/scripts/setup-nativedoc-cgo.sh)" && CGO_ENABLED=1 go build -tags "$$NATIVEDOC_BUILD_TAGS" -o ./bin/$(BACKEND_BIN) $(BACKEND_CMD)
+	@printf "\033[32m[go]\033[0m nativedoc binary ready: %s\n" $(BACKEND_BIN_PATH)
+
 run: ## Run the local backend only (no UI), reads .env.dev / .env
 	@cd $(BACKEND_DIR) && go run $(BACKEND_CMD)
+
+run-native: ## Run the local backend with nativedoc CGO support
+	@cd $(BACKEND_DIR) && eval "$$("$(BASH)" $(ROOT)/scripts/setup-nativedoc-cgo.sh)" && SESHAT_NATIVEDOC_AUTO_INIT=1 CGO_ENABLED=1 go run -tags "$$NATIVEDOC_BUILD_TAGS" $(BACKEND_CMD)
 
 build-server: ## Compile the cloud server binary -> seshat-server/bin/seshat-server
 	@printf "\033[32m[go]\033[0m building %s...\n" $(SERVER_BIN)
@@ -164,28 +212,71 @@ build-automation: ## Compile the automation daemon binary -> bin/seshat-automati
 run-automation: ## Run the automation daemon only (reads env / .env)
 	@go run $(DAEMON_PKG)@$(SESHAT_VERSION)
 
-# Deploy stack (seshat-server + seshat-console + Postgres + SearXNG + Mailpit)
+# Deploy stack (default: Postgres + seshat-server + seshat-console + Mailpit + SearXNG)
 # See deploy/README.md. First run: cp deploy/.env.example deploy/.env and
 # fill in POSTGRES_PASSWORD + SESHAT_SERVER_ENCRYPTION_KEY.
 
-deploy-up: ## Build and start the deploy stack (Postgres + seshat-server + seshat-console + SearXNG + Mailpit)
+deploy-env:
 	@if [ ! -f $(DEPLOY_DIR)/.env ]; then \
 	  printf "\033[33m[deploy]\033[0m no deploy/.env - copying deploy/.env.example, edit it then re-run.\n"; \
 	  cp $(DEPLOY_DIR)/.env.example $(DEPLOY_DIR)/.env; \
 	  exit 1; \
 	fi
-	@cd $(DEPLOY_DIR) && docker compose up --build -d
-	@printf "\033[32m[deploy]\033[0m console: http://localhost:%s  api: http://localhost:%s  searxng: http://localhost:%s  minio: http://localhost:%s  mailpit: http://localhost:%s\n" \
-	  "$${SESHAT_CONSOLE_PORT:-3000}" "$${SESHAT_SERVER_PORT:-8081}" "$${SEARXNG_PORT:-8080}" "$${MINIO_CONSOLE_PORT:-9001}" "$${MAILPIT_WEB_PORT:-8025}"
+
+deploy-up: deploy-env ## Build and start the default deploy stack
+	@cd $(DEPLOY_DIR) && DEPLOY_DOCLING_URL= $(DOCKER_COMPOSE) --profile search up --build -d
+	@printf "\033[32m[deploy]\033[0m ready: console http://localhost:%s  api http://localhost:%s  searxng http://localhost:%s  mailpit http://localhost:%s\n" \
+	  "$${SESHAT_CONSOLE_PORT:-3000}" "$${SESHAT_SERVER_PORT:-8081}" "$${SEARXNG_PORT:-8080}" "$${MAILPIT_WEB_PORT:-8025}"
+
+deploy-up-docs: deploy-env ## Build and start default stack + Docling document conversion
+	@cd $(DEPLOY_DIR) && DEPLOY_DOCLING_URL=http://docling:5001 $(DOCKER_COMPOSE) --profile search --profile docs up --build -d
+	@printf "\033[32m[deploy]\033[0m docs stack ready: console http://localhost:%s  api http://localhost:%s  searxng http://localhost:%s  docling http://localhost:%s\n" \
+	  "$${SESHAT_CONSOLE_PORT:-3000}" "$${SESHAT_SERVER_PORT:-8081}" "$${SEARXNG_PORT:-8080}" "$${DOCLING_PORT:-5001}"
+
+deploy-up-knowledge: deploy-env ## Build and start default stack + OpenSearch Knowledge/RAG validation
+	@cd $(DEPLOY_DIR) && DEPLOY_DOCLING_URL= SESHAT_SERVER_VECTOR_STORE=opensearch SESHAT_SERVER_OPENSEARCH_ADDRESSES=http://opensearch:9200 $(DOCKER_COMPOSE) --profile search --profile knowledge up --build -d
+	@printf "\033[32m[deploy]\033[0m knowledge stack ready: console http://localhost:%s  api http://localhost:%s  searxng http://localhost:%s  opensearch http://localhost:%s\n" \
+	  "$${SESHAT_CONSOLE_PORT:-3000}" "$${SESHAT_SERVER_PORT:-8081}" "$${SEARXNG_PORT:-8080}" "$${OPENSEARCH_PORT:-9200}"
+
+deploy-up-search: deploy-up ## Alias for deploy-up
+
+deploy-up-core: deploy-env ## Build and start only Postgres + server + console + Mailpit
+	@cd $(DEPLOY_DIR) && DEPLOY_DOCLING_URL= $(DOCKER_COMPOSE) up --build -d
+	@printf "\033[32m[deploy]\033[0m core ready: console http://localhost:%s  api http://localhost:%s  mailpit http://localhost:%s\n" \
+	  "$${SESHAT_CONSOLE_PORT:-3000}" "$${SESHAT_SERVER_PORT:-8081}" "$${MAILPIT_WEB_PORT:-8025}"
+
+deploy-up-s3: deploy-env ## Build and start default stack + MinIO S3 storage testing
+	@cd $(DEPLOY_DIR) && DEPLOY_DOCLING_URL= $(DOCKER_COMPOSE) --profile search --profile s3 up --build -d
+	@printf "\033[32m[deploy]\033[0m s3 stack ready: console http://localhost:%s  api http://localhost:%s  searxng http://localhost:%s  minio http://localhost:%s\n" \
+	  "$${SESHAT_CONSOLE_PORT:-3000}" "$${SESHAT_SERVER_PORT:-8081}" "$${SEARXNG_PORT:-8080}" "$${MINIO_CONSOLE_PORT:-9001}"
+
+deploy-up-full: deploy-env ## Build and start every deploy service
+	@cd $(DEPLOY_DIR) && DEPLOY_DOCLING_URL=http://docling:5001 SESHAT_SERVER_VECTOR_STORE=opensearch SESHAT_SERVER_OPENSEARCH_ADDRESSES=http://opensearch:9200 $(DOCKER_COMPOSE) --profile full up --build -d
+	@printf "\033[32m[deploy]\033[0m full stack ready: console http://localhost:%s  api http://localhost:%s  docling http://localhost:%s  opensearch http://localhost:%s  searxng http://localhost:%s  minio http://localhost:%s  mailpit http://localhost:%s\n" \
+	  "$${SESHAT_CONSOLE_PORT:-3000}" "$${SESHAT_SERVER_PORT:-8081}" "$${DOCLING_PORT:-5001}" "$${OPENSEARCH_PORT:-9200}" "$${SEARXNG_PORT:-8080}" "$${MINIO_CONSOLE_PORT:-9001}" "$${MAILPIT_WEB_PORT:-8025}"
+
+deploy-up-tls: deploy-env ## Build and start the core stack behind Caddy TLS termination
+	@cd $(DEPLOY_DIR) && DEPLOY_DOCLING_URL= $(DOCKER_COMPOSE) --profile tls up --build -d
+	@printf "\033[32m[deploy]\033[0m tls stack ready: https://%s  (self-signed for localhost - see deploy/README.md)\n" \
+	  "$${SESHAT_PUBLIC_DOMAIN:-localhost}"
+
+deploy-build: deploy-env ## Build deploy images without starting containers
+	@cd $(DEPLOY_DIR) && $(DOCKER_COMPOSE) --profile full build
+
+deploy-pull: deploy-env ## Pull deploy images, including optional profile services
+	@cd $(DEPLOY_DIR) && $(DOCKER_COMPOSE) --profile full pull
 
 deploy-down: ## Stop the deploy stack (add ARGS=-v to also wipe the Postgres volume)
-	@cd $(DEPLOY_DIR) && docker compose down $(ARGS)
+	@cd $(DEPLOY_DIR) && $(DOCKER_COMPOSE) down $(ARGS)
 
 deploy-logs: ## Tail logs from every deploy stack container
-	@cd $(DEPLOY_DIR) && docker compose logs -f
+	@cd $(DEPLOY_DIR) && $(DOCKER_COMPOSE) logs -f
 
 deploy-ps: ## Show deploy stack container status
-	@cd $(DEPLOY_DIR) && docker compose ps
+	@cd $(DEPLOY_DIR) && $(DOCKER_COMPOSE) ps
+
+deploy-smoke-core: ## Start core compose stack, check API/console, then clean up
+	@bash scripts/smoke-compose-core.sh
 
 # Tests
 
@@ -210,12 +301,22 @@ fmt: ## Format all Go source files with gofmt
 	gofmt -w $(shell $(SHELL) -c 'find . -name "*.go" -not -path "./vendor/*"')
 
 vet: ## Run go vet across all Go modules in the workspace
-	go vet $(GO_PACKAGES)
+	@mkdir -p $(GO_BUILD_CACHE)
+	GOCACHE=$(GO_BUILD_CACHE) go vet $(GO_PACKAGES)
 
-lint: vet ## vet + staticcheck (install: go install honnef.co/go/tools/cmd/staticcheck@latest)
-	@command -v staticcheck >/dev/null 2>&1 \
-	  && staticcheck 1000 4 24 27 30 46 100 114 983 984 1000LINT_PACKAGES) \
-	  || printf "\033[33m[warn]\033[0m staticcheck not found - install with:\n       go install honnef.co/go/tools/cmd/staticcheck@latest\n"
+lint: vet ## vet + gofmt check + golangci-lint
+	@UNFORMATTED=$$(find . -name "*.go" -not -path "./vendor/*" | xargs gofmt -l); \
+	if [ -n "$$UNFORMATTED" ]; then \
+	  printf "\033[31m[lint]\033[0m Go files need formatting (run: make fmt):\n%s\n" "$$UNFORMATTED"; \
+	  exit 1; \
+	fi
+	@mkdir -p $(GO_BUILD_CACHE) $(GOLANGCI_CACHE)
+	@if command -v golangci-lint >/dev/null 2>&1; then \
+	  cd $(BACKEND_DIR) && GOCACHE=$(GO_BUILD_CACHE) GOLANGCI_LINT_CACHE=$(GOLANGCI_CACHE) golangci-lint run --timeout=5m ./...; \
+	  cd $(SERVER_DIR) && GOCACHE=$(GO_BUILD_CACHE) GOLANGCI_LINT_CACHE=$(GOLANGCI_CACHE) golangci-lint run --timeout=5m ./...; \
+	else \
+	  printf "\033[33m[warn]\033[0m golangci-lint not found - install with:\n       go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest\n"; \
+	fi
 
 tidy: ## go mod tidy + verify for backend and server modules
 	@cd $(BACKEND_DIR) && go mod tidy && go mod verify
@@ -226,25 +327,101 @@ hooks: ## Install git hooks from .githooks/
 	chmod +x .githooks/pre-commit
 	@printf "\033[32m[hooks]\033[0m pre-commit hook installed.\n"
 
-# UI
+# Frontend surfaces
 
-ui-install: ## Install UI dependencies via bun (falls back to npm if bun isn't installed)
-	@if [ ! -d "$(UI_DIR)/node_modules" ]; then \
-	  printf "\033[32m[ui]\033[0m installing dependencies with %s...\n" $(UI_PKG_MGR); \
+ui-install: desktop-install ## Alias for desktop-install
+
+ui-build: desktop-build ## Alias for desktop-build
+
+ui-dev: desktop-dev ## Alias for desktop-dev
+
+ui-package-win: desktop-package-win ## Alias for desktop-package-win
+
+ui-package-linux: desktop-package-linux ## Alias for desktop-package-linux
+
+ui-package-win-native: desktop-package-win-native ## Alias for desktop-package-win-native
+
+ui-package-linux-native: desktop-package-linux-native ## Alias for desktop-package-linux-native
+
+desktop-install: ## Install desktop Electron dependencies
+	@if [ ! -d "$(UI_DIR)/node_modules" ] || [ ! -f "$(UI_DIR)/node_modules/electron/path.txt" ]; then \
+	  printf "\033[32m[desktop]\033[0m installing dependencies with %s...\n" $(UI_PKG_MGR); \
 	  cd $(UI_DIR) && $(UI_PKG_MGR) install; \
 	else \
-	  printf "\033[32m[ui]\033[0m node_modules present - skipping install\n"; \
+	  printf "\033[32m[desktop]\033[0m node_modules present - skipping install\n"; \
 	fi
 
-ui-build: ui-install ## Build UI for production (Electron package)
+desktop-build: desktop-install build ## Build desktop Electron app and local backend
 	cd $(UI_DIR) && $(UI_PKG_MGR) run build
 
-ui-dev: ui-install ## Start Vite dev server only (web preview, no Electron)
-	cd $(UI_DIR) && $(UI_PKG_MGR) run dev
+desktop-dev: desktop-install ## Start desktop Electron dev app
+	cd $(UI_DIR) && $(UI_PKG_MGR) run start
+
+# Packaging a real installer (electron-builder) is much slower than `make dev`
+# but produces the actual artifact users run - closer to what "does this work
+# for real" testing needs. Each target is host-OS-specific (electron-builder
+# cannot reliably cross-package): run desktop-package-win on Windows,
+# desktop-package-linux on Linux/CI. See docs/desktop-packaging.md.
+
+desktop-package-win: desktop-install ## Package a Windows .exe installer (run on Windows)
+	cd $(UI_DIR) && $(UI_PKG_MGR) run package:win
+	@printf "\033[32m[desktop]\033[0m installer ready: %s\n" "$(UI_DIR)/dist"
+
+desktop-package-win-native: desktop-install ## Package Windows installer with nativedoc CGO sidecar
+	cd $(UI_DIR) && $(UI_PKG_MGR) run package:win:nativedoc
+	@printf "\033[32m[desktop]\033[0m nativedoc installer ready: %s\n" "$(UI_DIR)/dist"
+
+desktop-package-linux: desktop-install ## Package a Linux AppImage + .deb (run on Linux)
+	cd $(UI_DIR) && $(UI_PKG_MGR) run package:linux
+	@printf "\033[32m[desktop]\033[0m artifacts ready: %s\n" "$(UI_DIR)/dist"
+
+desktop-package-linux-native: desktop-install ## Package Linux artifacts with nativedoc CGO sidecar
+	cd $(UI_DIR) && $(UI_PKG_MGR) run package:linux:nativedoc
+	@printf "\033[32m[desktop]\033[0m nativedoc artifacts ready: %s\n" "$(UI_DIR)/dist"
+
+console-install: ## Install admin console dependencies
+	@if [ ! -d "$(CONSOLE_DIR)/node_modules" ]; then \
+	  printf "\033[32m[console]\033[0m installing dependencies with npm...\n"; \
+	  cd $(CONSOLE_DIR) && npm ci; \
+	else \
+	  printf "\033[32m[console]\033[0m node_modules present - skipping install\n"; \
+	fi
+
+console-build: console-install ## Build admin console
+	cd $(CONSOLE_DIR) && npm run build
+
+console-dev: console-install ## Start admin console dev server
+	cd $(CONSOLE_DIR) && npm run dev
+
+website-install: ## Install website dependencies
+	@if [ ! -d "$(WEBSITE_DIR)/node_modules" ]; then \
+	  printf "\033[32m[website]\033[0m installing dependencies with npm...\n"; \
+	  cd $(WEBSITE_DIR) && npm ci; \
+	else \
+	  printf "\033[32m[website]\033[0m node_modules present - skipping install\n"; \
+	fi
+
+website-build: website-install ## Build marketing/docs website
+	cd $(WEBSITE_DIR) && npm run build
+
+website-dev: website-install ## Start website dev server
+	cd $(WEBSITE_DIR) && npm run dev
+
+install-all: desktop-install console-install website-install ## Install dependencies for every frontend surface
+
+build-all: build build-server desktop-build console-build website-build ## Build backend, server, desktop, console, and website
 
 # Setup
 
-setup: ## First-time setup: Node deps + docling-serve + backend build
+setup: setup-all ## First-time setup for every local surface
+
+setup-desktop: setup-legacy ## Setup local desktop app surface (system deps + docling + desktop build)
+
+setup-web: console-build website-build ## Setup web surfaces (admin console + website)
+
+setup-all: setup-desktop setup-web ## Setup every local surface
+
+setup-legacy: ## Legacy setup script path (system deps + desktop-only build)
 	@bash scripts/setup.sh
 
 # Python / docling (optional feature)
@@ -307,3 +484,18 @@ clean-all: clean ## Remove Go build cache, UI node_modules + dist
 	go clean -cache
 	rm -rf $(UI_DIR)/node_modules $(UI_DIR)/dist $(UI_DIR)/out
 	@printf "\033[32m[clean]\033[0m done.\n"
+
+# Regenerable cache/temp clutter only (pycache, test caches, editor/OS
+# cruft, TS build info) - never node_modules, .venv, dist, or anything a
+# rebuild/reinstall is needed to get back, unlike clean-all above. Safe to
+# run anytime; every one of these files is recreated automatically the next
+# time its own tool runs.
+CLEAN_TMP_PRUNE := \( -path '*/node_modules' -o -path '*/.git' -o -name '.venv' \) -prune
+
+clean-tmp: ## Remove Python/Go/Node cache and temp clutter (pycache, .pytest_cache, .tsbuildinfo, ...)
+	@printf "\033[32m[clean-tmp]\033[0m sweeping cache/temp clutter...\n"
+	@find $(ROOT) $(CLEAN_TMP_PRUNE) -o -type d \( -name '__pycache__' -o -name '.pytest_cache' -o -name '.mypy_cache' -o -name '.ruff_cache' -o -name '*.egg-info' -o -name '.turbo' \) -print -exec rm -rf {} + 2>/dev/null; \
+	 find $(ROOT) $(CLEAN_TMP_PRUNE) -o -type f \( -name '*.pyc' -o -name '*.pyo' -o -name '.DS_Store' -o -name 'Thumbs.db' -o -name '*.tsbuildinfo' \) -print -delete 2>/dev/null; \
+	 find $(BACKEND_DIR) $(SERVER_DIR) -maxdepth 1 -type f \( -name 'debug' -o -name '__debug_bin*' -o -name '*.test' \) -print -delete 2>/dev/null; \
+	 true
+	@printf "\033[32m[clean-tmp]\033[0m done.\n"

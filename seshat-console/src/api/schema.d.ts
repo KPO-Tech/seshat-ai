@@ -317,6 +317,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{organizationID}/verify-domain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify ownership of this organization's claimed email domain
+         * @description Resolves a DNS TXT record at _seshat-challenge.<domain> (expected value "seshat-verification=<domain_verification_token>") and marks the domain verified on a match. Requires organization.manage. Closes a real gap: claiming a domain alone previously granted no proof of ownership, and self-service registration (POST /auth/register) trusted it anyway for auto-join — that auto-join now requires domain_verified_at to be set. 400 if the organization has no domain pending verification, or if the TXT record is missing/mismatched/not yet propagated.
+         */
+        post: operations["verifyOrganizationDomain"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/docling-status": {
         parameters: {
             query?: never;
@@ -767,6 +787,72 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/desktop-policies/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the fixed desktop policy catalog
+         * @description Any authenticated member can read this — it's a fixed, code-defined catalog (not organization-specific data), not the per-organization assignment of it.
+         */
+        get: operations["listDesktopPolicyCatalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/desktop-policy-bindings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List desktop policy bindings for an organization
+         * @description Requires `desktop_policies.read`, `desktop_policies.manage` or `organization.manage`.
+         */
+        get: operations["listDesktopPolicyBindings"];
+        put?: never;
+        /**
+         * Create or update a desktop policy binding
+         * @description Upsert by (organization_id, policy_code, subject_type, subject_id) — posting again for the same subject updates its value in place rather than creating a duplicate. Requires `desktop_policies.manage` or `organization.manage`.
+         */
+        post: operations["setDesktopPolicyBinding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/desktop-policy-bindings/{bindingID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bindingID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a desktop policy binding
+         * @description The affected subject falls back to the next-most-specific applicable binding, or the catalog default if none remain.
+         */
+        delete: operations["deleteDesktopPolicyBinding"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sessions": {
         parameters: {
             query?: never;
@@ -841,6 +927,46 @@ export interface paths {
          */
         put: operations["changeMyPassword"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/step-up/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Re-prove my identity with my current password
+         * @description Marks the caller's own already-existing session as freshly authenticated (see docs/helps/audit-2026-08-29-openwork-den-comparison.md § 9) - never rotates the password, never issues a new session. Fails the same way a wrong password would for an account that has no password it knows (OIDC/SAML/SCIM-provisioned, never used "forgot password").
+         */
+        post: operations["stepUpWithPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/sso-lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Discover whether an email's domain matches a configured SSO provider
+         * @description Public, unauthenticated - a pre-login discovery step (see docs/helps/audit-2026-08-29-openwork-den-comparison.md § 9bis) so the console's login page can offer "Continue with {IdP}" before the visitor sees a password field. Never errors just because nothing matched - returns an empty object in that case.
+         */
+        post: operations["lookupSSOProvider"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1039,6 +1165,26 @@ export interface paths {
          * @description Scoped to the requesting user; a session created by another user is indistinguishable from one that never existed. A session past the 48-hour retention window returns 404 rather than an empty/expired marker, since the console treats both cases identically (start fresh).
          */
         get: operations["getWorkspaceChatSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspace-chat/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List an organization's Workspace Chat sessions across every member
+         * @description The admin-visibility counterpart to getWorkspaceChatSession above - metadata (who, when, how many messages) across an organization's members, not any one person's own conversation content. Requires organization.manage. Sessions past the 48-hour retention window are excluded, same as getWorkspaceChatSession's own "gone once past the window" behavior.
+         */
+        get: operations["listWorkspaceChatSessions"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1286,6 +1432,118 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/scim-connections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get an organization's SCIM connection
+         * @description A singleton per organization_id, like GET /web-search-org-policy — not a path-parameterized collection. Returns `{"connection": null}` (200, not 404) when the organization has not configured SCIM yet; "not configured" is a normal state for this resource. Never includes the bearer token. Requires scim_connections.read/.manage or organization.manage.
+         */
+        get: operations["getScimConnection"];
+        /**
+         * Update an organization's SCIM connection
+         * @description Edits name/enabled/sync options only — never touches the bearer token, use the rotate-token operation for that. 404 if the organization has no SCIM connection configured yet. Requires scim_connections.manage or organization.manage.
+         */
+        put: operations["updateScimConnection"];
+        /**
+         * Create an organization's SCIM connection
+         * @description One connection per organization — a second call for an org that already has one is rejected with 409; delete the existing one or rotate its token instead. Returns the bearer token in the `token` field — the only time it is ever readable again, same "shown once" contract as an Invitation or Device registration token. Requires scim_connections.manage or organization.manage.
+         */
+        post: operations["createScimConnection"];
+        /**
+         * Delete an organization's SCIM connection
+         * @description Any IdP still configured with the old token starts getting 401s immediately. Does not touch previously provisioned users/ memberships/groups — it only stops future pushes from being accepted. Requires scim_connections.manage or organization.manage.
+         */
+        delete: operations["deleteScimConnection"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scim-connections/rotate-token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rotate an organization's SCIM connection bearer token
+         * @description Replaces the bearer token — the previous one stops working immediately, the IdP's configured secret must be updated to match. Returns the new raw token, the one and only time it is readable again. Requires scim_connections.manage or organization.manage.
+         */
+        post: operations["rotateScimConnectionToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scim-connections/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List an organization's SCIM connection's recent protocol activity
+         * @description The "recent activity" feed backing ScimConnection's health fields — most recent first. Requires scim_connections.read/.manage or organization.manage.
+         */
+        get: operations["listScimConnectionEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/network-diagnostics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Run a live connectivity check against this server's own outbound dependencies
+         * @description Probes the SMTP relay (if configured) and each of this organization's enabled OIDC/SAML providers with a layered DNS/TCP/ TLS/HTTP check, reporting which layer fails and a targeted suggestion - self-service troubleshooting for enterprise IT, see docs/helps/audit-2026-08-29-openwork-den-comparison.md § 6. Requires network_diagnostics.read or organization.manage.
+         */
+        get: operations["runNetworkDiagnostics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/provider-catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the providers/models the connected SDK build supports
+         * @description Static, non-secret metadata resolved live from the seshat SDK's own registry rather than a hand-maintained copy — seshat-console previously hardcoded its own copy of this list, which had already drifted out of sync with the SDK once. Returned in the SDK's own curated display order. Any authenticated user may read this; it carries no organization-specific data.
+         */
+        get: operations["listProviderCatalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/provider-settings": {
         parameters: {
             query?: never;
@@ -1319,9 +1577,29 @@ export interface paths {
         };
         /**
          * Resolve the effective, usable provider config for an organization
-         * @description Unlike every other provider-settings endpoint, this INCLUDES the decrypted api_key — the point is for a connected seshat-backend to actually make the LLM call with it, not to administer the setting. Authorization is deliberately looser than provider_settings.read/ manage: any member of the organization (or a platform admin) can resolve "what should I use", the same trust level as using their own session. Falls back to the platform default when the organization has no setting of its own for this provider; 404 if neither exists.
+         * @description Unlike every other provider-settings endpoint, this INCLUDES the decrypted api_key — the point is for a connected seshat-backend to actually make the LLM call with it, not to administer the setting. Authorization is deliberately looser than provider_settings.read/ manage: any member of the organization (or a platform admin) can resolve "what should I use", the same trust level as using their own session — unless an admin has scoped one or more policy bindings to this specific provider setting, in which case only matching subjects may resolve it (403 otherwise). Falls back to the platform default when the organization has no setting of its own for this provider; 404 if neither exists.
          */
         get: operations["resolveProviderSetting"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/provider-settings/usable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the provider settings the caller may pick from (e.g. a chat provider dropdown)
+         * @description Unlike GET /provider-settings (admin-only, for the settings/ credentials page), authorization here is the same loose "any member of the organization" trust level as /provider-settings/resolve — no secret is included, just which providers are configured and their default model. A provider setting is usable by every member by default; an admin can restrict a specific one to chosen members or teams by scoping one or more policy bindings to it (resource_type=provider_setting, resource_id=<setting id>) — the moment any such binding exists, that setting is hidden from this list for every other subject.
+         */
+        get: operations["listUsableProviderSettings"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1408,6 +1686,26 @@ export interface paths {
          * @description Only does anything for provider "ollama" — every other provider has a static model catalog in the console already, since a hosted provider's model list doesn't vary per install. A self-hosted Ollama's installed models do, so this calls its /api/tags endpoint live. Embedding models are already filtered out of the result. Returns an empty list (never an error status) if the target Ollama is unreachable, so the console can fall back to manual model entry.
          */
         post: operations["detectProviderModels"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/provider-settings/probe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test an API key against its provider's real endpoint before saving it
+         * @description See docs/helps/audit-2026-08-29-openwork-den-comparison.md § 1. A minimal live GET (a models-list endpoint, never a chat/completion call - no tokens spent) using the exact auth header this provider actually expects. Authenticated only, like detect-models - the credential tested here may not be saved anywhere yet, so there is no organization-scoped permission to check. status is one of ok (credential accepted), invalid_credential (provider returned 401/403), unknown (network error or an unexpected response - never confidently reported as either ok or invalid_credential), or unsupported (this provider isn't a simple-API-key one, e.g. Ollama, Codex, or a cloud-account provider like Bedrock/Vertex).
+         */
+        post: operations["probeProviderSetting"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1532,6 +1830,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/mcp-server-configs/probe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Smart-Add: probe a candidate MCP server URL and classify its auth requirement
+         * @description Sends a real MCP JSON-RPC "initialize" handshake to url (optionally with one credential header attached, to confirm a credential works before saving it), and classifies the result - never creates anything. Requires mcp_registry.manage or organization.manage, same gate as create. Deliberately shallow: a 401/403 always means "supply a credential you already have," this never performs OAuth discovery or Dynamic Client Registration - see docs/helps/audit-2026-08-29-openwork-den-comparison.md § 8.
+         */
+        post: operations["probeMCPServerConfig"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/mcp-server-configs/resolve": {
         parameters: {
             query?: never;
@@ -1573,6 +1891,130 @@ export interface paths {
          * @description Any member who had already approved this server locally keeps running it until their next reload — deleting here only stops it from being resolved/loaded going forward.
          */
         delete: operations["deleteMCPServerConfig"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hook-configs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List an organization's shared PreToolUse hooks
+         * @description Requires hooks_registry.read/.manage or organization.manage. See HookConfig - desktop-only by design, never resolved/executed by seshat-server's own workspacechat.
+         */
+        get: operations["listHookConfigs"];
+        put?: never;
+        /**
+         * Define a new shared PreToolUse hook for an organization
+         * @description Requires hooks_registry.manage or organization.manage. One hook per (organization, name) pair.
+         */
+        post: operations["createHookConfig"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hook-configs/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Resolve every enabled hook an organization has shared
+         * @description Open to any org member - the point is for a connected seshat-backend device to present each org-defined hook to its own user for explicit local approval before ever running it. Only Enabled hooks are returned.
+         */
+        get: operations["resolveHookConfigs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hook-configs/{hookConfigID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hookConfigID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Update a shared hook */
+        put: operations["updateHookConfig"];
+        post?: never;
+        /** Delete a shared hook */
+        delete: operations["deleteHookConfig"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bundles/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Export a chosen selection of skills/MCP servers/hooks/agent presets as one portable manifest
+         * @description Builds the manifest from the current rows of each of the four registries, filtered to the given IDs - each registry's own List method self-gates read permission, degrading to an empty list rather than a 403, so a requested ID absent from that list (nonexistent or inaccessible) is rejected as 404. Never includes MCP server Env/Headers (encrypted secrets) or ConnectorKind (meaningless outside the org). There is no server-side "bundle" record to fetch later - the manifest only ever exists as this response.
+         */
+        post: operations["exportBundle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bundles/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import a manifest's items into an organization
+         * @description Preflights *_registry.manage for every category actually present in the manifest before creating anything - a single missing permission rejects the whole import, nothing created. Each item is then created through its own registry's normal Create method, so a per-item naming conflict is reported in `failed` without aborting the rest of the manifest - never a silent partial import. Every row actually created is tagged into a BundleImport record for later traceability.
+         */
+        post: operations["importBundle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bundles/provenance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Report which of the given resource IDs were created by a bundle import, and by which one
+         * @description Membership-only check - this only ever reveals which of the caller's own already-visible rows (normally exactly the IDs a registry's own List endpoint just returned) came from a bundle import, the third provenance signal alongside a registry's own CreatedByUserID/Source fields. A resource ID absent from the response was never imported via a bundle.
+         */
+        get: operations["resolveBundleProvenance"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1675,6 +2117,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/knowledge/corpora/{corpusID}/files/{fileID}/ingest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                corpusID: string;
+                fileID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Re-trigger ingestion for an already-uploaded file
+         * @description Requires knowledge.manage or organization.manage. Upgrades a file ingested vectorless (no embedder configured at the time) to real vectors once one is set up, or retries one that never got a job at all — returns the existing queued/running job unchanged if one is already in flight for this file.
+         */
+        post: operations["ingestCorpusFile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/knowledge/corpora/{corpusID}/ingestion-jobs": {
         parameters: {
             query?: never;
@@ -1759,6 +2224,247 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/connectors/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List an organization's connector accounts
+         * @description Scoped visibility like every other list endpoint: a caller lacking knowledge.read/knowledge.manage/organization.manage gets an empty list, not a 403.
+         */
+        get: operations["listConnectorAccounts"];
+        put?: never;
+        /**
+         * Connect a new external source
+         * @description Requires knowledge.manage or organization.manage. Only kind "s3" is available today (Google Drive/SharePoint are a fast-follow, see docs/architecture.md's "Example: Knowledge connectors") — an S3-compatible bucket is connected and starts syncing immediately, no OAuth step. Secrets are encrypted at rest and never returned.
+         */
+        post: operations["createConnectorAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/accounts/{accountID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Edit an existing s3 or azureblob connector account's configuration
+         * @description Requires knowledge.manage or organization.manage. Closes a real gap: a connected account's own configuration (bucket/endpoint/prefix or account_name/container, plus credentials) was stored server-side but never exposed or editable — the only way to fix a typo'd endpoint or rotate a leaked key was to delete and reconnect from scratch. kind is fixed (not part of this body, same convention as every other *UpdateInput here) — only s3/azureblob accounts have static config to edit; every OAuth-based kind (gdrive/sharepoint/onedrive/ confluence/slack/outlook/teams/gmail) is rejected here, since reconnecting via the OAuth flow already handles credential rotation for those. access_key_id/secret_access_key (s3) or account_key (azureblob) are optional — leave blank to keep the existing encrypted credential(s) unchanged; for s3, access_key_id and secret_access_key must be provided together, not one at a time.
+         */
+        put: operations["updateConnectorAccount"];
+        post?: never;
+        /**
+         * Disconnect an external source
+         * @description Requires knowledge.manage or organization.manage. Removes the connector account and its sync job history — already-ingested corpus files are left in place (detach them individually if that's the intent).
+         */
+        delete: operations["deleteConnectorAccount"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/accounts/{accountID}/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Queue an immediate sync for a connector account
+         * @description Requires knowledge.manage or organization.manage. In addition to the account's own periodic sync_interval_seconds schedule. Returns the already-queued/running job unchanged if one exists.
+         */
+        post: operations["triggerConnectorSync"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/accounts/{accountID}/sync-jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        /** List a connector account's sync job history, newest first */
+        get: operations["listConnectorSyncJobs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/my-accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the caller's own agent_action-purposed connector accounts
+         * @description Self-service counterpart to listConnectorAccounts — any org member may call this for their own accounts, no knowledge.read/manage or organization.manage required. Only returns purpose=agent_action accounts created by the caller.
+         */
+        get: operations["listMyConnectorAccounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/my-accounts/{accountID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Disconnect one of the caller's own agent_action accounts
+         * @description Self-service counterpart to deleteConnectorAccount — succeeds only for an agent_action account the caller themselves created; 404 (not 403) for any other account, including one owned by someone else.
+         */
+        delete: operations["deleteMyConnectorAccount"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/oauth-apps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List an organization's registered connector OAuth apps
+         * @description Scoped visibility like every other list endpoint: a caller lacking knowledge.read/knowledge.manage/organization.manage gets an empty list, not a 403. Client secrets are never returned, only whether one is configured.
+         */
+        get: operations["listConnectorOAuthApps"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/oauth-apps/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom" | "pipedrive" | "zendesk" | "salesforce";
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Register or update an organization's OAuth app for gdrive/sharepoint/slack/outlook/teams/gmail
+         * @description Requires knowledge.manage or organization.manage. client_secret is required the first time an app is registered for this (organization, kind); omit it on a later update to keep the existing one.
+         */
+        put: operations["registerConnectorOAuthApp"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/{kind}/oauth/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom" | "pipedrive" | "zendesk" | "salesforce";
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start a "connect an account" OAuth flow for gdrive/sharepoint/onedrive/confluence/slack/outlook/teams/gmail
+         * @description Requires that the organization has already registered an OAuth app for kind. With purpose=knowledge_sync (the default), also requires knowledge.manage or organization.manage and a valid corpus_id - this is the admin-run flow for gdrive/sharepoint/onedrive/confluence. With purpose=agent_action, only requires organization membership and no corpus_id - any employee connects their own account for their own future MCP-backed agent actions; slack/outlook/teams/gmail only support this purpose. Returns a URL to open in a new browser tab; the resulting ConnectorAccount is created by the callback once the user completes the provider's consent screen, not by this call.
+         */
+        post: operations["beginConnectorOAuth"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/{kind}/oauth/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom" | "pipedrive" | "zendesk" | "salesforce";
+            };
+            cookie?: never;
+        };
+        /**
+         * OAuth redirect target - not called directly by API clients
+         * @description Public, unauthenticated - the identity provider redirects the browser here after consent. Trust comes from the single-use signed state issued by the start endpoint. Returns an HTML page, not JSON.
+         */
+        get: operations["completeConnectorOAuth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/{kind}/static-account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "stripe" | "sendgrid" | "mailgun" | "postmark" | "telegram" | "discord" | "trello" | "airtable";
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Connect a static-secret account (e.g. Stripe) for self-service agent_action use
+         * @description The synchronous, no-redirect counterpart to the OAuth start/callback pair, for a kind that authenticates with a single static secret instead of an OAuth2 flow. Only requires organization membership, no corpus_id, same as an agent_action OAuth connect. Resubmitting for a kind the caller already connected overwrites the existing secret in place (key rotation) rather than creating a second account.
+         */
+        post: operations["createStaticAgentAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/embedder-settings": {
         parameters: {
             query?: never;
@@ -1801,6 +2507,54 @@ export interface paths {
          * @description For OpenAI-compatible providers this returns a static curated list (their model catalogs don't vary per install). For "ollama" it probes the target instance's /api/tags live and classifies each installed model as embedding-capable by name/family heuristics, since a self-hosted Ollama's installed models are unknowable ahead of time. Returns an empty list (never an error status) if the target Ollama is unreachable, so the console can fall back to manual model entry.
          */
         post: operations["detectEmbedderModels"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reranker-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get an organization's reranker configuration
+         * @description A singleton per organization. Unlike embedder-settings, 404 here is a fully normal "no second pass configured" state, not a fallback trigger - search works fine without one.
+         */
+        get: operations["getRerankerSetting"];
+        /**
+         * Create or update an organization's reranker configuration
+         * @description Requires knowledge.manage or organization.manage. Upsert - creates the organization's reranker setting if none exists yet, otherwise updates it in place. api_key empty means "no key" on first create (the common case for a self-hosted TEI/vLLM instance) and "keep the existing key unchanged" when a setting already exists. enabled lets an org keep a configured endpoint on record while temporarily turning reranking off.
+         */
+        put: operations["setRerankerSetting"];
+        post?: never;
+        /**
+         * Delete an organization's reranker configuration
+         * @description Requires knowledge.manage or organization.manage. Search reverts to the platform-wide RAG_RERANK_* env var (if any) for this organization's subsequent requests.
+         */
+        delete: operations["deleteRerankerSetting"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reranker-settings/detect-model": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Detect the model a self-hosted TEI reranker is serving
+         * @description Probes base_url's TEI /info endpoint and returns the model_id it reports - TEI always serves exactly one model per instance, so unlike embedder detection there's nothing to classify, just one answer to look up. A non-TEI endpoint (or any other failure) comes back as an error string, never an HTTP error status, so the console can fall back to manual model entry.
+         */
+        post: operations["detectRerankerModel"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2204,6 +2958,11 @@ export interface components {
         Error: {
             error?: {
                 message?: string;
+                /**
+                 * @description Machine-readable discriminator, only ever present for a handful of error kinds a client needs to react to differently than a plain message (currently just "step_up_required" on a 428 - see StepUpRequired). Absent for every other error response.
+                 * @enum {string}
+                 */
+                code?: "step_up_required";
             };
         };
         ListMeta: {
@@ -2235,7 +2994,7 @@ export interface components {
             website_url?: string;
             /** Format: email */
             support_email?: string;
-            /** @description Whether this organization's own ProviderSetting/EmbedderSetting/WebSearchProviderSetting/MCPServerConfig rows are used as the platform-wide fallback for organizations with no config of their own. At most one organization holds this at a time. */
+            /** @description Whether this organization's own ProviderSetting/EmbedderSetting/WebSearchProviderSetting/MCPServerConfig/ConnectorOAuthApp rows are used as the platform-wide fallback for organizations with no config of their own. At most one organization holds this at a time. */
             is_default?: boolean;
             /** @description Administrative/visual flag only - not enforced on any request path yet. */
             is_active?: boolean;
@@ -2251,8 +3010,19 @@ export interface components {
             share_skill_repos?: boolean;
             /** @description Only meaningful while is_default is true - whether this organization's preference defaults are shared as the platform-wide fallback. */
             share_organization_preferences?: boolean;
-            /** @description This organization's own email domain (e.g. "acmecorp.com"), if set. Self-service registration (POST /auth/register) auto-joins a new user to this organization as a pending member when their email matches. At most one organization holds a given domain. */
+            /** @description Only meaningful while is_default is true - whether this organization's connector OAuth apps (client_id/secret registered per kind) are shared as the platform-wide fallback for organizations with no app of their own for a given kind. */
+            share_connector_apps?: boolean;
+            /** @description This organization's own email domain (e.g. "acmecorp.com"), if set. Self-service registration (POST /auth/register) auto-joins a new user to this organization as a pending member when their email matches — but only once domain_verified_at is set; a claimed-but-unverified domain grants no auto-join. At most one organization holds a given domain. */
             domain?: string;
+            /** @description The value to publish as a DNS TXT record at _seshat-challenge.<domain> (as "seshat-verification=<token>") to prove ownership — see POST .../verify-domain. Regenerated whenever domain changes to a new value. Absent once verified or when no domain is set. */
+            domain_verification_token?: string;
+            /**
+             * Format: date-time
+             * @description Absent until POST .../verify-domain succeeds. Reset to unset whenever domain changes to a different value.
+             */
+            domain_verified_at?: string;
+            /** @description Lowest seshat-ui version this organization's desktop devices are expected to report, as a plain "major.minor.patch" string (e.g. "1.4.0") - no "v" prefix, no pre-release suffix. Absent when no restriction is configured. Enforced as a WARNING only: a device reporting a lower version is flagged via HeartbeatResult.app_version_outdated, never blocked. */
+            min_app_version?: string;
             /** Format: date-time */
             created_at?: string;
             /** Format: date-time */
@@ -2266,6 +3036,8 @@ export interface components {
             /** Format: email */
             support_email?: string;
             domain?: string;
+            /** @description Plain "major.minor.patch" string, or omit/empty to clear any configured restriction. See Organization.min_app_version. */
+            min_app_version?: string;
         };
         OrganizationSharedDomainsInput: {
             share_provider_settings?: boolean;
@@ -2274,6 +3046,7 @@ export interface components {
             share_mcp_servers?: boolean;
             share_skill_repos?: boolean;
             share_organization_preferences?: boolean;
+            share_connector_apps?: boolean;
         };
         Membership: {
             id?: string;
@@ -2418,6 +3191,10 @@ export interface components {
             subject_type?: "user" | "group" | "role";
             subject_id?: string;
             permission_codes?: string[];
+            /** @description Optional resource kind this binding is scoped to ("corpus" or "provider_setting"). Empty means organization-wide. */
+            resource_type?: string;
+            /** @description ID of the specific resource this binding is scoped to. Empty when resource_type is empty. */
+            resource_id?: string;
             /** Format: date-time */
             created_at?: string;
             /** Format: date-time */
@@ -2431,6 +3208,10 @@ export interface components {
             subject_type: "user" | "group" | "role";
             subject_id: string;
             permission_codes: string[];
+            /** @description Optional resource kind to scope this binding to ("corpus" or "provider_setting"). Omit for an organization-wide binding. */
+            resource_type?: string;
+            /** @description ID of the specific resource to scope this binding to. Required when resource_type is set. */
+            resource_id?: string;
         };
         PolicyBindingUpdateInput: {
             name: string;
@@ -2438,7 +3219,47 @@ export interface components {
             /** @enum {string} */
             subject_type: "user" | "group" | "role";
             subject_id: string;
+            /** @description Optional resource kind to scope this binding to ("corpus" or "provider_setting"). Omit for an organization-wide binding. */
+            resource_type?: string;
+            /** @description ID of the specific resource to scope this binding to. Required when resource_type is set. */
+            resource_id?: string;
             permission_codes: string[];
+        };
+        /** @description One entry from the fixed, code-defined desktop policy catalog - this is not admin-editable data, only its per-organization assignment (DesktopPolicyBinding) is. */
+        DesktopPolicy: {
+            code?: string;
+            admin_description?: string;
+            /** @description Shown to the end user when this policy blocks an action. */
+            user_blocked_message?: string;
+            /** @description Effective value when no DesktopPolicyBinding applies to a given subject at all. */
+            default_value?: boolean;
+        };
+        /** @description Assigns a value for one policy_code from the fixed catalog to one subject. Resolution ANDs every applicable binding together with the catalog's own default ("most restrictive wins") - see DesktopPolicyBindingInput's description for the subject vocabulary. */
+        DesktopPolicyBinding: {
+            id?: string;
+            organization_id?: string;
+            policy_code?: string;
+            /** @enum {string} */
+            subject_type?: "org" | "role" | "user" | "group";
+            /** @description Empty when subject_type is "org". */
+            subject_id?: string;
+            value?: boolean;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        DesktopPolicyBindingInput: {
+            organization_id: string;
+            policy_code: string;
+            /**
+             * @description "org" restricts every member of the organization and requires subject_id to be empty; "role"/"user"/"group" narrow the restriction to that specific role code, member, or team.
+             * @enum {string}
+             */
+            subject_type: "org" | "role" | "user" | "group";
+            /** @description Required for every subject_type except "org". */
+            subject_id?: string;
+            value: boolean;
         };
         AuditEvent: {
             id?: string;
@@ -2809,6 +3630,15 @@ export interface components {
             created_at?: string;
             /** Format: date-time */
             updated_at?: string;
+            /**
+             * Format: date-time
+             * @description When a completed OIDC/SAML login round trip through this connection last finished, success or failure. Null if never attempted.
+             */
+            last_login_at?: string | null;
+            /** @description Whether that last completed login succeeded. Null if never attempted. */
+            last_login_success?: boolean | null;
+            /** @description Error message from the last failed login attempt, empty if the last attempt succeeded or none has happened yet. */
+            last_error?: string;
         };
         ProviderInput: {
             organization_id: string;
@@ -2900,6 +3730,76 @@ export interface components {
             base_url?: string;
             /** @description Administrative/UI marker for this organization's "main" provider setting - not consumed by job execution. */
             is_default?: boolean;
+        };
+        /** @description Never includes the bearer token — see ScimConnectionWithToken for the one-time reveal on create/rotate. */
+        ScimConnection: {
+            id?: string;
+            organization_id?: string;
+            created_by_user_id?: string;
+            /** @example Okta */
+            name?: string;
+            enabled?: boolean;
+            /** @description When false, every /Groups write is rejected outright (403) — the connection never agreed to accept group pushes at all. */
+            sync_groups?: boolean;
+            /** @description Only has an effect when sync_groups is true. false ("metadata only"): a /Groups push is recorded for admin visibility but never creates or modifies a real team. true: a real team is created/updated, fully addressable afterward. */
+            auto_create_teams?: boolean;
+            /**
+             * Format: date-time
+             * @description Timestamp of the most recent SCIM protocol operation against this connection, of any kind. Absent if none has ever occurred.
+             */
+            last_sync_at?: string;
+            /** @description Whether that most recent operation succeeded. Absent if none has ever occurred. */
+            last_sync_success?: boolean;
+            /** @description The most recent operation's error message — only present when last_sync_success is false. A later success clears it. */
+            last_error?: string;
+        };
+        ScimConnectionWithToken: components["schemas"]["ScimConnection"] & {
+            /** @description The raw bearer token — shown exactly once, on create or rotate. Never returned by any other operation. */
+            token?: string;
+        };
+        ScimConnectionInput: {
+            organization_id: string;
+            /** @example Okta */
+            name: string;
+            sync_groups?: boolean;
+            auto_create_teams?: boolean;
+        };
+        ScimConnectionUpdateInput: {
+            name: string;
+            enabled: boolean;
+            sync_groups?: boolean;
+            auto_create_teams?: boolean;
+        };
+        /** @description One SCIM protocol operation against a connection — the "recent activity" feed, and the source health is derived from (see ScimConnection.last_sync_at/last_sync_success). */
+        ScimSyncEvent: {
+            id?: string;
+            /** @example user.create */
+            operation?: string;
+            /** @enum {string} */
+            resource_type?: "User" | "Group";
+            external_id?: string;
+            success?: boolean;
+            error_message?: string;
+            /** Format: date-time */
+            created_at?: string;
+        };
+        ProviderCatalogModel: {
+            /** @example claude-sonnet-4-20250514 */
+            id?: string;
+            description?: string;
+            context_window?: number;
+            max_output?: number;
+        };
+        ProviderCatalogEntry: {
+            /** @example anthropic */
+            name?: string;
+            /** @example Anthropic */
+            display_name?: string;
+            description?: string;
+            /** @enum {string} */
+            auth_type?: "api_key" | "oauth" | "none" | "aws" | "gcp";
+            auth_types?: string[];
+            models?: components["schemas"]["ProviderCatalogModel"][];
         };
         /** @description Unlike ProviderSetting, this includes the decrypted api_key — see the resolveProviderSetting operation. */
         ResolvedProviderSetting: {
@@ -3030,6 +3930,14 @@ export interface components {
             summary?: string;
             /** @description The tool's input query, when it has one (e.g. web_search). */
             query?: string;
+            /** @description The tool's full input arguments, as sent to the tool. Present once the call starts. */
+            input?: {
+                [key: string]: unknown;
+            };
+            /** @description The tool's raw output content, once it completes (truncated for very large results). Absent for pending/running stages. */
+            result?: string;
+            /** @description How long the tool call took to run, in milliseconds. Present once completed or failed. */
+            duration_ms?: number;
             web_search?: components["schemas"]["WorkspaceChatWebSearchTrace"];
         };
         WorkspaceChatWebSearchTrace: {
@@ -3056,6 +3964,19 @@ export interface components {
             /** @description Present for assistant messages only - the ordered event log of that turn, replayable through the same client-side reducer used for live streaming to reconstruct identical content/trace. */
             events?: components["schemas"]["WorkspaceChatEvent"][];
         };
+        /** @description Metadata only - no message content. The admin-visibility list (listWorkspaceChatSessions) shows this across every member of an organization; a specific conversation's actual messages stay behind the owner-scoped getWorkspaceChatSession, which has no admin-override path at all. */
+        WorkspaceChatSessionSummary: {
+            id?: string;
+            user_id?: string;
+            user_email?: string;
+            user_display_name?: string;
+            title?: string;
+            message_count?: number;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
         /** @description Never includes env/headers values — they're a caller-supplied secret, redacted in every response including create. */
         MCPServerConfig: {
             id?: string;
@@ -3076,6 +3997,154 @@ export interface components {
             url?: string;
             timeout_secs?: number;
             icon?: string;
+            /**
+             * @description When set, this server's headers are personalized per caller at resolve time - see ResolvedMCPServerConfig.connected.
+             * @enum {string}
+             */
+            connector_kind?: "" | "gdrive" | "sharepoint" | "onedrive" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "github" | "linear" | "hubspot" | "jira" | "confluence" | "asana" | "intercom" | "pipedrive" | "salesforce" | "stripe" | "trello" | "airtable";
+        };
+        /** @description An org-scoped PreToolUse hook - see docs/helps/audit-2026-08-29-openwork-den-comparison.md § 7. Desktop-only: never resolved or executed by seshat-server's own workspacechat, since the SDK's hook runner executes Command via plain os/exec with no sandboxing. */
+        HookConfig: {
+            id?: string;
+            organization_id?: string;
+            created_by_user_id?: string;
+            /** @example block-rm */
+            name?: string;
+            /** @description Regex against the tool name - empty matches every tool. */
+            matcher?: string;
+            /** @description Shell command executed on the connected device */
+            command?: string;
+            timeout_secs?: number;
+            /** @description A disabled hook is excluded from resolve entirely */
+            enabled?: boolean;
+        };
+        HookConfigInput: {
+            organization_id: string;
+            /** @example block-rm */
+            name: string;
+            matcher?: string;
+            command: string;
+            /** @default 30 */
+            timeout_secs: number;
+            /** @default true */
+            enabled: boolean;
+        };
+        /** @description Unlike creation, organization_id/name are not part of this body - an existing hook's organization and name are fixed. */
+        HookConfigUpdateInput: {
+            matcher?: string;
+            command: string;
+            timeout_secs?: number;
+            enabled?: boolean;
+        };
+        BundleManifestSkillRepo: {
+            /** @example seshat-skills */
+            name: string;
+            /** @example https://github.com/EngineerProjects/seshat-skills */
+            url: string;
+            description?: string;
+        };
+        /** @description Never carries Env/Headers (encrypted secrets) or connector_kind (org-specific) - see Manifest's own doc comment. */
+        BundleManifestMCPServer: {
+            /** @example internal-jira */
+            name: string;
+            display_name?: string;
+            /** @enum {string} */
+            server_type?: "stdio" | "http" | "sse" | "websocket";
+            command?: string;
+            args?: string[];
+            url?: string;
+            timeout_secs?: number;
+            icon?: string;
+        };
+        BundleManifestHook: {
+            /** @example block-rm */
+            name: string;
+            matcher?: string;
+            /** @description Exported in full - authored source code */
+            command: string;
+            timeout_secs?: number;
+        };
+        BundleManifestAgentPreset: {
+            /** @example researcher */
+            slug: string;
+            name?: string;
+            when_to_use?: string;
+            system_prompt: string;
+            model?: string;
+            tools?: string[];
+            disallowed_tools?: string[];
+            max_turns?: number;
+            permission_mode?: string;
+            isolation?: string;
+            mcp_servers?: string[];
+            icon?: string;
+        };
+        /** @description The portable exported/imported unit - each item is the resource's own definition fields, never a database ID (an ID is only meaningful inside the organization that created it). */
+        BundleManifest: {
+            /** @example Jira Integration */
+            name: string;
+            description?: string;
+            mcp_servers?: components["schemas"]["BundleManifestMCPServer"][];
+            hooks?: components["schemas"]["BundleManifestHook"][];
+            skills?: components["schemas"]["BundleManifestSkillRepo"][];
+            agent_presets?: components["schemas"]["BundleManifestAgentPreset"][];
+        };
+        ExportBundleInput: {
+            organization_id: string;
+            /** @example Jira Integration */
+            name: string;
+            description?: string;
+            skill_repo_ids?: string[];
+            mcp_server_ids?: string[];
+            agent_preset_ids?: string[];
+            hook_config_ids?: string[];
+        };
+        ImportBundleInput: {
+            organization_id: string;
+            manifest: components["schemas"]["BundleManifest"];
+        };
+        BundleImportedItem: {
+            /** @enum {string} */
+            resource_type?: "mcp_server_config" | "hook_config" | "skill_repo" | "agent_preset";
+            resource_id?: string;
+            name?: string;
+        };
+        BundleImportItemError: {
+            /** @enum {string} */
+            resource_type?: "mcp_server_config" | "hook_config" | "skill_repo" | "agent_preset";
+            name?: string;
+            error?: string;
+        };
+        SSOProviderMatch: {
+            provider_id?: string;
+            /** @enum {string} */
+            kind?: "oidc" | "saml";
+            name?: string;
+            organization_name?: string;
+        };
+        BundleProvenanceEntry: {
+            bundle_import_id?: string;
+            bundle_name?: string;
+        };
+        /** @description What an import actually did - never a generic "ok" the caller must guess from. */
+        BundleImportResult: {
+            bundle_import_id?: string;
+            created?: components["schemas"]["BundleImportedItem"][];
+            failed?: components["schemas"]["BundleImportItemError"][];
+        };
+        MCPProbeResult: {
+            /**
+             * @description "none": the target answered successfully, nothing more needed. "credential": it responded 401/403 - supply one and re-probe to confirm before saving. "unknown": an ambiguous response or a transport failure - see detail, no credential requirement was confirmed either way.
+             * @enum {string}
+             */
+            auth_mode?: "none" | "credential" | "unknown";
+            /**
+             * @description Best-effort transport guess from the response Content-Type. Only present when auth_mode is "none".
+             * @enum {string}
+             */
+            server_type?: "http" | "sse";
+            /** @description A short human-readable explanation (status code, WWW-Authenticate header, or transport error). */
+            detail?: string;
         };
         /** @description Unlike MCPServerConfig, this includes the decrypted env/headers maps — see the resolveMCPServerConfigs operation. */
         ResolvedMCPServerConfig: {
@@ -3090,11 +4159,16 @@ export interface components {
                 [key: string]: string;
             };
             url?: string;
+            /** @description May include an Authorization: Bearer entry personalized for the calling principal when connector_kind is set - see connected. */
             headers?: {
                 [key: string]: string;
             };
             timeout_secs?: number;
             icon?: string;
+            /** @enum {string} */
+            connector_kind?: "" | "gdrive" | "sharepoint" | "onedrive" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "github" | "linear" | "hubspot" | "jira" | "confluence" | "asana" | "intercom" | "pipedrive" | "salesforce" | "stripe" | "trello" | "airtable";
+            /** @description Always true when connector_kind is empty. When connector_kind is set, true only if the calling principal has their own connected agent_action ConnectorAccount for that kind - false means this server was returned but has no Bearer header injected (the calling employee hasn't connected their own account yet). */
+            connected?: boolean;
         };
         MCPServerConfigInput: {
             organization_id: string;
@@ -3120,6 +4194,11 @@ export interface components {
             /** @default 30 */
             timeout_secs: number;
             icon?: string;
+            /**
+             * @description See MCPServerConfig.connector_kind. Empty (default) means static config only.
+             * @enum {string}
+             */
+            connector_kind?: "" | "gdrive" | "sharepoint" | "onedrive" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "github" | "linear" | "hubspot" | "jira" | "confluence" | "asana" | "intercom" | "pipedrive" | "salesforce" | "stripe" | "trello" | "airtable";
         };
         MCPServerConfigUpdateInput: {
             display_name?: string;
@@ -3138,6 +4217,8 @@ export interface components {
             };
             timeout_secs?: number;
             icon?: string;
+            /** @enum {string} */
+            connector_kind?: "" | "gdrive" | "sharepoint" | "onedrive" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "github" | "linear" | "hubspot" | "jira" | "confluence" | "asana" | "intercom" | "pipedrive" | "salesforce" | "stripe" | "trello" | "airtable";
         };
         Corpus: {
             id?: string;
@@ -3174,6 +4255,144 @@ export interface components {
             ingested_at?: string;
             /** Format: date-time */
             created_at?: string;
+            /**
+             * @description "connector" for a file pulled in by a Knowledge connector sync, "upload" for a manually uploaded one.
+             * @enum {string}
+             */
+            source?: "upload" | "connector";
+            /** @description Set only when source is "connector". */
+            connector_account_id?: string;
+        };
+        ConnectorAccount: {
+            id?: string;
+            organization_id?: string;
+            /** @description Set only for a knowledge_sync-purposed account - empty for agent_action. */
+            corpus_id?: string;
+            /** @enum {string} */
+            kind?: "s3" | "azureblob" | "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom" | "pipedrive" | "zendesk" | "salesforce" | "stripe" | "sendgrid" | "mailgun" | "postmark" | "telegram" | "discord" | "trello" | "airtable";
+            /**
+             * @description knowledge_sync: admin-run, feeds a corpus. agent_action: self-service, one employee's own account for their own future MCP-backed agent actions - see connectors' package doc.
+             * @enum {string}
+             */
+            purpose?: "knowledge_sync" | "agent_action";
+            display_name?: string;
+            external_account_id?: string;
+            /** @enum {string} */
+            status?: "connected" | "error" | "disconnected";
+            sync_interval_seconds?: number;
+            /** Format: date-time */
+            last_synced_at?: string;
+            last_error?: string;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+            /** @description s3 only. */
+            bucket?: string;
+            /** @description s3 only. */
+            region?: string;
+            /** @description s3 only. */
+            endpoint?: string;
+            /** @description s3 and azureblob only. */
+            prefix?: string;
+            /** @description azureblob only: the storage account name. */
+            account_name?: string;
+            /** @description azureblob only: the blob container name. */
+            container?: string;
+        };
+        /** @description Kinds "s3" and "azureblob" are supported here. For "s3": bucket/region/endpoint/prefix and access_key_id/secret_access_key apply (region defaults to "us-east-1" if omitted). For "azureblob": account_name/container/prefix and account_key apply. Each kind only requires its own fields - the required list below is a union. */
+        ConnectorAccountInput: {
+            organization_id: string;
+            corpus_id: string;
+            /**
+             * @description Defaults to "s3".
+             * @enum {string}
+             */
+            kind?: "s3" | "azureblob";
+            display_name: string;
+            bucket?: string;
+            region?: string;
+            endpoint?: string;
+            prefix?: string;
+            access_key_id?: string;
+            secret_access_key?: string;
+            /** @description azureblob only: the storage account name. */
+            account_name?: string;
+            /** @description azureblob only: the blob container name. */
+            container?: string;
+            /** @description azureblob only: the storage account's shared key. */
+            account_key?: string;
+            /** @description Defaults to 3600 (1 hour). */
+            sync_interval_seconds?: number;
+        };
+        /** @description Same shape as ConnectorAccountInput minus the create-only, immutable fields (organization_id/corpus_id/kind - kind comes from the existing account, not this body). access_key_id/ secret_access_key (s3) or account_key (azureblob) are optional - leave blank to keep the existing encrypted credential(s) unchanged; for s3, access_key_id and secret_access_key must be provided together, not one at a time. */
+        ConnectorAccountUpdateInput: {
+            display_name: string;
+            bucket?: string;
+            region?: string;
+            endpoint?: string;
+            prefix?: string;
+            access_key_id?: string;
+            secret_access_key?: string;
+            /** @description azureblob only: the storage account name. */
+            account_name?: string;
+            /** @description azureblob only: the blob container name. */
+            container?: string;
+            /** @description azureblob only: the storage account's shared key. */
+            account_key?: string;
+            /** @description Defaults to 3600 (1 hour). */
+            sync_interval_seconds?: number;
+        };
+        ConnectorSyncJob: {
+            id?: string;
+            connector_account_id?: string;
+            corpus_id?: string;
+            /** @enum {string} */
+            status?: "queued" | "running" | "completed" | "failed";
+            attempt_count?: number;
+            max_attempts?: number;
+            items_synced?: number;
+            last_error?: string;
+            /** Format: date-time */
+            started_at?: string;
+            /** Format: date-time */
+            completed_at?: string;
+            /** Format: date-time */
+            created_at?: string;
+        };
+        /** @description The client secret is never returned, only whether one is configured. */
+        ConnectorOAuthApp: {
+            /** @enum {string} */
+            kind?: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom" | "pipedrive" | "zendesk" | "salesforce";
+            client_id?: string;
+            configured?: boolean;
+            /** Format: date-time */
+            updated_at?: string;
+            /** @description Only ever set for kind "zendesk" - the org's own Zendesk account subdomain. */
+            subdomain?: string;
+        };
+        ConnectorOAuthAppInput: {
+            organization_id: string;
+            client_id: string;
+            /** @description Required the first time an app is registered for this (organization, kind); omit on a later update to keep the existing one. */
+            client_secret?: string;
+            /** @description Required for kind "zendesk" only - the org's own Zendesk account subdomain (e.g. "acme" for acme.zendesk.com). Rejected for every other kind. */
+            subdomain?: string;
+        };
+        /** @description purpose=knowledge_sync (default, omit to get this) requires corpus_id and knowledge.manage/organization.manage. purpose= agent_action is self-service (any org member, no special permission) - corpus_id must be omitted, rejected if present. */
+        BeginConnectorOAuthInput: {
+            organization_id: string;
+            /** @description Required for purpose=knowledge_sync, must be omitted for purpose=agent_action. */
+            corpus_id?: string;
+            /**
+             * @default knowledge_sync
+             * @enum {string}
+             */
+            purpose: "knowledge_sync" | "agent_action";
+            /** @description Optional - defaults to the connected account's email/UPN once the flow completes. */
+            display_name?: string;
+            /** @description Defaults to 3600 (1 hour). Ignored for purpose=agent_action. */
+            sync_interval_seconds?: number;
         };
         IngestionJob: {
             id?: string;
@@ -3227,6 +4446,37 @@ export interface components {
             /** @description Optional (e.g. a local Ollama needs none). Empty on update keeps the existing key unchanged. */
             api_key?: string;
         };
+        /** @description Never includes the API key — same redaction stance as EmbedderSetting/ProviderSetting. */
+        RerankerSetting: {
+            id?: string;
+            organization_id?: string;
+            /** @example http://tei-rerank/rerank */
+            base_url?: string;
+            /** @example BAAI/bge-reranker-v2-m3 */
+            model?: string;
+            has_api_key?: boolean;
+            enabled?: boolean;
+        };
+        RerankerSettingInput: {
+            organization_id?: string;
+            /** @example http://tei-rerank/rerank */
+            base_url: string;
+            /** @example BAAI/bge-reranker-v2-m3 */
+            model?: string;
+            /** @description Optional (self-hosted TEI/vLLM typically needs none). Empty on update keeps the existing key unchanged. */
+            api_key?: string;
+            enabled: boolean;
+        };
+        DetectRerankerModelInput: {
+            /** @example http://tei-rerank/rerank */
+            base_url: string;
+        };
+        DetectedRerankerModel: {
+            /** @example BAAI/bge-reranker-v2-m3 */
+            model?: string;
+            /** @description Set instead of model when base_url isn't a reachable TEI /info endpoint. */
+            error?: string | null;
+        };
         /** @description Default values for the subset of UserPreferences fields that make sense at an organization scope — deliberately excludes preferred_name/profession/about, which only make sense per-person. */
         OrganizationPreferences: {
             organization_id?: string;
@@ -3271,10 +4521,48 @@ export interface components {
             /** Format: date-time */
             updated_at?: string;
         };
+        /** @description The Device fields, plus this device's resolved desktop policy bundle - keyed by policy code (see DesktopPolicy.code), value is whether that policy currently allows the action. A code absent from this map (an old server predating a newer client's expectations) should be treated as allowed by the client - see the desktop policies plan's fail-open design. */
+        HeartbeatResult: components["schemas"]["Device"] & {
+            policies?: {
+                [key: string]: boolean;
+            };
+            /** @description This device's organization's configured minimum app version (see Organization.min_app_version), absent when none is configured. */
+            min_app_version?: string;
+            /** @description True when this device's own app_version is below min_app_version. Warning-only - never a reason this heartbeat call itself fails. */
+            app_version_outdated?: boolean;
+        };
         RegisterDeviceResult: {
             device?: components["schemas"]["Device"];
             /** @description Full device bearer token, shown in full only in this response. */
             token?: string;
+        };
+        /** @description One named layer of a connectivity check (see internal/server/netdiag). */
+        NetworkDiagnosticStep: {
+            /** @enum {string} */
+            name?: "dns" | "tcp" | "tls" | "http";
+            /** @enum {string} */
+            status?: "pass" | "fail" | "skipped";
+            duration_ms?: number;
+            /** @description Resolved IPs, HTTP status code, or an error message - informational, not itself a pass/fail signal. */
+            detail?: string;
+            /** @description Present only on failure - a targeted, human-readable next step. */
+            suggestion?: string;
+            /**
+             * @description Present only on failure - who should act on this suggestion.
+             * @enum {string}
+             */
+            act_on?: "network_admin" | "it_security" | "support";
+        };
+        /** @description One target's full layered check sequence. */
+        NetworkDiagnosticResult: {
+            /** @description e.g. "Seshat Server", "Email delivery (SMTP relay)", or "SSO provider: Okta". */
+            name?: string;
+            target?: string;
+            steps?: components["schemas"]["NetworkDiagnosticStep"][];
+            ok?: boolean;
+        };
+        NetworkDiagnosticsResult: {
+            checks?: components["schemas"]["NetworkDiagnosticResult"][];
         };
         Job: {
             id?: string;
@@ -3386,6 +4674,10 @@ export interface components {
                 [key: string]: string;
             };
         };
+        GeoPoint: {
+            lat?: number;
+            lng?: number;
+        };
     };
     responses: {
         /** @description Invalid input */
@@ -3435,6 +4727,15 @@ export interface components {
         };
         /** @description Rate limit exceeded */
         TooManyRequests: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description Authenticated, but this session hasn't proven fresh identity recently enough for this action - see POST /auth/step-up/password (or /auth/step-up/oidc, /auth/step-up/saml). Distinct from Unauthorized/Forbidden: the body's error.code is "step_up_required", telling a client to prompt for re-auth rather than a login screen or a permission-denied message. */
+        StepUpRequired: {
             headers: {
                 [name: string]: unknown;
             };
@@ -3506,6 +4807,12 @@ export interface operations {
                 content: {
                     "application/json": {
                         initialized?: boolean;
+                        /**
+                         * @example multi
+                         * @enum {string}
+                         */
+                        org_mode?: "single" | "multi";
+                        has_organization?: boolean;
                     };
                 };
             };
@@ -3965,6 +5272,31 @@ export interface operations {
                     "application/json": components["schemas"]["Organization"];
                 };
             };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    verifyOrganizationDomain: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizationID: components["parameters"]["organizationIDPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Domain verified */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Organization"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
         };
@@ -4979,6 +6311,106 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    listDesktopPolicyCatalog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Desktop policy catalog */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        desktop_policies?: components["schemas"]["DesktopPolicy"][];
+                        count?: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    listDesktopPolicyBindings: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Desktop policy binding list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        desktop_policy_bindings?: components["schemas"]["DesktopPolicyBinding"][];
+                        count?: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    setDesktopPolicyBinding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DesktopPolicyBindingInput"];
+            };
+        };
+        responses: {
+            /** @description Desktop policy binding created or updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DesktopPolicyBinding"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteDesktopPolicyBinding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bindingID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     listSessions: {
         parameters: {
             query?: {
@@ -5097,6 +6529,60 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
+        };
+    };
+    stepUpWithPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    current_password: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Session marked freshly authenticated */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    lookupSSOProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: email */
+                    email: string;
+                };
+            };
+        };
+        responses: {
+            /** @description A matching provider, or an empty object if none matched */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SSOProviderMatch"] | Record<string, never>;
+                };
+            };
+            400: components["responses"]["BadRequest"];
         };
     };
     getMyPreferences: {
@@ -5455,6 +6941,41 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    listWorkspaceChatSessions: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+                /** @description Max items per page (default 50, capped at 200). */
+                limit?: components["parameters"]["limit"];
+                offset?: components["parameters"]["offset"];
+                /** @description Field to sort by; valid values are endpoint-specific (see each list's `sort` in the response). */
+                sort?: components["parameters"]["sort"];
+                order?: components["parameters"]["order"];
+                /** @description Free-text search, fields vary per resource. */
+                q?: components["parameters"]["q"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Workspace Chat session list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMeta"] & {
+                        sessions?: components["schemas"]["WorkspaceChatSessionSummary"][];
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
     listSkillRepos: {
@@ -5986,6 +7507,211 @@ export interface operations {
             409: components["responses"]["Conflict"];
         };
     };
+    getScimConnection: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The organization's SCIM connection, or null */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        connection?: components["schemas"]["ScimConnection"] | null;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    updateScimConnection: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScimConnectionUpdateInput"];
+            };
+        };
+        responses: {
+            /** @description SCIM connection updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScimConnection"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createScimConnection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScimConnectionInput"];
+            };
+        };
+        responses: {
+            /** @description SCIM connection created, with its one-time bearer token */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScimConnectionWithToken"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    deleteScimConnection: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description SCIM connection deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    rotateScimConnectionToken: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Token rotated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScimConnectionWithToken"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listScimConnectionEvents: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Recent SCIM sync events */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        events?: components["schemas"]["ScimSyncEvent"][];
+                        total?: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    runNetworkDiagnostics: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Diagnostic checks for this organization's outbound dependencies */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NetworkDiagnosticsResult"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    listProviderCatalog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Provider catalog */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        providers?: components["schemas"]["ProviderCatalogEntry"][];
+                        count?: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
     listProviderSettings: {
         parameters: {
             query?: {
@@ -6065,6 +7791,33 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    listUsableProviderSettings: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Usable provider setting list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        provider_settings?: components["schemas"]["ProviderSetting"][];
+                        count?: number;
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
         };
     };
     getProviderSetting: {
@@ -6212,6 +7965,41 @@ export interface operations {
                     "application/json": components["schemas"]["DetectedProviderModels"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    probeProviderSetting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @example openai */
+                    provider: string;
+                    base_url?: string;
+                    api_key: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Probe result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status?: "ok" | "invalid_credential" | "unknown" | "unsupported";
+                        detail?: string;
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
         };
     };
@@ -6452,6 +8240,39 @@ export interface operations {
             409: components["responses"]["Conflict"];
         };
     };
+    probeMCPServerConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    organization_id: string;
+                    url: string;
+                    /** @description e.g. "Authorization" - omit on the first (unauthenticated) probe. */
+                    credential_header?: string;
+                    /** @description e.g. "Bearer sk-..." - omit on the first (unauthenticated) probe. */
+                    credential_value?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Probe classification */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MCPProbeResult"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
     resolveMCPServerConfigs: {
         parameters: {
             query?: {
@@ -6529,6 +8350,223 @@ export interface operations {
             };
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    listHookConfigs: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Hook config list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        hook_configs?: components["schemas"]["HookConfig"][];
+                        count?: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    createHookConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HookConfigInput"];
+            };
+        };
+        responses: {
+            /** @description Hook config created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HookConfig"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    resolveHookConfigs: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Resolved hook configs */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        hook_configs?: components["schemas"]["HookConfig"][];
+                        count?: number;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    updateHookConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hookConfigID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HookConfigUpdateInput"];
+            };
+        };
+        responses: {
+            /** @description Updated hook config */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HookConfig"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteHookConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hookConfigID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    exportBundle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExportBundleInput"];
+            };
+        };
+        responses: {
+            /** @description Portable bundle manifest */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BundleManifest"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    importBundle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportBundleInput"];
+            };
+        };
+        responses: {
+            /** @description Import result - what was created and what failed, explicitly */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BundleImportResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    resolveBundleProvenance: {
+        parameters: {
+            query: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+                resource_type: "mcp_server_config" | "hook_config" | "skill_repo" | "agent_preset";
+                /** @description Comma-separated resource IDs. */
+                resource_ids: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Provenance map, keyed by resource ID */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        provenance?: {
+                            [key: string]: components["schemas"]["BundleProvenanceEntry"];
+                        };
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
     listCorpora: {
@@ -6748,6 +8786,31 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    ingestCorpusFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                corpusID: string;
+                fileID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ingestion job queued (or the existing in-flight one) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngestionJob"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
     listIngestionJobs: {
         parameters: {
             query?: never;
@@ -6859,6 +8922,353 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
+    listConnectorAccounts: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Connector account list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        connector_accounts?: components["schemas"]["ConnectorAccount"][];
+                        count?: number;
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    createConnectorAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectorAccountInput"];
+            };
+        };
+        responses: {
+            /** @description Connector account created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorAccount"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    updateConnectorAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectorAccountUpdateInput"];
+            };
+        };
+        responses: {
+            /** @description Connector account updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorAccount"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteConnectorAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    triggerConnectorSync: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sync job (queued or already in flight) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorSyncJob"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listConnectorSyncJobs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sync job list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        sync_jobs?: components["schemas"]["ConnectorSyncJob"][];
+                        count?: number;
+                    };
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listMyConnectorAccounts: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The caller's own connector account list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        connector_accounts?: components["schemas"]["ConnectorAccount"][];
+                        count?: number;
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    deleteMyConnectorAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                accountID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listConnectorOAuthApps: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OAuth app list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        oauth_apps?: components["schemas"]["ConnectorOAuthApp"][];
+                        count?: number;
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    registerConnectorOAuthApp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom" | "pipedrive" | "zendesk" | "salesforce";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectorOAuthAppInput"];
+            };
+        };
+        responses: {
+            /** @description OAuth app registered/updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorOAuthApp"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    beginConnectorOAuth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom" | "pipedrive" | "zendesk" | "salesforce";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BeginConnectorOAuthInput"];
+            };
+        };
+        responses: {
+            /** @description Authorization URL */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        authorization_url?: string;
+                    };
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    completeConnectorOAuth: {
+        parameters: {
+            query?: {
+                code?: string;
+                state?: string;
+                error?: string;
+            };
+            header?: never;
+            path: {
+                kind: "gdrive" | "sharepoint" | "onedrive" | "confluence" | "slack" | "outlook" | "teams" | "gmail" | "notion" | "gsheets" | "gcalendar" | "jira" | "github" | "asana" | "linear" | "hubspot" | "intercom" | "pipedrive" | "zendesk" | "salesforce";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description HTML result page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+        };
+    };
+    createStaticAgentAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "stripe" | "sendgrid" | "mailgun" | "postmark" | "telegram" | "discord" | "trello" | "airtable";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    organization_id: string;
+                    display_name?: string;
+                    /** @description Never returned by any endpoint once stored. */
+                    secret: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The created/updated connector account */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorAccount"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
     getEmbedderSetting: {
         parameters: {
             query?: {
@@ -6953,6 +9363,105 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DetectedEmbedderModels"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    getRerankerSetting: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reranker setting */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RerankerSetting"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    setRerankerSetting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RerankerSettingInput"];
+            };
+        };
+        responses: {
+            /** @description Reranker setting created or updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RerankerSetting"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    deleteRerankerSetting: {
+        parameters: {
+            query?: {
+                organization_id?: components["parameters"]["organizationIDQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    detectRerankerModel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DetectRerankerModelInput"];
+            };
+        };
+        responses: {
+            /** @description Detected model (or an error string if detection failed) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DetectedRerankerModel"];
                 };
             };
             401: components["responses"]["Unauthorized"];
@@ -7123,13 +9632,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Updated device */
+            /** @description Updated device, plus its resolved desktop policy bundle */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Device"];
+                    "application/json": components["schemas"]["HeartbeatResult"];
                 };
             };
             401: components["responses"]["Unauthorized"];

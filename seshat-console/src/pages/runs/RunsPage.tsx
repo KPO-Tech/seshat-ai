@@ -29,7 +29,7 @@ export function RunsPage() { const organizationId = useScopedOrganizationId()
   const [page, setPage] = useState(1)
   const [detail, setDetail] = useState<Run | null>(null)
 
-  const { data, isLoading, isFetching } = useRunsList(
+  const { data, isLoading, isFetching, error } = useRunsList(
     organizationId ?? undefined,
     { jobId: jobIdFilter, status },
     { sort: 'queued_at', order: 'desc', limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE },
@@ -73,8 +73,6 @@ export function RunsPage() { const organizationId = useScopedOrganizationId()
   return (
     <div>
       <PageHeader
-        title="Runs"
-        description={jobIdFilter ? `Executions of job ${jobIdFilter}.` : 'Every job execution across this organization.'}
         actions={ <Space>
             {jobIdFilter && (
               <Button onClick={() => setSearchParams({})}>Clear job filter</Button>
@@ -97,6 +95,7 @@ export function RunsPage() { const organizationId = useScopedOrganizationId()
           columns={columns}
           dataSource={data?.runs ?? []}
           loading={isLoading || isFetching}
+          queryError={error}
           onRow={(record) => ({ onClick: () => setDetail(record), style: { cursor: 'pointer' } })}
           locale={{ emptyText: (
               <Empty
@@ -114,7 +113,7 @@ export function RunsPage() { const organizationId = useScopedOrganizationId()
 
       <Drawer title="Run detail" open={detail !== null} onClose={() => setDetail(null)} size={480}>
         {detail && (
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          <Space orientation="vertical" size={16} style={{ width: '100%' }}>
             <div>
               <Typography.Text strong>Status</Typography.Text>
               <div>

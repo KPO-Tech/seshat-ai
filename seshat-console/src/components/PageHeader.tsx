@@ -1,27 +1,20 @@
 import type { ReactNode } from 'react'
-import { Typography } from 'antd'
 
+// No title, no description - the layout's own breadcrumb (AppLayout.tsx's
+// console-topbar__scope) already names the current page, and the
+// explanatory copy this used to carry was decided not worth the space
+// (removed 2026-09-03). What's left is just a row for a page's own actions/
+// badge, right-aligned under that breadcrumb.
 export function PageHeader({
-  title,
-  description,
   actions,
+  badge,
 }: {
-  title: string
-  description?: string
   actions?: ReactNode
+  badge?: ReactNode
 }) {
   return (
-    <div className="console-page-header">
-      <div className="console-page-header__meta">
-        <Typography.Title level={4} style={{ margin: 0, fontWeight: 600 }}>
-          {title}
-        </Typography.Title>
-        {description && (
-          <Typography.Text className="console-page-header__description" type="secondary">
-            {description}
-          </Typography.Text>
-        )}
-      </div>
+    <div className="console-page-header console-page-header--compact">
+      {badge ? <div className="console-page-header__badge">{badge}</div> : null}
       {actions ? <div className="console-page-header__actions">{actions}</div> : null}
     </div>
   )

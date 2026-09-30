@@ -120,10 +120,6 @@ func (a *App) handleCorpora(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	if !a.requireKnowledgePermission(w, r, principal) {
-		return
-	}
-
 	switch r.Method {
 	case http.MethodGet:
 		corpora, err := a.backend.Knowledge.ListCorpora(r.Context(), principal)
@@ -202,10 +198,6 @@ func (a *App) handleCorpusByID(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	if !a.requireKnowledgePermission(w, r, principal) {
-		return
-	}
-
 	// Strip prefix to get the rest of the path.
 	rest := strings.TrimPrefix(r.URL.Path, "/corpora/")
 	rest = strings.Trim(rest, "/")
@@ -221,6 +213,35 @@ func (a *App) handleCorpusByID(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			corpus, err := a.backend.Knowledge.GetCorpus(r.Context(), principal, corpusID)
+			if err != nil {
+				writeBackendError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, corpusToResponse(*corpus))
+		case http.MethodPut:
+			var body struct {
+				Name        string `json:"name"`
+				Description string `json:"description"`
+			}
+			if !decodeJSONBody(w, r, &body) {
+				return
+			}
+			if strings.TrimSpace(body.Name) == "" {
+				writeJSONError(w, http.StatusBadRequest, "name is required")
+				return
+			}
+			if len(body.Name) > 255 {
+				writeJSONError(w, http.StatusBadRequest, "name exceeds maximum length (255 chars)")
+				return
+			}
+			if len(body.Description) > 1024 {
+				writeJSONError(w, http.StatusBadRequest, "description exceeds maximum length (1024 chars)")
+				return
+			}
+			corpus, err := a.backend.Knowledge.UpdateCorpus(r.Context(), principal, corpusID, knowledge.UpdateCorpusParams{
+				Name:        body.Name,
+				Description: body.Description,
+			})
 			if err != nil {
 				writeBackendError(w, err)
 				return
@@ -435,4 +456,44 @@ func (a *App) handleCorpusSearch(w http.ResponseWriter, r *http.Request, corpusI
 		return
 	}
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// handleKnowledgeSearch handles POST /knowledge/search: a raw (non-agentic)
+// search across every corpus the principal can access, merged and ranked by
+// score via knowledge.SearchAll - the same function the knowledge_search
+// agent tool uses, so the Knowledge app's raw-results panel and its agent
+// answer are always ranking the same underlying chunks.
+func (a *App) handleKnowledgeSearch(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	principal, _ := authPrincipalFromContext(r.Context())
+	if principal == nil {
+		writeJSONError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	var body struct {
+		Query    string `json:"query"`
+		TopK     int    `json:"top_k"`
+		CorpusID string `json:"corpus_id"`
+	}
+	if !decodeJSONBody(w, r, &body) {
+		return
+	}
+	if strings.TrimSpace(body.Query) == "" {
+		writeJSONError(w, http.StatusBadRequest, "query is required")
+		return
+	}
+
+	res, err := knowledge.SearchAll(r.Context(), principal, a.backend.Knowledge, knowledge.SearchAllParams{
+		Query:    body.Query,
+		TopK:     body.TopK,
+		CorpusID: body.CorpusID,
+	})
+	if err != nil {
+		writeBackendError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
 }

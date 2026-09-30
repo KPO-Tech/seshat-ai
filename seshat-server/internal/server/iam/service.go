@@ -2,8 +2,11 @@ package iam
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"net"
 	"strings"
 	"time"
 
@@ -32,23 +35,35 @@ type User struct {
 }
 
 type Organization struct {
-	ID                           string    `json:"id"`
-	Name                         string    `json:"name"`
-	Slug                         string    `json:"slug"`
-	Description                  string    `json:"description"`
-	WebsiteURL                   string    `json:"website_url"`
-	SupportEmail                 string    `json:"support_email"`
-	IsDefault                    bool      `json:"is_default"`
-	IsActive                     bool      `json:"is_active"`
-	ShareProviderSettings        bool      `json:"share_provider_settings"`
-	ShareEmbedderSettings        bool      `json:"share_embedder_settings"`
-	ShareWebSearchSettings       bool      `json:"share_web_search_settings"`
-	ShareMCPServers              bool      `json:"share_mcp_servers"`
-	ShareSkillRepos              bool      `json:"share_skill_repos"`
-	ShareOrganizationPreferences bool      `json:"share_organization_preferences"`
-	Domain                       *string   `json:"domain,omitempty"`
-	CreatedAt                    time.Time `json:"created_at"`
-	UpdatedAt                    time.Time `json:"updated_at"`
+	ID                           string  `json:"id"`
+	Name                         string  `json:"name"`
+	Slug                         string  `json:"slug"`
+	Description                  string  `json:"description"`
+	WebsiteURL                   string  `json:"website_url"`
+	SupportEmail                 string  `json:"support_email"`
+	IsDefault                    bool    `json:"is_default"`
+	IsActive                     bool    `json:"is_active"`
+	ShareProviderSettings        bool    `json:"share_provider_settings"`
+	ShareEmbedderSettings        bool    `json:"share_embedder_settings"`
+	ShareWebSearchSettings       bool    `json:"share_web_search_settings"`
+	ShareMCPServers              bool    `json:"share_mcp_servers"`
+	ShareSkillRepos              bool    `json:"share_skill_repos"`
+	ShareOrganizationPreferences bool    `json:"share_organization_preferences"`
+	ShareConnectorApps           bool    `json:"share_connector_apps"`
+	Domain                       *string `json:"domain,omitempty"`
+	// DomainVerificationToken is the TXT record value to publish - only
+	// meaningful (and only ever seen) by callers who can already read this
+	// organization's own settings (organization.read/.manage), same trust
+	// level as every other field here. Empty once Domain is verified or
+	// unset - nothing left to prove.
+	DomainVerificationToken *string    `json:"domain_verification_token,omitempty"`
+	DomainVerifiedAt        *time.Time `json:"domain_verified_at,omitempty"`
+	// MinAppVersion is a plain "major.minor.patch" string (see
+	// compareAppVersions) enforced as a warning, not a block, at device
+	// heartbeat - see automation.Heartbeat and db.Organization.MinAppVersion.
+	MinAppVersion *string   `json:"min_app_version,omitempty"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 type Membership struct {
@@ -70,14 +85,19 @@ type Membership struct {
 	UserEmail       string   `json:"user_email,omitempty"`
 	UserDisplayName string   `json:"user_display_name,omitempty"`
 	UserIsAdmin     bool     `json:"user_is_admin,omitempty"`
+	// ScimExternalID is set only for a membership created by a SCIM
+	// connection (see the scim package) - the IdP's own id for this member,
+	// echoed back so the IdP can correlate its own records with ours.
+	ScimExternalID *string `json:"scim_external_id,omitempty"`
 }
 
 type Session struct {
-	ID        string    `json:"id"`
-	Token     string    `json:"token,omitempty"`
-	UserID    string    `json:"user_id"`
-	CreatedAt time.Time `json:"created_at"`
-	ExpiresAt time.Time `json:"expires_at"`
+	ID                string    `json:"id"`
+	Token             string    `json:"token,omitempty"`
+	UserID            string    `json:"user_id"`
+	CreatedAt         time.Time `json:"created_at"`
+	ExpiresAt         time.Time `json:"expires_at"`
+	ReauthenticatedAt time.Time `json:"reauthenticated_at"`
 }
 
 // Application models a client application managed by the control plane.
@@ -143,6 +163,10 @@ type Provider struct {
 	Configuration    map[string]string `json:"configuration"`
 	CreatedAt        time.Time         `json:"created_at"`
 	UpdatedAt        time.Time         `json:"updated_at"`
+
+	LastLoginAt      *time.Time `json:"last_login_at"`
+	LastLoginSuccess *bool      `json:"last_login_success"`
+	LastError        string     `json:"last_error"`
 }
 
 type BootstrapParams struct {
@@ -244,10 +268,45 @@ type Service struct {
 	// through New() - see SetMailer's doc comment for why.
 	mailer       mailer.Sender
 	publicAppURL string
+	// publicAPIURL is set post-construction via SetPublicAPIURL, same
+	// New()-signature-stability reasoning as SetMailer above. Used to build
+	// the redirect_uri this server presents to an OIDC identity provider
+	// (see oidc.go's BeginOIDCLogin) - distinct from publicAppURL, which
+	// points at the console frontend, not an API route.
+	publicAPIURL string
+	// orgMode is set post-construction via SetOrgMode, same New()-signature-
+	// stability reasoning as publicAPIURL. Zero value "" is treated as
+	// orgModeMulti (today's unlimited-org behavior), so every existing
+	// caller/test that never calls SetOrgMode is unaffected.
+	orgMode string
+	// lookupTXT resolves DNS TXT records for VerifyOrganizationDomain.
+	// Defaulted in New() to the real resolver, not left nil - unlike
+	// mailer/publicAPIURL/orgMode, there is no meaningful "unset" behavior
+	// for a DNS lookup, so every caller gets working domain verification
+	// without an extra setup step. Swappable via SetDomainLookupTXT so
+	// tests can fake a DNS answer instead of depending on real DNS/network
+	// access.
+	lookupTXT func(ctx context.Context, host string) ([]string, error)
 }
 
+// orgModeMulti/orgModeSingle mirror config.OrgModeMulti/config.OrgModeSingle
+// as plain strings - see SetOrgMode's doc comment for why iam takes a
+// string here instead of importing the config package's type.
+const (
+	orgModeMulti  = "multi"
+	orgModeSingle = "single"
+)
+
 func New(database *sdb.DB, sessionTTL time.Duration) *Service {
-	return &Service{db: database, sessionTTL: sessionTTL}
+	return &Service{db: database, sessionTTL: sessionTTL, lookupTXT: net.DefaultResolver.LookupTXT}
+}
+
+// SetDomainLookupTXT overrides the DNS TXT resolver VerifyOrganizationDomain
+// uses - production code never needs this (New already wires up the real
+// resolver), it exists purely so tests can fake a DNS answer instead of
+// depending on real DNS/network access.
+func (s *Service) SetDomainLookupTXT(lookup func(ctx context.Context, host string) ([]string, error)) {
+	s.lookupTXT = lookup
 }
 
 // SetMailer wires up outbound email (invitation accept links, password
@@ -264,9 +323,65 @@ func (s *Service) SetMailer(sender mailer.Sender, publicAppURL string) {
 	s.publicAppURL = strings.TrimRight(publicAppURL, "/")
 }
 
+// SetPublicAPIURL wires up this server's own public API base URL, used to
+// build the redirect_uri sent to an OIDC identity provider during login
+// (see oidc.go). Not a New() parameter for the same reason as SetMailer -
+// most of iam.New's many callers (mostly unrelated test-env helpers) have no
+// reason to care. An empty value (never calling this) means OIDC login
+// can't be started - BeginOIDCLogin returns a clear error rather than
+// silently building a broken redirect_uri.
+func (s *Service) SetPublicAPIURL(publicAPIURL string) {
+	s.publicAPIURL = strings.TrimRight(publicAPIURL, "/")
+}
+
+// SetOrgMode wires up whether this deployment allows more than one
+// Organization to ever exist ("single") or not ("multi" - also the zero
+// value, i.e. never calling this, which preserves today's behavior for the
+// many test-env callers that don't care). Not a New() parameter for the
+// same reason as SetMailer/SetPublicAPIURL. Unlike those setters this one
+// validates: an unrecognized value returns an error so a misconfigured
+// deployment fails at startup (see app.New) instead of silently running
+// with the wrong org-count policy - see CreateOrganization for enforcement.
+func (s *Service) SetOrgMode(mode string) error {
+	switch mode {
+	case "", orgModeMulti:
+		s.orgMode = orgModeMulti
+	case orgModeSingle:
+		s.orgMode = orgModeSingle
+	default:
+		return fmt.Errorf("invalid org mode %q: must be %q or %q", mode, orgModeSingle, orgModeMulti)
+	}
+	return nil
+}
+
+// OrgMode reports the deployment's org mode ("single" or "multi"), for
+// surfacing to the frontend via GET /api/v1/bootstrap/status (see
+// api.handleBootstrapStatus) so it can proactively hide/disable
+// organization-creation UI before the user hits a 409 from CreateOrganization.
+func (s *Service) OrgMode() string {
+	if s.orgMode == "" {
+		return orgModeMulti
+	}
+	return s.orgMode
+}
+
 func (s *Service) BootstrapStatus(ctx context.Context) (bool, error) {
 	var count int64
 	if err := s.db.Gorm().WithContext(ctx).Model(&sdb.User{}).Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+// HasAnyOrganization reports whether at least one Organization has ever
+// been created in this deployment - the correct signal for single-org-mode
+// gating (see CreateOrganization), distinct from BootstrapStatus's "at
+// least one User exists": Register can create a User with zero
+// Organizations (someone registers before ever creating/joining one), so
+// the two can diverge - BootstrapStatus's count must not be reused here.
+func (s *Service) HasAnyOrganization(ctx context.Context) (bool, error) {
+	var count int64
+	if err := s.db.Gorm().WithContext(ctx).Model(&sdb.Organization{}).Count(&count).Error; err != nil {
 		return false, err
 	}
 	return count > 0, nil
@@ -425,7 +540,10 @@ func (s *Service) Register(ctx context.Context, params RegisterParams) (*AuthRes
 		memberships := []Membership{}
 		if domain := emailDomain(email); domain != "" {
 			var org sdb.Organization
-			err := tx.Where("domain = ?", domain).First(&org).Error
+			// domain_verified_at IS NOT NULL: a Domain claim alone proves
+			// nothing (see Organization.Domain's doc comment) - only a
+			// verified domain may auto-join self-registering users.
+			err := tx.Where("domain = ? AND domain_verified_at IS NOT NULL", domain).First(&org).Error
 			switch {
 			case err == nil:
 				membershipID, err := newID("mem")
@@ -698,6 +816,15 @@ func (s *Service) CreateOrganization(ctx context.Context, principal *Principal, 
 	var organization *Organization
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		tx = tx.WithContext(ctx)
+		if s.orgMode == orgModeSingle {
+			var orgCount int64
+			if err := tx.Model(&sdb.Organization{}).Count(&orgCount).Error; err != nil {
+				return err
+			}
+			if orgCount > 0 {
+				return ErrConflict("this deployment is restricted to a single organization")
+			}
+		}
 		var existing int64
 		if err := tx.Model(&sdb.Organization{}).Where("slug = ?", slug).Count(&existing).Error; err != nil {
 			return err
@@ -723,6 +850,13 @@ func (s *Service) CreateOrganization(ctx context.Context, principal *Principal, 
 		record := sdb.Organization{
 			ID: organizationIDValue, Name: name, Slug: slug, Description: description,
 			WebsiteURL: websiteURL, SupportEmail: supportEmail, Domain: domain, CreatedAt: now, UpdatedAt: now,
+		}
+		if domain != nil {
+			token, err := newDomainVerificationToken()
+			if err != nil {
+				return err
+			}
+			record.DomainVerificationToken = &token
 		}
 		if err := tx.Create(&record).Error; err != nil {
 			if isUniqueConstraintError(err) {
@@ -906,11 +1040,12 @@ func (s *Service) newSession(userID string, now time.Time) (sdb.Session, string,
 		return sdb.Session{}, "", err
 	}
 	return sdb.Session{
-		Token:     sdb.HashOpaqueToken(rawToken),
-		ID:        sessionID,
-		UserID:    userID,
-		CreatedAt: now,
-		ExpiresAt: now.Add(s.sessionTTL),
+		Token:             sdb.HashOpaqueToken(rawToken),
+		ID:                sessionID,
+		UserID:            userID,
+		CreatedAt:         now,
+		ExpiresAt:         now.Add(s.sessionTTL),
+		ReauthenticatedAt: now,
 	}, rawToken, nil
 }
 
@@ -1062,7 +1197,11 @@ func toOrganization(record sdb.Organization) Organization {
 		ShareMCPServers:              record.ShareMCPServers,
 		ShareSkillRepos:              record.ShareSkillRepos,
 		ShareOrganizationPreferences: record.ShareOrganizationPreferences,
+		ShareConnectorApps:           record.ShareConnectorApps,
 		Domain:                       record.Domain,
+		DomainVerificationToken:      record.DomainVerificationToken,
+		DomainVerifiedAt:             record.DomainVerifiedAt,
+		MinAppVersion:                record.MinAppVersion,
 		CreatedAt:                    record.CreatedAt,
 		UpdatedAt:                    record.UpdatedAt,
 	}
@@ -1072,14 +1211,18 @@ func toMembership(record sdb.Membership) Membership {
 	return Membership{
 		ID: record.ID, UserID: record.UserID, OrganizationID: record.OrganizationID, Role: record.Role,
 		Status: record.Status, PendingSince: record.PendingSince, CreatedAt: record.CreatedAt,
+		ScimExternalID: record.ScimExternalID,
 	}
 }
 
 func toSession(record sdb.Session) Session {
-	return Session{ID: record.ID, UserID: record.UserID, CreatedAt: record.CreatedAt, ExpiresAt: record.ExpiresAt}
+	return Session{
+		ID: record.ID, UserID: record.UserID, CreatedAt: record.CreatedAt, ExpiresAt: record.ExpiresAt,
+		ReauthenticatedAt: record.ReauthenticatedAt,
+	}
 }
 
-func toApplication(record sdb.Application) Application {
+func toApplication(gormDB *gorm.DB, record sdb.Application) Application {
 	return Application{
 		ID:                     record.ID,
 		OrganizationID:         record.OrganizationID,
@@ -1098,7 +1241,7 @@ func toApplication(record sdb.Application) Application {
 		ResponseTypes:          append([]string(nil), record.ResponseTypes...),
 		Scopes:                 append([]string(nil), record.Scopes...),
 		ClientID:               record.ClientID,
-		ClientSecret:           maskedStoredSecret(record.ClientSecret),
+		ClientSecret:           maskedStoredSecret(gormDB, record.OrganizationID, record.ClientSecret),
 		ProviderIDs:            append([]string(nil), record.ProviderIDs...),
 		SigninURL:              record.SigninURL,
 		SignupURL:              record.SignupURL,
@@ -1113,7 +1256,7 @@ func toApplication(record sdb.Application) Application {
 	}
 }
 
-func toProvider(record sdb.Provider) Provider {
+func toProvider(gormDB *gorm.DB, record sdb.Provider) Provider {
 	return Provider{
 		ID:               record.ID,
 		OrganizationID:   record.OrganizationID,
@@ -1122,7 +1265,7 @@ func toProvider(record sdb.Provider) Provider {
 		Kind:             record.Kind,
 		Enabled:          record.Enabled,
 		ClientID:         record.ClientID,
-		ClientSecret:     maskedStoredSecret(record.ClientSecret),
+		ClientSecret:     maskedStoredSecret(gormDB, record.OrganizationID, record.ClientSecret),
 		IssuerURL:        record.IssuerURL,
 		DiscoveryURL:     record.DiscoveryURL,
 		AuthorizationURL: record.AuthorizationURL,
@@ -1143,12 +1286,62 @@ func toProvider(record sdb.Provider) Provider {
 		Configuration:    normalizeStringMap(record.Configuration),
 		CreatedAt:        record.CreatedAt,
 		UpdatedAt:        record.UpdatedAt,
+		LastLoginAt:      record.LastLoginAt,
+		LastLoginSuccess: record.LastLoginSuccess,
+		LastError:        record.LastError,
 	}
+}
+
+// recordProviderLoginAttempt updates a Provider's connection-health fields
+// after a completed OIDC/SAML login round trip - success or failure - so an
+// admin can see whether a configured connection actually works, not just
+// whether it was configured. Deliberately its own write outside any
+// surrounding transaction: a failed login's transaction rolls back, but the
+// fact that it failed is exactly the signal this is meant to preserve, so
+// it must survive that rollback rather than be undone by it.
+//
+// Only called from CompleteOIDCLogin/CompleteSAMLLogin, never from either
+// protocol's Begin*Login half - a Begin failure is almost always a bad
+// redirect_uri or an unknown/disabled provider_id, already caught by
+// validation elsewhere, and says nothing about whether the identity
+// provider itself is reachable and correctly configured.
+func (s *Service) recordProviderLoginAttempt(providerID string, loginErr error) {
+	if providerID == "" {
+		return
+	}
+	now := time.Now().UTC()
+	success := loginErr == nil
+	errMsg := ""
+	if loginErr != nil {
+		errMsg = loginErr.Error()
+	}
+	// Best-effort: this must never surface as the login's own failure - by
+	// the time this runs, the login has already succeeded or failed
+	// regardless of whether this particular write lands.
+	s.db.Gorm().Model(&sdb.Provider{}).Where("id = ?", providerID).Updates(map[string]any{
+		"last_login_at": now, "last_login_success": success, "last_error": errMsg,
+	})
 }
 
 // bcryptCost matches the "cost 12 minimum" policy documented in SECURITY.md.
 // bcrypt.DefaultCost (10) is bcrypt's own library default, not this project's.
-const bcryptCost = 12
+// A var (not const) so SetBcryptCostForTesting can lower it in test binaries -
+// production code never calls that setter, so this always stays 12 outside tests.
+var bcryptCost = 12
+
+// SetBcryptCostForTesting lowers the cost hashPassword uses to bcrypt.MinCost
+// for the lifetime of the calling test binary, and returns a restore func.
+// Tests that create many accounts (Bootstrap, CreateUser, invitations, SCIM
+// provisioning, ...) each pay a real cost-12 bcrypt hash otherwise - fine
+// individually, but the combined cost across this package's test suite is
+// what pushed CI's `-race` run of internal/server/iam and internal/server/api
+// (which calls into iam.CreateUser) past their 8-minute timeout as the suite
+// grew. Never call this outside a test binary.
+func SetBcryptCostForTesting(cost int) (restore func()) {
+	prev := bcryptCost
+	bcryptCost = cost
+	return func() { bcryptCost = prev }
+}
 
 func hashPassword(password string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcryptCost)
@@ -1171,6 +1364,13 @@ func normalizeSlug(slug string) string {
 // normalizeDomain returns nil for an empty domain rather than a pointer to
 // "" - a *string so the DB column stores NULL (a unique index allows any
 // number of NULLs, but would reject two organizations both storing "").
+// newDomainVerificationToken generates the value an organization must
+// publish as a DNS TXT record to prove control of its claimed Domain - see
+// VerifyOrganizationDomain. Same random source as every other token in this
+// package (newToken/sdb.NewToken), just under its own name so call sites
+// read as "generate a domain challenge," not "generate some generic token."
+func newDomainVerificationToken() (string, error) { return newToken() }
+
 func normalizeDomain(domain string) *string {
 	domain = strings.ToLower(strings.TrimSpace(domain))
 	domain = strings.TrimPrefix(domain, "@")
@@ -1190,18 +1390,36 @@ func emailDomain(email string) string {
 	return domain
 }
 
-func maskedStoredSecret(secret string) string {
-	const prefixLen = 6
+// maskedStoredSecret is the single place a client secret's stored (encrypted)
+// value gets turned into what List/Get/Update responses actually return.
+// Only the create-response path returns the real value once, in full (see
+// e.g. CreateApplication) — everything else goes through here.
+//
+// 2026-08-06: previously showed the decrypted secret's real first 6
+// characters in cleartext (secret[:6] + "********"). That's a genuine
+// plaintext leak to anyone with read access, not just an obfuscated display —
+// each read narrows the real secret's effective entropy, and a masked value
+// is exactly the kind of thing an attacker with partial/leaked-elsewhere
+// candidates would use to confirm a match. Replaced with a truncated SHA-256
+// fingerprint of the decrypted value: still lets an operator visually tell
+// two different configured secrets apart (or notice an unchanged one after
+// an "update"), but a one-way hash can't be reversed back into secret bytes
+// the way a literal prefix can.
+//
+// This also used to be duplicated near-verbatim in api/helpers.go
+// (redactSecret), applied a second time on top of this function's own
+// already-masked output by six API handlers — harmless only by coincidence
+// (both used prefixLen=6). Removed there; this is now the only masking path.
+func maskedStoredSecret(gormDB *gorm.DB, organizationID, secret string) string {
 	if secret == "" {
 		return ""
 	}
-	if plaintext, err := sdb.DecryptSecret(secret); err == nil {
+	if plaintext, err := sdb.DecryptSecret(gormDB, organizationID, secret); err == nil {
 		secret = plaintext
 	}
-	if len(secret) <= prefixLen {
-		return strings.Repeat("*", len(secret))
-	}
-	return secret[:prefixLen] + strings.Repeat("*", 8)
+	sum := sha256.Sum256([]byte(secret))
+	fingerprint := hex.EncodeToString(sum[:])[:8]
+	return fingerprint + strings.Repeat("*", 8)
 }
 
 func newID(prefix string) (string, error) { return sdb.NewID(prefix) }
@@ -1226,8 +1444,9 @@ func isUniqueConstraintError(err error) bool {
 // check in the API layer needs no changes.
 type Error = apperr.Error
 
-func ErrInvalidInput(message string) error { return apperr.InvalidInput(message) }
-func ErrUnauthorized(message string) error { return apperr.Unauthorized(message) }
-func ErrForbidden(message string) error    { return apperr.Forbidden(message) }
-func ErrConflict(message string) error     { return apperr.Conflict(message) }
-func ErrNotFound(message string) error     { return apperr.NotFound(message) }
+func ErrInvalidInput(message string) error   { return apperr.InvalidInput(message) }
+func ErrUnauthorized(message string) error   { return apperr.Unauthorized(message) }
+func ErrForbidden(message string) error      { return apperr.Forbidden(message) }
+func ErrConflict(message string) error       { return apperr.Conflict(message) }
+func ErrNotFound(message string) error       { return apperr.NotFound(message) }
+func ErrStepUpRequired(message string) error { return apperr.StepUpRequired(message) }

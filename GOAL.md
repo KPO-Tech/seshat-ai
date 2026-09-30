@@ -33,14 +33,14 @@ A capable, safe, production-grade agent platform that any developer or team can 
 - 📡 REST API + SSE streaming + Anthropic-compatible `/v1/messages` endpoint
 - 📚 Knowledge base: hybrid BM25 + vector search, file ingestion
 - ⏰ Scheduled tasks, memories, plans, MCP server management
-- 🖥️ Desktop app: chat, tool views, plan editor, settings, skills creator
+- 🖥️ Desktop app: chat, tool views, plan editor, settings, skills creator (rebuilding as `seshat-desktop`, Chat-first, replacing `seshat-ui`)
 
 **What we are finishing:**
 - 🔭 OpenTelemetry tracing (per session / per turn / per tool call)
 - 🔌 MCP spec conformance (November 2025: async tasks, elicitation)
 - 📦 Go SDK: stable contract, versioned SSE events, documented with examples
 - 🔒 Security hardening: sandbox read isolation, CORS hardening, session expiry
-- ✨ seshat-ui stabilized on all essential user paths
+- ✨ `seshat-desktop` (the `seshat-ui` rebuild) stabilized on Chat, its first essential user path
 
 **Gate to Level 3:** Level 2 is stable with real users. No open critical issues.
 

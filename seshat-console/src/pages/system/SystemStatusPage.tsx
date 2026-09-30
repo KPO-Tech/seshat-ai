@@ -9,10 +9,7 @@ export function SystemStatusPage() {
 
   return (
     <div>
-      <PageHeader
-        title="System"
-        description="Shared, server-wide infrastructure this platform depends on - not something any single organization configures for itself."
-      />
+      <PageHeader />
 
       <Card
         title={

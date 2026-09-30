@@ -10,6 +10,8 @@ import { usePolicyBindingsList,
   type PolicyBindingInput, } from '@/api/policyBindings'
 import { useGroupsList } from '@/api/groups'
 import { useRolesList } from '@/api/roles'
+import { useCorporaList } from '@/api/knowledge'
+import { useProviderSettingsList } from '@/api/providerSettings'
 import { getErrorMessage } from '@/api/errors'
 import { PageHeader } from '@/components/PageHeader'
 import { ConsoleTable } from '@/components/ConsoleTable'
@@ -19,6 +21,7 @@ import { UserSelect } from '@/components/UserSelect'
 import { palette } from '@/theme/tokens'
 
 const PAGE_SIZE = 20
+const DESCRIPTION_MAX_LENGTH = 200
 
 // "group" is the wire value (matches the backend's SubjectType enum) - the
 // console calls this concept "Team", see docs/seshat-console-target-ia.md.
@@ -28,12 +31,21 @@ const SUBJECT_TYPE_LABELS: Record<string, string> = {
   role: 'Role',
 }
 
+// Matches iam.knownResourceTypes on the backend - a binding scoped to one of
+// these narrows it to that single resource instead of the whole
+// organization (see each service's own resource-scope tests for what that
+// unlocks: per-corpus sharing, per-member/team provider access control).
+const RESOURCE_TYPE_LABELS: Record<string, string> = {
+  corpus: 'Corpus',
+  provider_setting: 'Provider setting',
+}
+
 export function PolicyBindingsPage() { const organizationId = useScopedOrganizationId()
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<PolicyBinding | 'new' | null>(null)
 
-  const { data, isLoading, isFetching } = usePolicyBindingsList(organizationId ?? undefined, { q: search || undefined,
+  const { data, isLoading, isFetching, error } = usePolicyBindingsList(organizationId ?? undefined, { q: search || undefined,
     sort: 'name',
     order: 'asc',
     limit: PAGE_SIZE,
@@ -67,6 +79,15 @@ export function PolicyBindingsPage() { const organizationId = useScopedOrganizat
       key: 'permission_codes',
       width: 110,
       render: (codes: string[]) => codes?.length ?? 0, },
+    { title: 'Scope',
+      key: 'scope',
+      width: 160,
+      render: (_, record) =>
+        record.resource_type ? (
+          <Tag color="blue">{RESOURCE_TYPE_LABELS[record.resource_type] ?? record.resource_type}</Tag>
+        ) : (
+          <Typography.Text style={{ color: palette.inkTertiary }}>Organization-wide</Typography.Text>
+        ), },
     { title: '',
       key: 'actions',
       width: 96,
@@ -92,8 +113,6 @@ export function PolicyBindingsPage() { const organizationId = useScopedOrganizat
   return (
     <div>
       <PageHeader
-        title="Policy Bindings"
-        description="Grants a set of permissions to a user, team or role."
         actions={ <Space>
             <Input.Search
               placeholder="Search bindings"
@@ -119,6 +138,7 @@ export function PolicyBindingsPage() { const organizationId = useScopedOrganizat
           columns={columns}
           dataSource={data?.policy_bindings ?? []}
           loading={isLoading || isFetching}
+          queryError={error}
           locale={{ emptyText: (
               <Empty
                 image={<LockOutlined style={{ fontSize: 32, color: palette.inkTertiary }} />}
@@ -165,11 +185,15 @@ function PolicyBindingFormDrawer({ binding,
   onSubmit: (values: Omit<PolicyBindingInput, 'organization_id'>) => void
   submitting: boolean }) { const [form] = Form.useForm<Omit<PolicyBindingInput, 'organization_id'>>()
   const subjectType = Form.useWatch('subject_type', form)
+  const resourceType = Form.useWatch('resource_type', form)
   const { data: groupsData } = useGroupsList(organizationId ?? undefined, { limit: 200 })
   const { data: rolesData } = useRolesList(organizationId ?? undefined)
+  const { data: corporaData } = useCorporaList(organizationId ?? undefined, { limit: 200 })
+  const { data: providerSettingsData } = useProviderSettingsList(organizationId ?? undefined)
 
   useEffect(() => { if (open) { form.setFieldsValue(
-        binding ?? { name: '', description: '', subject_type: 'user', subject_id: '', permission_codes: [] },
+        binding ?? { name: '', description: '', subject_type: 'user', subject_id: '',
+          permission_codes: [], resource_type: undefined, resource_id: undefined, },
       ) } }, [open, binding, form])
 
   return (
@@ -188,7 +212,7 @@ function PolicyBindingFormDrawer({ binding,
           <Input />
         </Form.Item>
         <Form.Item name="description" label="Description">
-          <Input.TextArea rows={2} />
+          <Input.TextArea rows={2} maxLength={DESCRIPTION_MAX_LENGTH} showCount />
         </Form.Item>
         <Form.Item name="subject_type" label="Subject type" rules={[{ required: true }]}>
           <Select
@@ -221,6 +245,35 @@ function PolicyBindingFormDrawer({ binding,
         <Form.Item name="permission_codes" label="Permissions">
           <PermissionChecklist />
         </Form.Item>
+        <Form.Item
+          name="resource_type"
+          label="Scope"
+          tooltip="Leave as organization-wide unless you're restricting access to one specific corpus or provider setting."
+        >
+          <Select
+            allowClear
+            placeholder="Organization-wide"
+            options={Object.entries(RESOURCE_TYPE_LABELS).map(([value, label]) => ({ value, label }))}
+            onChange={() => form.setFieldValue('resource_id', undefined)}
+          />
+        </Form.Item>
+        {resourceType && (
+          <Form.Item name="resource_id" label={RESOURCE_TYPE_LABELS[resourceType] ?? 'Resource'} rules={[{ required: true, message: 'Required' }]}>
+            {resourceType === 'provider_setting' ? (
+              <Select
+                showSearch
+                optionFilterProp="label"
+                options={(providerSettingsData ?? []).map((p) => ({ value: p.id, label: `${p.provider} (${p.default_model})` }))}
+              />
+            ) : (
+              <Select
+                showSearch
+                optionFilterProp="label"
+                options={(corporaData?.corpora ?? []).map((c) => ({ value: c.id, label: c.name }))}
+              />
+            )}
+          </Form.Item>
+        )}
       </Form>
     </Drawer>
   ) }

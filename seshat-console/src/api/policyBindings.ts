@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/api/client'
 import type { components } from '@/api/schema'
+import { PROVIDER_SETTINGS_USABLE_KEY } from '@/api/settingsQueryKeys'
 
 export type PolicyBinding = components['schemas']['PolicyBinding']
 export type PolicyBindingInput = components['schemas']['PolicyBindingInput']
@@ -39,7 +40,15 @@ export function useCreatePolicyBinding() {
       if (error) throw error
       return data
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: [LIST_KEY] }),
+    // A binding may be scoped to resource_type=provider_setting, in which
+    // case it directly changes who ListUsableProviderSettings returns -
+    // invalidate unconditionally rather than parsing the binding's own
+    // resource_type to decide (this list is cheap and rarely subscribed to
+    // outside the chat page it feeds).
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [LIST_KEY] })
+      queryClient.invalidateQueries({ queryKey: [PROVIDER_SETTINGS_USABLE_KEY] })
+    },
   })
 }
 
@@ -54,7 +63,10 @@ export function useUpdatePolicyBinding() {
       if (error) throw error
       return data
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: [LIST_KEY] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [LIST_KEY] })
+      queryClient.invalidateQueries({ queryKey: [PROVIDER_SETTINGS_USABLE_KEY] })
+    },
   })
 }
 
@@ -67,6 +79,9 @@ export function useDeletePolicyBinding() {
       })
       if (error) throw error
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: [LIST_KEY] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [LIST_KEY] })
+      queryClient.invalidateQueries({ queryKey: [PROVIDER_SETTINGS_USABLE_KEY] })
+    },
   })
 }

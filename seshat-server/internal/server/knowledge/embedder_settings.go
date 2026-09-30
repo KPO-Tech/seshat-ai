@@ -114,7 +114,7 @@ func (s *Service) SetEmbedderSetting(ctx context.Context, principal *iam.Princip
 
 		encryptedAPIKey := record.EncryptedAPIKey // keep existing by default on update
 		if apiKey := strings.TrimSpace(params.APIKey); apiKey != "" {
-			encrypted, err := encryptSecret(apiKey)
+			encrypted, err := encryptSecret(tx, organizationID, apiKey)
 			if err != nil {
 				return err
 			}
@@ -198,16 +198,16 @@ func (s *Service) DeleteEmbedderSetting(ctx context.Context, principal *iam.Prin
 // (see iam.Service.DefaultOrganizationID). Returns ok=false if neither
 // exists.
 func (s *Service) resolveEmbedderConfig(ctx context.Context, organizationID string) (sdkembedder.Config, bool, error) {
+	tx := s.db.Gorm().WithContext(ctx)
 	var orgSetting sdb.EmbedderSetting
-	err := s.db.Gorm().WithContext(ctx).Where("organization_id = ?", organizationID).First(&orgSetting).Error
+	err := tx.Where("organization_id = ?", organizationID).First(&orgSetting).Error
 	if err == nil {
-		return decryptedEmbedderConfig(orgSetting.Provider, orgSetting.Model, orgSetting.BaseURL, orgSetting.EncryptedAPIKey)
+		return decryptedEmbedderConfig(tx, organizationID, orgSetting.Provider, orgSetting.Model, orgSetting.BaseURL, orgSetting.EncryptedAPIKey)
 	}
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return sdkembedder.Config{}, false, err
 	}
 
-	tx := s.db.Gorm().WithContext(ctx)
 	defaultOrgID, found, err := s.iam.DefaultOrganizationIDForDomain(tx, iam.SharedDomainEmbedderSettings)
 	if err != nil {
 		return sdkembedder.Config{}, false, err
@@ -219,7 +219,10 @@ func (s *Service) resolveEmbedderConfig(ctx context.Context, organizationID stri
 	var defaultSetting sdb.EmbedderSetting
 	err = tx.Where("organization_id = ?", defaultOrgID).First(&defaultSetting).Error
 	if err == nil {
-		return decryptedEmbedderConfig(defaultSetting.Provider, defaultSetting.Model, defaultSetting.BaseURL, defaultSetting.EncryptedAPIKey)
+		// defaultOrgID, not organizationID - this secret was encrypted with
+		// the DEFAULT organization's DEK, since it's that organization's own
+		// EmbedderSetting being reused as the platform fallback.
+		return decryptedEmbedderConfig(tx, defaultOrgID, defaultSetting.Provider, defaultSetting.Model, defaultSetting.BaseURL, defaultSetting.EncryptedAPIKey)
 	}
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return sdkembedder.Config{}, false, err
@@ -227,10 +230,10 @@ func (s *Service) resolveEmbedderConfig(ctx context.Context, organizationID stri
 	return sdkembedder.Config{}, false, nil
 }
 
-func decryptedEmbedderConfig(provider, model, baseURL, encryptedAPIKey string) (sdkembedder.Config, bool, error) {
+func decryptedEmbedderConfig(gormDB *gorm.DB, organizationID, provider, model, baseURL, encryptedAPIKey string) (sdkembedder.Config, bool, error) {
 	apiKey := ""
 	if encryptedAPIKey != "" {
-		decrypted, err := decryptSecret(encryptedAPIKey)
+		decrypted, err := decryptSecret(gormDB, organizationID, encryptedAPIKey)
 		if err != nil {
 			return sdkembedder.Config{}, false, err
 		}

@@ -84,6 +84,14 @@ export function OrganizationFormDrawer({
         >
           <Input placeholder="acmecorp.com" />
         </Form.Item>
+        <Form.Item
+          name="min_app_version"
+          label="Minimum desktop app version"
+          rules={[{ pattern: /^\d+\.\d+\.\d+$/, message: 'Use major.minor.patch, e.g. 1.4.0' }]}
+          extra="Optional. Devices reporting an older version are flagged with a warning banner - this never blocks a device from working."
+        >
+          <Input placeholder="1.4.0" />
+        </Form.Item>
       </Form>
     </Drawer>
   )

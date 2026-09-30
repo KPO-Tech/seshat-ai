@@ -26,3 +26,12 @@ func Unauthorized(message string) error { return &Error{Kind: "unauthorized", Me
 func Forbidden(message string) error    { return &Error{Kind: "forbidden", Message: message} }
 func Conflict(message string) error     { return &Error{Kind: "conflict", Message: message} }
 func NotFound(message string) error     { return &Error{Kind: "not_found", Message: message} }
+
+// StepUpRequired means the caller is authenticated but this session hasn't
+// proven fresh identity recently enough for the action attempted - see
+// docs/helps/audit-2026-08-29-openwork-den-comparison.md § 9. Distinct from
+// Unauthorized (no valid session at all) and Forbidden (wrong permissions
+// regardless of freshness): a client needs to tell this apart from both to
+// know it should offer a re-auth prompt rather than a login screen or a
+// permission-denied message.
+func StepUpRequired(message string) error { return &Error{Kind: "step_up_required", Message: message} }

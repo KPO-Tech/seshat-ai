@@ -97,7 +97,7 @@ func (s *Service) GetApplication(ctx context.Context, principal *Principal, appl
 			return nil, ErrNotFound("application not found")
 		}
 	}
-	application := toApplication(record)
+	application := toApplication(tx, record)
 	return &application, nil
 }
 
@@ -210,7 +210,7 @@ func (s *Service) UpdateApplication(ctx context.Context, principal *Principal, a
 			return err
 		}
 
-		converted := toApplication(record)
+		converted := toApplication(tx, record)
 		application = &converted
 		return nil
 	})
@@ -273,7 +273,7 @@ func (s *Service) GetProvider(ctx context.Context, principal *Principal, provide
 			return nil, ErrNotFound("provider not found")
 		}
 	}
-	provider := toProvider(record)
+	provider := toProvider(tx, record)
 	return &provider, nil
 }
 
@@ -340,7 +340,7 @@ func (s *Service) UpdateProvider(ctx context.Context, principal *Principal, prov
 
 		storedClientSecret := config.ClientSecret
 		if storedClientSecret != "" {
-			encryptedClientSecret, err := sdb.EncryptSecret(storedClientSecret)
+			encryptedClientSecret, err := sdb.EncryptSecret(tx, record.OrganizationID, storedClientSecret)
 			if err != nil {
 				return fmt.Errorf("encrypt provider client secret: %w", err)
 			}
@@ -382,8 +382,9 @@ func (s *Service) UpdateProvider(ctx context.Context, principal *Principal, prov
 			return err
 		}
 
-		converted := toProvider(record)
-		converted.ClientSecret = config.ClientSecret
+		// See the matching comment in CreateProvider — never echo a
+		// caller-supplied secret back, toProvider's mask must stand.
+		converted := toProvider(tx, record)
 		provider = &converted
 		return nil
 	})
@@ -410,6 +411,9 @@ func (s *Service) DeleteProvider(ctx context.Context, principal *Principal, prov
 			return err
 		}
 		if err := requireOrganizationPermission(tx, principal, record.OrganizationID, "providers.manage", "organization.manage"); err != nil {
+			return err
+		}
+		if err := s.RequireFreshAuth(principal); err != nil {
 			return err
 		}
 		var applications []sdb.Application

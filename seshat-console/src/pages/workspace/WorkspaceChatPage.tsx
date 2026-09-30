@@ -1,17 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Input, Select, Space, Tooltip, Typography } from 'antd'
-import { ArrowDownOutlined, DownOutlined, PlusOutlined, SendOutlined } from '@ant-design/icons'
+import { ArrowDownOutlined, PlusOutlined, SendOutlined, StopFilled } from '@ant-design/icons'
 import { useAgentPresetsList } from '@/api/agentPresets'
-import { useProviderSettingsList } from '@/api/providerSettings'
+import { useUsableProviderSettingsList } from '@/api/providerSettings'
 import { ProviderIcon } from '@/components/ProviderIcon'
 import { WorkspaceChatMessage } from '@/components/workspace/WorkspaceChatMessage'
-import { getProviderLabel, getProviderModels } from '@/lib/providerCatalog'
+import { useProviderCatalog, getProviderLabel, getProviderModels } from '@/api/providerCatalog'
 import { createWorkspaceChatMessage, createWorkspaceChatSession } from '@/features/workspaceChat/storage'
 import { fetchWorkspaceChatSession, streamWorkspaceChat, type WorkspaceChatSessionHistory } from '@/features/workspaceChat/transport'
 import { clearStoredSessionId, getStoredSessionId, setStoredSessionId } from '@/features/workspaceChat/localSession'
-import type { WorkspaceChatEvent, WorkspaceChatSession, WorkspaceTraceStep } from '@/features/workspaceChat/types'
+import type { WorkspaceChatBlock, WorkspaceChatEvent, WorkspaceChatSession, WorkspaceTraceStatus } from '@/features/workspaceChat/types'
 import { useAuthStore } from '@/store/auth'
 import { useWorkspaceOrganizationStore } from '@/store/workspaceOrganization'
+import { palette } from '@/theme/tokens'
 
 function generateID(prefix: string) {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -24,65 +25,89 @@ function generateID(prefix: string) {
 // message of a session, returning a new session object - events arrive
 // fast enough during generation that this needs to stay a cheap,
 // allocation-light immutable update, not a deep clone.
+//
+// Blocks are appended in the exact order events arrive, which is what
+// makes the rendered order match the real generation order (see
+// WorkspaceChatBlock's doc comment). activeThinkingIdRef/activeTextIdRef
+// track "the block currently being appended to" for their own kind -
+// each is cleared whenever a *different* kind of event arrives, so a
+// tool_progress or a switch back to thinking always starts a fresh text
+// block afterward instead of resuming one from before the interruption.
 function applyEventToSession(
   session: WorkspaceChatSession,
   event: WorkspaceChatEvent,
   activeThinkingIdRef: { current: string | null },
+  activeTextIdRef: { current: string | null },
 ): WorkspaceChatSession {
   const messages = session.messages
   const lastIndex = messages.length - 1
   if (lastIndex < 0 || messages[lastIndex].role !== 'assistant') return session
   const last = messages[lastIndex]
-  const trace = last.trace ?? []
+  const blocks = last.blocks ?? []
 
   switch (event.type) {
     case 'thinking_delta': {
       const delta = event.delta ?? ''
       if (!delta) return session
+      activeTextIdRef.current = null
       const activeId = activeThinkingIdRef.current
-      const activeIndex = activeId ? trace.findIndex((step) => step.id === activeId) : -1
-      let nextTrace: WorkspaceTraceStep[]
+      const activeIndex = activeId ? blocks.findIndex((block) => block.id === activeId) : -1
+      let nextBlocks: WorkspaceChatBlock[]
       if (activeIndex >= 0) {
-        nextTrace = trace.map((step, index) => (index === activeIndex ? { ...step, content: (step.content ?? '') + delta } : step))
+        nextBlocks = blocks.map((block, index) => (index === activeIndex ? { ...block, content: (block.content ?? '') + delta } : block))
       } else {
-        const newStep: WorkspaceTraceStep = { id: generateID('trace'), kind: 'thinking', status: 'completed', content: delta }
-        activeThinkingIdRef.current = newStep.id
-        nextTrace = [...trace, newStep]
+        const newBlock: WorkspaceChatBlock = { id: generateID('block'), kind: 'thinking', content: delta }
+        activeThinkingIdRef.current = newBlock.id
+        nextBlocks = [...blocks, newBlock]
       }
-      return replaceLastMessage(session, { ...last, trace: nextTrace })
+      return replaceLastMessage(session, { ...last, blocks: nextBlocks })
     }
     case 'text_delta': {
-      activeThinkingIdRef.current = null
       const delta = event.delta ?? ''
       if (!delta) return session
-      return replaceLastMessage(session, { ...last, content: last.content + delta })
+      activeThinkingIdRef.current = null
+      const activeId = activeTextIdRef.current
+      const activeIndex = activeId ? blocks.findIndex((block) => block.id === activeId) : -1
+      let nextBlocks: WorkspaceChatBlock[]
+      if (activeIndex >= 0) {
+        nextBlocks = blocks.map((block, index) => (index === activeIndex ? { ...block, content: (block.content ?? '') + delta } : block))
+      } else {
+        const newBlock: WorkspaceChatBlock = { id: generateID('block'), kind: 'text', content: delta }
+        activeTextIdRef.current = newBlock.id
+        nextBlocks = [...blocks, newBlock]
+      }
+      return replaceLastMessage(session, { ...last, blocks: nextBlocks })
     }
     case 'tool_progress': {
       activeThinkingIdRef.current = null
+      activeTextIdRef.current = null
       const tool = event.tool
       if (!tool) return session
-      const index = trace.findIndex((step) => step.id === tool.tool_use_id)
-      const updatedStep: WorkspaceTraceStep = {
-        id: tool.tool_use_id || generateID('trace'),
+      const index = blocks.findIndex((block) => block.kind === 'tool' && block.id === tool.tool_use_id)
+      const updatedBlock: WorkspaceChatBlock = {
+        id: tool.tool_use_id || generateID('block'),
         kind: 'tool',
-        status: (tool.stage as WorkspaceTraceStep['status']) ?? 'running',
+        status: (tool.stage as WorkspaceTraceStatus) ?? 'running',
         toolName: tool.name,
         query: tool.query,
         summary: tool.summary,
+        input: tool.input,
+        result: tool.result,
+        durationMs: tool.duration_ms,
         webSearch: tool.web_search,
       }
-      const nextTrace = index >= 0 ? trace.map((step, i) => (i === index ? { ...step, ...updatedStep } : step)) : [...trace, updatedStep]
-      return replaceLastMessage(session, { ...last, trace: nextTrace })
+      const nextBlocks = index >= 0 ? blocks.map((block, i) => (i === index ? { ...block, ...updatedBlock } : block)) : [...blocks, updatedBlock]
+      return replaceLastMessage(session, { ...last, blocks: nextBlocks })
     }
     case 'done': {
       return replaceLastMessage(session, { ...last, status: 'complete' })
     }
     case 'error': {
-      return replaceLastMessage(session, {
-        ...last,
-        status: 'error',
-        content: last.content || event.message || 'Something went wrong.',
-      })
+      const hasText = blocks.some((block) => block.kind === 'text' && block.content)
+      const nextBlocks = hasText
+        ? blocks
+        : [...blocks, { id: generateID('block'), kind: 'text' as const, content: event.message || 'Something went wrong.' }]
+      return replaceLastMessage(session, { ...last, status: 'error', blocks: nextBlocks })
     }
     default:
       return session
@@ -100,6 +125,7 @@ function replaceLastMessage(session: WorkspaceChatSession, updated: WorkspaceCha
 // trace to how it looked live, instead of duplicating that logic server-side.
 function buildSessionFromHistory(history: WorkspaceChatSessionHistory, organizationId: string): WorkspaceChatSession {
   const activeThinkingIdRef = { current: null as string | null }
+  const activeTextIdRef = { current: null as string | null }
   const historyMessages = history.messages ?? []
   const fallbackTimestamp = new Date().toISOString()
 
@@ -139,6 +165,7 @@ function buildSessionFromHistory(history: WorkspaceChatSessionHistory, organizat
     }
 
     activeThinkingIdRef.current = null
+    activeTextIdRef.current = null
     session = {
       ...session,
       messages: [
@@ -149,12 +176,12 @@ function buildSessionFromHistory(history: WorkspaceChatSessionHistory, organizat
           content: '',
           createdAt: historyMessage.created_at ?? fallbackTimestamp,
           status: 'draft',
-          trace: [],
+          blocks: [],
         },
       ],
     }
     for (const event of historyMessage.events ?? []) {
-      session = applyEventToSession(session, event, activeThinkingIdRef)
+      session = applyEventToSession(session, event, activeThinkingIdRef, activeTextIdRef)
     }
     // A successful turn never persists a "done" event (see
     // workspacechat.Service.StreamChat) - an error event already flips
@@ -194,11 +221,13 @@ export function WorkspaceChatPage() {
 
   const abortControllerRef = useRef<AbortController | null>(null)
   const activeThinkingIdRef = useRef<string | null>(null)
+  const activeTextIdRef = useRef<string | null>(null)
   const pendingEventsRef = useRef<WorkspaceChatEvent[]>([])
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const providerSettings = useProviderSettingsList(activeOrganizationId)
+  const providerSettings = useUsableProviderSettingsList(activeOrganizationId)
   const agentPresets = useAgentPresetsList(activeOrganizationId)
+  const providerCatalog = useProviderCatalog()
 
   function stopStreaming() {
     abortControllerRef.current?.abort()
@@ -209,6 +238,7 @@ export function WorkspaceChatPage() {
     }
     pendingEventsRef.current = []
     activeThinkingIdRef.current = null
+    activeTextIdRef.current = null
   }
 
   // Streamed text/thinking deltas can arrive many times a second. Applying
@@ -233,7 +263,7 @@ export function WorkspaceChatPage() {
       if (!current) return current
       let next = current
       for (const event of events) {
-        next = applyEventToSession(next, event, activeThinkingIdRef)
+        next = applyEventToSession(next, event, activeThinkingIdRef, activeTextIdRef)
       }
       return next
     })
@@ -311,8 +341,8 @@ export function WorkspaceChatPage() {
 
   const selectedProviderSetting = (providerSettings.data ?? []).find((setting) => setting.id === selectedProviderSettingId) ?? null
   const modelOptions = useMemo(
-    () => getProviderModels(selectedProviderSetting?.provider, selectedProviderSetting?.default_model),
-    [selectedProviderSetting?.provider, selectedProviderSetting?.default_model],
+    () => getProviderModels(providerCatalog.data, selectedProviderSetting?.provider, selectedProviderSetting?.default_model),
+    [providerCatalog.data, selectedProviderSetting?.provider, selectedProviderSetting?.default_model],
   )
 
   useEffect(() => {
@@ -367,7 +397,7 @@ export function WorkspaceChatPage() {
     label: (
       <Space size={10} align="center">
         <ProviderIcon provider={setting.provider ?? 'provider'} size={22} />
-        <span>{getProviderLabel(setting.provider)}</span>
+        <span>{getProviderLabel(providerCatalog.data, setting.provider)}</span>
       </Space>
     ),
     value: setting.id!,
@@ -380,6 +410,29 @@ export function WorkspaceChatPage() {
 
   const currentTitle = chatSession?.title && chatSession.title !== 'Untitled scenario' ? chatSession.title : 'New chat'
   const hasMessages = Boolean(chatSession && chatSession.messages.length > 0)
+
+  // stopStreaming() alone only tears down the fetch/reducer plumbing - it
+  // never touches isGenerating or the in-flight draft message, which was
+  // fine as long as it only ran on cleanup paths (org switch, unmount,
+  // handleReset - each already resets that state some other way). Wiring
+  // it to a live Stop button needed both of those handled here instead,
+  // otherwise the composer would stay stuck showing a spinner and the
+  // draft message would stay 'draft' (and thus "Generating…") forever.
+  const handleStop = () => {
+    stopStreaming()
+    setIsGenerating(false)
+    setChatSession((current) => {
+      if (!current) return current
+      const lastIndex = current.messages.length - 1
+      if (lastIndex < 0) return current
+      const last = current.messages[lastIndex]
+      if (last.role !== 'assistant' || last.status !== 'draft') return current
+      const blocks = last.blocks ?? []
+      const hasText = blocks.some((block) => block.kind === 'text' && block.content)
+      const nextBlocks = hasText ? blocks : [...blocks, { id: generateID('block'), kind: 'text' as const, content: '_Stopped._' }]
+      return replaceLastMessage(current, { ...last, status: 'complete', blocks: nextBlocks })
+    })
+  }
 
   const handleReset = () => {
     stopStreaming()
@@ -415,10 +468,11 @@ export function WorkspaceChatPage() {
     setComposerError(null)
     setDraftPrompt('')
     activeThinkingIdRef.current = null
+    activeTextIdRef.current = null
 
     const userMessage = createWorkspaceChatMessage({ role: 'user', content, status: 'complete' })
     const assistantMessage = createWorkspaceChatMessage({ role: 'assistant', content: '', status: 'draft' })
-    assistantMessage.trace = []
+    assistantMessage.blocks = []
 
     // Read straight from this render's chatSession rather than a variable
     // assigned inside the setChatSession updater below - React doesn't
@@ -473,16 +527,50 @@ export function WorkspaceChatPage() {
       })
   }
 
+  // This page's real job is pre-rollout validation, not day-to-day
+  // productivity - an admin uses it to confirm a provider/MCP server/
+  // connector/corpus is actually reachable before an employee ever sees it
+  // via seshat-desktop. Starters reflect that: one per thing that can be
+  // misconfigured (Providers, MCP Servers, Connectors, Knowledge), each
+  // prompt phrased so the model's own reply is the pass/fail signal.
+  const STARTER_PROMPTS = [
+    {
+      icon: '🔌',
+      label: 'Test this provider',
+      sub: 'Confirm the selected LLM responds',
+      prompt: 'Reply with a short hello and tell me exactly which model you are, to confirm this provider is wired up correctly.',
+    },
+    {
+      icon: '🛠️',
+      label: 'Test MCP servers',
+      sub: 'Confirm registered MCP tools are reachable',
+      prompt: 'List every tool and MCP server currently available to you, then call one of them to confirm it actually works end-to-end.',
+    },
+    {
+      icon: '🔗',
+      label: 'Test a connector',
+      sub: 'Confirm an OAuth-connected account works',
+      prompt: 'Run a web search for today\'s date and summarize one result, to confirm the web search connector is working.',
+    },
+    {
+      icon: '📚',
+      label: 'Test knowledge search',
+      sub: 'Confirm RAG retrieval from a corpus',
+      prompt: 'Search the knowledge base for anything indexed and quote a short snippet back to me, to confirm RAG retrieval is working.',
+    },
+  ]
+
+  const handleSelectPrompt = (promptText: string) => {
+    setDraftPrompt(promptText)
+  }
+
   return (
     <div className="workspace-chat-page">
       <div className="workspace-chat-page__inner">
         <div className="workspace-chat-topbar">
-          <button className="workspace-chat-title" type="button">
-            <span>{currentTitle}</span>
-            <DownOutlined />
-          </button>
+          <span className="workspace-chat-title">{currentTitle}</span>
 
-          <Space size={12} wrap>
+          <Space size={10} wrap>
             {agentOptions.length > 0 ? (
               <Select
                 value={selectedAgentPresetId ?? undefined}
@@ -494,9 +582,17 @@ export function WorkspaceChatPage() {
                 popupMatchSelectWidth={false}
               />
             ) : null}
-            <Button type="text" icon={<PlusOutlined />} onClick={handleReset} className="workspace-chat-topbar__action">
-              New chat
-            </Button>
+            {hasMessages ? (
+              <Button
+                type="text"
+                size="small"
+                icon={<PlusOutlined />}
+                onClick={handleReset}
+                className="workspace-chat-topbar__action"
+              >
+                New chat
+              </Button>
+            ) : null}
           </Space>
         </div>
 
@@ -513,13 +609,32 @@ export function WorkspaceChatPage() {
             </div>
           ) : (
             <div className="workspace-chat-empty">
-              <Typography.Title level={2} style={{ margin: 0 }}>
-                Start a real chat flow
+              <div className="workspace-chat-empty__badge">
+                <span>✦</span> Workspace Assistant
+              </div>
+              <Typography.Title level={2} className="workspace-chat-empty__title">
+                How can I help you today?
               </Typography.Title>
-              <Typography.Text type="secondary" className="workspace-chat-empty__copy">
-                Talk to a real LLM using this organization's configured providers, with web search, knowledge search, and document
-                reading available as tools.
+              <Typography.Text className="workspace-chat-empty__copy">
+                Validate a provider, MCP server, connector or knowledge corpus here before your team uses it in Seshat Desktop.
               </Typography.Text>
+
+              <div className="workspace-prompt-chips">
+                {STARTER_PROMPTS.map((item) => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    className="workspace-prompt-chip"
+                    onClick={() => handleSelectPrompt(item.prompt)}
+                  >
+                    <span className="workspace-prompt-chip__icon">{item.icon}</span>
+                    <div className="workspace-prompt-chip__content">
+                      <span className="workspace-prompt-chip__label">{item.label}</span>
+                      <span className="workspace-prompt-chip__sub">{item.sub}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -543,7 +658,7 @@ export function WorkspaceChatPage() {
               value={draftPrompt}
               autoSize={{ minRows: 1, maxRows: 8 }}
               variant="borderless"
-              placeholder="Write a message..."
+              placeholder="Ask anything or request an action..."
               className="workspace-chat-composer__input"
               disabled={isLoadingHistory}
               onChange={(event) => setDraftPrompt(event.target.value)}
@@ -556,7 +671,16 @@ export function WorkspaceChatPage() {
             />
 
             <div className="workspace-chat-composer__toolbar">
-              <Button type="text" icon={<PlusOutlined />} className="workspace-chat-composer__icon" />
+              <div className="workspace-chat-composer__tools">
+                <Tooltip title="Attach files (coming soon)">
+                  <Button
+                    type="text"
+                    icon={<PlusOutlined />}
+                    className="workspace-chat-composer__attach"
+                    aria-label="Attach files"
+                  />
+                </Tooltip>
+              </div>
 
               <div className="workspace-chat-composer__selectors">
                 <Select
@@ -570,6 +694,8 @@ export function WorkspaceChatPage() {
                   className="workspace-chat-select workspace-chat-select--composer workspace-chat-select--provider"
                   popupMatchSelectWidth={false}
                   disabled={isGenerating}
+                  variant="borderless"
+                  size="small"
                 />
                 <Select
                   value={selectedModelId ?? undefined}
@@ -595,23 +721,29 @@ export function WorkspaceChatPage() {
                   popupMatchSelectWidth={280}
                   className="workspace-chat-select workspace-chat-select--composer"
                   disabled={modelOptions.length === 0 || isGenerating}
+                  variant="borderless"
+                  size="small"
                 />
-              </div>
 
-              <Tooltip title={isGenerating ? 'Generating…' : 'Send'}>
-                <Button
-                  type="text"
-                  icon={<SendOutlined />}
-                  className="workspace-chat-composer__send"
-                  onClick={handleSend}
-                  loading={isGenerating}
-                  disabled={isGenerating || isLoadingHistory}
-                />
-              </Tooltip>
+                <Tooltip title={isGenerating ? 'Stop generating' : 'Send message'}>
+                  <Button
+                    type="primary"
+                    danger={isGenerating}
+                    icon={isGenerating ? <StopFilled /> : <SendOutlined />}
+                    className="workspace-chat-composer__send"
+                    onClick={isGenerating ? handleStop : handleSend}
+                    disabled={isLoadingHistory || (!isGenerating && !draftPrompt.trim())}
+                  />
+                </Tooltip>
+              </div>
             </div>
           </div>
 
-          {composerError ? <Typography.Text type="danger">{composerError}</Typography.Text> : null}
+          {composerError ? (
+            <div style={{ marginTop: 8, padding: '4px 8px', borderRadius: 6, background: palette.dangerSoft, color: palette.danger, fontSize: 12.5 }}>
+              {composerError}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

@@ -8,13 +8,17 @@ Read this file before changing code in this repository.
 
 `seshat-ai` is the private product layer built on top of [seshat](https://github.com/KPO-Tech/seshat), the open-source Go runtime.
 
-The repository now contains three main sub-projects:
+The repository contains these sub-projects. This file's build/test/layering rules below are scoped to the three Go/Electron ones this doc was originally written for (`seshat-backend`, `seshat-server`, `seshat-ui`) — the others have their own docs.
 
 | Directory | Language | Role |
 |---|---|---|
 | `seshat-backend/` | Go | local backend / desktop HTTP API |
 | `seshat-server/` | Go | cloud server for auth, orgs, jobs, sync |
-| `seshat-ui/` | TypeScript / Electron | desktop client that consumes the local API |
+| `seshat-ui/` | TypeScript / Electron | desktop client that consumes the local API — being superseded by `seshat-desktop/`, see its own `AGENTS.md` |
+| `seshat-desktop/` | TypeScript / Electron | the active desktop client rebuild, see its own `AGENTS.md` |
+| `seshat-console/` | TypeScript / Vite+React | web admin console for `seshat-server`, see `seshat-console/README.md` |
+| `website/` | — | public marketing site, see `website/README.md` |
+| `deploy/` | — | Docker Compose deployment for the `seshat-server`/`seshat-console` cloud stack, see `deploy/README.md` |
 
 `seshat` — the open-source runtime — is not vendored here. It's an external Go module,
 `github.com/KPO-Tech/seshat`, required directly in `seshat-backend/go.mod` and
@@ -25,11 +29,16 @@ Dependency direction is one-way:
 
 ```text
 seshat-ui       → seshat-backend   (HTTP only)
-seshat-server   → seshat-backend   (temporary shared Go packages)
 seshat-backend  → seshat           (pkg/* only)
+seshat-server   → seshat           (pkg/* only)
 seshat          → seshat-backend   (never)
 seshat          → seshat-server    (never)
 ```
+
+`seshat-server` does not import `seshat-backend` (confirmed 2026-08-10 — zero
+occurrences in `seshat-server/go.mod` or any import). See
+`docs/architecture.md`'s "Cloud server bootstrap" section for the current
+(mature, not bootstrap-stage) shape of `seshat-server`.
 
 `seshat-backend` may import `seshat/pkg/*` freely. It must never import `seshat/internal/*`.
 

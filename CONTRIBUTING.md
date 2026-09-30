@@ -20,14 +20,22 @@ SeshatOS (`seshat-ai`) is the product layer built on the Seshat Go runtime: a se
 
 ```
 main          production-ready, tagged releases only
-  └── dev     stable integration branch — all feature work lands here first
-        └── <type>/<slug>   your working branch, one per issue
+  └── dev     stable integration branch — CI-gated, PR only
+        └── staging   accumulation branch — direct push/merge, no PR, no CI
+              └── <type>/<slug>   your working branch, one per issue
 ```
 
-- Branch off `dev`, not `main`.
+- Branch off `staging`, not `dev` or `main`.
+- `staging` exists specifically to avoid burning this private repo's limited monthly
+  GitHub Actions minutes: per `.github/workflows/ci.yml`, CI only triggers on a
+  `pull_request` targeting `main`/`dev`, or a direct push to `main` — pushing to
+  `staging` (or any topic branch) never runs CI. Merge topic branches into `staging`
+  directly, no PR needed, and batch up work there.
 - Never commit or push directly to `main`.
 - Never commit or push directly to `dev`.
-- All work must flow through PRs: `<type>/*` → `dev`, then `dev` → `main`.
+- `staging` → `dev` happens via **one PR covering everything accumulated since the
+  last sync** (this is the point CI actually runs — batch it, don't open a PR per
+  topic branch). `dev` → `main` remains its own PR at milestone boundaries.
 - Name your branch `<type>/<short-slug>` where `<type>` is one of `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf`, or `ci`.
 - Open PRs **targeting `dev`**. The only allowed PR into `main` is `dev` → `main` at milestone boundaries.
 - Direct PRs from topic branches into `main` will be closed without merge.
@@ -48,7 +56,8 @@ main          production-ready, tagged releases only
 
 ### Requirements
 
-- Go 1.25+
+- Go 1.26+
+- Node.js 22+ (for desktop, console, and website builds)
 - `golangci-lint` for linting
 - SQLite3 (for local dev; PostgreSQL is optional)
 

@@ -27,6 +27,10 @@ type UpdateUserParams struct {
 	DisplayName *string
 	Password    *string
 	Status      *string
+	// Role, when set, replaces the target user's entire role set with this
+	// single role (e.g. promote a member to admin, or the reverse). Not the
+	// same as CreateUserParams.Roles, which only ever adds to an empty set.
+	Role *string
 }
 
 type CreateOrganizationParams struct {
