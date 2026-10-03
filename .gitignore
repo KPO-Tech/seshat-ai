@@ -32,11 +32,6 @@ Thumbs.db
 .gemini/
 graphify-out/
 
-# Private local-only material. CV collateral is intentionally versioned under
-# private/cvs-specialises/.
-private/.env*
-private/capture/
-
 # Generic local artifacts
 *.log
 tmp/
