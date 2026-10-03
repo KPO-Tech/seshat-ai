@@ -20,7 +20,7 @@
     "@types/react-dom": "^19.1.0",
     "@vitejs/plugin-react": "^4.5.2",
     "typescript": "^5.8.3",
-    "vite": "^6.3.5"
+    "vite": "^8.3.1"
   },
   "description": "Marketing website for Seshat, the open-source self-hosted agent platform for governed execution and enterprise deployment."
 }
