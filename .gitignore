@@ -1,4 +1,12 @@
-# Go workspace local overrides (committed: go.work, go.work.sum)
+# Legacy monorepo modules moved to dedicated repositories.
+seshat-backend/
+seshat-console/
+seshat-desktop/
+seshat-intelligence/
+seshat-server/
+shared/
+deploy/
+scripts/
 
 
 # Environment files
@@ -22,7 +30,9 @@ Thumbs.db
 .claude/
 .worktrees/
 .gemini/
-private/
+private/*
+!private/cvs-specialises/
+!private/cvs-specialises/**
 graphify-out/
 
 # Generic local artifacts

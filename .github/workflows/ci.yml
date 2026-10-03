@@ -2,13 +2,10 @@ name: CI
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "staging"]
   pull_request:
-    branches: ["main", "dev"]
+    branches: ["main", "staging"]
 
-# Cancel superseded runs on the same PR/branch instead of letting each one burn
-# its full runner-minutes to completion - iterating with a few quick pushes in
-# a row used to bill for every intermediate run, not just the final one.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -17,272 +14,15 @@ permissions:
   contents: read
 
 jobs:
-  # Runs first so build/test/lint/desktop/website can skip entirely (near-zero
-  # billable minutes) when the diff doesn't touch the part of the monorepo
-  # they cover, instead of every PR paying for backend + desktop + website
-  # regardless of what actually changed. Falls back to "run everything" if the
-  # diff can't be computed, so a missing base ref never silently skips checks.
-  changes:
-    name: Detect changes
-    runs-on: ubuntu-latest
-    outputs:
-      backend: ${{ steps.filter.outputs.backend }}
-      desktop: ${{ steps.filter.outputs.desktop }}
-      console: ${{ steps.filter.outputs.console }}
-      openapi: ${{ steps.filter.outputs.openapi }}
-      compose: ${{ steps.filter.outputs.compose }}
-      website: ${{ steps.filter.outputs.website }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - id: filter
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            BASE="${{ github.event.pull_request.base.sha }}"
-          else
-            BASE="${{ github.event.before }}"
-          fi
-          if [ -z "$BASE" ] || ! git cat-file -e "$BASE" 2>/dev/null; then
-            echo "no usable base ref, running everything"
-            echo "backend=true" >> "$GITHUB_OUTPUT"
-            echo "desktop=true" >> "$GITHUB_OUTPUT"
-            echo "console=true" >> "$GITHUB_OUTPUT"
-            echo "openapi=true" >> "$GITHUB_OUTPUT"
-            echo "compose=true" >> "$GITHUB_OUTPUT"
-            echo "website=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          CHANGED=$(git diff --name-only "$BASE" "${{ github.sha }}")
-          echo "$CHANGED"
-          echo "backend=$(echo "$CHANGED" | grep -qE '^(seshat-backend/|seshat-server/|go\.work)' && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          echo "desktop=$(echo "$CHANGED" | grep -q '^seshat-desktop/' && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          echo "console=$(echo "$CHANGED" | grep -q '^seshat-console/' && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          echo "openapi=$(echo "$CHANGED" | grep -qE '^(seshat-server/openapi\.yaml|seshat-console/(package(-lock)?\.json|src/api/schema\.d\.ts))$' && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          echo "compose=$(echo "$CHANGED" | grep -qE '^(deploy/|scripts/smoke-compose-core\.sh|Makefile|seshat-server/Dockerfile|seshat-console/(Dockerfile|nginx\.conf|package(-lock)?\.json))' && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          echo "website=$(echo "$CHANGED" | grep -q '^website/' && echo true || echo false)" >> "$GITHUB_OUTPUT"
-
-  build:
-    name: Build
-    needs: changes
-    if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.work
-          cache-dependency-path: |
-            go.work.sum
-            seshat-backend/go.sum
-            seshat-server/go.sum
-
-      - name: Build
-        run: go build ./seshat-backend/... ./seshat-server/...
-
-  test:
-    name: Test
-    needs: changes
-    if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.work
-          cache-dependency-path: |
-            go.work.sum
-            seshat-backend/go.sum
-            seshat-server/go.sum
-
-      - name: Tests
-        run: go test ./seshat-backend/... ./seshat-server/... -timeout 10m
-
-      - name: Race-sensitive tests
-        # A monorepo-wide race run can take longer than the useful CI signal.
-        # Keep the complete test suite above, then race-check the packages that
-        # hold request/session state, document ingestion, and server policy.
-        run: |
-          go test -race -timeout 8m \
-            ./seshat-backend/internal/config \
-            ./seshat-backend/internal/documentreading \
-            ./seshat-backend/internal/files \
-            ./seshat-backend/internal/query \
-            ./seshat-server/internal/server/api \
-            ./seshat-server/internal/server/config \
-            ./seshat-server/internal/server/iam
-
-  lint:
-    name: Lint
-    needs: changes
-    if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.work
-          cache-dependency-path: |
-            go.work.sum
-            seshat-backend/go.sum
-            seshat-server/go.sum
-
-      - name: Check formatting
-        run: |
-          UNFORMATTED=$(find . -name "*.go" | xargs gofmt -l)
-          if [ -n "$UNFORMATTED" ]; then
-            echo "Unformatted files:"
-            echo "$UNFORMATTED"
-            exit 1
-          fi
-
-      - name: go vet
-        run: go vet ./seshat-backend/... ./seshat-server/...
-
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: v1.64.8
-          install-mode: goinstall
-          args: --timeout=5m ./seshat-backend/... ./seshat-server/...
-
-  security:
-    name: Security
-    needs: changes
-    if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.work
-          cache-dependency-path: |
-            go.work.sum
-            seshat-backend/go.sum
-            seshat-server/go.sum
-
-      - name: gosec
-        uses: securego/gosec@master
-        with:
-          args: -exclude-generated ./seshat-backend/... ./seshat-server/...
-
-      - name: govulncheck
-        run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
-          (cd seshat-backend && govulncheck ./...)
-          (cd seshat-server && govulncheck ./...)
-
-  desktop:
-    name: Desktop
-    needs: changes
-    if: needs.changes.outputs.desktop == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: seshat-desktop/package-lock.json
-
-      - name: Install dependencies
-        working-directory: seshat-desktop
-        run: npm ci
-
-      - name: Typecheck
-        working-directory: seshat-desktop
-        run: npm run typecheck
-
-      - name: Lint
-        working-directory: seshat-desktop
-        run: npm run lint
-
-      - name: Tests
-        working-directory: seshat-desktop
-        run: npm test
-
-      - name: Build
-        working-directory: seshat-desktop
-        run: npm run build
-
-  console:
-    name: Console
-    needs: changes
-    if: needs.changes.outputs.console == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: seshat-console/package-lock.json
-
-      - name: Install dependencies
-        working-directory: seshat-console
-        run: npm ci
-
-      - name: Lint
-        working-directory: seshat-console
-        run: npm run lint
-
-      - name: Build (includes typecheck)
-        working-directory: seshat-console
-        run: npm run build
-
-  openapi_schema:
-    name: OpenAPI Schema
-    needs: changes
-    if: needs.changes.outputs.openapi == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: seshat-console/package-lock.json
-
-      - name: Install dependencies
-        working-directory: seshat-console
-        run: npm ci
-
-      - name: Check generated OpenAPI types
-        working-directory: seshat-console
-        run: npm run api:check
-
-  compose_core_smoke:
-    name: Compose Core Smoke
-    needs: changes
-    if: needs.changes.outputs.compose == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Smoke core compose stack
-        run: bash scripts/smoke-compose-core.sh
-
   website:
     name: Website
-    needs: changes
-    if: needs.changes.outputs.website == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: "22"
           cache: npm
           cache-dependency-path: website/package-lock.json
 
@@ -298,28 +38,14 @@ jobs:
     name: Branch Policy
     runs-on: ubuntu-latest
     steps:
-      - name: Enforce PR branch flow
+      - name: Enforce staging to main
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" && \
                 "${{ github.base_ref }}" == "main" && \
-                "${{ github.head_ref }}" != "dev" ]]; then
-            echo "Pull requests targeting main must come from dev."
+                "${{ github.head_ref }}" != "staging" ]]; then
+            echo "Pull requests targeting main must come from staging."
             echo "Current head branch: ${{ github.head_ref }}"
             exit 1
-          fi
-
-          if [[ "${{ github.event_name }}" == "pull_request" && \
-                "${{ github.base_ref }}" == "dev" ]]; then
-            case "${{ github.head_ref }}" in
-              staging|feat/*|feature/*|fix/*|bugfix/*|docs/*|refactor/*|test/*|chore/*|perf/*|ci/*)
-                ;;
-              *)
-                echo "Pull requests targeting dev must come from staging or a typed topic branch."
-                echo "Allowed: staging, feat/, feature/, fix/, bugfix/, docs/, refactor/, test/, chore/, perf/, ci/"
-                echo "Current head branch: ${{ github.head_ref }}"
-                exit 1
-                ;;
-            esac
           fi
 
           echo "Branch policy check passed."
@@ -327,37 +53,14 @@ jobs:
   gate:
     name: Gate
     runs-on: ubuntu-latest
-    needs: [changes, build, test, lint, security, desktop, console, openapi_schema, compose_core_smoke, website, branch-policy]
+    needs: [website, branch-policy]
     if: always()
     steps:
       - name: All checks passed
         run: |
-          # build/test/lint/security/desktop/console/openapi/compose/website are conditionally
-          # skipped by the changes job when the diff doesn't touch what they
-          # cover - treat "skipped" as passing, same as "success". changes and
-          # branch-policy always run and must succeed outright.
-          ok() { [[ "$1" == "success" || "$1" == "skipped" ]]; }
-          if ! ok "${{ needs.build.result }}" || \
-             ! ok "${{ needs.test.result }}" || \
-             ! ok "${{ needs.lint.result }}" || \
-             ! ok "${{ needs.security.result }}" || \
-             ! ok "${{ needs.desktop.result }}" || \
-             ! ok "${{ needs.console.result }}" || \
-             ! ok "${{ needs.openapi_schema.result }}" || \
-             ! ok "${{ needs.compose_core_smoke.result }}" || \
-             ! ok "${{ needs.website.result }}" || \
-             [[ "${{ needs.changes.result }}" != "success" ]] || \
-             [[ "${{ needs.branch-policy.result }}" != "success" ]]; then
+          if [[ "${{ needs.website.result }}" != "success" || \
+                "${{ needs.branch-policy.result }}" != "success" ]]; then
             echo "One or more required checks failed."
-            echo "  changes:       ${{ needs.changes.result }}"
-            echo "  build:         ${{ needs.build.result }}"
-            echo "  test:          ${{ needs.test.result }}"
-            echo "  lint:          ${{ needs.lint.result }}"
-            echo "  security:      ${{ needs.security.result }}"
-            echo "  desktop:       ${{ needs.desktop.result }}"
-            echo "  console:       ${{ needs.console.result }}"
-            echo "  openapi-schema: ${{ needs.openapi_schema.result }}"
-            echo "  compose-smoke: ${{ needs.compose_core_smoke.result }}"
             echo "  website:       ${{ needs.website.result }}"
             echo "  branch-policy: ${{ needs.branch-policy.result }}"
             exit 1

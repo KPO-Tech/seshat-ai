@@ -1,0 +1,266 @@
+%-------------------------
+% Resume in Latex
+% Author : Stéphane KPOVIESSI
+% Target: Big Data & AI Engineer / Data Scientist / GenAI Engineer
+% Format: Two-Page Resume
+% Version: EN (English version - international / Artefact Belgium)
+%-------------------------
+
+\documentclass[a4paper,11pt]{article}
+
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{enumitem}
+\usepackage[colorlinks=true, urlcolor=primary, linkcolor=primary]{hyperref}
+\usepackage{fancyhdr}
+\usepackage{tabularx}
+\usepackage{needspace}
+\usepackage{graphicx}
+\usepackage{tikz}
+\input{glyphtounicode}
+
+% --- COLOURS ---
+\definecolor{primary}{RGB}{0, 79, 144}
+\definecolor{darkgrey}{RGB}{50, 50, 50}
+
+%----------FONT OPTIONS----------
+\usepackage[sfdefault]{noto-sans}
+\usepackage[T1]{fontenc}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+\setlength{\footskip}{4.1pt}
+
+% --- MARGINS ---
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1.0in}
+\addtolength{\topmargin}{-0.65in}
+\addtolength{\textheight}{1.45in}
+
+\urlstyle{same}
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+% --- FORMATTING ---
+\titleformat{\section}{
+  \vspace{-4pt}\scshape\raggedright\large\color{primary}
+}{}{0em}{}[\color{primary}\titlerule \vspace{0pt}]
+
+\pdfgentounicode=1
+
+%-------------------------
+% Custom commands
+\newcommand{\resumeItem}[1]{
+  \item\small{{#1 \vspace{-1.5pt}}}
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{1pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      {\color{primary}\textbf{#1}} & #2 \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-4pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+    \Needspace{6\baselineskip}
+    \vspace{2pt}\item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \small#1 & #2 \\
+    \end{tabular*}\vspace{-3pt}
+}
+
+\newcommand{\resumeSubItem}[1]{\resumeItem{#1}\vspace{-4pt}}
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}[leftmargin=0.15in, label={\small\textbullet}, itemsep=1.5pt, parsep=0pt, topsep=2pt, partopsep=0pt]}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-1pt}}
+
+%-------------------------------------------
+\begin{document}
+
+%----------HEADING----------
+\noindent
+\begin{minipage}[c]{0.20\textwidth}
+  \centering
+  \begin{tikzpicture}
+    \begin{scope}
+      \clip (0,0) circle (1.45cm);
+      \node at (0,0) {\includegraphics[width=2.9cm]{./profile.jpeg}};
+    \end{scope}
+    \draw[color=primary, line width=1.2pt] (0,0) circle (1.45cm);
+  \end{tikzpicture}
+\end{minipage}%
+\hspace{0.01\textwidth}%
+\begin{minipage}[c]{0.77\textwidth}
+  \centering
+  {\Huge \scshape \color{primary} Stéphane KPOVIESSI} \\[3pt]
+  {\large \textbf{Big Data \& Artificial Intelligence Engineer}} \\[7pt]
+  \small
+  Paris Area, France
+    \enspace$|$\enspace Open to relocation \& international opportunities
+    \enspace$|$\enspace +33\,7\,48\,59\,47\,13 \\[2pt]
+  \href{mailto:oastephanekpoviessi@gmail.com}{oastephanekpoviessi@gmail.com}
+    \enspace$|$\enspace
+  \href{https://linkedin.com/in/stephanekpoviessi}{LinkedIn}
+    \enspace$|$\enspace
+  \href{https://github.com/EngineerProjects}{GitHub}
+    \enspace$|$\enspace
+  \href{https://seshat-ai.com}{Seshat-AI}
+    \enspace$|$\enspace
+  \href{https://kpoviessi-stephane.vercel.app/}{Portfolio}
+\end{minipage}
+\vspace{3pt}
+
+%-----------PROFILE-----------
+\section{PROFILE}
+\small{
+Data \& AI Engineer with an Engineering degree in Big Data \& Data Science, experienced in building \textbf{data pipelines}, analytics solutions and AI-powered systems. Hands-on experience with Python, SQL, PySpark and Azure Databricks for large-scale data processing, alongside machine learning and modern AI technologies. Strong ability to translate complex data and business requirements into reliable, actionable solutions, from data preparation and modelling to automation and AI-driven applications.
+}
+\vspace{4pt}
+
+
+%-----------EXPERIENCE-----------
+\section{PROFESSIONAL EXPERIENCE}
+\resumeSubHeadingListStart
+
+\resumeSubheading
+{Data Engineer / Data Scientist}{Nov 2025 -- Apr 2026}
+{Allianz France | P4D Division, Advanced Data \& Climate Team}{Paris, France}
+\resumeItemListStart
+  \resumeItem{Migrated an insurance datamart from SAS to \textbf{Python/PySpark}, ensuring functional parity across more than \textbf{15,000 lines} of legacy code.}
+  \resumeItem{Implemented a \textbf{Medallion architecture} on Azure Databricks integrating \textbf{150+ business rules} to provide reliable datasets for analytical use cases.}
+  \resumeItem{Designed and automated a \textbf{geospatial data quality} pipeline to improve the reliability of reporting and downstream processing.}
+  \resumeItem{Developed an automated \textbf{SAS/Python testing framework} for non-regression validation and production readiness.}
+\resumeItemListEnd
+
+\resumeSubheading
+{Data Analyst -- Strategic Support Missions}{2023 -- 2025}
+{LYNE ET FRERES SARL \normalfont\small(Recurring Data Analysis Missions)}{Ikpinle, Benin / Remote}
+\resumeItemListStart
+  \resumeItem{Analysed commercial, operational and market data with \textbf{Python/Pandas} to support diversification decisions and monitor key performance indicators.}
+  \resumeItem{Designed reports and interactive dashboards with \textbf{Streamlit} and HTML/CSS/JavaScript interfaces to share analyses with company staff.}
+  \resumeItem{Performed analytical monitoring of agricultural activities, including palm plantations and transformation stages, to identify operational improvement opportunities.}
+  \resumeItem{Set up and supported responsible internal use of AI tools based on \textbf{OpenWebUI} and open-source models for business use cases.}
+\resumeItemListEnd
+
+\resumeSubheading
+{Machine Learning Engineer}{May 2024 -- Aug 2024}
+{Groupe Sylvagreg \normalfont\small(Internship)}{Lille, France} 
+\resumeItemListStart
+  \resumeItem{Researched and developed a 3D reconstruction solution from 2D images using Computer Vision, photogrammetry and PyTorch-based generative models.}
+  \resumeItem{Automated preprocessing, data augmentation and generation pipelines to improve inference reliability.}
+  \resumeItem{Deployed the solution on \textbf{AWS} using \textbf{Docker}, with a visualization interface for business users.}
+\resumeItemListEnd
+
+\resumeSubHeadingListEnd
+
+%-----------PROJECTS-----------
+\section{SELECTED PROJECTS}
+\resumeSubHeadingListStart
+
+\resumeProjectHeading
+{\textbf{Seshat \& Seshat-AI} $|$ \emph{Go, TypeScript, RAG, MCP, Multi-Agent Systems, PostgreSQL}}{\href{https://github.com/EngineerProjects/seshat}{GitHub}}
+\resumeItemListStart
+  \resumeItem{Designed and developed an end-to-end \textbf{agentic AI platform}, including a Go runtime, embedded local backend, multi-tenant cloud backend, Electron/React desktop application and administration console.}
+  \resumeItem{Built a \textbf{hybrid RAG engine} with document chunking, multi-provider embeddings and vector search, integrated with a \textbf{multi-agent orchestrator} capable of executing external tools through the \textbf{Model Context Protocol (MCP)}.}
+  \resumeItem{Designed a multi-provider \textbf{LLM abstraction layer} supporting OpenAI, Mistral, Gemini and Ollama, enabling shared capabilities across text generation, embeddings, image and audio services.}
+  \resumeItem{Implemented enterprise-oriented capabilities including permissions, auditability, \textbf{human-in-the-loop} supervision, scheduled tasks and workflow automation.}
+  \resumeItem{Implemented secure credential storage using native OS keychains (DPAPI/Keychain/libsecret), authentication and session management.}
+\resumeItemListEnd
+
+\resumeProjectHeading
+{\textbf{Tech Watch Agent} $|$ \emph{Python, FastAPI, LangGraph, PostgreSQL, pgvector, React, Docker}}{\href{https://github.com/EngineerProjects/tech-watch-agent}{GitHub}}
+\resumeItemListStart
+  \resumeItem{Developed a \textbf{multi-agent technology intelligence platform} automating planning, multi-source collection and targeted report generation.}
+  \resumeItem{Built a FastAPI backend with \textbf{LangGraph} orchestration and PostgreSQL/\textbf{pgvector} semantic memory, packaged as a Docker-based stack with a React frontend.}
+\resumeItemListEnd
+
+\resumeProjectHeading
+{\textbf{BI Retail Solution} $|$ \emph{Python, PySpark, Airflow, PostgreSQL, Power BI, Docker}}
+{\href{https://github.com/EngineerProjects/BI_Retail}{GitHub}}
+\resumeItemListStart
+  \resumeItem{Built an end-to-end retail data pipeline covering data generation and ingestion, \textbf{PySpark} transformations and loading into a \textbf{PostgreSQL Data Warehouse}.}
+  \resumeItem{Orchestrated workflows with \textbf{Apache Airflow} and Docker Compose, with \textbf{Power BI} dashboards covering sales, customers, inventory and logistics performance.}
+\resumeItemListEnd
+
+\resumeProjectHeading
+{\textbf{Autonomous Waste Collection Robot} $|$ \emph{Python, YOLOv8, OpenCV, Reinforcement Learning, Dijkstra}}
+{AceObject}
+\resumeItemListStart
+  \resumeItem{Developed a computer vision pipeline using \textbf{YOLOv8} and \textbf{OpenCV} to detect, classify and track waste objects while distinguishing them from obstacles.}
+  \resumeItem{Implemented \textbf{Dijkstra}-based path planning to compute efficient navigation routes for autonomous waste collection in environments such as beaches.}
+  \resumeItem{Explored \textbf{reinforcement learning} for autonomous decision-making and obstacle avoidance, combining visual perception with robot navigation.}
+\resumeItemListEnd
+
+\resumeSubHeadingListEnd
+
+
+%-----------SKILLS-----------
+\section{TECHNICAL SKILLS}
+\begin{itemize}[leftmargin=0.15in, label={}]
+\small{\item{
+\textbf{Generative AI \& Agents} : LLMs, RAG, Multi-Agent Systems, MCP, Tool Calling, LangGraph, LangChain, Human-in-the-Loop, Workflow Automation \\
+\textbf{Programming} : Python, Go, SQL, Bash \\
+\textbf{Data Engineering} : PySpark, Delta Lake, ETL/ELT, Apache Airflow, Azure Databricks, Medallion Architecture, Data Quality \\
+\textbf{Machine Learning} : Pandas, Scikit-learn, PyTorch, TensorFlow/Keras, YOLOv8, OpenCV, Computer Vision, Forecasting, Model Evaluation \\
+\textbf{Backend \& Data} : FastAPI, REST APIs, PostgreSQL, pgvector, SSE \\
+\textbf{Cloud \& DevOps} : Azure (ADLS, ADF, Databricks), AWS (EC2, S3), Docker, Git, CI/CD
+}}
+\end{itemize}
+
+
+%-----------EDUCATION-----------
+\section{EDUCATION}
+\resumeSubHeadingListStart
+  \resumeSubheading
+    {JUNIA ISEN}{Lille, France}
+    {Engineering Degree | Big Data \& Data Science}{Graduated 2026}
+  \resumeSubheading
+    {JUNIA ISEN}{Rabat, Morocco}
+    {Bachelor's Degree | Electronics \& Digital Systems}{2023}
+  \resumeSubheading
+    {Marie Stella Preparatory Programme}{Cotonou, Benin}
+    {MPSI Preparatory Classes | Mathematics, Physics, Engineering Science}{2022}
+\resumeSubHeadingListEnd
+
+%-----------CERTIFICATIONS-----------
+\section{CERTIFICATIONS}
+\begin{itemize}[leftmargin=0.15in, label={}]
+\small{\item{
+\textbf{Supervised Machine Learning} | \href{https://www.coursera.org/learn/machine-learning}{DeepLearning.AI} $|$ 2023 \vspace{1.5pt} \\
+\textbf{Microsoft AI Engineer Career Path} | Microsoft Learn $|$ In Progress
+}}
+\end{itemize}
+
+%-----------LANGUAGES-----------
+\section{LANGUAGES}
+\begin{itemize}[leftmargin=0.15in, label={}]
+  \small{\item{
+   \textbf{French} : Native \vspace{1.5pt} \\
+   \textbf{English} : B2 | Linguaskill Business English \vspace{1.5pt} \\
+   \textbf{Yoruba, Fon, Goun} : Native / Bilingual
+  }}
+\end{itemize}
+
+%-----------LEADERSHIP-----------
+\section{LEADERSHIP \& ACTIVITIES}
+\resumeSubHeadingListStart
+  \resumeSubheading
+    {Vice-President | JUNIA ALUMNI Network Committee}{Sep 2024 -- Aug 2025}
+    {Network coordination, alumni engagement and professional events}{Lille, France}
+
+  \resumeSubheading
+    {Communications Lead | JUNIA ALUMNI Network Committee}{Sep 2023 -- Aug 2024}
+    {Communication and promotion of alumni initiatives}{Lille, France}
+\resumeSubHeadingListEnd
+
+\end{document}
