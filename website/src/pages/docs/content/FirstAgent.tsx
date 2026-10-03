@@ -4,7 +4,7 @@ import styles from './DocArticle.module.css'
 
 const CHAT_CMD = 'seshat chat'
 const RUN_CMD = 'seshat run "Read this project, identify the next valuable improvement, and explain why"'
-const SDK_SNIPPET = 'package main\n\nimport (\n  "context"\n  "log"\n\n  "github.com/EngineerProjects/seshat/pkg/sdk"\n)\n\nfunc main() {\n  client, err := sdk.NewClient(sdk.DefaultClientConfig())\n  if err != nil {\n    log.Fatal(err)\n  }\n  defer client.Close()\n\n  resp, err := client.Query(context.Background(), "Write a Go function that reverses a string", nil)\n  if err != nil {\n    log.Fatal(err)\n  }\n\n  log.Println(resp.Text)\n}'
+const SDK_SNIPPET = 'package main\n\nimport (\n  "context"\n  "log"\n\n  "github.com/KPO-Tech/seshat/pkg/sdk"\n)\n\nfunc main() {\n  client, err := sdk.NewClient(sdk.DefaultClientConfig())\n  if err != nil {\n    log.Fatal(err)\n  }\n  defer client.Close()\n\n  resp, err := client.Query(context.Background(), "Write a Go function that reverses a string", nil)\n  if err != nil {\n    log.Fatal(err)\n  }\n\n  log.Println(resp.Text)\n}'
 
 export default function FirstAgent() {
   const { pathname } = useLocation()

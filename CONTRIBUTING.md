@@ -20,14 +20,22 @@ SeshatOS (`seshat-ai`) is the product layer built on the Seshat Go runtime: a se
 
 ```
 main          production-ready, tagged releases only
-  └── dev     stable integration branch — all feature work lands here first
-        └── <type>/<slug>   your working branch, one per issue
+  └── dev     stable integration branch — CI-gated, PR only
+        └── staging   accumulation branch — direct push/merge, no PR, no CI
+              └── <type>/<slug>   your working branch, one per issue
 ```
 
-- Branch off `dev`, not `main`.
+- Branch off `staging`, not `dev` or `main`.
+- `staging` exists specifically to avoid burning this private repo's limited monthly
+  GitHub Actions minutes: per `.github/workflows/ci.yml`, CI only triggers on a
+  `pull_request` targeting `main`/`dev`, or a direct push to `main` — pushing to
+  `staging` (or any topic branch) never runs CI. Merge topic branches into `staging`
+  directly, no PR needed, and batch up work there.
 - Never commit or push directly to `main`.
 - Never commit or push directly to `dev`.
-- All work must flow through PRs: `<type>/*` → `dev`, then `dev` → `main`.
+- `staging` → `dev` happens via **one PR covering everything accumulated since the
+  last sync** (this is the point CI actually runs — batch it, don't open a PR per
+  topic branch). `dev` → `main` remains its own PR at milestone boundaries.
 - Name your branch `<type>/<short-slug>` where `<type>` is one of `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf`, or `ci`.
 - Open PRs **targeting `dev`**. The only allowed PR into `main` is `dev` → `main` at milestone boundaries.
 - Direct PRs from topic branches into `main` will be closed without merge.
@@ -48,14 +56,15 @@ main          production-ready, tagged releases only
 
 ### Requirements
 
-- Go 1.25+
+- Go 1.26+
+- Node.js 22+ (for desktop, console, and website builds)
 - `golangci-lint` for linting
 - SQLite3 (for local dev; PostgreSQL is optional)
 
 ### Clone and build
 
 ```bash
-git clone --recurse-submodules <this-repo>
+git clone <this-repo>
 cd seshat-ai
 
 # Build the local backend API server
@@ -63,8 +72,8 @@ cd seshat-backend && go build -o bin/seshat-api ./cmd/api
 cd ..
 
 # Run tests
-go test ./seshat-backend/... ./seshat-server/... ./seshat/...
-go test -race ./seshat-backend/... ./seshat-server/... ./seshat/...
+go test ./seshat-backend/... ./seshat-server/...
+go test -race ./seshat-backend/... ./seshat-server/...
 ```
 
 ### Environment
@@ -122,9 +131,9 @@ if err != nil { writeBackendError(w, err); return }
 - `context.Context` as first parameter on any function that may do I/O.
 - Pointer receivers on types that contain `sync.Mutex`.
 
-### seshat submodule
+### seshat dependency
 
-Never modify files inside `seshat/`. It is an independent open-source repository. If you need something from the engine that isn't yet in `pkg/`, open a PR on seshat first.
+`seshat` is consumed as an external Go module (`github.com/KPO-Tech/seshat`), not vendored in this repo. Never patch it via `replace` directives here. If you need something from the engine that isn't yet in `pkg/`, open a PR on the seshat repo first, then bump the version with `go get github.com/KPO-Tech/seshat@vX.Y.Z` in `seshat-server/go.mod` and `seshat-backend/go.mod`.
 
 ---
 
@@ -147,7 +156,7 @@ docs(api): document SSE framing contract in query_sse.go
 
 ## Testing
 
-- Run `go test -race ./seshat-backend/... ./seshat-server/... ./seshat/...` before submitting.
+- Run `go test -race ./seshat-backend/... ./seshat-server/...` before submitting.
 - Tests must not make real API calls to external providers.
 - New services should have at least one test.
 - Table-driven tests preferred for cases with multiple inputs.
@@ -159,20 +168,20 @@ docs(api): document SSE framing contract in query_sse.go
 Before pushing, run locally:
 
 ```bash
-go build ./seshat-backend/... ./seshat-server/... ./seshat/...
-go test -race ./seshat-backend/... ./seshat-server/... ./seshat/...
+go build ./seshat-backend/... ./seshat-server/...
+go test -race ./seshat-backend/... ./seshat-server/...
 gofmt -w .
-go vet ./seshat-backend/... ./seshat-server/... ./seshat/...
+go vet ./seshat-backend/... ./seshat-server/...
 ```
 
 PR checklist:
 
-- [ ] Tests pass (`go test -race ./seshat-backend/... ./seshat-server/... ./seshat/...`)
+- [ ] Tests pass (`go test -race ./seshat-backend/... ./seshat-server/...`)
 - [ ] New behavior is covered by at least one test
 - [ ] Public API changes are reflected in `README.md` or `docs/`
 - [ ] Commit messages follow Conventional Commits
 - [ ] PR targets `dev`, not `main`
-- [ ] seshat was not modified
+- [ ] No local `replace` directive added for `github.com/KPO-Tech/seshat`
 
 ---
 
@@ -180,7 +189,7 @@ PR checklist:
 
 - Features that push business logic into `internal/api/` handlers.
 - Direct store access from handlers (always use a service).
-- Any modification to `seshat/`.
+- Local `replace` directives pointing `github.com/KPO-Tech/seshat` at a filesystem copy.
 - Changes that remove or weaken authentication/authorization checks.
 - Code that uses `//nolint` without an explanation comment.
 - New global mutable state.

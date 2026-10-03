@@ -1,0 +1,26 @@
+# Applications
+
+`/orgs/:id/integrations/applications` — Organization → Integrations → Integrations → Applications
+
+## What it's for
+
+OAuth2/OIDC client applications registered for this organization — the
+reverse direction from [Identity Providers](./identity-providers.mdx):
+here, *other systems* authenticate against this organization (this org
+acts as the identity provider), rather than this org's members
+authenticating through an upstream one.
+
+## How to use it
+
+"New application" needs a name, slug, and protocol (OIDC or OAuth2); the
+client ID/secret are issued on creation and the secret is **shown only
+once** — copy it immediately, it's redacted everywhere after. Redirect
+URLs and scopes are freeform tags. Disabling an application blocks new
+logins through it without deleting its configuration; deleting one
+revokes any sessions already issued through it.
+
+## See also
+
+- [Identity Providers](./identity-providers.mdx) — the opposite
+  direction: this organization as a client of an upstream IdP, not a
+  provider for others.

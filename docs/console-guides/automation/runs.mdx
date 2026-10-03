@@ -1,0 +1,21 @@
+# Runs
+
+`/orgs/:id/automation/runs` — Organization → Automation → Runs
+
+## What it's for
+
+The execution history of every [Job](./jobs.mdx) — queued, claimed,
+running, completed, failed, cancelled. This is the log, not the
+schedule; a job with no runs yet just hasn't fired.
+
+## How to use it
+
+Filter by status, or arrive already filtered to one job via its "View
+runs" button. Click a row to open its detail — output, or the error text
+if it failed. A run still in `queued`/`claimed`/`running` can be
+cancelled directly from the list; a finished one can only be inspected.
+
+## See also
+
+- [Jobs](./jobs.mdx) — what produces these runs, and where "run now"
+  triggers one on demand.

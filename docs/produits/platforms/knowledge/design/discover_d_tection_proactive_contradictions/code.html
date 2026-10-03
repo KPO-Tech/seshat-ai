@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Plus+Jakarta+Sans:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-secondary-container": "#007353", "surface-variant": "#dae2fd", "background": "#faf8ff", "on-primary": "#ffffff", "surface-container-highest": "#dae2fd", "inverse-surface": "#283044", "surface-dim": "#d2d9f4", "on-background": "#131b2e", "inverse-primary": "#b7c4ff", "tertiary-container": "#712ae2", "secondary": "#006c4e", "on-error-container": "#93000a", "on-tertiary-fixed": "#25005a", "primary": "#0037b0", "surface-tint": "#2151da", "on-tertiary": "#ffffff", "error-container": "#ffdad6", "secondary-container": "#97f5cc", "on-tertiary-fixed-variant": "#5a00c6", "surface": "#faf8ff", "secondary-fixed-dim": "#7bd8b1", "on-tertiary-container": "#dfccff", "tertiary-fixed": "#eaddff", "on-primary-fixed-variant": "#0039b5", "surface-bright": "#faf8ff", "on-secondary-fixed": "#002115", "tertiary-fixed-dim": "#d2bbff", "on-primary-fixed": "#001551", "primary-container": "#1d4ed8", "on-surface-variant": "#434655", "surface-container-low": "#f2f3ff", "surface-container": "#eaedff", "on-primary-container": "#cad3ff", "error": "#ba1a1a", "primary-fixed": "#dce1ff", "primary-fixed-dim": "#b7c4ff", "outline": "#747686", "on-surface": "#131b2e", "surface-container-high": "#e2e7ff", "tertiary": "#5700c0", "on-secondary-fixed-variant": "#00513a", "surface-container-lowest": "#ffffff", "on-error": "#ffffff", "outline-variant": "#c4c5d7", "inverse-on-surface": "#eef0ff", "on-secondary": "#ffffff", "secondary-fixed": "#97f5cc" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "density-input-h": "2rem", "space-2xs": "0.125rem", "space-3xl": "3rem", "gutter-app": "1rem", "space-xl": "1.5rem", "space-2xl": "2rem", "density-table-row-h": "2.25rem", "sidebar-width": "17.5rem", "space-sm": "0.5rem", "space-lg": "1rem", "space-md": "0.75rem", "space-xs": "0.25rem" }, "fontFamily": { "body-lg": ["Inter"], "label-md": ["Inter"], "data-mono-md": ["JetBrains Mono"], "headline-md": ["Plus Jakarta Sans"], "headline-xl": ["Plus Jakarta Sans"], "body-sm": ["Inter"], "headline-lg": ["Plus Jakarta Sans"], "headline-sm": ["Plus Jakarta Sans"], "body-md": ["Inter"], "data-mono-sm": ["JetBrains Mono"], "label-sm": ["Inter"] }, "fontSize": { "body-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "-0.011em", "fontWeight": "400" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "500" }], "data-mono-md": ["13px", { "lineHeight": "18px", "letterSpacing": "-0.01em", "fontWeight": "400" }], "headline-md": ["18px", { "lineHeight": "26px", "letterSpacing": "-0.015em", "fontWeight": "600" }], "headline-xl": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.025em", "fontWeight": "700" }], "body-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0em", "fontWeight": "400" }], "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600" }], "headline-sm": ["15px", { "lineHeight": "22px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "body-md": ["14px", { "lineHeight": "20px", "letterSpacing": "-0.006em", "fontWeight": "400" }], "data-mono-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0em", "fontWeight": "500" }], "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.025em", "fontWeight": "600" }] } } } }</script></head><body class="bg-background font-body-md text-body-md text-on-surface min-h-screen"><aside class="fixed left-0 top-0 h-full w-[17.5rem] bg-surface-container-low border-r border-outline-variant/30 z-50 flex flex-col justify-between select-none"><div class="flex flex-col flex-1 overflow-y-auto"><div class="h-16 px-space-lg flex items-center gap-space-sm border-b border-outline-variant/20 bg-surface-container-lowest"><img alt="SeshatOS Geometric Glyph Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1VmZs8sohnfr1vFLB9IDYmCMmeG9T8lUAf8BfhvjQAYUVZZipLU5lSpSH6P5b7HZODnjn9WQa677hfC6rJIlJPCTDcgZDjm_Zu_iFVuXd1aQ4y2yG3XsMP2S2sYKqlkz6dGhPHLXs7hf9xwuVKcQ4yaW8H3PTAyHafeG95tbiJPs63WBSMUmKvovYaZgar_R9m7VKygDZn5DjF9NBXIGCbZ3CKxpmQu2RwKQiR2tw-MY_9YY-QAmAULlmuk"/><div class="flex items-center gap-space-xs"><span class="font-headline-sm text-headline-sm text-on-surface tracking-tight font-semibold">SeshatOS</span><span class="px-1.5 py-0.5 rounded-lg bg-surface-container-high text-primary font-data-mono-sm text-data-mono-sm uppercase">Knowledge</span></div></div><div class="px-space-md py-space-sm border-b border-outline-variant/20 bg-surface-container/40"><div class="flex items-center justify-between"><span class="font-label-sm text-label-sm text-on-surface-variant truncate font-medium">Acme Global Corp</span><span class="px-1 rounded bg-secondary-container text-on-secondary-container font-data-mono-sm text-data-mono-sm">PROD</span></div><div class="flex items-center gap-1.5 mt-1"><span class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span><span class="font-data-mono-sm text-data-mono-sm text-secondary font-medium truncate">All Connectors Syncing</span></div></div><nav class="flex-1 px-space-sm py-space-md space-y-space-md" data-active-classes="bg-primary-container text-on-primary font-medium rounded-lg"><div class="space-y-space-2xs"><div class="px-space-sm py-1 font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold">Discover</div><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="overview" href="#"><span class="material-symbols-outlined text-[18px]">dashboard</span><span class="font-body-md text-body-md">Overview</span></a><a aria-current="page" class="flex items-center gap-space-sm px-space-sm py-1.5 transition-colors bg-primary-container text-on-primary font-medium rounded-lg" data-path="discover" href="#"><span class="material-symbols-outlined text-[18px]">explore</span><span class="font-body-md text-body-md">Discover</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="knowledge-graph" href="#"><span class="material-symbols-outlined text-[18px]">hub</span><span class="font-body-md text-body-md">Knowledge Graph</span></a></div><div class="space-y-space-2xs"><div class="px-space-sm py-1 font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold">Ask</div><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="search" href="#"><span class="material-symbols-outlined text-[18px]">manage_search</span><span class="font-body-md text-body-md">Search</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="chat-knowledge" href="#"><span class="material-symbols-outlined text-[18px]">forum</span><span class="font-body-md text-body-md">Chat Knowledge</span></a></div><div class="space-y-space-2xs"><div class="px-space-sm py-1 font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold">Act</div><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="actions" href="#"><span class="material-symbols-outlined text-[18px]">bolt</span><span class="font-body-md text-body-md">Actions</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="sources" href="#"><span class="material-symbols-outlined text-[18px]">account_tree</span><span class="font-body-md text-body-md">Sources</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="collections" href="#"><span class="material-symbols-outlined text-[18px]">folder_copy</span><span class="font-body-md text-body-md">Collections</span></a></div></nav></div><div class="p-space-sm border-t border-outline-variant/30 bg-surface-container-lowest"><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="audit-logs" href="#"><span class="material-symbols-outlined text-[18px]">verified_user</span><span class="font-body-md text-body-md">Audit &amp; Compliance</span></a><a class="flex items-center gap-space-sm px-space-sm py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="help-documentation" href="#"><span class="material-symbols-outlined text-[18px]">help_center</span><span class="font-body-md text-body-md">Help Center</span></a></div></aside><div class="pl-[17.5rem] flex flex-col min-h-screen"><header class="fixed top-0 left-[17.5rem] right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-md border-b border-outline-variant/30 z-40 flex items-center justify-between px-space-xl"><div class="flex items-center gap-space-md w-full max-w-lg"><button class="flex items-center justify-between w-full h-density-input-h px-space-md rounded-lg bg-surface-container-low border border-outline-variant/50 text-on-surface-variant hover:border-outline hover:bg-surface-container transition-all group" type="button"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-outline text-[18px] group-hover:text-on-surface">search</span><span class="font-body-sm text-body-sm text-outline group-hover:text-on-surface">Search knowledge entities, facts, sources...</span></div><div class="flex items-center gap-1 font-data-mono-sm text-data-mono-sm px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant border border-outline-variant/50"><kbd>⌘</kbd><kbd>K</kbd></div></button></div><div class="flex items-center gap-space-lg"><div class="flex items-center gap-space-sm"><button class="relative p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" title="3 Governance Alerts" type="button"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1 right-1 flex items-center justify-center w-4 h-4 rounded-full bg-error text-on-error font-data-mono-sm text-data-mono-sm">3</span></button><a class="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="audit-logs" href="#" title="Audit Logs"><span class="material-symbols-outlined text-[20px]">history_toggle_off</span></a></div><div class="h-6 w-px bg-outline-variant/40"></div><div class="flex items-center gap-space-sm"><img alt="Profile" class="w-8 h-8 rounded-full object-cover ring-1 ring-outline-variant/50" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBGFqXlFUN1Js5y5dnc5mabMSlMmelH7xyY_k-QvDQMJbr2JkvYwTT4-Tyt9VCaIdZ5rkafDNU7rlFhmq0VCQpGj_rLLDYPZ4IDx-wzcZ2QLG3-gsnRJimnTLfalpE5_YZzVxwSRyf2cGqqnkYuGTeS1yShsBFygh1KEOYbiLAvC8YLhJZyYits5e5JGokQJD6S_dU9TZJL9Z-1RFFhtnqvrmiaVObg6S3EVBeynIY1AvjqDRAxsOdBpA"/><div class="flex flex-col text-left"><span class="font-body-sm text-body-sm font-semibold text-on-surface leading-tight">Éléonore de Vance</span><span class="font-label-sm text-label-sm text-on-surface-variant leading-tight">Knowledge Lead &amp; Admin</span></div></div></div></header><main class="w-full pt-16 bg-background flex-1"><div class="flex flex-col w-full">
+<div class="relative overflow-hidden bg-surface-container-lowest px-space-xl py-space-xl shadow-sm">
+<div class="absolute -right-20 -top-20 w-96 h-96 rounded-full bg-surface-variant/40 blur-3xl pointer-events-none"></div>
+<div class="absolute right-1/3 -bottom-16 w-64 h-64 rounded-full bg-secondary-container/20 blur-2xl pointer-events-none"></div>
+<div class="relative flex flex-col xl:flex-row xl:items-center justify-between gap-space-lg">
+<div class="space-y-1.5 max-w-3xl">
+<div class="flex items-center gap-space-xs text-primary font-data-mono-sm text-data-mono-sm uppercase tracking-wider">
+<span class="inline-block w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span>Moteur d'Epistémie Cognitive • Syntaxe Graph 4.2</span>
+</div>
+<h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight font-bold">
+          Discover — Détection Proactive &amp; Qualité de la Connaissance
+        </h1>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-2xl">
+          Analyse automatisée des contradictions, documents orphelins, obsolescence et zones d'ombre d'entreprise.
+        </p>
+</div>
+<div class="flex flex-wrap items-center gap-space-sm pt-2 xl:pt-0">
+<div class="flex items-center gap-1.5 px-space-sm py-1 rounded bg-surface-container text-on-surface-variant font-data-mono-sm text-data-mono-sm">
+<span class="material-symbols-outlined text-[16px] text-secondary">update</span>
+<span>Dernier scan global: <strong>il y a 2 heures</strong></span>
+</div>
+<div class="flex items-center bg-surface-container-low rounded p-0.5 shadow-sm">
+<button class="px-space-sm h-8 rounded bg-surface-container-lowest font-label-md text-label-md text-on-surface shadow-sm hover:bg-surface-container-high transition-colors flex items-center gap-1" type="button">
+<span class="material-symbols-outlined text-[16px] text-outline">tune</span>
+<span>Toutes les sévérités</span>
+</button>
+<button class="px-space-sm h-8 rounded font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors flex items-center gap-1" type="button">
+<span class="material-symbols-outlined text-[16px] text-outline">domain</span>
+<span>Départements (Tous)</span>
+</button>
+</div>
+<button class="h-8 px-space-md rounded bg-primary text-on-primary font-label-md text-label-md shadow-md hover:bg-primary-container transition-all flex items-center gap-1.5 active:scale-95" id="trigger-scan-btn" type="button">
+<span class="material-symbols-outlined text-[18px]">sync</span>
+<span>Lancer un scan complet</span>
+</button>
+</div>
+</div>
+</div>
+<div class="p-space-xl space-y-space-xl">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-space-lg">
+<div class="relative overflow-hidden bg-surface-container-lowest rounded-xl p-space-lg shadow-sm hover:shadow-md transition-shadow group cursor-pointer" onclick="switchDiscoverTab('conflicts')">
+<div class="absolute top-0 left-0 bottom-0 w-1.5 bg-error"></div>
+<div class="flex items-start justify-between">
+<div>
+<div class="font-label-sm text-label-sm uppercase tracking-wider text-error font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">warning</span>
+<span>Contradictions Détectées</span>
+</div>
+<div class="flex items-baseline gap-2 mt-2">
+<span class="font-headline-xl text-headline-xl font-bold text-on-surface">7</span>
+<span class="font-data-mono-sm text-data-mono-sm text-error font-semibold">conflits actifs</span>
+</div>
+</div>
+<div class="w-10 h-10 rounded-full bg-error-container/60 text-error flex items-center justify-center">
+<span class="material-symbols-outlined text-[22px]">compare_arrows</span>
+</div>
+</div>
+<div class="mt-4 flex items-center gap-2 font-data-mono-sm text-data-mono-sm">
+<span class="px-1.5 py-0.5 rounded bg-error-container text-on-error-container font-semibold">3 critiques</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-medium">4 modérés</span>
+</div>
+<div class="mt-3 flex items-center justify-between text-outline text-[11px] font-label-sm">
+<span>Impact direct SOC2 / RH</span>
+<span class="material-symbols-outlined text-[14px] group-hover:translate-x-0.5 transition-transform text-primary">arrow_forward</span>
+</div>
+</div>
+<div class="relative overflow-hidden bg-surface-container-lowest rounded-xl p-space-lg shadow-sm hover:shadow-md transition-shadow group cursor-pointer" onclick="switchDiscoverTab('obsolete')">
+<div class="absolute top-0 left-0 bottom-0 w-1.5 bg-[#b45309]"></div>
+<div class="flex items-start justify-between">
+<div>
+<div class="font-label-sm text-label-sm uppercase tracking-wider text-[#b45309] font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">history_edu</span>
+<span>Documents Obsolètes</span>
+</div>
+<div class="flex items-baseline gap-2 mt-2">
+<span class="font-headline-xl text-headline-xl font-bold text-on-surface">42</span>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant font-medium">&gt;365j sans révision</span>
+</div>
+</div>
+<div class="w-10 h-10 rounded-full bg-[#fef3c7] text-[#b45309] flex items-center justify-center">
+<span class="material-symbols-outlined text-[22px]">auto_delete</span>
+</div>
+</div>
+<div class="mt-4 flex items-center gap-2 font-data-mono-sm text-data-mono-sm">
+<span class="px-1.5 py-0.5 rounded bg-[#fef3c7] text-[#92400e] font-semibold">Trafic élevé: 18</span>
+<span class="text-outline font-medium">32.4k lectures/mois</span>
+</div>
+<div class="mt-3 flex items-center justify-between text-outline text-[11px] font-label-sm">
+<span>Risque de désinformation</span>
+<span class="material-symbols-outlined text-[14px] group-hover:translate-x-0.5 transition-transform text-primary">arrow_forward</span>
+</div>
+</div>
+<div class="relative overflow-hidden bg-surface-container-lowest rounded-xl p-space-lg shadow-sm hover:shadow-md transition-shadow group cursor-pointer" onclick="switchDiscoverTab('blindspots')">
+<div class="absolute top-0 left-0 bottom-0 w-1.5 bg-tertiary"></div>
+<div class="flex items-start justify-between">
+<div>
+<div class="font-label-sm text-label-sm uppercase tracking-wider text-tertiary font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">visibility_off</span>
+<span>Angles Morts Documentaires</span>
+</div>
+<div class="flex items-baseline gap-2 mt-2">
+<span class="font-headline-xl text-headline-xl font-bold text-on-surface">19</span>
+<span class="font-data-mono-sm text-data-mono-sm text-tertiary font-medium">requêtes orphelines</span>
+</div>
+</div>
+<div class="w-10 h-10 rounded-full bg-tertiary-fixed text-tertiary flex items-center justify-center">
+<span class="material-symbols-outlined text-[22px]">lightbulb_circle</span>
+</div>
+</div>
+<div class="mt-4 flex items-center gap-2 font-data-mono-sm text-data-mono-sm">
+<span class="px-1.5 py-0.5 rounded bg-tertiary-fixed text-on-tertiary-fixed font-semibold">Confiance IA &lt; 60%</span>
+<span class="text-outline font-medium">450 queries/sem</span>
+</div>
+<div class="mt-3 flex items-center justify-between text-outline text-[11px] font-label-sm">
+<span>Opportunité de synthèse IA</span>
+<span class="material-symbols-outlined text-[14px] group-hover:translate-x-0.5 transition-transform text-primary">arrow_forward</span>
+</div>
+</div>
+<div class="relative overflow-hidden bg-surface-container-lowest rounded-xl p-space-lg shadow-sm hover:shadow-md transition-shadow group cursor-pointer" onclick="switchDiscoverTab('orphans')">
+<div class="absolute top-0 left-0 bottom-0 w-1.5 bg-outline"></div>
+<div class="flex items-start justify-between">
+<div>
+<div class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">person_cancel</span>
+<span>Documents Orphelins</span>
+</div>
+<div class="flex items-baseline gap-2 mt-2">
+<span class="font-headline-xl text-headline-xl font-bold text-on-surface">11</span>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant font-medium">sans validateur</span>
+</div>
+</div>
+<div class="w-10 h-10 rounded-full bg-surface-container-high text-on-surface flex items-center justify-center">
+<span class="material-symbols-outlined text-[22px]">contact_support</span>
+</div>
+</div>
+<div class="mt-4 flex items-center gap-2 font-data-mono-sm text-data-mono-sm">
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-semibold">Départs collaborateurs</span>
+<span class="text-outline font-medium">SharePoint &amp; Drive</span>
+</div>
+<div class="mt-3 flex items-center justify-between text-outline text-[11px] font-label-sm">
+<span>Assignation automatique recommandée</span>
+<span class="material-symbols-outlined text-[14px] group-hover:translate-x-0.5 transition-transform text-primary">arrow_forward</span>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+<div class="flex flex-wrap items-center justify-between px-space-lg pt-space-md bg-surface-container-low/40">
+<div class="flex items-center gap-1">
+<button class="px-space-md py-2.5 font-headline-sm text-headline-sm font-semibold text-primary border-b-2 border-primary transition-all flex items-center gap-2" id="tab-conflicts-btn" onclick="switchDiscoverTab('conflicts')" type="button">
+<span class="material-symbols-outlined text-[18px]">gavel</span>
+<span>Contradictions &amp; Conflits Documentaires</span>
+<span class="px-1.5 py-0.5 rounded-full bg-error text-on-error font-data-mono-sm text-data-mono-sm font-bold leading-none">7</span>
+</button>
+<button class="px-space-md py-2.5 font-headline-sm text-headline-sm font-medium text-on-surface-variant hover:text-on-surface transition-all flex items-center gap-2" id="tab-blindspots-btn" onclick="switchDiscoverTab('blindspots')" type="button">
+<span class="material-symbols-outlined text-[18px]">psychology_alt</span>
+<span>Angles Morts IA</span>
+<span class="px-1.5 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-data-mono-sm text-data-mono-sm font-bold leading-none">19</span>
+</button>
+<button class="px-space-md py-2.5 font-headline-sm text-headline-sm font-medium text-on-surface-variant hover:text-on-surface transition-all flex items-center gap-2" id="tab-obsolete-btn" onclick="switchDiscoverTab('obsolete')" type="button">
+<span class="material-symbols-outlined text-[18px]">recycling</span>
+<span>Documents à Recycler</span>
+<span class="px-1.5 py-0.5 rounded-full bg-[#fef3c7] text-[#92400e] font-data-mono-sm text-data-mono-sm font-bold leading-none">42</span>
+</button>
+</div>
+<div class="py-2 flex items-center gap-2">
+<span class="font-data-mono-sm text-data-mono-sm text-outline">Tri: Indice d'Impact Décroissant</span>
+<div class="flex items-center bg-surface-container rounded p-0.5">
+<button class="p-1 rounded bg-surface-container-lowest shadow-sm text-primary" title="Vue Détaillée" type="button"><span class="material-symbols-outlined text-[16px]">view_agenda</span></button>
+<button class="p-1 rounded text-on-surface-variant hover:text-on-surface" title="Vue Compacte" type="button"><span class="material-symbols-outlined text-[16px]">table_rows</span></button>
+</div>
+</div>
+</div>
+<div class="p-space-lg">
+<div class="space-y-space-lg" id="panel-conflicts">
+<div class="rounded-xl bg-surface-container-low p-space-lg shadow-sm hover:shadow-md transition-all space-y-space-md relative overflow-hidden">
+<div class="absolute top-0 left-0 bottom-0 w-2 bg-error"></div>
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-sm pl-2">
+<div class="flex items-center gap-space-sm">
+<span class="px-2 py-0.5 rounded bg-error-container text-on-error-container font-data-mono-sm text-data-mono-sm font-bold uppercase tracking-wider flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">report</span>
+                  CRITIQUE • SÉVÉRITÉ HAUTE
+                </span>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">ID-CONF-8821</span>
+<span class="text-outline text-[12px]">•</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Détecté il y a 6 heures par LLM Inspector</span>
+</div>
+<div class="flex items-center gap-1.5 font-data-mono-sm text-data-mono-sm px-2 py-1 rounded bg-surface-container-high text-on-surface">
+<span class="material-symbols-outlined text-[16px] text-error">policy</span>
+<span>Audit de Conformité SOC2 Type II (Oct 2025)</span>
+</div>
+</div>
+<div class="pl-2">
+<h3 class="font-headline-md text-headline-md font-bold text-on-surface">
+                Délai de conservation des logs d'authentification administrateur
+              </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
+                Deux sources d'autorité internes imposent des durées incompatibles pour les traces PAM (Privileged Access Management).
+              </p>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-space-md pl-2">
+<div class="p-space-md rounded-lg bg-surface-container-lowest shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[18px]">description</span>
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface">Source A (Politique)</span>
+</div>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high font-data-mono-sm text-data-mono-sm text-on-surface-variant">SharePoint / Sécurité</span>
+</div>
+<div class="font-body-md text-body-md text-on-surface font-medium">
+                    "Politique Sécurité SI v3.1"
+                  </div>
+<div class="mt-2 p-2.5 rounded bg-surface-container text-body-sm font-body-sm text-on-surface italic">
+                    « Tous les journaux d'accès aux infrastructures de production et aux comptes à privilèges doivent être conservés sur un bucket immuable pour une durée obligatoire de <strong class="text-error font-bold underline">12 mois révolus</strong>. »
+                  </div>
+</div>
+<div class="mt-3 pt-2 flex items-center justify-between font-data-mono-sm text-data-mono-sm text-outline">
+<span>Dernière révision: 14 Janvier 2024</span>
+<span class="text-on-surface-variant font-medium">Auteur: CISO Governance Office</span>
+</div>
+</div>
+<div class="p-space-md rounded-lg bg-surface-container-lowest shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-tertiary text-[18px]">terminal</span>
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface">Source B (Architecture)</span>
+</div>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high font-data-mono-sm text-data-mono-sm text-on-surface-variant">Confluence / SOC</span>
+</div>
+<div class="font-body-md text-body-md text-on-surface font-medium">
+                    "Spécification Architecture SOC v1.4"
+                  </div>
+<div class="mt-2 p-2.5 rounded bg-surface-container text-body-sm font-body-sm text-on-surface italic">
+                    « Les flux Syslog SIEM / Crowdstrike doivent être persistés dans le cold-storage S3 Glacier pendant au minimum <strong class="text-error font-bold underline">36 mois</strong> pour investigation post-intrusion forensique. »
+                  </div>
+</div>
+<div class="mt-3 pt-2 flex items-center justify-between font-data-mono-sm text-data-mono-sm text-outline">
+<span>Dernière révision: 08 Octobre 2024</span>
+<span class="text-on-surface-variant font-medium">Auteur: DevSecOps Lead Architect</span>
+</div>
+</div>
+</div>
+<div class="p-space-sm rounded-lg bg-error-container/30 flex items-center gap-space-sm text-error pl-3">
+<span class="material-symbols-outlined text-[20px] flex-shrink-0">crisis_alert</span>
+<div class="font-body-sm text-body-sm">
+<strong>Impact métier critique:</strong> Non-conformité potentielle lors du renouvellement de la certification <em>SOC2 Type II</em> et surfacturation d'hébergement AWS Cold Storage non-budgétée (écart de 24 mois de logs PAM).
+              </div>
+</div>
+<div class="flex flex-wrap items-center justify-between gap-space-md pt-2 pl-2">
+<div class="flex items-center gap-2">
+<button class="h-8 px-space-md rounded bg-primary text-on-primary font-label-md text-label-md hover:bg-primary-container transition-all flex items-center gap-1.5 shadow-sm active:scale-95" type="button">
+<span class="material-symbols-outlined text-[16px]">balance</span>
+<span>Créer une Action d'Arbitrage</span>
+</button>
+<button class="h-8 px-space-md rounded bg-surface-container-lowest font-label-md text-label-md text-on-surface hover:bg-surface-container-high transition-colors flex items-center gap-1.5 shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px] text-primary">send</span>
+<span>Notifier les Propriétaires (Sécurité &amp; Infra)</span>
+</button>
+</div>
+<div class="flex items-center gap-3">
+<a class="font-label-md text-label-md text-primary hover:underline flex items-center gap-1" href="#">
+<span class="material-symbols-outlined text-[16px]">history</span>
+<span>Historique des versions</span>
+</a>
+<span class="text-outline-variant">•</span>
+<button class="font-label-md text-label-md text-outline hover:text-on-surface flex items-center gap-1" type="button">
+<span class="material-symbols-outlined text-[16px]">more_vert</span>
+<span>Ignorer l'anomalie</span>
+</button>
+</div>
+</div>
+</div>
+<div class="rounded-xl bg-surface-container-low p-space-lg shadow-sm hover:shadow-md transition-all space-y-space-md relative overflow-hidden">
+<div class="absolute top-0 left-0 bottom-0 w-2 bg-[#b45309]"></div>
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-sm pl-2">
+<div class="flex items-center gap-space-sm">
+<span class="px-2 py-0.5 rounded bg-[#fef3c7] text-[#92400e] font-data-mono-sm text-data-mono-sm font-bold uppercase tracking-wider flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">warning_amber</span>
+                  MODÉRÉ • SÉVÉRITÉ MOYENNE
+                </span>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">ID-CONF-8794</span>
+<span class="text-outline text-[12px]">•</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Détecté hier à 23:14</span>
+</div>
+<div class="flex items-center gap-1.5 font-data-mono-sm text-data-mono-sm px-2 py-1 rounded bg-surface-container-high text-on-surface">
+<span class="material-symbols-outlined text-[16px] text-[#b45309]">payments</span>
+<span>Rémunération &amp; Indemnités RH</span>
+</div>
+</div>
+<div class="pl-2">
+<h3 class="font-headline-md text-headline-md font-bold text-on-surface">
+                Barème d'indemnités télétravail international
+              </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
+                Divergence sur le plafond mensuel remboursé pour les collaborateurs en contrat local France effectuant des missions transfrontalières en région EMEA.
+              </p>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-space-md pl-2">
+<div class="p-space-md rounded-lg bg-surface-container-lowest shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[#006c4e] text-[18px]">badge</span>
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface">Charte RH France</span>
+</div>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high font-data-mono-sm text-data-mono-sm text-on-surface-variant">Intranet RH / PDF</span>
+</div>
+<div class="font-body-md text-body-md text-on-surface font-medium">
+                    "Avenant Télétravail Hybride 2024"
+                  </div>
+<div class="mt-2 p-2.5 rounded bg-surface-container text-body-sm font-body-sm text-on-surface italic">
+                    « L'allocation forfaitaire brute est fixée à <strong class="text-[#b45309] font-bold underline">50 €/mois</strong> pour 2 jours/semaine de travail à domicile régulier, non cumulable avec les séjours nomades hors hexagone. »
+                  </div>
+</div>
+<div class="mt-3 pt-2 flex items-center justify-between font-data-mono-sm text-data-mono-sm text-outline">
+<span>Mis à jour: Mars 2024</span>
+<span class="text-on-surface-variant font-medium">Auteur: DRH France</span>
+</div>
+</div>
+<div class="p-space-md rounded-lg bg-surface-container-lowest shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[18px]">public</span>
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface">Accord Global EMEA</span>
+</div>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high font-data-mono-sm text-data-mono-sm text-on-surface-variant">Notion / People Ops</span>
+</div>
+<div class="font-body-md text-body-md text-on-surface font-medium">
+                    "Work-from-Anywhere Regional Policy 2024-2025"
+                  </div>
+<div class="mt-2 p-2.5 rounded bg-surface-container text-body-sm font-body-sm text-on-surface italic">
+                    « All permanent employees in EU entities are eligible for a universal stipend of <strong class="text-[#b45309] font-bold underline">€85 / month</strong> regardless of home location up to 90 days abroad. »
+                  </div>
+</div>
+<div class="mt-3 pt-2 flex items-center justify-between font-data-mono-sm text-data-mono-sm text-outline">
+<span>Mis à jour: Décembre 2024</span>
+<span class="text-on-surface-variant font-medium">Auteur: Global People Operations</span>
+</div>
+</div>
+</div>
+<div class="flex flex-wrap items-center justify-between gap-space-md pt-2 pl-2">
+<div class="flex items-center gap-2">
+<button class="h-8 px-space-md rounded bg-primary text-on-primary font-label-md text-label-md hover:bg-primary-container transition-all flex items-center gap-1.5 shadow-sm active:scale-95" type="button">
+<span class="material-symbols-outlined text-[16px]">balance</span>
+<span>Créer une Action d'Arbitrage</span>
+</button>
+<button class="h-8 px-space-md rounded bg-surface-container-lowest font-label-md text-label-md text-on-surface hover:bg-surface-container-high transition-colors flex items-center gap-1.5 shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px] text-primary">send</span>
+<span>Notifier RH France &amp; People Ops EMEA</span>
+</button>
+</div>
+<div class="flex items-center gap-3">
+<a class="font-label-md text-label-md text-primary hover:underline flex items-center gap-1" href="#">
+<span class="material-symbols-outlined text-[16px]">history</span>
+<span>Historique</span>
+</a>
+</div>
+</div>
+</div>
+</div>
+<div class="hidden space-y-space-md" id="panel-blindspots">
+<div class="flex items-center justify-between">
+<div>
+<h3 class="font-headline-md text-headline-md font-bold text-on-surface">Top Angles Morts Détectés par l'IA</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Questions répétées par les collaborateurs via le moteur de recherche ou le chat où le score de confiance documentaire est inférieur à 60%.</p>
+</div>
+<button class="h-8 px-space-md rounded bg-tertiary text-on-tertiary font-label-md text-label-md hover:opacity-90 flex items-center gap-1.5 shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px]">auto_awesome</span>
+<span>Générer brouillons par IA (3)</span>
+</button>
+</div>
+<div class="overflow-x-auto rounded-lg bg-surface-container-low shadow-sm">
+<table class="w-full text-left">
+<thead>
+<tr class="bg-surface-container-high/60 text-outline font-label-sm text-label-sm uppercase tracking-wider h-9">
+<th class="px-space-md">Requête fréquente sans réponse exacte</th>
+<th class="px-space-md">Volume Requêtes</th>
+<th class="px-space-md">Score de Confiance</th>
+<th class="px-space-md">Département Ciblé</th>
+<th class="px-space-md">Suggestion de Création</th>
+<th class="px-space-md text-right">Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container-high/60 font-body-sm text-body-sm text-on-surface">
+<tr class="hover:bg-surface-container-lowest/80 transition-colors">
+<td class="px-space-md py-3 font-semibold text-on-surface">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary text-[18px]">search_off</span>
+<span>"Procédure d'offboarding immédiat en cas de compromission de compte client"</span>
+</div>
+</td>
+<td class="px-space-md py-3 font-data-mono-sm text-data-mono-sm font-semibold">142 / mois</td>
+<td class="px-space-md py-3">
+<span class="px-1.5 py-0.5 rounded bg-error-container text-on-error-container font-data-mono-sm text-data-mono-sm font-bold">24% (Très bas)</span>
+</td>
+<td class="px-space-md py-3">Support Client / Sécurité</td>
+<td class="px-space-md py-3 text-on-surface-variant font-medium">Standard Operating Procedure (SOP-CS-REVOKE)</td>
+<td class="px-space-md py-3 text-right">
+<button class="px-space-sm h-7 rounded bg-primary text-on-primary font-label-sm text-label-sm hover:bg-primary-container shadow-sm" type="button">Créer Article</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest/80 transition-colors">
+<td class="px-space-md py-3 font-semibold text-on-surface">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary text-[18px]">search_off</span>
+<span>"Plafond dépenses restaurants pour dîners clients hors capitale"</span>
+</div>
+</td>
+<td class="px-space-md py-3 font-data-mono-sm text-data-mono-sm font-semibold">98 / mois</td>
+<td class="px-space-md py-3">
+<span class="px-1.5 py-0.5 rounded bg-[#fef3c7] text-[#92400e] font-data-mono-sm text-data-mono-sm font-bold">42% (Incomplet)</span>
+</td>
+<td class="px-space-md py-3">Finance &amp; Contrôle</td>
+<td class="px-space-md py-3 text-on-surface-variant font-medium">Annexe B - Barème Frais Missions Locales</td>
+<td class="px-space-md py-3 text-right">
+<button class="px-space-sm h-7 rounded bg-primary text-on-primary font-label-sm text-label-sm hover:bg-primary-container shadow-sm" type="button">Créer Article</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest/80 transition-colors">
+<td class="px-space-md py-3 font-semibold text-on-surface">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary text-[18px]">search_off</span>
+<span>"Configuration SSO GitHub Enterprise avec Okta Multi-Tenant"</span>
+</div>
+</td>
+<td class="px-space-md py-3 font-data-mono-sm text-data-mono-sm font-semibold">67 / mois</td>
+<td class="px-space-md py-3">
+<span class="px-1.5 py-0.5 rounded bg-[#fef3c7] text-[#92400e] font-data-mono-sm text-data-mono-sm font-bold">51% (Partiel)</span>
+</td>
+<td class="px-space-md py-3">Core Engineering</td>
+<td class="px-space-md py-3 text-on-surface-variant font-medium">Guide DevOps Tech Note IDP-09</td>
+<td class="px-space-md py-3 text-right">
+<button class="px-space-sm h-7 rounded bg-primary text-on-primary font-label-sm text-label-sm hover:bg-primary-container shadow-sm" type="button">Créer Article</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="hidden space-y-space-md" id="panel-obsolete">
+<div class="flex items-center justify-between">
+<div>
+<h3 class="font-headline-md text-headline-md font-bold text-on-surface">Documents à Recycler d'Urgence</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Fichiers cumulant une absence de validation supérieure à 365 jours tout en conservant un trafic de consultation actif.</p>
+</div>
+<button class="h-8 px-space-md rounded bg-[#b45309] text-white font-label-md text-label-md hover:opacity-90 flex items-center gap-1.5 shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px]">campaign</span>
+<span>Campagne de Rappel aux Owners</span>
+</button>
+</div>
+<div class="overflow-x-auto rounded-lg bg-surface-container-low shadow-sm">
+<table class="w-full text-left">
+<thead>
+<tr class="bg-surface-container-high/60 text-outline font-label-sm text-label-sm uppercase tracking-wider h-9">
+<th class="px-space-md">Titre du document</th>
+<th class="px-space-md">Âge sans révision</th>
+<th class="px-space-md">Consultations (30j)</th>
+<th class="px-space-md">Propriétaire Assigné</th>
+<th class="px-space-md">Statut Risque</th>
+<th class="px-space-md text-right">Action Recommandée</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container-high/60 font-body-sm text-body-sm text-on-surface">
+<tr class="hover:bg-surface-container-lowest/80 transition-colors">
+<td class="px-space-md py-3">
+<div class="font-semibold text-on-surface">Guide d'Onboarding Développeur Frontend (React 16 / Webpack)</div>
+<div class="text-[11px] font-data-mono-sm text-outline">Confluence / Core Web • Doc #1092</div>
+</td>
+<td class="px-space-md py-3 font-data-mono-sm text-data-mono-sm text-error font-semibold">540 jours</td>
+<td class="px-space-md py-3 font-data-mono-sm text-data-mono-sm">1,280 vues</td>
+<td class="px-space-md py-3">
+<div class="flex items-center gap-1.5">
+<span class="w-5 h-5 rounded-full bg-surface-container-highest flex items-center justify-center text-[10px] font-bold">TC</span>
+<span>Thibault Colin (Ex-Staff)</span>
+</div>
+</td>
+<td class="px-space-md py-3">
+<span class="px-2 py-0.5 rounded bg-error-container text-on-error-container font-data-mono-sm text-data-mono-sm font-semibold">Stack obsolète</span>
+</td>
+<td class="px-space-md py-3 text-right space-x-1">
+<button class="px-2 h-7 rounded bg-surface-container-lowest text-on-surface hover:bg-surface-container font-label-sm text-label-sm shadow-sm" type="button">Réassigner</button>
+<button class="px-2 h-7 rounded bg-[#b45309] text-white font-label-sm text-label-sm shadow-sm" type="button">Archiver</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest/80 transition-colors">
+<td class="px-space-md py-3">
+<div class="font-semibold text-on-surface">Politique de Remboursement Frais Médicaux Suisse</div>
+<div class="text-[11px] font-data-mono-sm text-outline">SharePoint HR • ID-CH-2022</div>
+</td>
+<td class="px-space-md py-3 font-data-mono-sm text-data-mono-sm text-[#b45309] font-semibold">412 jours</td>
+<td class="px-space-md py-3 font-data-mono-sm text-data-mono-sm">890 vues</td>
+<td class="px-space-md py-3">
+<div class="flex items-center gap-1.5">
+<span class="w-5 h-5 rounded-full bg-surface-container-highest flex items-center justify-center text-[10px] font-bold">ML</span>
+<span>Mélanie Laurent (HR BP)</span>
+</div>
+</td>
+<td class="px-space-md py-3">
+<span class="px-2 py-0.5 rounded bg-[#fef3c7] text-[#92400e] font-data-mono-sm text-data-mono-sm font-semibold">Lois 2024 non intégrées</span>
+</td>
+<td class="px-space-md py-3 text-right space-x-1">
+<button class="px-2 h-7 rounded bg-primary text-on-primary hover:bg-primary-container font-label-sm text-label-sm shadow-sm" type="button">Demander Révision</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-space-lg">
+<div class="p-space-lg rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between space-y-space-md">
+<div>
+<div class="flex items-center justify-between mb-2">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold">Graphe de Santé Cognitif</span>
+<span class="px-1.5 py-0.5 rounded bg-secondary-container text-on-secondary-container font-data-mono-sm text-data-mono-sm font-semibold">Score: 84 / 100</span>
+</div>
+<h4 class="font-headline-sm text-headline-sm font-bold text-on-surface">Indice d'Épistémie Globale</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Évolution de la cohérence sémantique inter-documents sur 30 jours.</p>
+</div>
+<div class="py-2 flex items-center justify-center">
+<svg class="w-full h-20 text-primary" fill="none" stroke="currentColor" viewbox="0 0 240 70">
+<path d="M 0 50 Q 30 55 60 42 T 120 30 T 180 35 T 240 15" fill="none" stroke="currentColor" stroke-width="2.5"></path>
+<path d="M 0 50 Q 30 55 60 42 T 120 30 T 180 35 T 240 15 L 240 70 L 0 70 Z" fill="currentColor" fill-opacity="0.08" stroke="none"></path>
+<circle class="fill-primary" cx="240" cy="15" r="4"></circle>
+</svg>
+</div>
+<div class="grid grid-cols-2 gap-2 pt-2 border-t border-surface-container font-data-mono-sm text-data-mono-sm">
+<div>
+<div class="text-outline">Taux de divergence</div>
+<div class="text-secondary font-bold font-headline-sm text-headline-sm">-4.2% ce mois</div>
+</div>
+<div>
+<div class="text-outline">Entités cartographiées</div>
+<div class="text-on-surface font-bold font-headline-sm text-headline-sm">18,492 nœuds</div>
+</div>
+</div>
+</div>
+<div class="p-space-lg rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between space-y-space-md">
+<div>
+<div class="flex items-center justify-between mb-2">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold">Périmètres Détecteurs</span>
+<span class="font-data-mono-sm text-data-mono-sm text-primary">5 connecteurs connectés</span>
+</div>
+<h4 class="font-headline-sm text-headline-sm font-bold text-on-surface">Sources Scannées en Temps Réel</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Surveillance vectorielle continue des modifications documentaires.</p>
+</div>
+<div class="space-y-2">
+<div class="flex items-center justify-between p-2 rounded bg-surface-container-low font-body-sm text-body-sm">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-primary">cloud_done</span>
+<span class="font-medium">SharePoint Online Enterprise</span>
+</div>
+<span class="px-1.5 py-0.5 rounded bg-secondary-container text-on-secondary-container font-data-mono-sm text-data-mono-sm">99.8% Sync</span>
+</div>
+<div class="flex items-center justify-between p-2 rounded bg-surface-container-low font-body-sm text-body-sm">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-primary">hub</span>
+<span class="font-medium">Atlassian Confluence DC</span>
+</div>
+<span class="px-1.5 py-0.5 rounded bg-secondary-container text-on-secondary-container font-data-mono-sm text-data-mono-sm">100% Sync</span>
+</div>
+<div class="flex items-center justify-between p-2 rounded bg-surface-container-low font-body-sm text-body-sm">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-[#006c4e]">folder_shared</span>
+<span class="font-medium">Google Drive Governance Vault</span>
+</div>
+<span class="px-1.5 py-0.5 rounded bg-secondary-container text-on-secondary-container font-data-mono-sm text-data-mono-sm">98.4% Sync</span>
+</div>
+</div>
+<button class="w-full h-8 rounded bg-surface-container-high text-on-surface font-label-md text-label-md hover:bg-surface-variant transition-colors flex items-center justify-center gap-1" type="button">
+<span class="material-symbols-outlined text-[16px]">add_circle</span>
+<span>Connecter un nouveau dépôt</span>
+</button>
+</div>
+<div class="p-space-lg rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between space-y-space-md relative overflow-hidden">
+<div class="absolute -right-12 -bottom-12 w-32 h-32 rounded-full bg-secondary-container/40 pointer-events-none"></div>
+<div>
+<div class="flex items-center justify-between mb-2">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-semibold">Arbitrages Résolus</span>
+<span class="px-1.5 py-0.5 rounded bg-secondary-container text-on-secondary-container font-data-mono-sm text-data-mono-sm font-bold">14 cette semaine</span>
+</div>
+<h4 class="font-headline-sm text-headline-sm font-bold text-on-surface">Journal des Vérités Établies</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Conflits arbitrés par les propriétaires et entérinés dans la base d'autorité.</p>
+</div>
+<div class="space-y-2">
+<div class="p-2.5 rounded-lg bg-surface-container-low font-body-sm text-body-sm">
+<div class="flex items-center justify-between">
+<span class="font-semibold text-on-surface truncate">Procédure DPA RGPD Prestataires</span>
+<span class="font-data-mono-sm text-data-mono-sm text-secondary font-bold">Résolu</span>
+</div>
+<p class="text-[12px] text-on-surface-variant line-clamp-1 mt-0.5">La clause v4.2 prévaut sur les annexes contractuelles antérieures.</p>
+<div class="mt-1 text-[10px] font-data-mono-sm text-outline">Arbitré par Me. V. Lambert • Hier</div>
+</div>
+<div class="p-2.5 rounded-lg bg-surface-container-low font-body-sm text-body-sm">
+<div class="flex items-center justify-between">
+<span class="font-semibold text-on-surface truncate">Cycle de release applicatif CI/CD</span>
+<span class="font-data-mono-sm text-data-mono-sm text-secondary font-bold">Résolu</span>
+</div>
+<p class="text-[12px] text-on-surface-variant line-clamp-1 mt-0.5">Fenêtre standard le mardi 06:00 CET validée par le CTO.</p>
+<div class="mt-1 text-[10px] font-data-mono-sm text-outline">Arbitré par A. Dumas • 3 jours</div>
+</div>
+</div>
+<button class="w-full h-8 rounded bg-surface-container text-primary font-label-md text-label-md hover:bg-surface-container-high transition-colors flex items-center justify-center gap-1" type="button">
+<span class="material-symbols-outlined text-[16px]">verified</span>
+<span>Consulter le registre d'arbitrage</span>
+</button>
+</div>
+</div>
+</div>
+<div class="fixed inset-0 bg-inverse-surface/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" id="scan-modal">
+<div class="w-full max-w-lg bg-surface-container-lowest rounded-xl p-space-xl shadow-2xl space-y-space-md">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-full bg-primary-fixed text-primary flex items-center justify-center animate-spin">
+<span class="material-symbols-outlined text-[24px]">sync</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md font-bold text-on-surface">Scan Global de Connaissance en cours</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Analyse vectorielle sémantique et réconciliation des assertions...</p>
+</div>
+</div>
+<div class="space-y-2 py-2">
+<div class="flex justify-between font-data-mono-sm text-data-mono-sm">
+<span>Documents indexés</span>
+<span id="scan-progress-text">1,482 / 3,920</span>
+</div>
+<div class="w-full h-2 rounded bg-surface-container-high overflow-hidden">
+<div class="h-full bg-primary transition-all duration-300 w-1/3" id="scan-progress-bar"></div>
+</div>
+<div class="font-label-sm text-label-sm text-outline italic">
+          Vérification des clauses de rétention SOC2 et politiques RH...
+        </div>
+</div>
+<div class="flex justify-end gap-2 pt-2">
+<button class="h-8 px-space-md rounded bg-surface-container-high font-label-md text-label-md text-on-surface hover:bg-surface-variant transition-colors" id="cancel-scan-btn" type="button">
+          Réduire en arrière-plan
+        </button>
+</div>
+</div>
+</div>
+<script>
+    function switchDiscoverTab(tabName) {
+      const panelConflicts = document.getElementById('panel-conflicts');
+      const panelBlindspots = document.getElementById('panel-blindspots');
+      const panelObsolete = document.getElementById('panel-obsolete');
+
+      const btnConflicts = document.getElementById('tab-conflicts-btn');
+      const btnBlindspots = document.getElementById('tab-blindspots-btn');
+      const btnObsolete = document.getElementById('tab-obsolete-btn');
+
+      // Hide all panels
+      panelConflicts.classList.add('hidden');
+      panelBlindspots.classList.add('hidden');
+      panelObsolete.classList.add('hidden');
+
+      // Reset button styles
+      [btnConflicts, btnBlindspots, btnObsolete].forEach(btn => {
+        btn.classList.remove('text-primary', 'border-b-2', 'border-primary', 'font-semibold');
+        btn.classList.add('text-on-surface-variant', 'font-medium');
+      });
+
+      if (tabName === 'conflicts') {
+        panelConflicts.classList.remove('hidden');
+        btnConflicts.classList.add('text-primary', 'border-b-2', 'border-primary', 'font-semibold');
+        btnConflicts.classList.remove('text-on-surface-variant', 'font-medium');
+      } else if (tabName === 'blindspots') {
+        panelBlindspots.classList.remove('hidden');
+        btnBlindspots.classList.add('text-primary', 'border-b-2', 'border-primary', 'font-semibold');
+        btnBlindspots.classList.remove('text-on-surface-variant', 'font-medium');
+      } else if (tabName === 'obsolete') {
+        panelObsolete.classList.remove('hidden');
+        btnObsolete.classList.add('text-primary', 'border-b-2', 'border-primary', 'font-semibold');
+        btnObsolete.classList.remove('text-on-surface-variant', 'font-medium');
+      } else if (tabName === 'orphans') {
+        panelObsolete.classList.remove('hidden');
+        btnObsolete.classList.add('text-primary', 'border-b-2', 'border-primary', 'font-semibold');
+        btnObsolete.classList.remove('text-on-surface-variant', 'font-medium');
+      }
+    }
+
+    const scanBtn = document.getElementById('trigger-scan-btn');
+    const scanModal = document.getElementById('scan-modal');
+    const cancelScanBtn = document.getElementById('cancel-scan-btn');
+    const progressBar = document.getElementById('scan-progress-bar');
+    const progressText = document.getElementById('scan-progress-text');
+
+    let scanInterval = null;
+
+    if (scanBtn && scanModal) {
+      scanBtn.addEventListener('click', () => {
+        scanModal.classList.remove('hidden');
+        let current = 1482;
+        const total = 3920;
+        clearInterval(scanInterval);
+        scanInterval = setInterval(() => {
+          current += 140;
+          if (current >= total) {
+            current = total;
+            clearInterval(scanInterval);
+            setTimeout(() => {
+              scanModal.classList.add('hidden');
+            }, 800);
+          }
+          const pct = Math.round((current / total) * 100);
+          progressBar.style.width = pct + '%';
+          progressText.innerText = current.toLocaleString() + ' / ' + total.toLocaleString() + ' (' + pct + '%)';
+        }, 120);
+      });
+    }
+
+    if (cancelScanBtn && scanModal) {
+      cancelScanBtn.addEventListener('click', () => {
+        scanModal.classList.add('hidden');
+        clearInterval(scanInterval);
+      });
+    }
+  </script>
+</div></main></div></body></html>

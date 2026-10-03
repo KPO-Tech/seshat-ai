@@ -6,34 +6,21 @@ Fixes #
 
 ## Type of change
 
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Refactor (no behavior change)
+- [ ] Website
 - [ ] Documentation
 - [ ] CI / tooling
+- [ ] Private collateral
 
-## Backend checklist
+## Checklist
 
-- [ ] `go build ./seshat-backend/... ./seshat-server/... ./seshat/...` passes
-- [ ] `go test -race ./seshat-backend/... ./seshat-server/... ./seshat/...` passes
-- [ ] `golangci-lint run ./seshat-backend/... ./seshat-server/...` passes (or pre-existing failures are noted below)
-- [ ] `gofmt -w .` run
-- [ ] New behavior is covered by tests
-- [ ] No secrets, credentials, or binaries committed
-
-## Frontend checklist (skip if no UI changes)
-
-- [ ] `npm ci` passes in `seshat-ui/`
-- [ ] `npm run typecheck` passes
-- [ ] Tested in Electron dev mode (`make ui-dev`)
-
-## Documentation
-
-- [ ] Documentation updated (`docs/`, `CHANGELOG.md`) if needed
+- [ ] `make build` passes
+- [ ] No secrets, credentials, or generated build artifacts committed
+- [ ] Public-facing copy and links have been reviewed
+- [ ] Documentation updated if needed
 
 ## Breaking changes
 
-<!-- List any breaking API or schema changes. If none, write "None." -->
+<!-- List any breaking route, deployment, or content changes. If none, write "None." -->
 
 None.
 

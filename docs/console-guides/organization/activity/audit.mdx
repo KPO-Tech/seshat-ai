@@ -1,0 +1,14 @@
+# Audit
+
+`/orgs/:id/activity/audit` — Organization → Activity → Audit
+
+## What it's for
+
+A chronological, append-only log of consequential actions in this
+organization — logins, configuration changes, anything that mutates
+state. Who did it, when, and to which resource.
+
+## How to use it
+
+Filter by action name (for example `login.succeeded`). Nothing here can
+be edited or deleted — it's a record, not a management surface.

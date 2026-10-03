@@ -1,0 +1,26 @@
+# Web Search Settings
+
+`/orgs/:id/ai/web-search` — Organization → AI Core → Providers → Web Search
+
+## What it's for
+
+This organization's own web-search API credentials, for agents that need
+to search the live web rather than just this organization's own
+[Knowledge](../knowledge.mdx). Overrides the platform's shared web-search
+credentials when present, same fallback relationship as Provider
+Settings and Embedder.
+
+## How to use it
+
+Tavily, Exa, Jina, and LangSearch each need only an API key — none of
+them accept a base URL override, since each calls one fixed hosted
+endpoint. SearXNG is the one exception: it's self-hosted, so it needs its
+own base URL (defaults to `http://localhost:8080`). DuckDuckGo needs no
+credential at all — it's always available as a keyless fallback, not
+something to configure.
+
+## See also
+
+- [Provider Settings](./provider-settings.mdx) and
+  [Embedder](./embedder.mdx) — the other two organization-level AI
+  credentials, same override-the-platform-default pattern.

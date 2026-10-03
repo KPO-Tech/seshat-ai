@@ -1,0 +1,292 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{array}
+\usepackage{helvet}
+
+\usetikzlibrary{arrows.meta,positioning,fit,calc}
+
+\geometry{left=18mm,right=18mm,top=20mm,bottom=20mm}
+\renewcommand{\familydefault}{\sfdefault}
+
+\definecolor{ink}{HTML}{17202A}
+\definecolor{muted}{HTML}{627083}
+\definecolor{line}{HTML}{D9DEE7}
+\definecolor{soft}{HTML}{F7F9FC}
+\definecolor{blue}{HTML}{245C9A}
+\definecolor{bluebg}{HTML}{EAF2FB}
+\definecolor{green}{HTML}{2F7D5C}
+\definecolor{greenbg}{HTML}{E8F5EF}
+\definecolor{amber}{HTML}{A96F16}
+\definecolor{amberbg}{HTML}{FFF1DA}
+\definecolor{red}{HTML}{A84C45}
+\definecolor{redbg}{HTML}{FBEDEA}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  urlcolor=blue,
+  pdftitle={SeshatOS Knowledge-to-Action - Brief manager},
+  pdfauthor={SeshatOS}
+}
+
+\setlength{\headheight}{22pt}
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\small\color{muted} SeshatOS Knowledge MVP}
+\rhead{\small\color{muted} Brief manager}
+\cfoot{\small\color{muted} \thepage}
+\renewcommand{\headrulewidth}{0.5pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{line}\leaders\hrule height \headrulewidth\hfill}}
+
+\titleformat{\section}
+  {\Large\bfseries\color{blue}}
+  {}{0pt}{}
+\titleformat{\subsection}
+  {\normalsize\bfseries\color{ink}}
+  {}{0pt}{}
+\titlespacing*{\section}{0pt}{15pt}{7pt}
+\titlespacing*{\subsection}{0pt}{10pt}{4pt}
+
+\setlist[itemize]{leftmargin=*,topsep=4pt,itemsep=2pt}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+\setlength{\emergencystretch}{3em}
+\setlength{\fboxrule}{0.7pt}
+
+\newcommand{\eyebrow}[1]{\textcolor{blue}{\footnotesize\textbf{\MakeUppercase{#1}}}\par\vspace{3pt}}
+\newcommand{\card}[4]{%
+  \begingroup
+  \setlength{\fboxsep}{8pt}%
+  \fcolorbox{#2}{#1}{%
+    \begin{minipage}[t]{0.285\linewidth}
+      \raggedright
+      \textbf{\color{#2}#3}\par\vspace{4pt}
+      \small\color{ink}#4
+    \end{minipage}
+  }%
+  \endgroup
+}
+\newcommand{\widecard}[2]{%
+  \begingroup
+  \setlength{\fboxsep}{9pt}%
+  \fcolorbox{blue}{bluebg}{%
+    \begin{minipage}{0.94\linewidth}
+      \textbf{\color{blue}#1}\par\vspace{4pt}
+      \small\color{ink}#2
+    \end{minipage}
+  }%
+  \endgroup
+}
+\newcommand{\lightbox}[2]{%
+  \begingroup
+  \setlength{\fboxsep}{8pt}%
+  \fcolorbox{line}{soft}{%
+    \begin{minipage}{0.94\linewidth}
+      \textbf{\color{ink}#1}\par\vspace{4pt}
+      \small\color{ink}#2
+    \end{minipage}
+  }%
+  \endgroup
+}
+
+\begin{document}
+\raggedright
+\pagecolor{white}
+\color{ink}
+
+{\large\bfseries\textcolor{blue}{Brief manager - SeshatOS Knowledge MVP}}
+
+\vspace{8pt}
+{\huge\bfseries Transformer la connaissance d'entreprise en réponses fiables et actions gouvernées.}
+
+\vspace{8pt}
+{\large SeshatOS ne se positionne pas comme un chatbot générique, ni comme un clone de n8n. Le premier MVP doit prouver une plateforme Knowledge-to-Action : collecter, gouverner, rechercher, comprendre, découvrir et agir sur la connaissance d'une organisation.}
+
+\vspace{10pt}
+\widecard{Pitch}{From documents to knowledge. From knowledge to action.}
+
+\section{Problème observé}
+\eyebrow{Pourquoi ce sujet compte}
+Les entreprises possèdent déjà beaucoup d'information, mais cette information reste souvent dispersée entre documents internes, drives, procédures, anciennes décisions, présentations, emails, bases documentaires et mémoire informelle des équipes.
+
+Le problème n'est donc pas seulement de stocker l'information. Le vrai problème est de trouver la bonne information, de comprendre son contexte, de savoir si elle est encore valable, puis de décider quoi faire avec.
+
+\vspace{4pt}
+\card{bluebg}{blue}{Information dispersée}{Les documents et savoirs vivent dans plusieurs plateformes sans être exploités comme une connaissance commune.}
+\hfill
+\card{greenbg}{green}{Confiance difficile}{Une réponse peut sembler correcte sans que l'utilisateur sache si la source est récente, autorisée ou contradictoire.}
+\hfill
+\card{amberbg}{amber}{Action lente}{Quand une faiblesse est détectée, la mise à jour, la validation ou l'escalade restent souvent manuelles.}
+
+\section{Réponse produit : ASK, DISCOVER, ACT}
+\eyebrow{Cycle Knowledge-to-Action}
+La plateforme Knowledge ne se limite pas à répondre à une question. Elle transforme la connaissance de l'entreprise en un cycle opérationnel : l'utilisateur interroge la base, Seshat identifie les risques ou opportunités, puis propose une action gouvernée quand une suite est nécessaire.
+
+\begin{itemize}
+  \item \textbf{ASK - répondre avec preuves :} recherche rapide et conversation spécialisée pour retrouver une information, citer les sources et indiquer les limites de la réponse.
+  \item \textbf{DISCOVER - révéler ce qui échappe aux équipes :} détection de documents obsolètes, contradictions, lacunes, zones peu documentées et sujets critiques.
+  \item \textbf{ACT - déclencher sans perdre le contrôle :} proposition de mise à jour, demande de validation, tâche ou workflow contrôlé, avec audit et validation humaine si nécessaire.
+\end{itemize}
+
+\begin{center}
+\resizebox{0.95\linewidth}{!}{%
+\begin{tikzpicture}[
+  box/.style={rounded corners=4pt, draw, thick, align=center, minimum height=18mm, minimum width=35mm, font=\small\bfseries},
+  arr/.style={-{Latex[length=2.3mm]}, thick, rounded corners=6pt, color=muted},
+  bluearr/.style={-{Latex[length=2.3mm]}, thick, rounded corners=6pt, color=blue}
+]
+\node[box, fill=bluebg, draw=blue] (ask) at (0,0) {ASK\\{\scriptsize search, chat, citations}};
+\node[box, fill=white, draw=line, minimum width=39mm] (kg) at (4.3,0) {Knowledge gouvernée\\{\scriptsize sources, permissions, corpus}};
+\node[box, fill=greenbg, draw=green] (discover) at (8.7,0) {DISCOVER\\{\scriptsize obsolescence, lacunes}};
+\node[box, fill=amberbg, draw=amber] (act) at (8.7,-2.7) {ACT\\{\scriptsize action validée}};
+\node[box, fill=soft, draw=line, minimum width=34mm] (improve) at (4.3,-2.7) {Amélioration\\{\scriptsize feedback, corrections}};
+
+\draw[bluearr] (ask.east) -- (kg.west);
+\draw[arr] (kg.east) -- (discover.west);
+\draw[arr, color=amber] (discover.south) -- (act.north);
+\draw[arr, color=green] (act.west) -- (improve.east);
+\draw[arr, color=green] (improve.west) to[out=180,in=270,looseness=1.15] (ask.south);
+\end{tikzpicture}
+}
+\end{center}
+
+\section{Architecture cible du MVP}
+\eyebrow{Plateforme Knowledge, pas simple chat}
+Les briques techniques existent déjà en grande partie. Le travail produit consiste à les assembler autour d'un parcours entreprise lisible : sources, ingestion, indexation, recherche, agents, preuves, actions et gouvernance.
+
+\begin{center}
+\resizebox{0.98\linewidth}{!}{%
+\begin{tikzpicture}[
+  scale=0.86,
+  every node/.style={transform shape},
+  area/.style={rounded corners=4pt, draw=muted!25, fill=soft, minimum height=58mm},
+  box/.style={rounded corners=4pt, draw, thick, align=center, minimum height=14mm, font=\small\bfseries},
+  smallbox/.style={rounded corners=3pt, draw=muted!30, fill=white, align=left, minimum height=7mm, minimum width=34mm, font=\scriptsize},
+  arr/.style={-{Latex[length=2.2mm]}, thick, color=blue}
+]
+\node[area, minimum width=43mm] (sourcesArea) at (0,0) {};
+\node[font=\scriptsize\bfseries, text=blue] at (0,3.3) {SOURCES DOCUMENTAIRES};
+\node[smallbox] at (0,1.8) {SharePoint};
+\node[smallbox] at (0,0.9) {Google Drive};
+\node[smallbox] at (0,0.0) {Amazon S3};
+\node[smallbox] at (0,-0.9) {Azure Blob};
+\node[smallbox] at (0,-1.8) {Uploads internes};
+
+\node[area, minimum width=48mm] (ingestArea) at (4.9,0) {};
+\node[font=\scriptsize\bfseries, text=blue] at (4.9,3.3) {INGESTION};
+\node[box, fill=bluebg, draw=blue, minimum width=39mm] (conn) at (4.9,1.3) {Connecteurs\\{\scriptsize sync, ACL, reprise}};
+\node[box, fill=white, draw=muted!45, minimum width=39mm] (docling) at (4.9,-1.3) {Docling + chunking\\{\scriptsize PDF, DOCX, PPTX}};
+
+\node[area, minimum width=42mm] (ragArea) at (9.9,0) {};
+\node[font=\scriptsize\bfseries, text=blue] at (9.9,3.3) {SEARCH / RAG};
+\node[box, fill=greenbg, draw=green, minimum width=35mm] (os) at (9.9,1.3) {OpenSearch\\{\scriptsize BM25, vector, hybrid}};
+\node[box, fill=white, draw=muted!45, minimum width=35mm] (agents) at (9.9,-1.3) {Agents Knowledge\\{\scriptsize citations, confidence}};
+
+\node[area, minimum width=44mm] (xpArea) at (14.7,0) {};
+\node[font=\scriptsize\bfseries, text=blue] at (14.7,3.3) {EXPERIENCE};
+\node[box, fill=amberbg, draw=amber, minimum width=37mm] (search) at (14.7,1.3) {Search + Chat\\{\scriptsize réponses sourcées}};
+\node[box, fill=white, draw=muted!45, minimum width=37mm] (graph) at (14.7,-1.3) {Discover + Graph\\{\scriptsize lacunes, contradictions}};
+
+\node[box, fill=white, draw=muted!35, minimum width=128mm, minimum height=12mm] (gov) at (7.35,-4.0) {Gouvernance transversale\\{\scriptsize organisation, rôles, permissions, audit, métriques, feedback qualité}};
+
+\draw[arr] (sourcesArea.east) -- (conn.west);
+\draw[arr] (conn.east) -- (os.west);
+\draw[arr] (os.east) -- (search.west);
+\draw[arr, color=muted] (conn) -- (docling);
+\draw[arr, color=muted] (os) -- (agents);
+\draw[arr, color=amber] (graph) -- (gov);
+\end{tikzpicture}
+}
+\end{center}
+
+\section{Traitement professionnel d'une question}
+\eyebrow{Workflow ASK}
+L'orchestrateur reçoit la demande, identifie l'intention, vérifie le périmètre autorisé, choisit la stratégie de recherche, évalue les sources et construit une réponse sourcée. Le workflow n'est pas une simple chaîne d'agents : il représente un processus professionnel de traitement d'une demande de connaissance.
+
+\begin{center}
+\resizebox{0.94\linewidth}{!}{%
+\begin{tikzpicture}[
+  node distance=12mm,
+  box/.style={rounded corners=4pt, draw=muted!45, fill=white, thick, align=center, minimum height=15mm, minimum width=27mm, font=\small\bfseries},
+  focal/.style={rounded corners=4pt, draw=blue, fill=bluebg, thick, align=center, minimum height=17mm, minimum width=34mm, font=\small\bfseries},
+  arr/.style={-{Latex[length=2.2mm]}, thick, color=muted}
+]
+\node[box] (q) {Question};
+\node[focal, right=of q] (orch) {Orchestrateur\\{\scriptsize intention, droits}};
+\node[box, right=of orch] (search) {Recherche\\{\scriptsize hybride, filtres}};
+\node[box, fill=greenbg, draw=green, right=of search] (verify) {Évaluation\\{\scriptsize fraîcheur, autorité}};
+\node[box, fill=amberbg, draw=amber, right=of verify] (answer) {Réponse\\{\scriptsize sourcée, limites}};
+\node[box, below=15mm of search] (action) {Action possible\\{\scriptsize validation humaine}};
+\draw[arr, color=blue] (q) -- (orch);
+\draw[arr] (orch) -- (search);
+\draw[arr] (search) -- (verify);
+\draw[arr] (verify) -- (answer);
+\draw[arr, color=amber] (verify) |- (action);
+\draw[arr, color=blue] (action.west) to[out=180,in=270,looseness=1.05] (orch.south);
+\end{tikzpicture}
+}
+\end{center}
+
+\section{Pages produit}
+\eyebrow{Surfaces du MVP}
+L'application Knowledge doit être pensée comme une plateforme, pas comme une page isolée. Les pages ne doivent pas exposer la complexité technique ; elles doivent rendre le cycle Knowledge-to-Action compréhensible par les utilisateurs, les managers et les administrateurs.
+
+\begin{tabular}{>{\bfseries\raggedright\arraybackslash}p{0.22\linewidth} >{\raggedright\arraybackslash}p{0.72\linewidth}}
+Overview & santé de la connaissance, ingestions, erreurs, risques et actions recommandées.\\
+Search & moteur interne rapide avec filtres, extraits, sources et citations.\\
+Chat Knowledge & conversation spécialisée avec preuves, limites et niveau de confiance.\\
+Sources & connexion et synchronisation des plateformes documentaires de l'entreprise.\\
+Collections & corpus, périmètres, droits d'accès et règles de fraîcheur.\\
+Graph / Discover & relations, lacunes, contradictions, obsolescence et sujets critiques.\\
+Actions & propositions de mise à jour, validations, tâches et workflows contrôlés.\\
+Settings & modèles, règles, agents, outils autorisés, citations et approbations.\\
+\end{tabular}
+
+\section{Gouvernance commerciale}
+\eyebrow{Applications activables par organisation}
+SeshatOS doit rester modulaire : une entreprise ne doit voir que les applications prêtes, pertinentes ou incluses dans son offre. Ce mécanisme permet de vendre par modules, de lancer des pilotes ciblés et de garder les chantiers en cours invisibles tant qu'ils ne sont pas prêts.
+
+\begin{itemize}
+  \item \textbf{Feature flag - maturité produit :} une application peut rester désactivée parce qu'elle est en développement, en beta ou réservée à un pilote.
+  \item \textbf{Entitlement - droit commercial :} une organisation accède uniquement aux applications incluses dans son contrat.
+  \item \textbf{Contrôle complet :} cacher une application dans le menu ne suffit pas ; routes frontend et endpoints backend doivent appliquer la même décision.
+\end{itemize}
+
+\begin{center}
+\resizebox{0.9\linewidth}{!}{%
+\begin{tikzpicture}[
+  node distance=15mm,
+  box/.style={rounded corners=4pt, draw, thick, align=center, minimum height=18mm, minimum width=34mm, font=\small\bfseries},
+  arr/.style={-{Latex[length=2.2mm]}, thick, color=muted}
+]
+\node[box, fill=bluebg, draw=blue] (admin) {Superadmin\\{\scriptsize équipe Seshat}};
+\node[box, fill=white, draw=muted!45, right=of admin, minimum width=58mm] (catalog) {Catalogue d'applications\\{\scriptsize stable, beta, interne, non commencé}};
+\node[box, fill=amberbg, draw=amber, right=of catalog] (org) {Entreprise\\{\scriptsize voit seulement l'activé}};
+\node[box, fill=soft, draw=muted!45, below=13mm of catalog, minimum width=72mm] (control) {Double contrôle obligatoire\\{\scriptsize frontend menus/routes + backend endpoints/permissions}};
+\draw[arr, color=blue] (admin) -- (catalog);
+\draw[arr, color=blue] (catalog) -- (org);
+\draw[arr] (catalog) -- (control);
+\end{tikzpicture}
+}
+\end{center}
+
+\section{Design interactif et partage}
+\eyebrow{Lien complémentaire}
+La version HTML reste utile pour montrer la direction visuelle, les animations légères et les schémas dans un format plus vivant. Le design partagé via Stitch peut être envoyé comme support complémentaire :
+
+\href{https://stitch.withgoogle.com/projects/11461220126905232516}{https://stitch.withgoogle.com/projects/11461220126905232516}
+
+\section{Message à retenir}
+\lightbox{Conclusion}{Seshat transforme une base documentaire passive en connaissance gouvernée, exploitable et actionnable. La valeur du MVP n'est pas de montrer que l'IA peut répondre à une question, mais de montrer qu'une organisation peut reprendre le contrôle sur ses connaissances : les collecter, les fiabiliser, les interroger, les visualiser, détecter les problèmes et lancer les bonnes actions avec validation humaine.}
+
+\end{document}

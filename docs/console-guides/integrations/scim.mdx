@@ -1,0 +1,31 @@
+# SCIM Provisioning
+
+`/orgs/:id/integrations/scim` — Organization → Integrations → Integrations → SCIM Provisioning
+
+## What it's for
+
+Letting an enterprise identity provider (Okta, Entra ID, ...) create,
+update, and deactivate members automatically via the SCIM protocol,
+instead of an admin managing them by hand on [Memberships](../../organization/team-and-access/memberships.mdx).
+
+## How to use it
+
+"Set up SCIM" issues a bearer token — **shown only once**, paste it into
+the IdP's SCIM connection settings immediately. "Sync groups" controls
+whether the IdP is even allowed to push group data at all (off means
+every `/Groups` request is rejected outright, not silently accepted and
+ignored); "Auto-create teams" then controls whether a synced group
+becomes a real [Team](../../organization/team-and-access/teams.mdx) or
+is only recorded for visibility. "Rotate token" invalidates the current
+one immediately - update the IdP right after, or provisioning breaks
+until you do. Recent Activity shows the last operations the IdP actually
+performed, successes and failures alike.
+
+## See also
+
+- [Memberships](../../organization/team-and-access/memberships.mdx) and
+  [Teams](../../organization/team-and-access/teams.mdx) — what a SCIM
+  push actually creates or updates.
+- [Identity Providers](./identity-providers.mdx) — a separate concern:
+  SCIM provisions *accounts*, an identity provider handles *login*. An
+  organization commonly uses both from the same IdP.

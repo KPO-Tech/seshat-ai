@@ -1,0 +1,52 @@
+# Chat
+
+`/orgs/:id/workspace/chat` — Organization → Workspace → Chat
+
+## What it's for
+
+A pre-rollout validation surface, not a productivity tool: confirm a
+provider, an MCP server, a connector, or a knowledge corpus actually works
+before your team ever sees it via Seshat Desktop. Each of the four
+starter prompts on the empty screen maps to one thing that can be
+misconfigured (provider connectivity, MCP tools, an OAuth-connected
+connector, RAG retrieval) and is phrased so the model's own reply is the
+pass/fail signal.
+
+Backed by the same LLM execution engine automation's cloud-run executor
+uses (`sdk.Client`/`sdk.Session`), invoked synchronously against this
+page instead of the async job scheduler, with real-time tool-call
+progress and text streamed back as it happens.
+
+## How to use it
+
+Pick a provider and model in the composer, type a prompt (or click a
+starter card to pre-fill one), send. Blocks - thinking, tool calls, and
+text - render in the exact order they were generated, not grouped by
+kind, so a turn that thinks, calls a tool, thinks again, calls another
+tool, then answers shows all of that in sequence. Each tool call is an
+expandable row (auto-expanded if it failed) showing its arguments and
+result/error, with a duration badge; a pulsing "Generating…" indicator
+shows whenever nothing else on the page indicates the turn is still
+active. The send button turns into a red Stop while generating - it
+actually interrupts the turn server-side, not just the client-side
+connection.
+
+Conversation memory survives a server restart, an idle period, or
+switching provider/model mid-conversation - the LLM's own context is
+persisted turn-by-turn and resumed automatically, not just the
+console-side transcript you can see. That persistence is intentionally
+short-lived: **a conversation is permanently deleted 48 hours after it was
+created**, regardless of how recently you used it - this page is a
+validation scratch space, not a durable chat log. "New chat" appears once
+a conversation has messages, to start a fresh one without waiting for
+that window.
+
+## See also
+
+- [Connections](./connections.mdx) - where you connect your own account
+  for the 16 agent-action-capable connector kinds this chat's agent can
+  use as tools.
+- [Provider Settings](../ai-core/providers/provider-settings.mdx) - what
+  populates the provider/model selectors here.
+- [MCP Servers](../ai-core/mcp-servers.mdx) - what this chat's agent can
+  reach as tools, alongside connectors.

@@ -1,0 +1,31 @@
+# Knowledge
+
+`/orgs/:id/knowledge/corpora` — Organization → AI Core → Knowledge
+
+## What it's for
+
+RAG document collections ("corpora") an agent can search instead of
+relying only on what it already knows. Each corpus is its own isolated
+vector namespace — files uploaded to one corpus never leak into another's
+search results.
+
+## How to use it
+
+The list is a searchable, sortable card grid (by name, created, or
+updated). "New corpus" creates an empty one; open a card to manage it.
+
+Inside a corpus: "Upload file" starts ingestion (chunking + embedding
+with this organization's [Embedder](./providers/embedder.mdx), or the
+platform default's if none is set) — "History" shows every ingestion
+attempt, including failures and their error, not just the current file
+list. A corpus can be searched directly from its own page to sanity-check
+retrieval quality before wiring it into an agent.
+
+## See also
+
+- [Embedder](./providers/embedder.mdx) — the model every file in every
+  corpus gets ingested with; switching it doesn't retroactively
+  re-embed existing files.
+- [Connectors](../integrations/connectors.mdx) — the other way documents
+  get into a corpus, synced automatically from an external source
+  instead of uploaded by hand.

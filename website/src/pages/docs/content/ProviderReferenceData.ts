@@ -146,10 +146,10 @@ export const PROVIDERS: ProviderRow[] = [
   {
     id: 'kimi',
     label: 'Kimi (Moonshot AI)',
-    auth: 'API key',
-    transport: 'OpenAI-compatible target expected',
-    base: 'No default base URL block in DefaultConfigs()',
-    notes: 'Kimi exists in the provider registry and string resolver, but internal/providers/config.go does not currently ship a matching default config entry. Treat it as partially wired until that gap is closed.',
+    auth: 'API key (KIMI_API_KEY)',
+    transport: 'OpenAI-compatible /chat/completions',
+    base: 'https://api.moonshot.ai/v1 (international endpoint - api.moonshot.cn is a separate China endpoint, not used)',
+    notes: 'Fully wired as of seshat v1.2.1: internal/providers/config.go ships a default config entry (kimi-k3, kimi-k2.7-code, kimi-k2.6, kimi-k2.5 aliases) and internal/providers/registry.go lists it with full model metadata. No longer partially wired.',
   },
 ]
 

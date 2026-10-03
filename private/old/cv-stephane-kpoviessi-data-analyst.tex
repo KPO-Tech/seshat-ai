@@ -1,0 +1,247 @@
+%-------------------------
+% CV Data Analyst - Stephane KPOVIESSI
+% Target: Data Analyst / Expert Data / Performance metier
+%-------------------------
+
+\documentclass[letterpaper,11pt]{article}
+
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{enumitem}
+\usepackage[colorlinks=true, urlcolor=primary, linkcolor=primary]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[french]{babel}
+\usepackage{tabularx}
+\usepackage{needspace}
+\usepackage{graphicx}
+\usepackage{tikz}
+\input{glyphtounicode}
+
+\definecolor{primary}{RGB}{0, 79, 144}
+\definecolor{darkgrey}{RGB}{50, 50, 50}
+
+\usepackage[sfdefault]{noto-sans}
+\usepackage[T1]{fontenc}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+\setlength{\footskip}{4.1pt}
+
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1.0in}
+\addtolength{\topmargin}{-0.65in}
+\addtolength{\textheight}{1.45in}
+
+\urlstyle{same}
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+\titleformat{\section}{
+  \vspace{-4pt}\scshape\raggedright\large\color{primary}
+}{}{0em}{}[\color{primary}\titlerule \vspace{0pt}]
+
+\pdfgentounicode=1
+
+\newcommand{\resumeItem}[1]{
+  \item\small{{#1 \vspace{-1.5pt}}}
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{1pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      {\color{primary}\textbf{#1}} & #2 \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-4pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+    \Needspace{6\baselineskip}
+    \vspace{2pt}\item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \small#1 & #2 \\
+    \end{tabular*}\vspace{-3pt}
+}
+
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}[leftmargin=0.15in, label={\small\textbullet}, itemsep=1.5pt, parsep=0pt, topsep=2pt, partopsep=0pt]}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-1pt}}
+
+\begin{document}
+
+\noindent
+\begin{minipage}[c]{0.20\textwidth}
+  \centering
+  \begin{tikzpicture}
+    \begin{scope}
+      \clip (0,0) circle (1.45cm);
+      \node at (0,0) {\includegraphics[width=2.9cm]{./profile.jpeg}};
+    \end{scope}
+    \draw[color=primary, line width=1.2pt] (0,0) circle (1.45cm);
+  \end{tikzpicture}
+\end{minipage}%
+\hspace{0.01\textwidth}%
+\begin{minipage}[c]{0.77\textwidth}
+  \centering
+  {\Huge \scshape \color{primary} Stéphane KPOVIESSI} \\[3pt]
+  {\large \textbf{Ingénieur Data Analyst}} \\[7pt]
+  \small
+  Île-de-France (Cergy)
+    \enspace$|$\enspace Disponible en CDI
+    \enspace$|$\enspace +33\,7\,48\,59\,47\,13 \\[2pt]
+  \href{mailto:oastephanekpoviessi@gmail.com}{oastephanekpoviessi@gmail.com}
+    \enspace$|$\enspace
+  \href{https://linkedin.com/in/stephanekpoviessi}{LinkedIn}
+    \enspace$|$\enspace
+  \href{https://github.com/EngineerProjects}{GitHub}
+    \enspace$|$\enspace
+  \href{https://seshat-ai.com}{Seshat-AI}
+    \enspace$|$\enspace
+  \href{https://kpoviessi-stephane.vercel.app/}{Portfolio}
+\end{minipage}
+\vspace{3pt}
+
+\section{Profil}
+\small{
+Ingénieur Big Data \& Data Science candidat au poste d'\textbf{Ingénieur Data Analyst}, orienté acheminement, fiabilisation et mise à disposition de données pour les équipes métiers. Expérience chez Allianz France dans la migration de traitements SAS vers \textbf{Python/PySpark}, la structuration de données sur Azure Databricks, les contrôles qualité et les tests de non-régression. Compétences en SQL, Python/Pandas, PySpark, APIs REST, PostgreSQL et automatisation de traitements pour collecter, transformer, stocker et restituer les données. Profil rigoureux, analytique et curieux, à l'aise dans la rédaction de documentation technique/fonctionnelle et la construction de solutions data exploitables en environnement opérationnel.
+}
+\vspace{4pt}
+
+\section{Expériences Professionnelles}
+\resumeSubHeadingListStart
+
+\resumeSubheading
+{Ingénieur Data / Data Scientist}{Nov. 2025 -- Avr. 2026}
+{Allianz France --- Direction P4D, Équipe Advanced Data \& Climate}{Paris, France}
+\resumeItemListStart
+  \resumeItem{Migration d'un datamart Assurance de SAS vers \textbf{Python/PySpark}, avec validation de la parité fonctionnelle sur plus de \textbf{15 000 lignes de code} et sécurisation des indicateurs métiers.}
+  \resumeItem{Implémentation d'une architecture \textbf{Médaillon} sur Azure Databricks intégrant plus de \textbf{150 règles de gestion métier} pour fiabiliser les données mises à disposition des équipes analytiques.}
+  \resumeItem{Conception d'un pipeline de \textbf{contrôle qualité des données géospatiales} : validation, détection d'anomalies, analyse des écarts et préparation de données fiables pour le reporting.}
+  \resumeItem{Développement d'un framework de \textbf{recette Data et tests automatisés SAS/Python} pour comparer les KPI, vérifier les seuils de tolérance et documenter la non-régression.}
+  \resumeItem{Rédaction de documentation technique et fonctionnelle couvrant l'architecture, les règles de gestion, les traitements, les procédures de contrôle et les points d'interface avec le SI.}
+\resumeItemListEnd
+
+\resumeSubheading
+{Data Analyst -- Missions d'appui stratégique}{2023 -- 2025}
+{LYNE ET FRERES SARL \normalfont\small(Missions récurrentes d'analyse Data)}{Ikpinlè, Bénin / À distance}
+\resumeItemListStart
+  \resumeItem{Analyse de données commerciales, opérationnelles et de marché avec \textbf{Python/Pandas} pour suivre les indicateurs clés et soutenir les décisions de diversification.}
+  \resumeItem{Conception de rapports, tableaux de bord et interfaces interactives avec \textbf{Streamlit}, HTML/CSS/JavaScript, en partant des besoins exprimés par les utilisateurs métier.}
+  \resumeItem{Suivi analytique des activités agricoles, notamment plantations de palmier et étapes de transformation, afin d'identifier des pistes d'amélioration opérationnelle.}
+  \resumeItem{Accompagnement des utilisateurs dans l'appropriation d'outils data/IA internes et formulation de recommandations compréhensibles pour des équipes non techniques.}
+\resumeItemListEnd
+
+\resumeSubheading
+{Ingénieur Machine Learning}{Mai 2024 -- Août 2024}
+{Groupe Sylvagreg \normalfont\small(Stage)}{Lille, France}
+\resumeItemListStart
+  \resumeItem{Développement d'une solution de reconstruction 3D à partir d'images 2D, combinant préparation de données, Computer Vision et modèles sous PyTorch.}
+  \resumeItem{Automatisation des pipelines de prétraitement, d'augmentation de données et d'inférence pour améliorer la robustesse et la traçabilité des résultats.}
+  \resumeItem{Déploiement cloud sur \textbf{AWS} avec conteneurisation \textbf{Docker} et interface de visualisation pour les utilisateurs métiers.}
+\resumeItemListEnd
+
+\resumeSubHeadingListEnd
+
+\section{Projet principal BI}
+\resumeSubHeadingListStart
+
+\resumeProjectHeading
+{\textbf{BI Retail Solution} $|$ \emph{Power BI, SQL, PostgreSQL, Python, PySpark, Airflow, Docker}}
+{\href{https://github.com/EngineerProjects/BI_Retail}{GitHub}}
+\resumeItemListStart
+  \resumeItem{Mise en place d'une chaîne décisionnelle de bout en bout pour exploiter des données ventes, clients, stocks et supply chain à des fins de pilotage.}
+  \resumeItem{Transformation des données avec \textbf{PySpark}, chargement dans un \textbf{Data Warehouse PostgreSQL} et structuration des tables pour faciliter l'analyse métier.}
+  \resumeItem{Conception de tableaux de bord \textbf{Power BI} orientés performance opérationnelle : revenus, profits, performance produit, pays, magasin, stocks et coûts d'expédition.}
+\resumeItemListEnd
+\resumeSubHeadingListEnd
+
+\section{Autres projets sélectionnés}
+\resumeSubHeadingListStart
+
+\resumeProjectHeading
+{\textbf{Solar Irradiance Forecasting} $|$ \emph{Python, Pandas, Scikit-learn, FastAPI, REST}}
+{\href{https://github.com/EngineerProjects/solar-forecasting}{GitHub}}
+\resumeItemListStart
+  \resumeItem{Conception d'un pipeline de prévision à 24h : ingestion de données météo via API, contrôle qualité, feature engineering temporel et évaluation des résultats.}
+  \resumeItem{Exposition des prédictions via une \textbf{API REST FastAPI}, avec tests unitaires et métriques de suivi pour rendre la solution exploitable.}
+\resumeItemListEnd
+
+\resumeProjectHeading
+{\textbf{Seshat --- Plateforme Data/IA} $|$ \emph{Python, Go, PostgreSQL, pgvector, Chroma, Electron, React}}
+{\href{https://seshat-ai.com}{Site}}
+\resumeItemListStart
+  \resumeItem{Développement d'une plateforme desktop/web pour ingérer, structurer et interroger des documents via recherche sémantique et \textbf{RAG}.}
+  \resumeItem{Architecture combinant \textbf{Python}, \textbf{Go}, PostgreSQL/\textbf{pgvector}, Chroma et interface Electron/React pour faciliter l'accès à l'information métier.}
+\resumeItemListEnd
+
+\resumeSubHeadingListEnd
+
+\section{Compétences}
+\begin{itemize}[leftmargin=0.15in, label={}]
+\small{\item{
+\textbf{Business Intelligence} : Power BI, tableaux de bord, reporting, KPI, analyse de performance, aide à la décision \\
+\textbf{Données \& Bases} : SQL, PostgreSQL, modélisation de données, data warehouse, qualité des données, analyse d'écarts, documentation des règles métier \\
+\textbf{Analyse \& Programmation} : Python, Pandas, PySpark, Scikit-learn, notebooks, automatisation de traitements, APIs REST \\
+\textbf{Data Engineering} : ETL/ELT, Delta Lake, Azure Databricks, Apache Airflow, Docker, Git, CI/CD \\
+\textbf{Relation métier} : recueil du besoin, co-construction de rapports, interface DSI/métiers, vulgarisation, support utilisateurs, communication écrite et orale \\
+\textbf{IA \& Data Science} : machine learning, forecasting, RAG, LLMs, intégration d'outils IA/Data Science
+}}
+\end{itemize}
+
+\section{Formation}
+\resumeSubHeadingListStart
+  \resumeSubheading
+    {JUNIA ISEN}{Lille, France}
+    {Diplôme d'Ingénieur --- Big Data \& Data Science}{Diplômé en 2026}
+  \resumeSubheading
+    {JUNIA ISEN}{Rabat, Maroc}
+    {Licence --- Électronique et Systèmes Numériques}{2023}
+  \resumeSubheading
+    {Cycle préparatoire Marie Stella}{Cotonou, Bénin}
+    {Classe préparatoire MPSI --- Mathématiques, Physique, Sciences de l'Ingénieur}{2022}
+\resumeSubHeadingListEnd
+
+\section{Certifications}
+\begin{itemize}[leftmargin=0.15in, label={}]
+\small{\item{
+\textbf{Se préparer au métier d'analyste de données} | Microsoft \& LinkedIn $|$ 2024 \vspace{1.5pt} \\
+\textbf{Introduction to Data Analytics on Google Cloud} | Google $|$ 2024 \vspace{1.5pt} \\
+\textbf{Data Analysis with Python} | freeCodeCamp $|$ 2023
+}}
+\end{itemize}
+
+\section{Langues}
+\begin{itemize}[leftmargin=0.15in, label={}]
+  \small{\item{
+   \textbf{Français} : Langue maternelle \vspace{1.5pt} \\
+   \textbf{Anglais} : Niveau professionnel (B2 - Certifié Linguaskill Business English) \vspace{1.5pt} \\
+   \textbf{Yoruba, Fon, Goun} : Langues maternelles
+  }}
+\end{itemize}
+
+\section{Engagements \& Associations}
+\resumeSubHeadingListStart
+  \resumeSubheading
+    {Vice-Président}{Sep. 2024 -- Août 2025}
+    {Commission Réseau JUNIA ALUMNI}{Lille, France}
+    \resumeItemListStart
+      \resumeItem{Coordination de la commission, animation du réseau alumni et contribution à l'organisation d'événements professionnels.}
+    \resumeItemListEnd
+
+  \resumeSubheading
+    {Responsable Communication}{Sep. 2023 -- Août 2024}
+    {Commission Réseau JUNIA ALUMNI}{Lille, France}
+    \resumeItemListStart
+      \resumeItem{Pilotage de la communication, préparation d'annonces et valorisation des initiatives auprès de la communauté.}
+    \resumeItemListEnd
+\resumeSubHeadingListEnd
+
+\end{document}

@@ -1,0 +1,27 @@
+# Desktop Policies
+
+`/orgs/:id/automation/desktop-policies` — Organization → Automation → Desktop Policies
+
+## What it's for
+
+Restricting what a connected desktop app is allowed to do locally —
+custom AI providers, local models, multiple workspaces, changing its own
+settings. Every policy is **allowed by default**; a binding here can only
+restrict further, never loosen it back up.
+
+## How to use it
+
+The "Policy catalog" card is read-only reference — every policy this
+version of the app understands, and what each one controls. Bindings are
+what actually take effect: "New binding" picks a policy, who it applies
+to (whole organization, a role, a specific user, or a team), and whether
+it's Allowed or Blocked.
+
+When more than one binding could apply to the same device, **the most
+restrictive one wins** — a Blocked binding anywhere in the chain stays
+blocked, regardless of a more permissive one elsewhere.
+
+## See also
+
+- [Devices](./devices.mdx) — the machines these policies actually
+  constrain.
