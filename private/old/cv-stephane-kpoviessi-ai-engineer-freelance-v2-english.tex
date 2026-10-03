@@ -1,0 +1,152 @@
+% Freelance CV - Stephane KPOVIESSI
+% English version based on the French V2 layout.
+% Compile target: pdfLaTeX
+
+\documentclass[10pt,a4paper]{article}
+
+\usepackage[a4paper,left=1.15cm,right=1.15cm,top=0.9cm,bottom=0.9cm]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{tabularx}
+\usepackage{titlesec}
+\usepackage{array}
+\usepackage{fontawesome5}
+
+\definecolor{accent}{HTML}{1F4E79}
+\definecolor{accentdark}{HTML}{163A5A}
+\definecolor{accentsoft}{HTML}{EAF1F7}
+\definecolor{text}{HTML}{17202A}
+\definecolor{muted}{HTML}{5F6B73}
+\definecolor{rule}{HTML}{D5E2EC}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{2pt}
+\setlist[itemize]{leftmargin=1.1em, nosep, topsep=1pt, itemsep=0.7pt}
+\renewcommand{\arraystretch}{1.06}
+
+\titleformat{\section}
+  {\fontsize{10.45pt}{11.8pt}\selectfont\bfseries\color{accent}}
+  {}{0pt}{}
+  [\vspace{-3pt}{\color{rule}\titlerule}]
+\titlespacing*{\section}{0pt}{5pt}{3pt}
+
+\newcommand{\cvrole}[4]{%
+  \vspace{4.2pt}
+  \begin{tabularx}{\linewidth}{@{}Xr@{}}
+    \textbf{#1} & {\color{accent}#2}
+  \end{tabularx}\par\vspace{-4.6pt}
+  \begin{tabularx}{\linewidth}{@{}Xr@{}}
+    {\color{muted}#3} & {\color{muted}#4}
+  \end{tabularx}\par\vspace{-0.4pt}
+}
+
+\newcommand{\project}[3]{%
+  \textbf{#1} {\color{muted}- #2}\par
+  #3\par
+}
+
+\newcommand{\skillrow}[2]{%
+  \textbf{#1} & #2\\
+}
+
+\begin{document}
+\fontsize{9pt}{10.25pt}\selectfont
+\color{text}
+\sloppy
+
+\begin{minipage}[t]{0.58\textwidth}
+  {\LARGE\bfseries Stephane KPOVIESSI}\par
+  \vspace{1pt}
+  {\large\color{accent}Freelance AI Engineer}\par
+  {\bfseries\color{accentdark}AI Agents \textbullet{} RAG \textbullet{} Automation}\par
+  \vspace{2pt}
+  {\color{muted}Micro-entrepreneur \textbullet{} Available for freelance missions}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.38\textwidth}
+  \raggedleft
+  {\small
+  \begin{tabular}{@{}r@{\hspace{4pt}}l@{}}
+  {\color{accent}\faIcon{map-marker-alt}} & Cergy / Ile-de-France\\
+  {\color{accent}\faIcon{phone}} & +33 7 48 59 47 13\\
+  {\color{accent}\faIcon{envelope}} & \href{mailto:oastephanekpoviessi@gmail.com}{oastephanekpoviessi@gmail.com}\\
+  {\color{accent}\faIcon{link}} & \href{https://linkedin.com/in/stephanekpoviessi}{linkedin.com/in/stephanekpoviessi}\\
+  {\color{accent}\faIcon{globe}} & \href{https://seshat-ai.com}{seshat-ai.com} \textbullet{} \href{https://github.com/KPO-Tech}{github.com/KPO-Tech}
+  \end{tabular}
+  }
+\end{minipage}
+
+\vspace{5pt}
+{\color{rule}\hrule height 1pt}
+\vspace{5pt}
+
+\section{Profile}
+I help companies identify automation, internal tooling and AI integration opportunities, then turn them into practical solutions. From need analysis to delivery, I design and deploy workflows, open-source tools, internal assistants, RAG systems and AI agents adapted to business environments.
+
+{\color{accent}\textbf{Business process -> Internal need -> Solution -> Integration}}
+
+\section{Services}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.23\linewidth}>{\raggedright\arraybackslash}X@{}}
+\skillrow{AI audit}{Processes, repetitive tasks, AI opportunities, prioritization and pilot scoping.}
+\skillrow{AI agents}{Orchestration, multi-agent systems, tool calling, MCP, human-in-the-loop and agentic workflows.}
+\skillrow{RAG \& Knowledge}{Document ingestion, embeddings, vector databases, hybrid search and internal assistants.}
+\skillrow{Automation}{APIs, internal tools, scheduled tasks, business services and back-office workflows.}
+\skillrow{POC -> integration}{Prototyping, validation, testing, Docker, backend architecture and access security.}
+\end{tabularx}
+
+\section{Seshat}
+\cvrole{Founder \& AI Engineer}{Sept. 2026 - Present}{Open-source agentic AI and automation platform}{seshat-ai.com}
+\begin{itemize}
+  \item Agentic AI and automation platform for building AI agents and workflows that integrate into enterprise environments.
+  \item Python/Go architecture with backend services, local/cloud backend and an Electron/React desktop application.
+  \item Agent orchestration, tool calling, MCP, human-in-the-loop, scheduled tasks and internal workflows.
+  \item Hybrid RAG: document ingestion, chunking, embeddings, PostgreSQL/pgvector, Chroma, vector search and sourced answers.
+  \item Multi-LLM integration with OpenAI, Mistral, Gemini and Ollama, with permissions, auditability and secure access control.
+\end{itemize}
+{\small\textbf{Use cases:} internal assistants \textbullet{} Knowledge/RAG \textbullet{} back-office automation \textbullet{} agentic workflows \textbullet{} document processing}
+
+\section{Experience}
+\cvrole{Allianz France - Data Engineer / Data Scientist}{Nov. 2025 - Apr. 2026}{P4D, Advanced Data \& Climate}{Paris, France}
+\begin{itemize}
+  \item Migrated an Insurance datamart from SAS to Python/PySpark, validating functional parity across 15,000+ lines of code.
+  \item Built a Medallion architecture on Azure Databricks integrating 150+ business rules.
+  \item Developed a geospatial Data Quality pipeline and SAS/Python automated tests for KPI validation and regression control.
+\end{itemize}
+
+\cvrole{LYNE ET FRERES SARL - Data Analyst}{2023 - 2025}{Strategic support assignments - Recurring data analysis}{Benin / Remote}
+\begin{itemize}
+  \item Analyzed commercial, operational and agricultural data with Python/Pandas to monitor KPIs and support decisions.
+  \item Built reports, dashboards and Streamlit/web interfaces to deliver insights to business users.
+\end{itemize}
+
+\cvrole{Groupe Sylvagreg - Machine Learning Engineer}{May 2024 - Aug. 2024}{Computer Vision, 3D reconstruction, PyTorch, AWS, Docker}{Lille, France}
+Contributed to computer vision and 3D reconstruction pipelines from 2D images, using PyTorch models, image processing and Docker/AWS environments.
+
+\section{Technical Projects}
+\project{Tech Watch Agent}{Python, FastAPI, LangGraph, PostgreSQL, pgvector, React, Docker}
+{Multi-agent monitoring platform: scheduling, multi-source collection, synthesis, targeted reports, LangGraph orchestration and PostgreSQL/pgvector memory.}
+
+\project{BI Retail Solution}{Python, PySpark, Airflow, PostgreSQL, Power BI, Docker}
+{Sales/supply-chain data pipeline: ingestion, PySpark transformations, PostgreSQL loading, Airflow orchestration and Power BI dashboards.}
+
+\section{Stack}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.18\linewidth}>{\raggedright\arraybackslash}X@{}}
+\skillrow{AI \& Agents}{LLMs, RAG, LangGraph, LangChain, MCP, Tool Calling, Human-in-the-loop, Embeddings, Agentic AI}
+\skillrow{Backend \& Data}{Python, FastAPI, Go, SQL, PostgreSQL, pgvector, PySpark, Pandas, REST APIs}
+\skillrow{Data / Cloud}{Azure, ADLS, ADF, Databricks, Airflow, Delta Lake, Data Quality}
+\skillrow{Engineering}{Docker, Git, CI/CD, automated tests, React, Electron}
+\end{tabularx}
+
+\section{Education \& Languages}
+\begin{tabularx}{\linewidth}{@{}Xr@{}}
+\textbf{JUNIA ISEN Lille} - Engineering degree, Big Data \& Data Science & 2026\\
+\textbf{JUNIA ISEN Rabat} - Bachelor's degree, Electronics \& Digital Systems & 2023\\
+\textbf{Languages} - French native \textbullet{} English B2, Linguaskill Business English &
+\end{tabularx}
+
+\end{document}
