@@ -30,10 +30,12 @@ Thumbs.db
 .claude/
 .worktrees/
 .gemini/
-private/*
-!private/cvs-specialises/
-!private/cvs-specialises/**
 graphify-out/
+
+# Private local-only material. CV collateral is intentionally versioned under
+# private/cvs-specialises/.
+private/.env*
+private/capture/
 
 # Generic local artifacts
 *.log

@@ -1,16 +1,16 @@
 # Seshat AI website workspace
 
 WEBSITE_DIR := website
+CV_DIR := private/cvs-specialises
+PDFLATEX ?= pdflatex
+POWERSHELL ?= powershell.exe
 
-.PHONY: help install dev build preview clean
+.PHONY: help install dev build preview clean cv-build cv-clean-logs
 
 .DEFAULT_GOAL := help
 
 help: ## Show available targets
-	@printf "\n  \033[1mSeshat AI - make targets\033[0m\n\n"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
-	  | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
-	@printf "\n"
+	@$(POWERSHELL) -NoProfile -ExecutionPolicy Bypass -Command "Write-Host ''; Write-Host '  Seshat AI - make targets'; Write-Host ''; Get-Content '$(firstword $(MAKEFILE_LIST))' | Select-String '^[a-zA-Z_-]+:.*?## ' | ForEach-Object { $$parts = $$_.Line -split ':.*?## ', 2; '  {0,-16} {1}' -f $$parts[0], $$parts[1] | Write-Host }; Write-Host ''"
 
 install: ## Install website dependencies
 	cd $(WEBSITE_DIR) && npm ci
@@ -24,5 +24,11 @@ build: ## Build the website
 preview: ## Preview the production build locally
 	cd $(WEBSITE_DIR) && npm run preview
 
-clean: ## Remove generated website build artifacts
-	rm -rf $(WEBSITE_DIR)/dist $(WEBSITE_DIR)/dist-server
+cv-build: ## Build active CV PDFs and remove LaTeX auxiliary logs
+	$(POWERSHELL) -NoProfile -ExecutionPolicy Bypass -Command "$$ErrorActionPreference = 'Stop'; $$root = (Resolve-Path '$(CV_DIR)').Path; $$files = Get-ChildItem -LiteralPath $$root -Recurse -Filter '*.tex' | Where-Object { $$_.FullName -notmatch '\\old\\' }; foreach ($$file in $$files) { $$out = Join-Path $$file.Directory.FullName 'output'; New-Item -ItemType Directory -Force -Path $$out | Out-Null; & '$(PDFLATEX)' -interaction=nonstopmode -halt-on-error -output-directory $$out $$file.FullName; if ($$LASTEXITCODE -ne 0) { exit $$LASTEXITCODE } }; $$auxExt = @('.aux','.log','.out','.toc','.fls','.fdb_latexmk','.bbl','.blg','.nav','.snm'); Get-ChildItem -LiteralPath $$root -Recurse -File | Where-Object { $$auxExt -contains $$_.Extension -or $$_.Name -like '*.synctex.gz' } | Remove-Item -Force"
+
+cv-clean-logs: ## Remove LaTeX auxiliary files from CV folders
+	$(POWERSHELL) -NoProfile -ExecutionPolicy Bypass -Command "$$ErrorActionPreference = 'Stop'; $$root = (Resolve-Path '$(CV_DIR)').Path; $$auxExt = @('.aux','.log','.out','.toc','.fls','.fdb_latexmk','.bbl','.blg','.nav','.snm'); Get-ChildItem -LiteralPath $$root -Recurse -File | Where-Object { $$auxExt -contains $$_.Extension -or $$_.Name -like '*.synctex.gz' } | Remove-Item -Force"
+
+clean: cv-clean-logs ## Remove generated website build artifacts and LaTeX logs
+	$(POWERSHELL) -NoProfile -ExecutionPolicy Bypass -Command "Remove-Item -LiteralPath '$(WEBSITE_DIR)/dist','$(WEBSITE_DIR)/dist-server' -Recurse -Force -ErrorAction SilentlyContinue"
