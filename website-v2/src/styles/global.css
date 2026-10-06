@@ -437,6 +437,30 @@ section.contact-block { padding: 28px 0 88px; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .fine { margin-top: 14px; font-size: 0.9rem; color: var(--text2); }
 
+/* Dépôts GitHub : icône, liens, cartes */
+.link .pi { width: 18px; height: 18px; }
+.prod-private { display: inline-flex; align-items: center; gap: 8px; font-size: 0.92rem; color: var(--text2); }
+.prod-private .pi { width: 18px; height: 18px; fill: currentColor; }
+.prod.dark .link .pi { fill: #f29a5a; }
+.product .link { font-size: 0.95rem; }
+.repos { margin-top: 40px; display: grid; grid-template-columns: 1.1fr 1fr 0.9fr; gap: 20px; }
+.repo { display: grid; gap: 12px; align-content: start; padding: 28px; border-radius: calc(var(--radius) + 6px); background: var(--surface); border: 1px solid var(--line); text-decoration: none; color: inherit; transition: transform 0.25s var(--ease), border-color 0.2s; }
+.repo:hover { transform: translateY(-3px); border-color: var(--accent); }
+.repo.dark { background: var(--panel); color: var(--on-panel); border-color: transparent; }
+.repo-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.repo-top img { width: 48px; height: 48px; }
+.repo-icon { width: 48px; height: 48px; display: grid; place-items: center; border-radius: var(--radius); background: var(--bg); border: 1px solid var(--line); color: var(--accent-text); }
+.repo-icon .pi { width: 26px; height: 26px; fill: currentColor; }
+.repo h3 { font-size: 1.4rem; }
+.repo p { color: var(--text2); max-width: 40ch; }
+.repo.dark p { color: var(--on-panel2); }
+.repo .link { margin-top: 6px; }
+.repo.dark .link { color: #f29a5a; }
+.repo-notes { margin-top: 20px; display: grid; gap: 8px; color: var(--text2); }
+.repo-notes p { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.repo-notes .pi { width: 20px; height: 20px; fill: currentColor; flex: none; }
+.repo-notes .link .pi { display: none; }
+
 /* Open source : où regarder */
 .inspect { margin-top: 40px; display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 20px; }
 .inspect-card { display: grid; gap: 12px; align-content: start; padding: 32px; border-radius: calc(var(--radius) + 6px); background: var(--surface); border: 1px solid var(--line); text-decoration: none; color: inherit; }
@@ -592,6 +616,7 @@ section.contact-block { padding: 28px 0 88px; }
   .why .sticky { position: static; }
   .shield { display: none; }
   .contact-grid { grid-template-columns: 1fr; gap: 24px; }
+  .repos { grid-template-columns: 1fr; }
   .prod, .terms, .inspect, .about-method, .kta, .projects, .about-top .wrap, .edu, .certs, .side-cards { grid-template-columns: 1fr; }
   .project.robot { grid-template-columns: 1fr; padding: 28px 22px; gap: 24px; }
   .edu-step:nth-child(1), .edu-step:nth-child(2) { margin-top: 0; }

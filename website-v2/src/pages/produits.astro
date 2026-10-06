@@ -35,12 +35,13 @@ const products = [
     tone: 'wip',
     what: 'Un environnement d\'IA local, auto-hébergé, sur votre poste ou votre serveur : un backend en Go et une application de bureau.',
     points: [
-      'Le Chat est la première surface active.',
-      'Paramètres, administration, planification, skills et connaissance viennent ensuite.',
-      'Vos documents restent sur votre machine.',
+      'Le Chat et les Projets, avec skills et outils, s\'utilisent déjà en local.',
+      'Recherche dans vos documents depuis le Chat. Vos documents restent sur votre machine.',
+      'Écrans dédiés (connaissance, planification, administration) : ils arrivent ensuite.',
     ],
     licence: 'Source-available : gratuit à utiliser et à héberger, non revendable.',
-    status: 'En reconstruction autour du Chat. Nous vous disons ce qui est prêt au moment du pilote.',
+    status: 'Public sur GitHub. Le Chat et les Projets sont utilisables, le reste est en construction.',
+    link: { href: 'https://github.com/KPO-Tech/SeshatOS', label: 'Voir le code' },
     dark: true,
   },
   {
@@ -56,6 +57,7 @@ const products = [
     ],
     licence: 'Source-available. Accord commercial au-delà d\'un seuil. Licence en cours de finalisation.',
     status: 'Solide côté serveur, pas encore proposée seule.',
+    private: true,
     dark: false,
   },
 ];
@@ -104,7 +106,8 @@ const verbs = [
               <h2>{p.name}</h2>
               <span class={`badge ${p.tone}`}>{p.badge}</span>
               <p class="prod-lic">{p.licence}</p>
-              {p.link && <a class="link" href={p.link.href} rel="noopener">{p.link.label} <Arrow /></a>}
+              {p.link && <a class="link" href={p.link.href} rel="noopener"><Icon name="github-logo" /> {p.link.label} <Arrow /></a>}
+              {p.private && <p class="prod-private"><Icon name="lock-key" /> Dépôt privé pour l'instant</p>}
             </div>
             <div>
               <p class="prod-what">{p.what}</p>

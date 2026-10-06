@@ -30,7 +30,7 @@ const rows = [
         </article>
         <article class="term alt reveal" style="--d:100ms">
           <h2><Icon name="book-open-text" /> Source-available</h2>
-          <p>Le code est lisible et vous pouvez l'utiliser et l'héberger chez vous, mais la licence limite la revente. C'est le cas de <strong>SeshatOS</strong> et de <strong>SeshatCloud</strong>.</p>
+          <p>Le code est lisible et vous pouvez l'utiliser et l'héberger chez vous, mais la licence limite la revente. C'est le cas de <strong>SeshatOS</strong>, déjà public, et de <strong>SeshatCloud</strong>.</p>
         </article>
       </div>
       <p class="intro reveal" style="margin-top:20px;max-width:70ch">Nous n'écrivons « open source » que pour ce qui l'est vraiment.</p>
@@ -79,18 +79,34 @@ const rows = [
   <section class="block">
     <div class="wrap">
       <h2 class="reveal">Où regarder.</h2>
-      <div class="inspect">
-        <a class="inspect-card dark reveal" href="https://github.com/KPO-Tech/seshat" rel="noopener">
-          <img src="/brand/seshat.svg" alt="" width="56" height="56" />
-          <h3>Le runtime Seshat</h3>
-          <p>Code, versions et historique, sur GitHub.</p>
-          <span class="link">Ouvrir le dépôt <Arrow /></span>
+      <div class="repos">
+        <a class="repo dark reveal" href="https://github.com/KPO-Tech/seshat" rel="noopener">
+          <span class="repo-top"><img src="/brand/seshat.svg" alt="" width="48" height="48" /><span class="badge ok">Open source</span></span>
+          <h3>Seshat</h3>
+          <p>Le runtime d'agents en Go : code, versions et historique.</p>
+          <span class="link"><Icon name="github-logo" /> KPO-Tech/seshat <Arrow /></span>
         </a>
-        <article class="inspect-card reveal" style="--d:100ms">
-          <h3>Des solutions tierces, intégrées avec soin</h3>
-          <p>Nous sélectionnons, configurons et intégrons les solutions adaptées à votre besoin, y compris open source, en préservant la souveraineté de vos données.</p>
-        </article>
+        <a class="repo reveal" href="https://github.com/KPO-Tech/SeshatOS" rel="noopener" style="--d:90ms">
+          <span class="repo-top"><img src="/brand/seshatos.svg" alt="" width="48" height="48" /><span class="badge wip">Source-available</span></span>
+          <h3>SeshatOS</h3>
+          <p>L'application locale, déjà publique. Le Chat et les Projets, avec skills, s'utilisent en local ; le reste est en construction.</p>
+          <span class="link"><Icon name="github-logo" /> KPO-Tech/SeshatOS <Arrow /></span>
+        </a>
+        <a class="repo reveal" href="https://github.com/KPO-Tech/seshat-skills" rel="noopener" style="--d:180ms">
+          <span class="repo-top"><span class="repo-icon"><Icon name="git-branch" /></span><span class="badge ok">Public</span></span>
+          <h3>Skills</h3>
+          <p>Les skills que Seshat et SeshatOS peuvent charger.</p>
+          <span class="link"><Icon name="github-logo" /> KPO-Tech/seshat-skills <Arrow /></span>
+        </a>
       </div>
+      <div class="repo-notes">
+        <p class="reveal"><Icon name="lock-key" /> <strong>SeshatCloud</strong> : dépôt privé pour l'instant, la licence est en cours de finalisation.</p>
+        <p class="reveal"><Icon name="github-logo" /> L'ensemble est sur <a class="link" href="https://github.com/KPO-Tech" rel="noopener">github.com/KPO-Tech</a>.</p>
+      </div>
+      <article class="inspect-card reveal" style="margin-top:20px">
+        <h3>Des solutions tierces, intégrées avec soin</h3>
+        <p>Nous sélectionnons, configurons et intégrons les solutions adaptées à votre besoin, y compris open source, en préservant la souveraineté de vos données.</p>
+      </article>
     </div>
   </section>
 
