@@ -51,6 +51,12 @@ const levels = [
   },
 ];
 
+const swaps = [
+  { no: 'Un chatbot présenté comme une solution.', title: 'Un assistant branché sur un vrai processus.', yes: 'Il a un gain mesurable, fixé à l\'avance.' },
+  { no: 'Des agents qui agissent sans contrôle.', title: 'Une personne qui relit et valide.', yes: 'Rien de sensible ne part sans son accord.' },
+  { no: 'Une solution imposée.', title: 'L\'outil qui convient, y compris open source.', yes: 'Intégré en préservant la souveraineté de vos données. Si une solution du marché répond mieux que la nôtre, le diagnostic le dit.' },
+];
+
 const pilots = [
   { t: 'Documentation interne', d: 'Poser une question et obtenir une réponse sourcée, en respectant les droits d\'accès de chacun.', tone: 'dark',
     flow: [['chat-circle-text', 'Question'], ['files', 'Vos documents'], ['quotes', 'Réponse et source']] },
@@ -138,23 +144,15 @@ const pilots = [
   </section>
 
   <section class="block">
-    <div class="wrap why">
-      <div class="sticky reveal">
-        <h2>Ce que nous ne faisons pas.</h2>
-      </div>
-      <div class="commitments">
-        <div class="reveal">
-          <h3>Pas de chatbot présenté comme une solution.</h3>
-          <p>Un assistant n'a de valeur que branché sur un vrai processus, avec un gain qu'on peut mesurer.</p>
-        </div>
-        <div class="reveal">
-          <h3>Pas d'agents sans contrôle humain.</h3>
-          <p>Sur les décisions sensibles, une personne relit et valide avant que quoi que ce soit ne parte.</p>
-        </div>
-        <div class="reveal">
-          <h3>Pas de solution imposée.</h3>
-          <p>Nous sélectionnons, configurons et intégrons l'outil qui convient, y compris open source, en préservant la souveraineté de vos données. Si une solution du marché répond mieux que la nôtre, le diagnostic le dit.</p>
-        </div>
+    <div class="wrap">
+      <h2 class="reveal">Ce que nous ne faisons pas, et ce que nous faisons à la place.</h2>
+      <div class="swaps">
+        {swaps.map((s, i) => (
+          <article class="swap reveal" style={`--d:${i * 90}ms`}>
+            <p class="no"><Icon name="x-circle" /><s>{s.no}</s></p>
+            <p class="yes"><Icon name="check-circle" /><span><strong>{s.title}</strong> {s.yes}</span></p>
+          </article>
+        ))}
       </div>
     </div>
   </section>

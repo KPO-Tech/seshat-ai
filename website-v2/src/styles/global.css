@@ -269,6 +269,18 @@ section.quest-block { padding: 8px 0 96px; }
 .deliver .tick { width: 18px; height: 18px; margin-top: 3px; fill: var(--accent); }
 .panel .level-note { grid-column: 1 / -1; margin: 0; padding: 14px 18px; border-radius: var(--radius); background: rgba(239, 124, 47, 0.14); color: var(--on-panel); font-size: 0.98rem; }
 
+/* Services : refus et alternative en regard */
+.swaps { margin-top: 48px; display: grid; gap: 16px; }
+.swap { display: grid; grid-template-columns: 0.8fr 1.2fr; border-radius: calc(var(--radius) + 4px); overflow: hidden; border: 1px solid var(--line); background: var(--surface); }
+.swap p { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: start; padding: 26px 28px; }
+.swap .no { background: color-mix(in srgb, var(--text2) 9%, var(--bg)); color: var(--text2); }
+.swap .no s { text-decoration-thickness: 2px; text-decoration-color: color-mix(in srgb, var(--text2) 70%, transparent); }
+.swap .no .pi { fill: var(--text2); opacity: 0.8; }
+.swap .yes .pi { fill: var(--accent); }
+.swap .yes strong { font-family: var(--font-display); font-weight: 600; font-size: 1.1rem; display: block; margin-bottom: 4px; }
+.swap .yes span { color: var(--text2); }
+.swap p .pi { width: 24px; height: 24px; margin-top: 1px; }
+
 /* Services : exemples de pilotes (2 + 2, teintes variées) */
 .pilots { margin-top: 48px; display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; }
 .pilot { border-radius: calc(var(--radius) + 4px); padding: 28px; border: 1px solid var(--line); background: var(--surface); display: grid; gap: 10px; align-content: end; min-height: 180px; }
@@ -347,6 +359,7 @@ section.quest-block { padding: 8px 0 96px; }
   .rail::before, .rail::after { top: 28px; }
   .node-name { font-size: 0.95rem; }
   .pilots { grid-template-columns: 1fr; }
+  .swap { grid-template-columns: 1fr; }
   .page-head { padding: 56px 0 24px; }
   .page-head.services-head { padding: 28px 0 0; }
   section.block { padding: 72px 0; }
