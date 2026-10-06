@@ -2,6 +2,7 @@
 import Base from '../layouts/Base.astro';
 import Arrow from '../components/Arrow.astro';
 import Check from '../components/Check.astro';
+import Icon from '../components/Icon.astro';
 
 // Cellules du nid d'abeille (colonne, ligne) et niveau à partir duquel elles s'allument.
 const cells = [
@@ -51,10 +52,14 @@ const levels = [
 ];
 
 const pilots = [
-  { t: 'Documentation interne', d: 'Poser une question et obtenir une réponse sourcée, en respectant les droits d\'accès de chacun.', tone: 'dark' },
-  { t: 'Documents métier', d: 'Lire, extraire et contrôler des documents, avec une validation humaine avant tout enregistrement.', tone: 'warm' },
-  { t: 'Socle numérique souverain', d: 'Messagerie professionnelle, documents partagés et automatisation administrative, hébergés chez vous.', tone: 'plain' },
-  { t: 'Reporting récurrent', d: 'Produire à intervalles réguliers les mêmes tableaux de bord et rapports, sans ressaisie.', tone: 'plain' },
+  { t: 'Documentation interne', d: 'Poser une question et obtenir une réponse sourcée, en respectant les droits d\'accès de chacun.', tone: 'dark',
+    flow: [['chat-circle-text', 'Question'], ['files', 'Vos documents'], ['quotes', 'Réponse et source']] },
+  { t: 'Documents métier', d: 'Lire, extraire et contrôler des documents, avec une validation humaine avant tout enregistrement.', tone: 'warm',
+    flow: [['file-text', 'Document'], ['table', 'Données extraites'], ['user-check', 'Validation humaine']] },
+  { t: 'Socle numérique souverain', d: 'Messagerie professionnelle, documents partagés et automatisation administrative, hébergés chez vous.', tone: 'plain',
+    flow: [['envelope-simple', 'Messagerie'], ['folder-simple', 'Documents'], ['lightning', 'Automatisation']] },
+  { t: 'Reporting récurrent', d: 'Produire à intervalles réguliers les mêmes tableaux de bord et rapports, sans ressaisie.', tone: 'plain',
+    flow: [['database', 'Vos données'], ['chart-bar', 'Rapport'], ['calendar-check', 'Envoi planifié']] },
 ];
 ---
 <Base
@@ -119,6 +124,11 @@ const pilots = [
       <div class="pilots">
         {pilots.map((p, i) => (
           <article class={`pilot ${p.tone} reveal`} style={`--d:${i * 80}ms`}>
+            <ol class="flow" aria-hidden="true">
+              {p.flow.map(([icon, label], k) => (
+                <li style={`--k:${k}`}><span class="chip"><Icon name={icon} /></span><span class="cap">{label}</span></li>
+              ))}
+            </ol>
             <h3>{p.t}</h3>
             <p>{p.d}</p>
           </article>
