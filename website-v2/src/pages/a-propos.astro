@@ -104,6 +104,12 @@ const langs = [
   ['Yoruba, fon, goun', 'langues maternelles'],
 ];
 
+const reach = [
+  { icon: 'linkedin-logo', t: 'LinkedIn', d: 'linkedin.com/in/stephanekpoviessi', href: 'https://linkedin.com/in/stephanekpoviessi' },
+  { icon: 'github-logo', t: 'GitHub', d: 'github.com/KPO-Tech', href: 'https://github.com/KPO-Tech' },
+  { icon: 'globe', t: 'Portfolio', d: 'kpoviessi-stephane.vercel.app', href: 'https://kpoviessi-stephane.vercel.app/' },
+];
+
 const method = [
   { t: 'Comprendre', d: 'Votre métier, vos documents, vos contraintes de confidentialité.' },
   { t: 'Prioriser', d: 'Les cas d\'usage qui valent le coup, classés par valeur, rapidité, risque et faisabilité.' },
@@ -318,12 +324,23 @@ const method = [
 
   <section class="cta">
     <div class="wrap">
-      <div class="cta-box">
-        <h2 class="reveal">Parlons de votre situation.</h2>
-        <div class="reveal" style="--d:100ms">
-          <p>Un premier échange pour comprendre vos besoins et voir si l'IA peut vous aider.</p>
+      <div class="cta-box perso">
+        <div class="reveal">
+          <h2>Écrivez-moi directement.</h2>
+          <p>Pour une question, une idée ou un projet, le plus simple est de m'écrire. Pour cadrer un besoin précis dans votre entreprise, passez par la demande de diagnostic.</p>
           <a class="btn btn-primary" href="/contact">Demander un diagnostic <Arrow /></a>
         </div>
+        <ul class="reach reveal" style="--d:100ms">
+          {reach.map((r) => (
+            <li>
+              <a href={r.href} rel="noopener">
+                <span class="reach-ic"><Icon name={r.icon} /></span>
+                <span class="reach-txt"><strong>{r.t}</strong><small>{r.d}</small></span>
+                <Arrow />
+              </a>
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   </section>

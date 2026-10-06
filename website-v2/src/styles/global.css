@@ -209,6 +209,21 @@ section.cta { padding: 16px 0 96px; }
 .cta-box div { display: grid; gap: 18px; justify-items: start; }
 .cta-box p { color: var(--on-panel2); margin: 0; }
 
+/* À propos : contact personnel */
+.cta-box.perso { grid-template-columns: 1fr 1fr; align-items: center; gap: 48px; }
+.cta-box.perso h2 { white-space: normal; }
+.cta-box.perso > div { display: grid; gap: 18px; justify-items: start; }
+.reach { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; width: 100%; }
+.cta-box .reach li { display: block; }
+.reach a { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 16px; padding: 16px 18px; border-radius: var(--radius); border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.05); color: var(--on-panel); text-decoration: none; transition: background 0.25s var(--ease), border-color 0.25s, transform 0.25s var(--ease); }
+.reach a:hover { background: rgba(239, 124, 47, 0.16); border-color: var(--accent); transform: translateX(3px); }
+.reach-ic { width: 44px; height: 44px; display: grid; place-items: center; border-radius: var(--radius); background: var(--accent); color: var(--on-accent); }
+.reach-ic .pi { width: 24px; height: 24px; fill: currentColor; }
+.reach-txt { display: grid; gap: 2px; }
+.reach-txt strong { font-family: var(--font-display); font-size: 1.05rem; }
+.reach-txt small { color: var(--on-panel2); font-size: 0.9rem; }
+.reach a > .ico { width: 20px; height: 20px; fill: #f29a5a; }
+
 /* Pied de page : compact, avec l'emblème en filigrane */
 .site-footer { position: relative; overflow: hidden; border-top: 1px solid var(--line); padding: 48px 0 28px; background: var(--band); }
 .foot-mark { position: absolute; right: max(-40px, calc((100vw - 1200px) / 2 - 60px)); bottom: -90px; width: 260px; height: 260px; opacity: 0.07; pointer-events: none; }
@@ -641,7 +656,7 @@ section.contact-block { padding: 28px 0 88px; }
   .hero .wrap, .why { grid-template-columns: 1fr; gap: 40px; }
   .foot-top { grid-template-columns: 1fr; gap: 28px; }
   .foot-mark { display: none; }
-  .cta-box { grid-template-columns: 1fr; gap: 24px; padding: 36px 24px; }
+  .cta-box, .cta-box.perso { grid-template-columns: 1fr; gap: 24px; padding: 36px 24px; }
   .cta-box h2 { white-space: normal; }
   .bento { grid-template-columns: 1fr; }
   .tile.big { grid-row: auto; min-height: 280px; }
