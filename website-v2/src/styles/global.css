@@ -400,6 +400,32 @@ section.contact-block { padding: 28px 0 88px; }
 .prod.dark .prod-status { color: var(--on-panel2); }
 .prod.dark .link { color: #f29a5a; }
 
+/* Produits : Seshat dans le terminal */
+.tui-block { padding-top: 24px; }
+.tui-block code { font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; font-size: 0.92em; padding: 2px 8px; border-radius: 6px; background: color-mix(in srgb, var(--text) 8%, transparent); }
+.install { margin-top: 32px; border-radius: calc(var(--radius) + 4px); background: var(--panel); color: var(--on-panel); overflow: hidden; }
+.cmd-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+.cmd-label { font-size: 0.85rem; font-weight: 600; color: var(--on-panel2); }
+.copy { font: inherit; font-size: 0.85rem; font-weight: 600; padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.2); background: transparent; color: var(--on-panel); cursor: pointer; }
+.copy:hover { border-color: var(--accent); color: #f29a5a; }
+.cmd { margin: 0; padding: 18px 20px; overflow-x: auto; }
+.cmd code { background: none; padding: 0; color: var(--on-panel); font-size: 0.95rem; line-height: 1.8; }
+.gallery { margin-top: 28px; }
+.shot { margin: 0; }
+.shot-frame { border-radius: calc(var(--radius) + 4px); overflow: hidden; background: #0e0d12; border: 1px solid var(--line); box-shadow: var(--shadow); }
+.shot-frame img { width: 100%; height: auto; }
+.shot figcaption { margin-top: 14px; max-width: 70ch; color: var(--text2); }
+.shot figcaption strong { color: var(--text); font-family: var(--font-display); }
+.thumbs { margin-top: 20px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+.thumb { display: grid; gap: 8px; padding: 0; border: 0; background: none; cursor: pointer; font: inherit; color: var(--text2); text-align: left; }
+.thumb img { width: 100%; height: auto; border-radius: 8px; border: 2px solid transparent; outline: 1px solid var(--line); opacity: 0.7; transition: opacity 0.2s, border-color 0.2s; }
+.thumb span { font-size: 0.85rem; font-weight: 600; }
+.thumb:hover img { opacity: 1; }
+.thumb[aria-selected='true'] img { opacity: 1; border-color: var(--accent); }
+.thumb[aria-selected='true'] span { color: var(--accent-text); }
+.prod .prod-lic { max-width: 36ch; }
+.term-note { margin-top: 4px; font-size: 0.92rem; }
+
 /* Produits : trois verbes de Knowledge-to-Action */
 .kta { margin-top: 48px; display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 20px; }
 .kta .pilot { align-content: start; min-height: 220px; gap: 12px; }
@@ -617,6 +643,7 @@ section.contact-block { padding: 28px 0 88px; }
   .shield { display: none; }
   .contact-grid { grid-template-columns: 1fr; gap: 24px; }
   .repos { grid-template-columns: 1fr; }
+  .thumbs { grid-template-columns: repeat(3, 1fr); }
   .prod, .terms, .inspect, .about-method, .kta, .projects, .about-top .wrap, .edu, .certs, .side-cards { grid-template-columns: 1fr; }
   .project.robot { grid-template-columns: 1fr; padding: 28px 22px; gap: 24px; }
   .edu-step:nth-child(1), .edu-step:nth-child(2) { margin-top: 0; }

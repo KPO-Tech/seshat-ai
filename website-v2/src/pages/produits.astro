@@ -21,10 +21,10 @@ const products = [
     points: [
       'Outils, sessions, permissions et sandbox.',
       'Une quinzaine de fournisseurs de modèles, MCP, skills et RAG.',
-      'Interface en ligne de commande et en terminal, gRPC et SDK.',
+      'Interface en terminal (seshat chat), ligne de commande, gRPC et SDK.',
     ],
-    licence: 'Open source, Apache-2.0.',
-    status: 'Version 1.2, utilisé en conditions réelles.',
+    licence: 'Runtime open source, Apache-2.0. L\'interface terminal reprend du code de Crush (licence FSL-1.1-MIT).',
+    status: 'Version 1.3, installable aujourd\'hui, avec son interface en terminal.',
     link: { href: 'https://github.com/KPO-Tech/seshat', label: 'Voir le code' },
     dark: false,
   },
@@ -60,6 +60,15 @@ const products = [
     private: true,
     dark: false,
   },
+];
+
+const shots = [
+  { img: '/captures/tui-home.png', t: 'Accueil', d: 'Prêt en quelques secondes, avec les raccourcis essentiels sous les yeux.' },
+  { img: '/captures/tui-working1.png', t: 'L\'agent au travail', d: 'La trace complète du raisonnement : réflexion, appels d\'outils, sous-agents et liste de tâches.' },
+  { img: '/captures/tui-working2.png', t: 'Résultats en continu', d: 'Réponses diffusées au fil de l\'eau, en markdown, avec la durée de chaque outil.' },
+  { img: '/captures/tui-model_selction.png', t: 'Choix du modèle', d: 'Changer de modèle parmi plus de vingt, en deux touches.' },
+  { img: '/captures/tui-provider_config.png', t: 'Fournisseurs', d: 'Clés d\'API chiffrées, rangées par fournisseur.' },
+  { img: '/captures/tui-commands_pannel.png', t: 'Réglages', d: 'Tous les raccourcis, à une touche de distance (ctrl+p).' },
 ];
 
 const verbs = [
@@ -122,6 +131,37 @@ const verbs = [
     </div>
   </section>
 
+  <section class="block tui-block">
+    <div class="wrap">
+      <h2 class="reveal">Seshat dans votre terminal, installable aujourd'hui.</h2>
+      <p class="intro reveal">Pas besoin d'attendre le reste : <code>seshat chat</code> ouvre une interface complète pour des sessions d'agent longues, avec vos propres clés de modèles, sur votre machine.</p>
+      <div class="install reveal">
+        <div class="cmd-bar">
+          <span class="cmd-label">Installation</span>
+          <button class="copy" type="button" data-copy="curl -fsSL https://raw.githubusercontent.com/KPO-Tech/seshat/main/scripts/install.sh | bash">Copier</button>
+        </div>
+        <pre class="cmd"><code>curl -fsSL https://raw.githubusercontent.com/KPO-Tech/seshat/main/scripts/install.sh | bash
+seshat chat</code></pre>
+      </div>
+      <div class="gallery reveal" data-gallery>
+        <figure class="shot">
+          <div class="shot-frame"><img src={shots[0].img} alt={shots[0].t} width="1917" height="986" loading="lazy" data-main /></div>
+          <figcaption data-cap><strong>{shots[0].t}</strong> <span>{shots[0].d}</span></figcaption>
+        </figure>
+        <div class="thumbs" role="tablist" aria-label="Captures de l'interface en terminal">
+          {shots.map((s, i) => (
+            <button class="thumb" type="button" role="tab" aria-selected={i === 0 ? 'true' : 'false'} data-img={s.img} data-t={s.t} data-d={s.d}>
+              <img src={s.img} alt="" width="240" height="124" loading="lazy" />
+              <span>{s.t}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <p class="fine reveal">Captures de l'interface actuelle. Elles montrent encore l'ancien nom du projet.</p>
+      <a class="link reveal" href="https://github.com/KPO-Tech/seshat" rel="noopener"><Icon name="github-logo" /> Voir le code et la documentation <Arrow /></a>
+    </div>
+  </section>
+
   <section class="block band">
     <div class="wrap">
       <h2 class="reveal">Knowledge-to-Action : un type de pilote, pas un produit fini.</h2>
@@ -149,4 +189,36 @@ const verbs = [
       </div>
     </div>
   </section>
+  <script is:inline>
+    (function () {
+      var g = document.querySelector('[data-gallery]');
+      if (g) {
+        var main = g.querySelector('[data-main]');
+        var cap = g.querySelector('[data-cap]');
+        var thumbs = [].slice.call(g.querySelectorAll('.thumb'));
+        var pick = function (i, focus) {
+          var b = thumbs[i];
+          thumbs.forEach(function (x, k) { x.setAttribute('aria-selected', k === i ? 'true' : 'false'); x.tabIndex = k === i ? 0 : -1; });
+          main.src = b.getAttribute('data-img');
+          main.alt = b.getAttribute('data-t');
+          cap.querySelector('strong').textContent = b.getAttribute('data-t');
+          cap.querySelector('span').textContent = b.getAttribute('data-d');
+          if (focus) b.focus();
+        };
+        thumbs.forEach(function (b, i) {
+          b.addEventListener('click', function () { pick(i); });
+          b.addEventListener('keydown', function (e) {
+            if (e.key === 'ArrowRight') { e.preventDefault(); pick(Math.min(i + 1, thumbs.length - 1), true); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); pick(Math.max(i - 1, 0), true); }
+          });
+        });
+      }
+      var cp = document.querySelector('.copy');
+      if (cp) cp.addEventListener('click', function () {
+        var text = cp.getAttribute('data-copy');
+        var done = function () { var old = cp.textContent; cp.textContent = 'Copié'; setTimeout(function () { cp.textContent = old; }, 1600); };
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, function () {});
+      });
+    })();
+  </script>
 </Base>
