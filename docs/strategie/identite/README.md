@@ -172,6 +172,8 @@ Variantes officielles du symbole, dans `logo/kpo-tech/kpotech/` : `on-light`, `o
 
 Avatar de l'organisation GitHub : `avatar.svg` (carré plein), `avatar-500.png` et `avatar-name-500.png` avec « kpo.tech » en dessous (500 × 500 px), produit par `python src/export_png.py` (Microsoft Edge en mode headless avec un profil temporaire, rien à télécharger). Brouillon du profil GitHub : [`../github-profil-kpo-tech.md`](../github-profil-kpo-tech.md).
 
+**Point de vigilance (2026-10-06) : le domaine `kpo.tech` existe déjà et n'appartient pas à KPO-Tech.** Le nom écrit dans l'avatar et dans le logo (`kpo.tech`, avec le point en nœud orange) est donc **provisoire**. Décision reportée : la communication porte d'abord sur Seshat. Options le moment venu : écrire « KPO-Tech » sans point, ou choisir un autre nom (vérifier alors le domaine et faire une recherche d'antériorité). En attendant, la version de l'avatar sans nom (`avatar-500.png`) ne prétend à aucun domaine.
+
 Limites connues : à 16 px, le favicon garde la silhouette en nid d'abeille mais la cellule orange y est à peine visible ; le nid d'abeille est une forme courante, à vérifier lors de la recherche d'antériorité. Les pistes écartées (logotype, K en réseau, maison ; puis grille de points en K et K dans un hexagone) restent dans l'historique git.
 
 ## Typographie
