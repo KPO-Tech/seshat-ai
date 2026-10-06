@@ -3,6 +3,17 @@ import Base from '../layouts/Base.astro';
 import Arrow from '../components/Arrow.astro';
 import Check from '../components/Check.astro';
 
+// Cellules du nid d'abeille (colonne, ligne) et niveau à partir duquel elles s'allument.
+const cells = [
+  { q: 0, r: 0, from: 1 },
+  { q: 1, r: 0, from: 2 },
+  { q: -0.5, r: 1, from: 2 },
+  { q: -0.5, r: -1, from: 2 },
+  { q: -1, r: 0, from: 3 },
+  { q: 0.5, r: 1, from: 3 },
+  { q: 0.5, r: -1, from: 3 },
+];
+
 const levels = [
   {
     name: 'Diagnostic',
@@ -51,10 +62,23 @@ const pilots = [
   title="Services | Seshat AI"
   description="Un diagnostic IA et automatisation, un pilote de 30 à 90 jours, puis l'exploitation. Des solutions auto-hébergées pour PME et ETI."
 >
-  <header class="page-head">
+  <header class="page-head services-head">
     <div class="wrap">
-      <h1>Trois niveaux d'engagement, du plus petit au plus durable.</h1>
-      <p class="lead">Vous commencez par un diagnostic. La suite dépend de ce que nous y découvrons ensemble.</p>
+      <div>
+        <h1>Trois niveaux d'engagement, du plus petit au plus durable.</h1>
+        <p class="lead">Vous commencez par un diagnostic. La suite dépend de ce que nous y découvrons ensemble.</p>
+      </div>
+      <div class="hive" data-hive data-level="1" aria-hidden="true">
+        <div class="sway">
+          <div class="plane">
+            {cells.map((c) => (
+              <div class="cell" data-from={c.from} style={`--q:${c.q};--r:${c.r}`}>
+                <i class="l l1"></i><i class="l l2"></i><i class="l l3"></i><i class="l top"></i>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -148,6 +172,8 @@ const pilots = [
         });
         panels.forEach(function (p, k) { p.hidden = k !== i; });
         q.style.setProperty('--progress-ratio', String(i / (tabs.length - 1)));
+        var hv = document.querySelector('[data-hive]');
+        if (hv) hv.setAttribute('data-level', String(i + 1));
         if (focus) tabs[i].focus();
       }
       tabs.forEach(function (t, i) {
@@ -158,6 +184,24 @@ const pilots = [
         });
       });
       select(0);
+    })();
+  </script>
+  <script is:inline>
+    (function () {
+      var head = document.querySelector('.services-head');
+      var hive = document.querySelector('[data-hive]');
+      if (!head || !hive || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      head.addEventListener('pointermove', function (e) {
+        var b = head.getBoundingClientRect();
+        var dx = (e.clientX - b.left) / b.width - 0.5;
+        var dy = (e.clientY - b.top) / b.height - 0.5;
+        hive.style.setProperty('--rx', (58 + dy * -10) + 'deg');
+        hive.style.setProperty('--rz', (-28 + dx * 16) + 'deg');
+      });
+      head.addEventListener('pointerleave', function () {
+        hive.style.removeProperty('--rx');
+        hive.style.removeProperty('--rz');
+      });
     })();
   </script>
 </Base>

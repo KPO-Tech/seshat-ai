@@ -206,6 +206,32 @@ section.band { background: var(--band); }
 .page-head h1 { font-size: clamp(2rem, 4.2vw, 3.6rem); max-width: 22ch; text-wrap: balance; }
 .page-head .lead { margin-top: 20px; max-width: 54ch; font-size: 1.2rem; color: var(--text2); }
 
+/* Services : nid d'abeille 3D (une cellule s'allume par niveau atteint) */
+.services-head .wrap { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 40px; align-items: center; }
+.hive { --rx: 58deg; --rz: -28deg; --w: 92px; --h: 106px; perspective: 1100px; width: 100%; max-width: 440px; justify-self: end; aspect-ratio: 1 / 0.9; display: grid; place-items: center; }
+.sway { transform-style: preserve-3d; }
+.plane { position: relative; width: 0; height: 0; transform-style: preserve-3d; transform: rotateX(var(--rx)) rotateZ(var(--rz)); transition: transform 0.35s var(--ease); }
+.cell { position: absolute; width: var(--w); height: var(--h); left: calc(var(--q) * var(--w) * 1.04 - var(--w) / 2); top: calc(var(--r) * var(--h) * 0.78 - var(--h) / 2); transform-style: preserve-3d; transform: translateZ(0); transition: transform 0.7s var(--ease); }
+.cell .l { position: absolute; inset: 0; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: color-mix(in srgb, var(--text2) 28%, var(--bg)); transition: background 0.5s var(--ease); }
+.cell .l1 { transform: translateZ(0); }
+.cell .l2 { transform: translateZ(5px); }
+.cell .l3 { transform: translateZ(10px); }
+.cell .top { transform: translateZ(15px); background: color-mix(in srgb, var(--text2) 14%, var(--bg)); }
+.hive[data-level='1'] .cell[data-from='1'],
+.hive[data-level='2'] .cell[data-from='1'], .hive[data-level='2'] .cell[data-from='2'],
+.hive[data-level='3'] .cell { transform: translateZ(26px); }
+.hive[data-level='1'] .cell[data-from='1'] .l,
+.hive[data-level='2'] .cell[data-from='1'] .l, .hive[data-level='2'] .cell[data-from='2'] .l,
+.hive[data-level='3'] .cell .l { background: #a94a0a; }
+.hive[data-level='1'] .cell[data-from='1'] .top,
+.hive[data-level='2'] .cell[data-from='1'] .top, .hive[data-level='2'] .cell[data-from='2'] .top,
+.hive[data-level='3'] .cell .top { background: var(--accent); }
+@media (prefers-reduced-motion: no-preference) {
+  .sway { animation: sway 12s ease-in-out infinite alternate; }
+  .cell[data-from='3'] { transition-delay: 0.08s; }
+}
+@keyframes sway { from { transform: rotateZ(-4deg) translateY(-4px); } to { transform: rotateZ(4deg) translateY(6px); } }
+
 /* Services : progression en trois niveaux */
 .quest { --progress-ratio: 0; }
 .rail { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); margin-bottom: 40px; }
@@ -294,6 +320,8 @@ section.band { background: var(--band); }
   .proof { grid-template-columns: 1fr; gap: 12px; }
   .why .sticky, .next { position: static; }
   .contact-grid { grid-template-columns: 1fr; gap: 24px; }
+  .services-head .wrap { grid-template-columns: 1fr; }
+  .hive { justify-self: center; max-width: 320px; --w: 68px; --h: 78px; }
   .panel { grid-template-columns: 1fr; gap: 28px; padding: 28px 22px; }
   .node .hex { width: 52px; height: 58px; }
   .node .hex span { width: 47px; height: 53px; font-size: 1.1rem; }
