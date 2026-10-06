@@ -9,29 +9,29 @@ const endpoint = import.meta.env.PUBLIC_FORM_ENDPOINT ?? '';
   title="Demander un diagnostic | Seshat AI"
   description="Décrivez votre situation en quelques lignes. Nous revenons vers vous pour fixer un premier échange."
 >
-  <header class="page-head">
+  <header class="page-head contact-head">
     <div class="wrap">
       <h1>Parlons de votre situation.</h1>
       <p class="lead">Quelques lignes suffisent. Nous revenons vers vous pour fixer un premier échange.</p>
     </div>
   </header>
 
-  <section class="block" style="padding-top:48px">
+  <section class="block contact-block">
     <div class="wrap contact-grid">
       <form class="form reveal" method="post" action={endpoint} data-endpoint={endpoint} novalidate>
-        <div class="field">
+        <div class="field half">
           <label for="nom">Nom</label>
           <input id="nom" name="nom" type="text" autocomplete="name" required />
         </div>
-        <div class="field">
+        <div class="field half">
           <label for="email">Adresse e-mail</label>
           <input id="email" name="email" type="email" autocomplete="email" required />
         </div>
-        <div class="field">
+        <div class="field half">
           <label for="entreprise">Entreprise</label>
           <input id="entreprise" name="entreprise" type="text" autocomplete="organization" />
         </div>
-        <div class="field">
+        <div class="field half">
           <label for="taille">Taille de l'entreprise</label>
           <select id="taille" name="taille">
             <option value="">Je préfère ne pas préciser</option>
@@ -43,7 +43,7 @@ const endpoint = import.meta.env.PUBLIC_FORM_ENDPOINT ?? '';
         </div>
         <div class="field">
           <label for="message">Que souhaitez-vous améliorer ?</label>
-          <textarea id="message" name="message" rows="6" required></textarea>
+          <textarea id="message" name="message" rows="4" required></textarea>
           <p class="help">Un processus long, une information introuvable, une question sur la confidentialité : décrivez-le avec vos mots.</p>
         </div>
         <div class="field check">
@@ -61,9 +61,9 @@ const endpoint = import.meta.env.PUBLIC_FORM_ENDPOINT ?? '';
       <aside class="next reveal" style="--d:100ms">
         <h2>Ce qui se passe ensuite</h2>
         <ol>
-          <li><strong>Nous lisons votre message.</strong></li>
-          <li><strong>Nous vous proposons un échange.</strong> Pour comprendre votre situation et vos contraintes.</li>
-          <li><strong>Nous vous disons franchement</strong> si un diagnostic a du sens pour vous, et sinon vers quoi vous tourner.</li>
+          <li><span class="hexnum" aria-hidden="true"><span>1</span></span><p><strong>Nous lisons votre message.</strong></p></li>
+          <li><span class="hexnum" aria-hidden="true"><span>2</span></span><p><strong>Nous vous proposons un échange</strong> pour comprendre votre situation et vos contraintes.</p></li>
+          <li><span class="hexnum" aria-hidden="true"><span>3</span></span><p><strong>Nous vous disons franchement</strong> si un diagnostic a du sens pour vous, et sinon vers quoi vous tourner.</p></li>
         </ol>
         <p class="aside-note">Vos informations ne servent qu'à vous répondre.</p>
       </aside>
