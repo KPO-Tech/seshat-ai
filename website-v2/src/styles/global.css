@@ -209,12 +209,9 @@ section.band { background: var(--band); }
 /* Services : nid d'abeille 3D (une cellule s'allume par niveau atteint) */
 .page-head.services-head { padding: 36px 0 0; }
 .services-head .wrap { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 40px; align-items: center; }
-.services-head h1 { font-size: clamp(2rem, 3.8vw, 3.2rem); max-width: 20ch; }
-.services-head h1 em { font-style: normal; color: var(--accent-text); }
+.services-head h1 { font-size: clamp(1.9rem, 3.3vw, 2.9rem); max-width: none; text-wrap: initial; }
+.services-head h1 em { display: block; font-style: normal; color: var(--accent-text); }
 .services-head .lead { color: var(--text); opacity: 0.82; margin-top: 16px; font-size: 1.15rem; }
-.facts { list-style: none; margin: 24px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
-.facts li { padding: 9px 16px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); font-size: 0.95rem; color: var(--text2); }
-.facts strong { color: var(--text); font-weight: 600; }
 section.quest-block { padding: 8px 0 96px; }
 .hive { --rx: 58deg; --rz: -28deg; --w: 92px; --h: 106px; perspective: 1100px; width: 100%; max-width: 360px; justify-self: end; aspect-ratio: 1 / 0.78; --w: 78px; --h: 90px; display: grid; place-items: center; }
 .sway { transform-style: preserve-3d; }
