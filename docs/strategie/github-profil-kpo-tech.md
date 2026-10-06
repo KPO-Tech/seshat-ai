@@ -6,7 +6,14 @@ Rien de ce qui suit n'est publié : c'est un brouillon. Publication après accor
 
 ## 1. Avatar (à téléverser à la main)
 
-`docs/strategie/identite/logo/kpo-tech/kpotech/avatar-500.png` (500 × 500 px, carré plein). Paramètres de l'organisation, Settings, Profile, Profile picture. GitHub ne permet pas de changer l'avatar par l'API.
+Deux versions, 500 × 500 px, dans `docs/strategie/identite/logo/kpo-tech/kpotech/` :
+
+| Fichier | Contenu | Quand le choisir |
+|---|---|---|
+| `avatar-500.png` | Les sept cellules seules. | **Recommandé par défaut** : GitHub affiche l'avatar très petit (24 à 48 px) à côté du nom de l'organisation, où un texte devient illisible, et le nom est déjà écrit à côté. |
+| `avatar-name-500.png` | Les sept cellules avec `kpo.tech` écrit en dessous, comme dans le logo officiel. | Si tu veux que le nom soit lu dans l'avatar lui-même (page de l'organisation, partage). À 40 px le texte est trop petit pour être lu. |
+
+Paramètres de l'organisation, Settings, Profile, Profile picture. GitHub ne permet pas de changer l'avatar par l'API.
 
 ## 2. Champs du profil
 
@@ -14,7 +21,7 @@ Rien de ce qui suit n'est publié : c'est un brouillon. Publication après accor
 |---|---|
 | Name | `KPO-Tech` |
 | Description | `Tech projects by Stéphane Kpoviessi. Home of Seshat, an open-source Go agent runtime for governed AI agents.` |
-| Location | `France` |
+| Location | vide (le pays n'est pas décidé : on ne publie rien tant que ce n'est pas tranché) |
 | Email (public) | `oastephaneamiche@gmail.com` (provisoire, à remplacer par `contact@seshat-ai.com` quand il existera) |
 | Website | vide pour l'instant (le site `seshat-ai.com` est en refonte) |
 

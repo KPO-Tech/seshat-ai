@@ -3,7 +3,9 @@
 Usage, depuis le dossier identite :
     python src/export_png.py            # exporte la liste EXPORTS ci-dessous
 
-Chaque entrée : (SVG source, PNG de sortie, taille en pixels). Les PNG sont écrits à côté du SVG.
+Chaque entrée : (type, source, PNG de sortie, taille en pixels). Les PNG sont écrits dans logo/.
+  type "svg"  : la source est un SVG, affiché tel quel ;
+  type "html" : la source est un modèle de templates/ (ici l'avatar avec le nom « kpo.tech »).
 Edge est lancé en mode « headless », avec un profil temporaire, sur une page qui affiche le SVG à la taille voulue.
 """
 import os
@@ -16,9 +18,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# (svg relatif à identite/, png relatif à identite/, côté en px)
+# (type, source, png relatif à identite/, côté en px)
 EXPORTS = [
-    ("logo/kpo-tech/kpotech/avatar.svg", "logo/kpo-tech/kpotech/avatar-500.png", 500),
+    ("svg", "logo/kpo-tech/kpotech/avatar.svg", "logo/kpo-tech/kpotech/avatar-500.png", 500),
+    ("html", "avatar_name", "logo/kpo-tech/kpotech/avatar-name-500.png", 500),
 ]
 
 EDGE_CANDIDATES = [
@@ -41,17 +44,31 @@ def png_size(path):
     return struct.unpack(">II", head[16:24])
 
 
-def render(edge, svg, png, side):
-    svg_uri = (ROOT / svg).resolve().as_uri()
-    html = (f'<!doctype html><meta charset="utf-8"><body style="margin:0;background:transparent">'
-            f'<img src="{svg_uri}" width="{side}" height="{side}" style="display:block"></body>')
-    with tempfile.TemporaryDirectory() as tmp:
+def build_page(kind, source, side):
+    """HTML à photographier : le SVG seul, ou un modèle de templates/ rempli."""
+    if kind == "svg":
+        uri = (ROOT / source).resolve().as_uri()
+        return (f'<!doctype html><meta charset="utf-8"><body style="margin:0;background:transparent">'
+                f'<img src="{uri}" width="{side}" height="{side}" style="display:block"></body>')
+    sys.path.insert(0, str(ROOT / "src"))
+    import appicons as a
+    import kpomark
+    from render import inline, tpl
+    return tpl(source, side=side, background=a.CHAR, text=a.CREAM, accent=a.ORANGE,
+               gap=int(side * 0.04), mark=int(side * 0.58), font=int(side * 0.132),
+               svg=inline(kpomark.official_variants()["on-dark"]))
+
+
+def render(edge, kind, source, png, side):
+    html = build_page(kind, source, side)
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
         page = Path(tmp) / "page.html"
         page.write_text(html, encoding="utf-8")
         out = (ROOT / png).resolve()
         # profil temporaire séparé : sans lui, Edge transmet la commande à la session déjà ouverte et ne crée rien
         subprocess.run([edge, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--no-first-run",
                         f"--user-data-dir={Path(tmp) / 'profile'}",
+                        "--virtual-time-budget=8000",
                         f"--window-size={side},{side}", f"--screenshot={out}", page.as_uri()],
                        check=True, capture_output=True, timeout=90)
         # Edge écrit le fichier un instant après son retour : on attend qu'il apparaisse et se stabilise

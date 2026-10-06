@@ -170,7 +170,7 @@ Limites connues : à 16 px, seule la fenêtre et l'orange de la rosette se disti
 
 Variantes officielles du symbole, dans `logo/kpo-tech/kpotech/` : `on-light`, `on-dark`, `mono-black`, `mono-white`, `icon-dark`, `icon-light`, `favicon` (traits renforcés, agrandi dans la tuile). Le nom « kpo.tech » est écrit avec la police web et n'est pas dans les SVG : il sera vectorisé quand le fichier de la police Space Grotesk aura été téléchargé.
 
-Avatar de l'organisation GitHub : `avatar.svg` (carré plein) et `avatar-500.png` (500 × 500 px), produit par `python src/export_png.py` (Microsoft Edge en mode headless avec un profil temporaire, rien à télécharger). Brouillon du profil GitHub : [`../github-profil-kpo-tech.md`](../github-profil-kpo-tech.md).
+Avatar de l'organisation GitHub : `avatar.svg` (carré plein), `avatar-500.png` et `avatar-name-500.png` avec « kpo.tech » en dessous (500 × 500 px), produit par `python src/export_png.py` (Microsoft Edge en mode headless avec un profil temporaire, rien à télécharger). Brouillon du profil GitHub : [`../github-profil-kpo-tech.md`](../github-profil-kpo-tech.md).
 
 Limites connues : à 16 px, le favicon garde la silhouette en nid d'abeille mais la cellule orange y est à peine visible ; le nid d'abeille est une forme courante, à vérifier lors de la recherche d'antériorité. Les pistes écartées (logotype, K en réseau, maison ; puis grille de points en K et K dans un hexagone) restent dans l'historique git.
 
