@@ -155,8 +155,11 @@ section.band { background: var(--band); }
 .why { display: grid; grid-template-columns: 0.8fr 1.2fr; gap: 64px; align-items: start; }
 .why .sticky { position: sticky; top: 108px; }
 .commitments { display: grid; gap: 0; }
-.commitments > div { padding: 28px 0; }
-.commitments > div:first-child { padding-top: 0; }
+.commitments > div { position: relative; padding: 28px 0 28px 22px; cursor: default; border-radius: 4px; transition: background 0.3s var(--ease); }
+.commitments > div::before { content: ''; position: absolute; left: 0; top: 24px; bottom: 24px; width: 3px; border-radius: 2px; background: transparent; transition: background 0.3s var(--ease); }
+.commitments > div.is-active::before { background: var(--accent); }
+.commitments > div.is-active h3 { color: var(--accent-text); }
+.commitments h3 { transition: color 0.3s var(--ease); }
 .commitments > div + div { border-top: 1px solid var(--line); }
 .commitments h3 { font-size: 1.45rem; }
 .commitments p { margin-top: 8px; color: var(--text2); max-width: 52ch; }

@@ -77,7 +77,7 @@ import Icon from '../components/Icon.astro';
 
   <section class="block band">
     <div class="wrap why">
-      <div class="sticky reveal">
+      <div class="reveal">
         <h2>Ce que nous nous engageons à faire.</h2>
         <div class="shield" data-shield data-active="0" aria-hidden="true">
           <span class="outside"><Icon name="cloud-slash" />Services tiers</span>
@@ -193,14 +193,19 @@ import Icon from '../components/Icon.astro';
     (function () {
       var shield = document.querySelector('[data-shield]');
       var items = [].slice.call(document.querySelectorAll('[data-commitments] > div'));
-      if (!shield || !items.length || !('IntersectionObserver' in window)) return;
+      if (!shield || !items.length) return;
       shield.classList.add('live');
-      var io = new IntersectionObserver(function (entries) {
-        entries.forEach(function (en) {
-          if (en.isIntersecting) shield.setAttribute('data-active', String(items.indexOf(en.target)));
-        });
-      }, { rootMargin: '-40% 0px -40% 0px' });
-      items.forEach(function (i) { io.observe(i); });
+      function pick(i) {
+        shield.setAttribute('data-active', String(i));
+        items.forEach(function (it, k) { it.classList.toggle('is-active', k === i); });
+      }
+      items.forEach(function (it, i) {
+        it.tabIndex = 0;
+        it.addEventListener('mouseenter', function () { pick(i); });
+        it.addEventListener('focus', function () { pick(i); });
+        it.addEventListener('click', function () { pick(i); });
+      });
+      pick(0);
     })();
   </script>
 </Base>
