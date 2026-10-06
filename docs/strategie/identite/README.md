@@ -154,15 +154,15 @@ Statut : **aucune piste retenue** pour l'instant.
 
 ## Logo du runtime `seshat`
 
-`seshat` est le runtime d'agents open source (Go, SDK, CLI, TUI, gRPC), la fondation de SeshatOS et de SeshatCloud. Son logo part du logo principal (`reseau`, sans la tige) avec une variation tournée vers les développeurs. Page : [`apercu/runtime.html`](./apercu/runtime.html), code : [`src/runtimemark.py`](./src/runtimemark.py), fichiers : `logo/runtime/<piste>/`. Il remplace `docs/images/seshat.png` du dépôt `seshat` (icône générique à ne plus utiliser).
+`seshat` est le runtime d'agents open source (Go, SDK, CLI, TUI, gRPC), la fondation de SeshatOS et de SeshatCloud. Son logo part du logo principal (`reseau`, sans la tige) avec une variation tournée vers les développeurs. Page : [`apercu/runtime.html`](./apercu/runtime.html), code : [`src/runtimemark.py`](./src/runtimemark.py). Il remplace `docs/images/seshat.png` du dépôt `seshat` (icône générique à ne plus utiliser).
 
-| Piste | Idée | Remarque |
-|---|---|---|
-| `Sh1-invite` | La tige devient une invite de terminal `>_` sous la rosette. | Lisible, évoque tout de suite la ligne de commande. |
-| `Sh2-terminal` | La rosette dans une fenêtre de terminal à trois points. | La rosette devient petite dans le cadre ; à 16 px on ne voit plus que la fenêtre. |
-| `Sh3-chevrons` | L'arc devient deux chevrons `< >` dont les pointes portent les nœuds. | Parle aux développeurs ; sans l'arc, la rosette se lit un peu comme une couronne. |
+**Retenu le 2026-10-06 : `Sh2`, la rosette dans une fenêtre de terminal à trois points.** Version affinée : rosette agrandie pour remplir la fenêtre, et un favicon dédié (traits renforcés, un seul point, rosette réduite pour ne pas toucher le cadre).
 
-Statut : **aucune piste retenue** ; le logo principal tel quel reste possible.
+Variantes officielles, dans `logo/runtime/seshat/` : `on-light`, `on-dark`, `mono-black`, `mono-white`, `icon-dark`, `icon-light`, `favicon`.
+
+Pistes écartées (`logo/runtime/explorations/`) : `Sh1-invite` (invite `>_` sous la rosette, lisible mais la rosette perd sa tige) et `Sh3-chevrons` (chevrons `< >` à la place de l'arc, la rosette se lit comme une couronne).
+
+Limites connues : à 16 px, seule la fenêtre et l'orange de la rosette se distinguent ; le logo n'a pas été vérifié dans un vrai README GitHub ni dans un terminal. Le remplacement de `seshat.png` dans le dépôt `seshat` reste à faire.
 
 ## Typographie
 

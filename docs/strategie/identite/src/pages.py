@@ -164,7 +164,7 @@ def build_apps():
 
 
 # --- cloud.html et runtime.html : pistes de logo dérivées du logo principal -----------------
-def _tracks_page(filename, title, intro, template, module, folder, brand):
+def _tracks_page(filename, title, intro, template, module, folder, brand, extra=None):
     sections = []
     for name, (desc, _vb, _fn, _cy) in module.OPTIONS.items():
         v = module.variants(name)
@@ -180,7 +180,7 @@ def _tracks_page(filename, title, intro, template, module, folder, brand):
         cards = [lock("on-light", label="Fond clair"), lock("on-dark", dark=True, label="Fond sombre"),
                  lock("mono-black", label="Monochrome noir"), icon_card]
         sections.append(section(name, f"<p>{desc}</p>\n" + grid(cards)))
-    return page(filename, title, intro, tpl(template, options="\n".join(sections)))
+    return page(filename, title, intro, tpl(template, options="\n".join(sections), **(extra or {})))
 
 
 def build_cloud():
@@ -189,10 +189,33 @@ def build_cloud():
                         "page_cloud", cloudmark, "cloud", "Seshat Cloud")
 
 
+def _runtime_official():
+    """Section du logo officiel du runtime seshat (piste Sh2, terminal)."""
+    v = runtimemark.official_variants()
+    base = f"{LOGO_URL}/runtime/seshat"
+
+    def lock(key, dark=False, label=""):
+        return card(label, lockup(v[key], "seshat") + "\n" + file_link(f"{base}/{key}.svg", "fichier SVG"), dark=dark)
+
+    def sizes(svg_key, label):
+        icons = "\n".join([inline(v[svg_key], "a"), inline(v[svg_key], "b"),
+                            inline(v[svg_key], "c32"), inline(v[svg_key], "c16")])
+        return card(label, tpl("sizes", icons=icons) + "\n" + file_link(f"{base}/{svg_key}.svg", "fichier SVG"))
+
+    fav = "\n".join([inline(v["favicon"], "b"), inline(v["favicon"], "c32"), inline(v["favicon"], "c16")])
+    cards = [lock("on-light", label="Fond clair"), lock("on-dark", dark=True, label="Fond sombre"),
+             lock("mono-black", label="Monochrome noir"), lock("mono-white", dark=True, label="Monochrome blanc"),
+             sizes("icon-dark", "Icône sombre"), sizes("icon-light", "Icône claire"),
+             card("Favicon", tpl("sizes", icons=fav) + "\n<small>Traits renforcés, sans les trois points : 56, 32 et 16 px</small>\n"
+                  + file_link(f"{base}/favicon.svg", "fichier SVG"))]
+    return section("Logo officiel : Sh2, terminal", grid(cards))
+
+
 def build_runtime():
     return _tracks_page("runtime.html", "Logo du runtime seshat",
-                        "Trois pistes de logo pour le runtime open source seshat, dérivées du logo principal. Aucune n'est encore retenue.",
-                        "page_runtime", runtimemark, "runtime", "seshat")
+                        "Logo retenu pour le runtime open source seshat (piste Sh2, terminal) et pistes écartées.",
+                        "page_runtime", runtimemark, "runtime/explorations", "seshat",
+                        extra={"official": _runtime_official()})
 
 
 # --- explorations.html -------------------------------------------------------------
