@@ -185,17 +185,15 @@ def _tracks_page(filename, title, intro, template, module, folder, brand, extra=
 
 def build_cloud():
     return _tracks_page("cloud.html", "Logo de SeshatCloud",
-                        "Trois pistes de logo pour SeshatCloud, dérivées du logo principal. Aucune n'est encore retenue.",
-                        "page_cloud", cloudmark, "cloud", "Seshat Cloud")
+                        "Logo retenu pour SeshatCloud (piste Cl3, arc-nuage) et pistes écartées.",
+                        "page_cloud", cloudmark, "cloud/explorations", "Seshat Cloud",
+                        extra={"official": _cloud_official()})
 
 
-def _runtime_official():
-    """Section du logo officiel du runtime seshat (piste Sh2, terminal)."""
-    v = runtimemark.official_variants()
-    base = f"{LOGO_URL}/runtime/seshat"
-
+def _official_section(v, base, brand, title, fav_note):
+    """Section « logo officiel » d'une marque : toutes les variantes, présentées de la même façon."""
     def lock(key, dark=False, label=""):
-        return card(label, lockup(v[key], "seshat") + "\n" + file_link(f"{base}/{key}.svg", "fichier SVG"), dark=dark)
+        return card(label, lockup(v[key], brand) + "\n" + file_link(f"{base}/{key}.svg", "fichier SVG"), dark=dark)
 
     def sizes(svg_key, label):
         icons = "\n".join([inline(v[svg_key], "a"), inline(v[svg_key], "b"),
@@ -206,9 +204,21 @@ def _runtime_official():
     cards = [lock("on-light", label="Fond clair"), lock("on-dark", dark=True, label="Fond sombre"),
              lock("mono-black", label="Monochrome noir"), lock("mono-white", dark=True, label="Monochrome blanc"),
              sizes("icon-dark", "Icône sombre"), sizes("icon-light", "Icône claire"),
-             card("Favicon", tpl("sizes", icons=fav) + "\n<small>Traits renforcés, sans les trois points : 56, 32 et 16 px</small>\n"
+             card("Favicon", tpl("sizes", icons=fav) + "\n<small>" + fav_note + "</small>\n"
                   + file_link(f"{base}/favicon.svg", "fichier SVG"))]
-    return section("Logo officiel : Sh2, terminal", grid(cards))
+    return section(title, grid(cards))
+
+
+def _runtime_official():
+    return _official_section(runtimemark.official_variants(), f"{LOGO_URL}/runtime/seshat", "seshat",
+                             "Logo officiel : Sh2, terminal",
+                             "Traits renforcés, sans les trois points : 56, 32 et 16 px")
+
+
+def _cloud_official():
+    return _official_section(cloudmark.official_variants(), f"{LOGO_URL}/cloud/seshatcloud", "Seshat Cloud",
+                             "Logo officiel : Cl3, arc-nuage",
+                             "Traits renforcés : 56, 32 et 16 px")
 
 
 def build_runtime():

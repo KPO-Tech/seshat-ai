@@ -1,9 +1,10 @@
 """Logo de SeshatCloud : le logo principal (rosette, style reseau) avec une variation « nuage ».
 
-Trois pistes, toutes dérivées de mark.reseau_inner :
-  Cl1-double-arc   un second arc plus large au-dessus, avec des nœuds à ses pieds : des couches
-  Cl2-halo         un arc de nœuds autour de l'arc : un ensemble d'organisations
-  Cl3-arc-nuage    l'arc devient un bord de nuage (trois bosses)
+RETENU (2026-10-06) : Cl3, l'arc devient un bord de nuage à trois bosses (cloud_mark() ci-dessous,
+variantes officielles dans official_variants()).
+Pistes écartées, conservées dans OPTIONS : Cl1 (second arc plus large, des couches) et
+Cl2 (arc de nœuds, un ensemble d'organisations).
+Toutes dérivent de mark.reseau_inner.
 Couleurs : celles du desktop (voir appicons.py).
 """
 import math
@@ -45,9 +46,6 @@ OPTIONS = {
     "Cl2-halo": ("Un arc de nœuds autour de l'arc du logo : un ensemble d'organisations.",
                  "-2 -14 104 104",
                  lambda arc, acc: _halo(arc, acc) + g.reseau_inner(arc, acc), 38),
-    "Cl3-arc-nuage": ("L'arc devient un bord de nuage à trois bosses, au-dessus de la rosette.",
-                      "6 0 88 88",
-                      lambda arc, acc: g.reseau_inner(arc, acc, bow=CLOUD_BOW), 44),
 }
 
 
@@ -70,13 +68,43 @@ def variants(name):
     }
 
 
+def cloud_mark(arc, accent, bold=False):
+    """Logo officiel : la rosette sous un arc en bord de nuage à trois bosses."""
+    return g.reseau_inner(arc, accent, bold=bold, bow=CLOUD_BOW)
+
+
+CLOUD_VIEWBOX = "6 0 88 88"
+
+
+def official_variants():
+    """Variantes officielles du logo de SeshatCloud (piste Cl3, arc-nuage)."""
+    def tile(body, fill, border=None, scale=0.74):
+        stroke = f' stroke="{border}" stroke-width="2"' if border else ""
+        return g.svg("0 0 100 100", f'<rect x="1" y="1" width="98" height="98" rx="21" fill="{fill}"{stroke}/>'
+                     f'<g transform="translate(50 50) scale({scale}) translate(-50 -44)">{body}</g>')
+    return {
+        "on-light": g.svg(CLOUD_VIEWBOX, cloud_mark(a.CHAR, a.ORANGE_DEEP)),
+        "on-dark": g.svg(CLOUD_VIEWBOX, cloud_mark(a.CREAM, a.ORANGE)),
+        "mono-black": g.svg(CLOUD_VIEWBOX, cloud_mark("#000000", "#000000")),
+        "mono-white": g.svg(CLOUD_VIEWBOX, cloud_mark("#FFFFFF", "#FFFFFF")),
+        "icon-dark": tile(cloud_mark(a.CREAM, a.ORANGE), a.CHAR),
+        "icon-light": tile(cloud_mark(a.CHAR, a.ORANGE_DEEP), a.PAPER, a.PAPER_BORDER),
+        "favicon": tile(cloud_mark(a.CREAM, a.ORANGE, bold=True), a.CHAR, scale=0.84),
+    }
+
+
 def main():
+    official = ROOT / "logo" / "cloud" / "seshatcloud"
+    official.mkdir(parents=True, exist_ok=True)
+    for vname, content in official_variants().items():
+        (official / f"{vname}.svg").write_text(pretty_svg(content), encoding="utf-8")
+    print("cloud officiel (Cl3 arc-nuage)")
     for name in OPTIONS:
-        out = ROOT / "logo" / "cloud" / name
+        out = ROOT / "logo" / "cloud" / "explorations" / name
         out.mkdir(parents=True, exist_ok=True)
         for vname, content in variants(name).items():
             (out / f"{vname}.svg").write_text(pretty_svg(content), encoding="utf-8")
-        print("cloud", name)
+        print("cloud exploration", name)
 
 
 if __name__ == "__main__":

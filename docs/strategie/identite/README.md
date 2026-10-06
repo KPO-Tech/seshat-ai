@@ -142,15 +142,15 @@ Le logo Seshat AI et SeshatOS est le même (style `reseau` ou `emblem`). Pour Se
 
 ## Logo de SeshatCloud
 
-SeshatCloud est la couche multi-tenant (organisations, équipes, administration centrale) au-dessus du même runtime que SeshatOS. Son logo part du **logo principal** (`reseau`) avec une variation. Page : [`apercu/cloud.html`](./apercu/cloud.html), code : [`src/cloudmark.py`](./src/cloudmark.py), fichiers : `logo/cloud/<piste>/` (`on-light`, `on-dark`, `mono-black`, `icon-dark`).
+SeshatCloud est la couche multi-tenant (organisations, équipes, administration centrale) au-dessus du même runtime que SeshatOS. Son logo part du **logo principal** (`reseau`) avec une variation. Page : [`apercu/cloud.html`](./apercu/cloud.html), code : [`src/cloudmark.py`](./src/cloudmark.py).
 
-| Piste | Idée | Remarque |
-|---|---|---|
-| `Cl1-double-arc` | Un second arc plus large au-dessus, nœuds à ses pieds : des couches. | Garde l'arc de Seshat ; à petite taille le dôme ressemble à un parapluie. |
-| `Cl2-halo` | Un arc de nœuds autour de l'arc du logo : un ensemble d'organisations. | Léger et distinctif ; les petits points se fondent à 16 px. |
-| `Cl3-arc-nuage` | L'arc devient un bord de nuage à trois bosses. | Dit « cloud » au premier regard, mais efface l'arc de Seshat et reste un nuage générique. |
+**Retenu le 2026-10-06 : `Cl3`, l'arc devient un bord de nuage à trois bosses** au-dessus de la rosette. Il est présenté en premier sur la page.
 
-Statut : **aucune piste retenue** pour l'instant.
+Variantes officielles, dans `logo/cloud/seshatcloud/` : `on-light`, `on-dark`, `mono-black`, `mono-white`, `icon-dark`, `icon-light`, `favicon` (traits renforcés, agrandi dans la tuile).
+
+Pistes écartées (`logo/cloud/explorations/`) : `Cl1-double-arc` (un second arc plus large ; à petite taille le dôme ressemble à un parapluie) et `Cl2-halo` (un arc de nœuds ; les petits points se fondent à 16 px).
+
+Point de vigilance : le bord de nuage remplace l'arc de Seshat, donc le lien direct avec l'emblème de la déesse est moins visible que sur le logo principal ; le nuage seul reste une forme courante, à vérifier lors de la recherche d'antériorité.
 
 ## Logo du runtime `seshat`
 
