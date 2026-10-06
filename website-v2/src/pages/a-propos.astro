@@ -170,16 +170,16 @@ const method = [
                     {s.links.map((l) => <a class="link on-dark" href={l.href} rel="noopener">{l.label} <Arrow /></a>)}
                   </p>
                 )}
-                <div class="unlocked">
-                  <p class="unl-title">Compétences débloquées</p>
-                  <ul class="unl">
-                    {stages.slice(0, i + 1).map((st, k) => st.skills.map((sk) => <li class={k === i ? 'new' : 'old'}>{sk}</li>))}
-                  </ul>
-                </div>
               </div>
               <div>
                 <ul class="deliver">
                   {s.done.map((x) => <li><Check />{x}</li>)}
+                </ul>
+              </div>
+              <div class="unlocked">
+                <p class="unl-title">Compétences débloquées</p>
+                <ul class="unl">
+                  {stages.slice(0, i + 1).map((st, k) => st.skills.map((sk) => <li class={k === i ? 'new' : 'old'}>{sk}</li>))}
                 </ul>
               </div>
             </article>
