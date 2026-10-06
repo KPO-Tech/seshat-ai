@@ -69,6 +69,18 @@ Règles :
 - Pas de dégradé, pas d'effet d'ombre sur le logo.
 - Contrastes calculés selon la formule WCAG ; un logo n'est pas soumis à une exigence de contraste, mais la lisibilité reste le critère.
 
+## Thèmes du desktop (comparaison)
+
+[`proposal.py`](./proposal.py) génère [`palette-proposal.html`](./palette-proposal.html) : les trois thèmes côte à côte avec le logo `reseau`.
+
+| Thème | Fond / panneau / texte | Accent | Statut |
+|---|---|---|---|
+| Sombre actuel (`seshat-desktop`) | `#2F2E34` / `#3A3941` / `#E7E2DA` | `#EF7C2F` | Conservé |
+| Clair actuel (`seshat-desktop`) | `#F7F7F5` / `#FFFFFF` / `#171717` | `#EF7C2F` | Conservé pour l'instant (jugé froid ; texte blanc sur bouton orange à 2,8:1) |
+| Clair chaud (proposé) | `#F6F1EA` / `#FFFCF8` / `#1F1B16` | `#EF7C2F` (bouton à texte sombre `#1F1B16`, 6,2:1) ; liens `#A94A0A` ; logo `#C2570C` | Gardé comme option : les trois versions sont conservées |
+
+Décision du 2026-10-06 : on garde les **trois** versions et on ne tranche pas encore. Les couleurs de la marque restent à aligner avec le desktop (orange `#EF7C2F`, charbon `#2F2E34`) ; les palettes `ambre` et `orange` de `generate.py` sont encore celles du premier jet (encre bleu nuit).
+
 ## Typographie
 
 - **Space Grotesk** (600 à 700) : logotype, titres, chiffres clés.
