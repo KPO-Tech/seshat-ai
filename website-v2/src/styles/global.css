@@ -184,11 +184,14 @@ section.band { background: var(--band); }
 .product .licence { font-size: 0.9rem; color: var(--text2); }
 .after-products { margin-top: 112px; display: flex; flex-wrap: wrap; gap: 28px; }
 
-/* Appel final */
-.cta { padding: 120px 0; }
-.cta .wrap { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 48px; align-items: end; }
-.cta h2 { font-size: clamp(2.2rem, 4.6vw, 3.8rem); max-width: 16ch; }
-.cta p { color: var(--text2); max-width: 40ch; margin-bottom: 20px; }
+/* Appel final : bandeau sombre */
+section.cta { padding: 16px 0 96px; }
+.cta-box { position: relative; overflow: hidden; display: grid; grid-template-columns: auto 1fr; gap: 56px; align-items: center; padding: 56px; border-radius: calc(var(--radius) + 8px); background: var(--panel); color: var(--on-panel); }
+.cta-box::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.6; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cpath d='M28 0l28 16v32L28 64 0 48V16zM28 64l28 16v17M28 64L0 80v17' fill='none' stroke='%23ffffff' stroke-opacity='0.07' stroke-width='1'/%3E%3C/svg%3E"); -webkit-mask-image: linear-gradient(120deg, transparent 10%, #000 100%); mask-image: linear-gradient(120deg, transparent 10%, #000 100%); }
+.cta-box > * { position: relative; }
+.cta-box h2 { font-size: clamp(1.9rem, 3.4vw, 2.8rem); white-space: nowrap; }
+.cta-box div { display: grid; gap: 18px; justify-items: start; }
+.cta-box p { color: var(--on-panel2); max-width: 44ch; margin: 0; }
 
 /* Pied de page */
 .site-footer { border-top: 1px solid var(--line); padding: 56px 0 40px; background: var(--band); }
@@ -343,7 +346,9 @@ section.quest-block { padding: 8px 0 96px; }
 /* Mobile : tout passe en une colonne */
 @media (max-width: 900px) {
   .hero { min-height: auto; padding: 40px 0 56px; }
-  .hero .wrap, .why, .cta .wrap, .site-footer .wrap { grid-template-columns: 1fr; gap: 40px; }
+  .hero .wrap, .why, .site-footer .wrap { grid-template-columns: 1fr; gap: 40px; }
+  .cta-box { grid-template-columns: 1fr; gap: 24px; padding: 36px 24px; }
+  .cta-box h2 { white-space: normal; }
   .bento { grid-template-columns: 1fr; }
   .tile.big { grid-row: auto; min-height: 280px; }
   .steps, .products { grid-template-columns: 1fr; }
