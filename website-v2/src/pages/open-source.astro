@@ -1,0 +1,108 @@
+---
+import Base from '../layouts/Base.astro';
+import Arrow from '../components/Arrow.astro';
+import Icon from '../components/Icon.astro';
+
+const cols = ['Lire le code', 'Utiliser et héberger', 'Modifier', 'Revendre'];
+const rows = [
+  { name: 'Seshat', logo: '/brand/seshat.svg', lic: 'Apache-2.0', kind: 'Open source', can: [true, true, true, true] },
+  { name: 'SeshatOS', logo: '/brand/seshatos.svg', lic: 'Apache-2.0 avec Commons Clause', kind: 'Source-available', can: [true, true, true, false] },
+];
+---
+<Base
+  current="/open-source"
+  title="Open source et licences | Seshat AI"
+  description="Le runtime Seshat est open source (Apache-2.0). SeshatOS et SeshatCloud sont source-available. Ce que chaque licence permet."
+>
+  <header class="page-head contact-head">
+    <div class="wrap">
+      <h1>Du code que vous pouvez lire, tester et héberger.</h1>
+      <p class="lead">Nous disons précisément ce qui est open source et ce qui ne l'est pas, pour que vous sachiez ce que vous pouvez faire.</p>
+    </div>
+  </header>
+
+  <section class="block" style="padding-top:32px">
+    <div class="wrap">
+      <div class="terms">
+        <article class="term reveal">
+          <h2><Icon name="git-branch" /> Open source</h2>
+          <p>Le code est public et la licence autorise de l'utiliser, de le modifier et de le revendre. Seul le runtime <strong>Seshat</strong> est dans ce cas (Apache-2.0).</p>
+        </article>
+        <article class="term alt reveal" style="--d:100ms">
+          <h2><Icon name="book-open-text" /> Source-available</h2>
+          <p>Le code est lisible et vous pouvez l'utiliser et l'héberger chez vous, mais la licence limite la revente. C'est le cas de <strong>SeshatOS</strong> et de <strong>SeshatCloud</strong>.</p>
+        </article>
+      </div>
+      <p class="intro reveal" style="margin-top:20px;max-width:70ch">Nous n'écrivons « open source » que pour ce qui l'est vraiment.</p>
+    </div>
+  </section>
+
+  <section class="block band">
+    <div class="wrap">
+      <h2 class="reveal">Ce que chaque licence permet.</h2>
+      <div class="matrix-wrap reveal">
+        <table class="matrix">
+          <thead>
+            <tr>
+              <th scope="col">Brique</th>
+              {cols.map((c) => <th scope="col">{c}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr>
+                <th scope="row">
+                  <span class="mrow"><img src={r.logo} alt="" width="36" height="36" /><span><strong>{r.name}</strong><small>{r.kind}, {r.lic}</small></span></span>
+                </th>
+                {r.can.map((ok) => (
+                  <td>
+                    {ok
+                      ? <span class="yes"><Icon name="check" /><span class="sr">Oui</span></span>
+                      : <span class="no"><Icon name="x" /><span class="sr">Non</span></span>}
+                  </td>
+                ))}
+              </tr>
+            ))}
+            <tr>
+              <th scope="row">
+                <span class="mrow"><img src="/brand/seshatcloud.svg" alt="" width="36" height="36" /><span><strong>SeshatCloud</strong><small>Source-available</small></span></span>
+              </th>
+              <td colspan="4" class="draft">Licence en cours de finalisation : accord commercial au-delà d'un seuil d'usage.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="fine reveal">Résumé simplifié. Le texte de la licence fait foi.</p>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap">
+      <h2 class="reveal">Où regarder.</h2>
+      <div class="inspect">
+        <a class="inspect-card dark reveal" href="https://github.com/KPO-Tech/seshat" rel="noopener">
+          <img src="/brand/seshat.svg" alt="" width="56" height="56" />
+          <h3>Le runtime Seshat</h3>
+          <p>Code, versions et historique, sur GitHub.</p>
+          <span class="link">Ouvrir le dépôt <Arrow /></span>
+        </a>
+        <article class="inspect-card reveal" style="--d:100ms">
+          <h3>Des solutions tierces, intégrées avec soin</h3>
+          <p>Nous sélectionnons, configurons et intégrons les solutions adaptées à votre besoin, y compris open source, en préservant la souveraineté de vos données.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta">
+    <div class="wrap">
+      <div class="cta-box">
+        <h2 class="reveal">Une question sur une licence ?</h2>
+        <div class="reveal" style="--d:100ms">
+          <p>Nous répondons précisément, avant tout engagement.</p>
+          <a class="btn btn-primary" href="/contact">Nous écrire <Arrow /></a>
+        </div>
+      </div>
+    </div>
+  </section>
+</Base>

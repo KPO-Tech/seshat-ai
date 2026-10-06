@@ -1,0 +1,84 @@
+---
+import Base from '../layouts/Base.astro';
+import Arrow from '../components/Arrow.astro';
+
+const path = [
+  { when: 'Depuis septembre 2026', what: 'Fondateur de Seshat AI', text: 'Conseil et intégration d\'IA souveraine, et conception du runtime Seshat, de SeshatOS et de SeshatCloud.' },
+  { when: 'Novembre 2025 à avril 2026', what: 'Allianz France', text: 'Migration d\'un datamart d\'assurance de SAS vers Python et PySpark (plus de 15 000 lignes, avec validation de la parité), architecture Médaillon sur Azure Databricks avec plus de 150 règles métier, pipeline de qualité de données géospatiales et cadre de tests.' },
+  { when: '2024', what: 'Groupe Sylvagreg', text: 'Recherche et développement en vision par ordinateur pour la reconstruction 3D.' },
+  { when: '2023 à 2025', what: 'Lyne et Frères', text: 'Entreprise familiale (agriculture et commerce) : analyses, tableaux de bord et déploiement d\'outils d\'IA internes open source, avec accompagnement des équipes.' },
+  { when: '2026', what: 'Diplôme d\'ingénieur', text: 'JUNIA ISEN Lille, spécialité Big Data et Data Science.' },
+];
+
+const method = [
+  { t: 'Comprendre', d: 'Votre métier, vos documents, vos contraintes de confidentialité.' },
+  { t: 'Prioriser', d: 'Les cas d\'usage qui valent le coup, classés par valeur, rapidité, risque et faisabilité.' },
+  { t: 'Prouver', d: 'Un pilote court, avec un indicateur de gain fixé à l\'avance.' },
+  { t: 'Durer', d: 'Hébergement, maintenance et extension, si le pilote le justifie.' },
+];
+
+const projects = ['Tech Watch Agent : LangGraph, RAG, pgvector', 'BI Retail : PySpark, Airflow, Power BI'];
+---
+<Base
+  current="/a-propos"
+  title="À propos | Seshat AI"
+  description="Stéphane Kpoviessi, ingénieur data et IA, fondateur de Seshat AI. Parcours, réalisations et façon de travailler."
+>
+  <header class="page-head contact-head">
+    <div class="wrap about-head">
+      <span class="avatar" aria-hidden="true"><span>SK</span></span>
+      <div>
+        <h1>Stéphane Kpoviessi</h1>
+        <p class="lead">Ingénieur data et IA, fondateur de Seshat AI. Je conçois les outils que je déploie, et je les déploie chez vous.</p>
+      </div>
+    </div>
+  </header>
+
+  <section class="block" style="padding-top:40px">
+    <div class="wrap">
+      <h2 class="reveal">Parcours et réalisations.</h2>
+      <div class="proofs">
+        {path.map((s) => (
+          <article class="proof reveal">
+            <div>
+              <h3>{s.what}</h3>
+              <p class="who">{s.when}</p>
+            </div>
+            <p>{s.text}</p>
+          </article>
+        ))}
+      </div>
+      <ul class="chips reveal">
+        {projects.map((p) => <li>{p}</li>)}
+      </ul>
+    </div>
+  </section>
+
+  <section class="block band">
+    <div class="wrap about-method">
+      <div class="reveal">
+        <h2>Comment je travaille.</h2>
+        <p class="intro">Quatre étapes, avec un point de sortie honnête à chacune : si l'IA n'est pas la bonne réponse, je vous le dis.</p>
+      </div>
+      <aside class="next reveal" style="--d:100ms">
+        <ol>
+          {method.map((m, i) => (
+            <li><span class="hexnum" aria-hidden="true"><span>{i + 1}</span></span><p><strong>{m.t}.</strong> {m.d}</p></li>
+          ))}
+        </ol>
+      </aside>
+    </div>
+  </section>
+
+  <section class="cta">
+    <div class="wrap">
+      <div class="cta-box">
+        <h2 class="reveal">Parlons de votre situation.</h2>
+        <div class="reveal" style="--d:100ms">
+          <p>Un premier échange pour comprendre vos besoins et voir si l'IA peut vous aider.</p>
+          <a class="btn btn-primary" href="/contact">Demander un diagnostic <Arrow /></a>
+        </div>
+      </div>
+    </div>
+  </section>
+</Base>

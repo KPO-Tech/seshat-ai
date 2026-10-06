@@ -1,0 +1,149 @@
+---
+import Base from '../layouts/Base.astro';
+import Arrow from '../components/Arrow.astro';
+import Check from '../components/Check.astro';
+import Icon from '../components/Icon.astro';
+
+const stages = [
+  { name: 'Feuille de route', items: [] },
+  { name: 'En construction', items: [{ n: 'SeshatOS', i: '/brand/seshatos.svg' }, { n: 'SeshatCloud', i: '/brand/seshatcloud.svg' }] },
+  { name: 'Bêta', items: [] },
+  { name: 'Disponible', items: [{ n: 'Seshat', i: '/brand/seshat.svg' }] },
+];
+
+const products = [
+  {
+    name: 'Seshat',
+    logo: '/brand/seshat.svg',
+    badge: 'Disponible',
+    tone: 'ok',
+    what: 'Le runtime d\'agents en Go. C\'est la fondation des deux autres briques, utilisable seul par des équipes techniques.',
+    points: [
+      'Outils, sessions, permissions et sandbox.',
+      'Une quinzaine de fournisseurs de modèles, MCP, skills et RAG.',
+      'Interface en ligne de commande et en terminal, gRPC et SDK.',
+    ],
+    licence: 'Open source, Apache-2.0.',
+    status: 'Version 1.2, utilisé en conditions réelles.',
+    link: { href: 'https://github.com/KPO-Tech/seshat', label: 'Voir le code' },
+    dark: false,
+  },
+  {
+    name: 'SeshatOS',
+    logo: '/brand/seshatos.svg',
+    badge: 'En construction',
+    tone: 'wip',
+    what: 'Un environnement d\'IA local, auto-hébergé, sur votre poste ou votre serveur : un backend en Go et une application de bureau.',
+    points: [
+      'Le Chat est la première surface active.',
+      'Paramètres, administration, planification, skills et connaissance viennent ensuite.',
+      'Vos documents restent sur votre machine.',
+    ],
+    licence: 'Source-available : gratuit à utiliser et à héberger, non revendable.',
+    status: 'En reconstruction autour du Chat. Nous vous disons ce qui est prêt au moment du pilote.',
+    dark: true,
+  },
+  {
+    name: 'SeshatCloud',
+    logo: '/brand/seshatcloud.svg',
+    badge: 'En construction',
+    tone: 'wip',
+    what: 'La couche multi-utilisateurs au-dessus du même runtime : celle qui sert quand l\'IA doit être partagée par toute une entreprise.',
+    points: [
+      'Organisations, droits d\'accès et provisionnement des comptes (SCIM).',
+      'Console d\'administration et tâches planifiées.',
+      'Lecture de documents et évaluation de la qualité de la recherche.',
+    ],
+    licence: 'Source-available. Accord commercial au-delà d\'un seuil. Licence en cours de finalisation.',
+    status: 'Solide côté serveur, pas encore proposée seule.',
+    dark: false,
+  },
+];
+
+const verbs = [
+  { t: 'Poser une question', d: 'Obtenir une réponse sourcée sur vos documents, avec les droits d\'accès de chacun.', icon: 'chat-circle-text', tone: 'dark' },
+  { t: 'Repérer les écarts', d: 'Retrouver les contenus périmés, contradictoires, en double ou manquants.', icon: 'magnifying-glass', tone: 'warm' },
+  { t: 'Agir avec validation', d: 'Proposer une mise à jour, une tâche ou une réponse, soumise à validation humaine.', icon: 'user-check', tone: 'plain' },
+];
+---
+<Base
+  current="/produits"
+  title="Produits | Seshat AI"
+  description="Seshat, SeshatOS et SeshatCloud : ce qui est disponible, ce qui est en construction, et sous quelle licence."
+>
+  <header class="page-head contact-head">
+    <div class="wrap">
+      <h1>Ce que nous déployons, vous pouvez l'inspecter.</h1>
+      <p class="lead">Trois briques, chacune avec son niveau de maturité réel. Nous ne présentons rien comme prêt s'il ne l'est pas.</p>
+    </div>
+  </header>
+
+  <section class="block" style="padding-top:28px;padding-bottom:40px">
+    <div class="wrap">
+      <ol class="scale reveal" aria-label="Niveau de maturité des produits">
+        {stages.map((s, i) => (
+          <li class={s.items.length ? 'has' : ''} style={`--k:${i}`}>
+            <span class="scale-name">{s.name}</span>
+            <span class="scale-bar"></span>
+            <span class="scale-items">
+              {s.items.map((it) => <span class="scale-chip"><img src={it.i} alt="" width="22" height="22" />{it.n}</span>)}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </section>
+
+  <section class="block" style="padding-top:24px">
+    <div class="wrap">
+      <div class="prods">
+        {products.map((p) => (
+          <article class={`prod ${p.dark ? 'dark' : ''} reveal`}>
+            <div class="prod-id">
+              <img src={p.logo} alt="" width="64" height="64" />
+              <h2>{p.name}</h2>
+              <span class={`badge ${p.tone}`}>{p.badge}</span>
+              <p class="prod-lic">{p.licence}</p>
+              {p.link && <a class="link" href={p.link.href} rel="noopener">{p.link.label} <Arrow /></a>}
+            </div>
+            <div>
+              <p class="prod-what">{p.what}</p>
+              <ul class="deliver">
+                {p.points.map((x) => <li><Check />{x}</li>)}
+              </ul>
+              <p class="prod-status">{p.status}</p>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="block band">
+    <div class="wrap">
+      <h2 class="reveal">Knowledge-to-Action : un type de pilote, pas un produit fini.</h2>
+      <p class="intro reveal">Ce premier cas d'usage se construit avec vous, sur vos documents. L'interface Knowledge n'existe pas encore : la recherche sourcée s'utilise aujourd'hui depuis le Chat.</p>
+      <div class="kta">
+        {verbs.map((v, i) => (
+          <article class={`pilot ${v.tone} reveal`} style={`--d:${i * 80}ms`}>
+            <span class="chip big"><Icon name={v.icon} /></span>
+            <h3>{v.t}</h3>
+            <p>{v.d}</p>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="cta">
+    <div class="wrap">
+      <div class="cta-box">
+        <h2 class="reveal">Voir ce qui convient chez vous.</h2>
+        <div class="reveal" style="--d:100ms">
+          <p>Le diagnostic dit quelle brique, quel outil du marché ou quel développement répond le mieux à votre besoin.</p>
+          <a class="btn btn-primary" href="/contact">Demander un diagnostic <Arrow /></a>
+        </div>
+      </div>
+    </div>
+  </section>
+</Base>
