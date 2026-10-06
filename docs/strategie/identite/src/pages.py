@@ -4,6 +4,7 @@ Aucun HTML ici : seulement de l'assemblage. Le texte et la structure des pages s
 Chaque fonction build_<page>() renvoie le HTML complet d'une page.
 """
 import appicons as apps
+import cloudmark
 import mark as g
 import themes
 from render import indent, inline, tpl
@@ -14,6 +15,7 @@ PAGES = [
     ("logo.html", "Logo"),
     ("themes.html", "Couleurs et thèmes"),
     ("apps.html", "Icônes des apps"),
+    ("cloud.html", "SeshatCloud"),
     ("explorations.html", "Explorations"),
 ]
 
@@ -159,6 +161,28 @@ def build_apps():
     return page("apps.html", "Icônes des apps SeshatOS", intro, body)
 
 
+# --- cloud.html --------------------------------------------------------------------
+def build_cloud():
+    sections = []
+    for name, (desc, _vb, _fn, _cy) in cloudmark.OPTIONS.items():
+        v = cloudmark.variants(name)
+        base = f"{LOGO_URL}/cloud/{name}"
+
+        def lock(key, dark=False, title=""):
+            body = lockup(v[key], "Seshat Cloud") + "\n" + file_link(f"{base}/{key}.svg", "fichier SVG")
+            return card(title, body, dark=dark)
+
+        icons = "\n".join([inline(v["icon-dark"], "a"), inline(v["icon-dark"], "b"),
+                            inline(v["icon-dark"], "c32"), inline(v["icon-dark"], "c16")])
+        icon_card = card("Icône", tpl("sizes", icons=icons) + "\n" + file_link(f"{base}/icon-dark.svg", "fichier SVG"))
+        cards = [lock("on-light", title="Fond clair"), lock("on-dark", dark=True, title="Fond sombre"),
+                 lock("mono-black", title="Monochrome noir"), icon_card]
+        sections.append(section(name, f"<p>{desc}</p>\n" + grid(cards)))
+    body = tpl("page_cloud", options="\n".join(sections))
+    intro = "Trois pistes de logo pour SeshatCloud, dérivées du logo principal. Aucune n'est encore retenue."
+    return page("cloud.html", "Logo de SeshatCloud", intro, body)
+
+
 # --- explorations.html -------------------------------------------------------------
 LOGO_TRACKS = (
     ("A-heptagramme", "A · Heptagramme : étoile à sept branches tracée d'un trait"),
@@ -211,6 +235,7 @@ def build_index():
         "logo.html": "Trois styles, deux palettes, typographie, règles d'usage.",
         "themes.html": "Sombre actuel, clair actuel et clair chaud proposé, en maquette.",
         "apps.html": "Knowledge (K1) et Automation (A2) : huit variantes chacune.",
+        "cloud.html": "Trois pistes de logo pour SeshatCloud, dérivées du logo principal.",
         "explorations.html": "Toutes les pistes écartées, conservées pour mémoire.",
     }
     labels = dict(PAGES)
@@ -227,5 +252,6 @@ BUILDERS = {
     "logo.html": build_logo,
     "themes.html": build_themes,
     "apps.html": build_apps,
+    "cloud.html": build_cloud,
     "explorations.html": build_explorations,
 }

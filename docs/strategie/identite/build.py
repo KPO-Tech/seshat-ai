@@ -8,7 +8,7 @@ Organisation :
     src/         le code (formes, couleurs, assemblage) ; pas de HTML dedans
     templates/   le HTML : une brique par fichier, une page par fichier (texte éditable)
     assets/      la feuille de style, copiée telle quelle dans apercu/
-    logo/        SORTIE : tous les logos et icônes (SVG lisibles)
+    logo/        SORTIE : tous les logos et icônes (SVG lisibles), dont logo/cloud/
     apercu/      SORTIE : les pages d'aperçu ; ouvrir apercu/index.html
 
 Les dossiers de sortie sont entièrement régénérés : ne pas y modifier de fichier à la main.
@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
 
 import appicons  # noqa: E402
+import cloudmark  # noqa: E402
 import mark  # noqa: E402
 import pages  # noqa: E402
 
@@ -48,6 +49,7 @@ def check_links(out: Path) -> int:
 def main() -> int:
     mark.main()
     appicons.main()
+    cloudmark.main()
     OUT.mkdir(exist_ok=True)
     for old in OUT.glob("*.html"):
         old.unlink()

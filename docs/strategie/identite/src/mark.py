@@ -128,11 +128,11 @@ def _tip(angle, r):
     return cx + r * math.sin(a), cy - r * math.cos(a)
 
 
-def emblem_inner(bow_color, accent, bold=False):
+def emblem_inner(bow_color, accent, bold=False, bow=EMB_BOW):
     """Pétales pleins, arc avec nœuds aux pieds, tige avec nœud."""
     cx, cy = EMB_CENTER
     w = 4.4 if bold else 3
-    out = [f'<path d="{EMB_BOW}" fill="none" stroke="{bow_color}" '
+    out = [f'<path d="{bow}" fill="none" stroke="{bow_color}" '
            f'stroke-width="{w}" stroke-linecap="round" stroke-linejoin="round"/>']
     for a in EMB_ANGLES:
         d, t = _petal(a, EMB_PETAL_LEN, width=8.6 if bold else 7.4)
@@ -148,11 +148,11 @@ def emblem_inner(bow_color, accent, bold=False):
     return "".join(out)
 
 
-def reseau_inner(bow_color, accent, bold=False):
+def reseau_inner(bow_color, accent, bold=False, bow=EMB_BOW):
     """Pétales en contour, rayons et nœuds : la rosette lue comme un réseau."""
     cx, cy = EMB_CENTER
     w = 4 if bold else 2.6
-    out = [f'<path d="{EMB_BOW}" fill="none" stroke="{bow_color}" '
+    out = [f'<path d="{bow}" fill="none" stroke="{bow_color}" '
            f'stroke-width="{w + 0.6}" stroke-linecap="round" stroke-linejoin="round"/>']
     for a in EMB_ANGLES:
         d, t = _petal(a, EMB_PETAL_LEN - 3.5, width=7.6)

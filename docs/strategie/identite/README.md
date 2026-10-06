@@ -8,7 +8,7 @@
 python build.py
 ```
 
-Elle écrit les SVG dans `logo/`, les pages dans `apercu/`, puis **vérifie que tous les liens locaux mènent à un fichier existant**.
+Elle écrit les SVG dans `logo/` (dont `logo/cloud/`), les pages dans `apercu/`, puis **vérifie que tous les liens locaux mènent à un fichier existant**.
 
 Pour parcourir les pages avec un serveur local (plus fiable que certains serveurs d'éditeur) : `make identite-serve`, puis ouvrir `http://127.0.0.1:8765/apercu/index.html`.
 
@@ -20,6 +20,7 @@ identite/
   src/             le code, sans HTML
     mark.py          logo : géométrie, styles (etoile, emblem, reseau), palettes
     appicons.py      icônes des apps : K1 Knowledge, A2 Automation, pistes écartées
+    cloudmark.py     logo de SeshatCloud : trois pistes dérivées du logo principal
     themes.py        données des trois thèmes du desktop
     pages.py         assemblage : choisit les données, remplit les modèles
     render.py        mini moteur de modèles, SVG lisibles
@@ -136,6 +137,18 @@ Pistes écartées (conservées dans `logo/apps/explorations/`, aperçu dans [`ap
 Les autres apps (Data, Inbox, Companion, Team, Scheduling) n'ont **pas** d'icône : on les dessine quand on commence réellement chacune. Idées d'attributs de la déesse pour plus tard : la branche de palmier entaillée (le temps, donc plutôt Scheduling) et la corde à mesurer (Data).
 
 Le logo Seshat AI et SeshatOS est le même (style `reseau` ou `emblem`). Pour SeshatCloud : même logo, ou une variante légère à décider.
+
+## Logo de SeshatCloud
+
+SeshatCloud est la couche multi-tenant (organisations, équipes, administration centrale) au-dessus du même runtime que SeshatOS. Son logo part du **logo principal** (`reseau`) avec une variation. Page : [`apercu/cloud.html`](./apercu/cloud.html), code : [`src/cloudmark.py`](./src/cloudmark.py), fichiers : `logo/cloud/<piste>/` (`on-light`, `on-dark`, `mono-black`, `icon-dark`).
+
+| Piste | Idée | Remarque |
+|---|---|---|
+| `Cl1-double-arc` | Un second arc plus large au-dessus, nœuds à ses pieds : des couches. | Garde l'arc de Seshat ; à petite taille le dôme ressemble à un parapluie. |
+| `Cl2-halo` | Un arc de nœuds autour de l'arc du logo : un ensemble d'organisations. | Léger et distinctif ; les petits points se fondent à 16 px. |
+| `Cl3-arc-nuage` | L'arc devient un bord de nuage à trois bosses. | Dit « cloud » au premier regard, mais efface l'arc de Seshat et reste un nuage générique. |
+
+Statut : **aucune piste retenue** pour l'instant.
 
 ## Typographie
 
