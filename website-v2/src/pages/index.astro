@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import Arrow from '../components/Arrow.astro';
+import Icon from '../components/Icon.astro';
 ---
 <Base
   title="Seshat AI | Conseil et intégration d'IA souveraine pour PME et ETI"
@@ -78,8 +79,20 @@ import Arrow from '../components/Arrow.astro';
     <div class="wrap why">
       <div class="sticky reveal">
         <h2>Ce que nous nous engageons à faire.</h2>
+        <div class="shield" data-shield data-active="0" aria-hidden="true">
+          <span class="outside"><Icon name="cloud-slash" />Services tiers</span>
+          <div class="perimeter">
+            <span class="where">Chez vous</span>
+            <ul>
+              <li data-n="0"><Icon name="database" /><span>Vos données</span></li>
+              <li data-n="1"><Icon name="code" /><span>Code inspectable</span></li>
+              <li data-n="2"><Icon name="user-check" /><span>Validation humaine</span></li>
+              <li data-n="3"><Icon name="plugs-connected" /><span>L'outil adapté</span></li>
+            </ul>
+          </div>
+        </div>
       </div>
-      <div class="commitments">
+      <div class="commitments" data-commitments>
         <div class="reveal">
           <h3>Vos données restent chez vous.</h3>
           <p>Nous déployons des solutions auto-hébergées, sur une infrastructure que vous contrôlez.</p>
@@ -176,4 +189,18 @@ import Arrow from '../components/Arrow.astro';
       </div>
     </div>
   </section>
+  <script is:inline>
+    (function () {
+      var shield = document.querySelector('[data-shield]');
+      var items = [].slice.call(document.querySelectorAll('[data-commitments] > div'));
+      if (!shield || !items.length || !('IntersectionObserver' in window)) return;
+      shield.classList.add('live');
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (en.isIntersecting) shield.setAttribute('data-active', String(items.indexOf(en.target)));
+        });
+      }, { rootMargin: '-40% 0px -40% 0px' });
+      items.forEach(function (i) { io.observe(i); });
+    })();
+  </script>
 </Base>

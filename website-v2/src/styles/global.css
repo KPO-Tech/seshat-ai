@@ -161,6 +161,19 @@ section.band { background: var(--band); }
 .commitments h3 { font-size: 1.45rem; }
 .commitments p { margin-top: 8px; color: var(--text2); max-width: 52ch; }
 
+/* Accueil : périmètre « chez vous » qui s'allume avec les engagements */
+.shield { position: relative; margin-top: 36px; max-width: 420px; padding: 56px 24px 24px; border-radius: calc(var(--radius) + 6px); background: var(--panel); color: var(--on-panel); }
+.shield .outside { position: absolute; top: 18px; left: 24px; display: inline-flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 600; color: var(--on-panel2); opacity: 0.8; }
+.shield .outside .pi { width: 18px; height: 18px; }
+.perimeter { position: relative; padding: 38px 18px 18px; border: 2px dashed var(--accent); border-radius: calc(var(--radius) + 6px); }
+.perimeter .where { position: absolute; top: -13px; left: 18px; padding: 2px 12px; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-size: 0.85rem; font-weight: 700; }
+.perimeter ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.perimeter li { display: grid; gap: 10px; justify-items: start; padding: 16px; border-radius: var(--radius); border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.05); font-weight: 600; font-size: 0.95rem; transition: background 0.4s var(--ease), border-color 0.4s var(--ease), opacity 0.4s, transform 0.4s var(--ease); }
+.perimeter li .pi { width: 26px; height: 26px; fill: #f29a5a; }
+.shield.live li { opacity: 0.4; }
+.shield.live[data-active='0'] li[data-n='0'], .shield.live[data-active='1'] li[data-n='1'], .shield.live[data-active='2'] li[data-n='2'], .shield.live[data-active='3'] li[data-n='3'] { opacity: 1; background: rgba(239, 124, 47, 0.2); border-color: var(--accent); transform: translateY(-3px); }
+@media (prefers-reduced-motion: reduce) { .perimeter li { transition: none; } .shield.live[data-active] li { transform: none !important; } }
+
 /* 4. Preuves : lignes de sujets */
 .proofs { margin-top: 56px; display: grid; gap: 0; }
 .proof { display: grid; grid-template-columns: 0.55fr 1.45fr; gap: 40px; padding: 32px 0; }
@@ -359,6 +372,7 @@ section.quest-block { padding: 8px 0 96px; }
   .step:nth-child(2), .step:nth-child(3), .product:nth-child(2), .product:nth-child(3) { margin-top: 0; }
   .proof { grid-template-columns: 1fr; gap: 12px; }
   .why .sticky, .next { position: static; }
+  .shield { display: none; }
   .contact-grid { grid-template-columns: 1fr; gap: 24px; }
   .services-head .wrap { grid-template-columns: 1fr; }
   .hive { justify-self: center; max-width: 320px; --w: 68px; --h: 78px; }
