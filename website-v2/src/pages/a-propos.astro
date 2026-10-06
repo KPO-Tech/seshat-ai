@@ -1,13 +1,89 @@
 ---
 import Base from '../layouts/Base.astro';
 import Arrow from '../components/Arrow.astro';
+import Check from '../components/Check.astro';
+import Icon from '../components/Icon.astro';
 
-const path = [
-  { when: 'Depuis septembre 2026', what: 'Fondateur de Seshat AI', text: 'Conseil et intégration d\'IA souveraine, et conception du runtime Seshat, de SeshatOS et de SeshatCloud.' },
-  { when: 'Novembre 2025 à avril 2026', what: 'Allianz France', text: 'Migration d\'un datamart d\'assurance de SAS vers Python et PySpark (plus de 15 000 lignes, avec validation de la parité), architecture Médaillon sur Azure Databricks avec plus de 150 règles métier, pipeline de qualité de données géospatiales et cadre de tests.' },
-  { when: '2024', what: 'Groupe Sylvagreg', text: 'Recherche et développement en vision par ordinateur pour la reconstruction 3D.' },
-  { when: '2023 à 2025', what: 'Lyne et Frères', text: 'Entreprise familiale (agriculture et commerce) : analyses, tableaux de bord et déploiement d\'outils d\'IA internes open source, avec accompagnement des équipes.' },
-  { when: '2026', what: 'Diplôme d\'ingénieur', text: 'JUNIA ISEN Lille, spécialité Big Data et Data Science.' },
+// Compétences : une cellule par domaine, tirées du CV.
+const skills = [
+  { q: 1, r: 0, icon: 'robot', t: 'Agents et automatisation', d: 'Orchestration, appel d\'outils, MCP, validation humaine, tâches planifiées.' },
+  { q: 0.5, r: 1, icon: 'files', t: 'RAG et connaissance', d: 'Ingestion de documents, embeddings, PostgreSQL avec pgvector, Chroma, recherche hybride.' },
+  { q: -0.5, r: 1, icon: 'database', t: 'Data engineering', d: 'Python, PySpark, Airflow, PostgreSQL, qualité de données et tests.' },
+  { q: -1, r: 0, icon: 'cloud', t: 'Cloud et déploiement', d: 'Azure, Databricks, Docker, AWS, Git et CI/CD.' },
+  { q: -0.5, r: -1, icon: 'eye', t: 'Vision par ordinateur', d: 'PyTorch, reconstruction 3D à partir d\'images 2D.' },
+  { q: 0.5, r: -1, icon: 'code', t: 'Go, Python, applications', d: 'Services backend, application de bureau avec Electron et React.' },
+];
+
+// Parcours : une étape par expérience, dans l'ordre chronologique.
+const stages = [
+  {
+    place: 'Lyne et Frères',
+    role: 'Data analyst',
+    when: '2023 à 2025',
+    where: 'Missions d\'appui stratégique, Bénin et à distance',
+    context: 'Entreprise familiale (agriculture et commerce) : mon premier déploiement en conditions réelles, auprès d\'équipes non techniques.',
+    done: [
+      'Analyse des données commerciales, opérationnelles et agricoles avec Python et Pandas pour suivre les indicateurs et éclairer les décisions.',
+      'Rapports, tableaux de bord et interfaces Streamlit pour livrer les analyses aux équipes métier.',
+      'Déploiement d\'outils d\'IA internes open source (OpenWebUI, modèles ouverts), avec accompagnement et prise en main des employés.',
+    ],
+    skills: ['Python', 'Pandas', 'Streamlit', 'Tableaux de bord', 'OpenWebUI', 'Modèles ouverts', 'Accompagnement'],
+  },
+  {
+    place: 'Groupe Sylvagreg',
+    role: 'Ingénieur machine learning',
+    when: 'Mai à août 2024',
+    where: 'Lille',
+    context: 'Recherche et développement en vision par ordinateur pour une entreprise de construction.',
+    done: [
+      'Reconstruction 3D à partir d\'images 2D avec des modèles PyTorch.',
+      'Chaînes de prétraitement, d\'augmentation et d\'inférence.',
+      'Conteneurs Docker, déploiement sur AWS et interface de visualisation pour les équipes métier.',
+    ],
+    skills: ['PyTorch', 'Vision par ordinateur', 'Reconstruction 3D', 'Docker', 'AWS'],
+    link: { href: 'https://github.com/EngineerProjects/Sylva3dGUI', label: 'Voir le code de l\'interface' },
+  },
+  {
+    place: 'Allianz France',
+    role: 'Data engineer et data scientist',
+    when: 'Novembre 2025 à avril 2026',
+    where: 'Paris',
+    context: 'Données d\'assurance : de la rigueur sur la donnée et sur les règles métier.',
+    done: [
+      'Migration d\'un datamart d\'assurance de SAS vers Python et PySpark, avec validation de la parité fonctionnelle sur plus de 15 000 lignes de code.',
+      'Architecture Médaillon sur Azure Databricks, avec plus de 150 règles métier intégrées.',
+      'Pipeline de qualité de données géospatiales et cadre de tests automatisés (SAS et Python) pour valider les indicateurs et contrôler les régressions.',
+    ],
+    skills: ['PySpark', 'Azure Databricks', 'Architecture Médaillon', 'Qualité de données', 'Tests automatisés'],
+  },
+  {
+    place: 'Seshat AI',
+    role: 'Fondateur et ingénieur IA',
+    when: 'Depuis septembre 2026',
+    where: 'En France',
+    context: 'Conseil et intégration d\'IA souveraine, et conception des produits que je déploie.',
+    done: [
+      'Conception d\'une plateforme d\'agents IA et d\'automatisation qui s\'intègre aux environnements d\'entreprise.',
+      'Architecture Python et Go, services backend local ou cloud et application de bureau Electron et React.',
+      'Orchestration d\'agents : appel d\'outils, MCP, validation humaine, tâches planifiées. RAG hybride et plusieurs modèles de langage.',
+    ],
+    skills: ['Go', 'MCP', 'RAG hybride', 'pgvector', 'Chroma', 'OpenAI, Mistral, Gemini, Ollama', 'Electron et React', 'Permissions et audit'],
+    link: { href: 'https://github.com/KPO-Tech/seshat', label: 'Voir le code de Seshat' },
+  },
+];
+
+const projects = [
+  { t: 'Tech Watch Agent', d: 'Plateforme de veille multi-agents : planification par sujet, collecte multi-sources, extraction des points clés, synthèses sourcées et rapports ciblés.', stack: 'LangGraph, RAG, FastAPI, pgvector, Docker', href: 'https://github.com/EngineerProjects/tech-watch-agent' },
+  { t: 'BI Retail', d: 'Chaîne de données ventes et chaîne logistique : ingestion, transformations PySpark, orchestration Airflow, entrepôt PostgreSQL et tableaux de bord Power BI.', stack: 'PySpark, Airflow, PostgreSQL, Power BI, Docker', href: 'https://github.com/EngineerProjects/BI_Retail' },
+];
+
+const study = [
+  'Ingénieur JUNIA ISEN Lille, Big Data et Data Science (2026)',
+  'Licence JUNIA ISEN Rabat, Électronique et systèmes numériques (2023)',
+  'Parcours Microsoft AI Engineer (en cours)',
+  'Create ML Models in Microsoft Azure (2023)',
+  'Supervised Machine Learning, Stanford Online (2023)',
+  'Français natif, anglais B2',
 ];
 
 const method = [
@@ -16,45 +92,100 @@ const method = [
   { t: 'Prouver', d: 'Un pilote court, avec un indicateur de gain fixé à l\'avance.' },
   { t: 'Durer', d: 'Hébergement, maintenance et extension, si le pilote le justifie.' },
 ];
-
-const projects = ['Tech Watch Agent : LangGraph, RAG, pgvector', 'BI Retail : PySpark, Airflow, Power BI'];
 ---
 <Base
   current="/a-propos"
   title="À propos | Seshat AI"
   description="Stéphane Kpoviessi, ingénieur data et IA, fondateur de Seshat AI. Parcours, réalisations et façon de travailler."
 >
-  <header class="page-head contact-head">
-    <div class="wrap about-head">
-      <span class="avatar" aria-hidden="true"><span>SK</span></span>
+  <header class="page-head contact-head about-top">
+    <div class="wrap">
       <div>
         <h1>Stéphane Kpoviessi</h1>
         <p class="lead">Ingénieur data et IA, fondateur de Seshat AI. Je conçois les outils que je déploie, et je les déploie chez vous.</p>
+        <p class="sk-cap" data-skcap aria-live="polite"><strong>Mes domaines</strong><span>Survolez une cellule pour voir ce qu'elle recouvre.</span></p>
+      </div>
+      <div class="hive skills3d" data-sk>
+        <div class="sway">
+          <div class="plane">
+            <div class="cell core" style="--q:0;--r:0">
+              <i class="l l1"></i><i class="l l2"></i><i class="l l3"></i><i class="l top"></i>
+              <span class="ic mono" aria-hidden="true">SK</span>
+            </div>
+            {skills.map((s, i) => (
+              <button class="cell sk" type="button" data-t={s.t} data-d={s.d} style={`--q:${s.q};--r:${s.r}`} aria-label={`${s.t} : ${s.d}`}>
+                <i class="l l1"></i><i class="l l2"></i><i class="l l3"></i><i class="l top"></i>
+                <span class="ic" aria-hidden="true"><Icon name={s.icon} /></span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   </header>
 
-  <section class="block" style="padding-top:40px">
+  <section class="block quest-block" style="padding-top:32px">
     <div class="wrap">
       <h2 class="reveal">Parcours et réalisations.</h2>
-      <div class="proofs">
-        {path.map((s) => (
-          <article class="proof reveal">
-            <div>
-              <h3>{s.what}</h3>
-              <p class="who">{s.when}</p>
-            </div>
-            <p>{s.text}</p>
-          </article>
-        ))}
+      <div class="quest" data-quest style="--n:4;margin-top:40px">
+        <div class="rail" role="tablist" aria-label="Étapes du parcours">
+          {stages.map((s, i) => (
+            <button class="node" role="tab" id={`tab-${i}`} aria-controls={`panel-${i}`} aria-selected={i === 0 ? 'true' : 'false'} type="button">
+              <span class="hex" aria-hidden="true"><span>{i + 1}</span></span>
+              <span class="node-name">{s.place}</span>
+              <span class="node-when">{s.when}</span>
+            </button>
+          ))}
+        </div>
+        <div class="stage">
+          {stages.map((s, i) => (
+            <article class="panel" role="tabpanel" id={`panel-${i}`} aria-labelledby={`tab-${i}`} hidden={i !== 0}>
+              <div class="panel-head">
+                <p class="lvl">Étape {i + 1} sur {stages.length}</p>
+                <h2>{s.place}</h2>
+                <p class="who">{s.role}</p>
+                <p class="fmt">{s.when}, {s.where}</p>
+                <p class="ctx">{s.context}</p>
+                {s.link && <a class="link on-dark" href={s.link.href} rel="noopener">{s.link.label} <Arrow /></a>}
+              </div>
+              <div>
+                <ul class="deliver">
+                  {s.done.map((x) => <li><Check />{x}</li>)}
+                </ul>
+                <div class="unlocked">
+                  <p class="unl-title">Compétences débloquées</p>
+                  <ul class="unl">
+                    {stages.slice(0, i + 1).map((st, k) => st.skills.map((sk) => <li class={k === i ? 'new' : 'old'}>{sk}</li>))}
+                  </ul>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
       </div>
-      <ul class="chips reveal">
-        {projects.map((p) => <li>{p}</li>)}
-      </ul>
     </div>
   </section>
 
   <section class="block band">
+    <div class="wrap">
+      <h2 class="reveal">Projets techniques.</h2>
+      <div class="projects">
+        {projects.map((p, i) => (
+          <a class={`project reveal ${i === 0 ? 'dark' : ''}`} href={p.href} rel="noopener" style={`--d:${i * 90}ms`}>
+            <h3>{p.t}</h3>
+            <p>{p.d}</p>
+            <p class="stack">{p.stack}</p>
+            <span class="link"><Icon name="github-logo" /> Voir sur GitHub <Arrow /></span>
+          </a>
+        ))}
+      </div>
+      <ul class="chips reveal">
+        {study.map((s) => <li>{s}</li>)}
+      </ul>
+    </div>
+  </section>
+
+  <section class="block">
     <div class="wrap about-method">
       <div class="reveal">
         <h2>Comment je travaille.</h2>
@@ -81,4 +212,57 @@ const projects = ['Tech Watch Agent : LangGraph, RAG, pgvector', 'BI Retail : Py
       </div>
     </div>
   </section>
+
+  <script is:inline>
+    (function () {
+      var q = document.querySelector('[data-quest]');
+      if (q) {
+        var tabs = [].slice.call(q.querySelectorAll('[role=tab]'));
+        var panels = [].slice.call(q.querySelectorAll('[role=tabpanel]'));
+        var select = function (i, focus) {
+          tabs.forEach(function (t, k) {
+            t.setAttribute('aria-selected', k === i ? 'true' : 'false');
+            t.tabIndex = k === i ? 0 : -1;
+            t.classList.toggle('done', k < i);
+          });
+          panels.forEach(function (p, k) { p.hidden = k !== i; });
+          q.style.setProperty('--progress-ratio', String(i / (tabs.length - 1)));
+          if (focus) tabs[i].focus();
+        };
+        tabs.forEach(function (t, i) {
+          t.addEventListener('click', function () { select(i); });
+          t.addEventListener('keydown', function (e) {
+            if (e.key === 'ArrowRight') { e.preventDefault(); select(Math.min(i + 1, tabs.length - 1), true); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); select(Math.max(i - 1, 0), true); }
+          });
+        });
+        select(0);
+      }
+
+      var hive = document.querySelector('[data-sk]');
+      var cap = document.querySelector('[data-skcap]');
+      if (!hive || !cap) return;
+      var show = function (el) {
+        cap.querySelector('strong').textContent = el.getAttribute('data-t');
+        cap.querySelector('span').textContent = el.getAttribute('data-d');
+        [].forEach.call(hive.querySelectorAll('.sk'), function (c) { c.classList.toggle('on', c === el); });
+      };
+      [].forEach.call(hive.querySelectorAll('.sk'), function (c) {
+        c.addEventListener('mouseenter', function () { show(c); });
+        c.addEventListener('focus', function () { show(c); });
+        c.addEventListener('click', function () { show(c); });
+      });
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      var head = document.querySelector('.about-top');
+      head.addEventListener('pointermove', function (e) {
+        var b = head.getBoundingClientRect();
+        hive.style.setProperty('--rx', (56 + ((e.clientY - b.top) / b.height - 0.5) * -10) + 'deg');
+        hive.style.setProperty('--rz', (-28 + ((e.clientX - b.left) / b.width - 0.5) * 16) + 'deg');
+      });
+      head.addEventListener('pointerleave', function () {
+        hive.style.removeProperty('--rx');
+        hive.style.removeProperty('--rz');
+      });
+    })();
+  </script>
 </Base>
