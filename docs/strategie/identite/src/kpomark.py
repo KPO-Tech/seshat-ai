@@ -59,6 +59,9 @@ def official_variants():
         "icon-dark": tile(cellules(a.CREAM, a.ORANGE), a.CHAR),
         "icon-light": tile(cellules(a.CHAR, a.ORANGE_DEEP), a.PAPER, a.PAPER_BORDER),
         "favicon": tile(cellules(a.CREAM, a.ORANGE, bold=True), a.CHAR, scale=0.9),
+        # avatar GitHub : carré plein (sans coins arrondis, GitHub applique son propre masque)
+        "avatar": g.svg("0 0 100 100", f'<rect width="100" height="100" fill="{a.CHAR}"/>'
+                        f'<g transform="translate(50 50) scale(0.84) translate(-50 -50)">{cellules(a.CREAM, a.ORANGE)}</g>'),
     }
 
 

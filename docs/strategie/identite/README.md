@@ -23,6 +23,7 @@ identite/
     cloudmark.py     logo de SeshatCloud : trois pistes dérivées du logo principal
     runtimemark.py   logo officiel du runtime seshat (Sh2, terminal)
     kpomark.py       logo officiel de KPO-Tech (sept cellules, marque mère)
+    export_png.py    export de SVG en PNG avec Edge (avatar GitHub 500 px) ; optionnel, hors build.py
     themes.py        données des trois thèmes du desktop
     pages.py         assemblage : choisit les données, remplit les modèles
     render.py        mini moteur de modèles, SVG lisibles
@@ -168,6 +169,8 @@ Limites connues : à 16 px, seule la fenêtre et l'orange de la rosette se disti
 **Retenu le 2026-10-06 : sept cellules en nid d'abeille, dont une orange.** Il dit **groupe** (un nid de cellules) et **tech** (l'hexagone) ; la cellule orange est le projet Seshat, et il y en a sept, comme le nombre de la déesse. Le nom s'écrit **dessous**, sous la forme du domaine **`kpo.tech`**, dont le point est le nœud orange. La marque mère reste neutre (pas la rosette) mais garde le charbon, l'orange et les traits arrondis du desktop.
 
 Variantes officielles du symbole, dans `logo/kpo-tech/kpotech/` : `on-light`, `on-dark`, `mono-black`, `mono-white`, `icon-dark`, `icon-light`, `favicon` (traits renforcés, agrandi dans la tuile). Le nom « kpo.tech » est écrit avec la police web et n'est pas dans les SVG : il sera vectorisé quand le fichier de la police Space Grotesk aura été téléchargé.
+
+Avatar de l'organisation GitHub : `avatar.svg` (carré plein) et `avatar-500.png` (500 × 500 px), produit par `python src/export_png.py` (Microsoft Edge en mode headless avec un profil temporaire, rien à télécharger). Brouillon du profil GitHub : [`../github-profil-kpo-tech.md`](../github-profil-kpo-tech.md).
 
 Limites connues : à 16 px, le favicon garde la silhouette en nid d'abeille mais la cellule orange y est à peine visible ; le nid d'abeille est une forme courante, à vérifier lors de la recherche d'antériorité. Les pistes écartées (logotype, K en réseau, maison ; puis grille de points en K et K dans un hexagone) restent dans l'historique git.
 
