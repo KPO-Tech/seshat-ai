@@ -8,7 +8,7 @@
 python build.py
 ```
 
-Elle écrit les SVG dans `logo/` (dont `logo/cloud/`), les pages dans `apercu/`, puis **vérifie que tous les liens locaux mènent à un fichier existant**.
+Elle écrit les SVG dans `logo/` (dont `logo/cloud/` et `logo/runtime/`), les pages dans `apercu/`, puis **vérifie que tous les liens locaux mènent à un fichier existant**.
 
 Pour parcourir les pages avec un serveur local (plus fiable que certains serveurs d'éditeur) : `make identite-serve`, puis ouvrir `http://127.0.0.1:8765/apercu/index.html`.
 
@@ -21,6 +21,7 @@ identite/
     mark.py          logo : géométrie, styles (etoile, emblem, reseau), palettes
     appicons.py      icônes des apps : K1 Knowledge, A2 Automation, pistes écartées
     cloudmark.py     logo de SeshatCloud : trois pistes dérivées du logo principal
+    runtimemark.py   logo du runtime seshat : trois pistes « développeurs »
     themes.py        données des trois thèmes du desktop
     pages.py         assemblage : choisit les données, remplit les modèles
     render.py        mini moteur de modèles, SVG lisibles
@@ -150,6 +151,18 @@ SeshatCloud est la couche multi-tenant (organisations, équipes, administration 
 | `Cl3-arc-nuage` | L'arc devient un bord de nuage à trois bosses. | Dit « cloud » au premier regard, mais efface l'arc de Seshat et reste un nuage générique. |
 
 Statut : **aucune piste retenue** pour l'instant.
+
+## Logo du runtime `seshat`
+
+`seshat` est le runtime d'agents open source (Go, SDK, CLI, TUI, gRPC), la fondation de SeshatOS et de SeshatCloud. Son logo part du logo principal (`reseau`, sans la tige) avec une variation tournée vers les développeurs. Page : [`apercu/runtime.html`](./apercu/runtime.html), code : [`src/runtimemark.py`](./src/runtimemark.py), fichiers : `logo/runtime/<piste>/`. Il remplace `docs/images/seshat.png` du dépôt `seshat` (icône générique à ne plus utiliser).
+
+| Piste | Idée | Remarque |
+|---|---|---|
+| `Sh1-invite` | La tige devient une invite de terminal `>_` sous la rosette. | Lisible, évoque tout de suite la ligne de commande. |
+| `Sh2-terminal` | La rosette dans une fenêtre de terminal à trois points. | La rosette devient petite dans le cadre ; à 16 px on ne voit plus que la fenêtre. |
+| `Sh3-chevrons` | L'arc devient deux chevrons `< >` dont les pointes portent les nœuds. | Parle aux développeurs ; sans l'arc, la rosette se lit un peu comme une couronne. |
+
+Statut : **aucune piste retenue** ; le logo principal tel quel reste possible.
 
 ## Typographie
 

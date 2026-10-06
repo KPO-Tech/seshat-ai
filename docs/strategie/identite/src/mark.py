@@ -149,7 +149,7 @@ def emblem_inner(bow_color, accent, bold=False, bow=EMB_BOW):
     return "".join(out)
 
 
-def reseau_inner(bow_color, accent, bold=False, bow=EMB_BOW):
+def reseau_inner(bow_color, accent, bold=False, bow=EMB_BOW, stalk=True):
     """Pétales en contour, rayons et nœuds : la rosette lue comme un réseau."""
     cx, cy = EMB_CENTER
     w = 4 if bold else 2.6
@@ -161,10 +161,12 @@ def reseau_inner(bow_color, accent, bold=False, bow=EMB_BOW):
                    f'stroke-width="{w}" stroke-linejoin="round"/>')
         x, y = _tip(a, EMB_PETAL_LEN)
         out.append(f'<circle cx="{x:.2f}" cy="{y:.2f}" r="{3.6 if bold else 3.1}" fill="{accent}"/>')
-    out.append(f'<line x1="{cx}" y1="{cy}" x2="{cx}" y2="{EMB_STALK_END}" '
-               f'stroke="{bow_color}" stroke-width="{w + 0.4}" stroke-linecap="round"/>')
+    if stalk:
+        out.append(f'<line x1="{cx}" y1="{cy}" x2="{cx}" y2="{EMB_STALK_END}" '
+                   f'stroke="{bow_color}" stroke-width="{w + 0.4}" stroke-linecap="round"/>')
     out.append(f'<circle cx="{cx}" cy="{cy}" r="{4.4 if bold else 3.8}" fill="{accent}"/>')
-    out.append(f'<circle cx="{cx}" cy="{EMB_STALK_END}" r="3.4" fill="{bow_color}"/>')
+    if stalk:
+        out.append(f'<circle cx="{cx}" cy="{EMB_STALK_END}" r="3.4" fill="{bow_color}"/>')
     for x, y in EMB_FEET:
         out.append(f'<circle cx="{x}" cy="{y}" r="3.2" fill="{bow_color}"/>')
     return "".join(out)

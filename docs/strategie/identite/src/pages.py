@@ -6,6 +6,7 @@ Chaque fonction build_<page>() renvoie le HTML complet d'une page.
 import appicons as apps
 import cloudmark
 import mark as g
+import runtimemark
 import themes
 from render import indent, inline, tpl
 
@@ -16,6 +17,7 @@ PAGES = [
     ("themes.html", "Couleurs et thèmes"),
     ("apps.html", "Icônes des apps"),
     ("cloud.html", "SeshatCloud"),
+    ("runtime.html", "seshat (runtime)"),
     ("explorations.html", "Explorations"),
 ]
 
@@ -161,26 +163,36 @@ def build_apps():
     return page("apps.html", "Icônes des apps SeshatOS", intro, body)
 
 
-# --- cloud.html --------------------------------------------------------------------
-def build_cloud():
+# --- cloud.html et runtime.html : pistes de logo dérivées du logo principal -----------------
+def _tracks_page(filename, title, intro, template, module, folder, brand):
     sections = []
-    for name, (desc, _vb, _fn, _cy) in cloudmark.OPTIONS.items():
-        v = cloudmark.variants(name)
-        base = f"{LOGO_URL}/cloud/{name}"
+    for name, (desc, _vb, _fn, _cy) in module.OPTIONS.items():
+        v = module.variants(name)
+        base = f"{LOGO_URL}/{folder}/{name}"
 
-        def lock(key, dark=False, title=""):
-            body = lockup(v[key], "Seshat Cloud") + "\n" + file_link(f"{base}/{key}.svg", "fichier SVG")
-            return card(title, body, dark=dark)
+        def lock(key, dark=False, label=""):
+            body = lockup(v[key], brand) + "\n" + file_link(f"{base}/{key}.svg", "fichier SVG")
+            return card(label, body, dark=dark)
 
         icons = "\n".join([inline(v["icon-dark"], "a"), inline(v["icon-dark"], "b"),
                             inline(v["icon-dark"], "c32"), inline(v["icon-dark"], "c16")])
         icon_card = card("Icône", tpl("sizes", icons=icons) + "\n" + file_link(f"{base}/icon-dark.svg", "fichier SVG"))
-        cards = [lock("on-light", title="Fond clair"), lock("on-dark", dark=True, title="Fond sombre"),
-                 lock("mono-black", title="Monochrome noir"), icon_card]
+        cards = [lock("on-light", label="Fond clair"), lock("on-dark", dark=True, label="Fond sombre"),
+                 lock("mono-black", label="Monochrome noir"), icon_card]
         sections.append(section(name, f"<p>{desc}</p>\n" + grid(cards)))
-    body = tpl("page_cloud", options="\n".join(sections))
-    intro = "Trois pistes de logo pour SeshatCloud, dérivées du logo principal. Aucune n'est encore retenue."
-    return page("cloud.html", "Logo de SeshatCloud", intro, body)
+    return page(filename, title, intro, tpl(template, options="\n".join(sections)))
+
+
+def build_cloud():
+    return _tracks_page("cloud.html", "Logo de SeshatCloud",
+                        "Trois pistes de logo pour SeshatCloud, dérivées du logo principal. Aucune n'est encore retenue.",
+                        "page_cloud", cloudmark, "cloud", "Seshat Cloud")
+
+
+def build_runtime():
+    return _tracks_page("runtime.html", "Logo du runtime seshat",
+                        "Trois pistes de logo pour le runtime open source seshat, dérivées du logo principal. Aucune n'est encore retenue.",
+                        "page_runtime", runtimemark, "runtime", "seshat")
 
 
 # --- explorations.html -------------------------------------------------------------
@@ -236,6 +248,7 @@ def build_index():
         "themes.html": "Sombre actuel, clair actuel et clair chaud proposé, en maquette.",
         "apps.html": "Knowledge (K1) et Automation (A2) : huit variantes chacune.",
         "cloud.html": "Trois pistes de logo pour SeshatCloud, dérivées du logo principal.",
+        "runtime.html": "Trois pistes de logo pour le runtime seshat (variation développeurs).",
         "explorations.html": "Toutes les pistes écartées, conservées pour mémoire.",
     }
     labels = dict(PAGES)
@@ -253,5 +266,6 @@ BUILDERS = {
     "themes.html": build_themes,
     "apps.html": build_apps,
     "cloud.html": build_cloud,
+    "runtime.html": build_runtime,
     "explorations.html": build_explorations,
 }
