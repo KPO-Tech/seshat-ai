@@ -196,6 +196,9 @@ def build_files(style, p):
     return {
         "seshat-mark-on-light.svg": mk(on_light["arc"], on_light["accent"]),
         "seshat-mark-on-dark.svg": mk(on_dark["arc"], on_dark["accent"]),
+        # une seule couleur lisible sur fond clair comme sombre (contraste >= 3,7:1 des deux côtés) :
+        # pour un logo intégré à une interface dont le thème change (barre de titre, écran de connexion)
+        "seshat-mark-universal.svg": mk(p["accent_deep"], p["accent_deep"]),
         "seshat-mark-mono-black.svg": mk("#000000", "#000000"),
         "seshat-mark-mono-white.svg": mk("#FFFFFF", "#FFFFFF"),
         "seshat-app-icon.svg": icon,
