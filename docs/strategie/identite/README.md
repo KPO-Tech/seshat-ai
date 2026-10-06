@@ -8,13 +8,23 @@ Aperçu complet des deux palettes : ouvrir [`kit.html`](./kit.html) dans un navi
 
 Seshat est la déesse égyptienne de l'écriture, des registres et de la mesure. Son nom signifie « la scribe ». Son emblème est **une étoile à sept branches surmontée d'un arc**, ce qui lui a valu le nom de « celle aux sept pointes » ([World History Encyclopedia](https://www.worldhistory.org/Seshat/)).
 
-Le logo reprend cet emblème en le simplifiant : une étoile pleine à sept branches (le savoir structuré) et un arc ouvert vers le bas au-dessus (la coiffe de la déesse, et l'idée de couvrir et protéger les données).
+Dans l'iconographie, la coiffe de la déesse est une rosette de sept pétales sur une tige, surmontée d'un arc dont les extrémités se redressent. Le style `etoile` (v1) simplifie cela en étoile à sept branches sous un arc. Les styles `emblem` et `reseau` (v2) restent plus proches du dessin (rosette de pétales enveloppée par l'arc) et ajoutent des **nœuds** pour évoquer un réseau, donc l'IA. La longue tige du dessin est supprimée : avec l'arc elle faisait un parapluie.
 
 Il remplace l'ancienne image `website/public/seshat.png` (icône générique « atome avec flèches » trouvée en ligne, de licence non vérifiée, donc à ne plus utiliser).
 
 ## Fichiers
 
-Dossiers [`logo/ambre/`](./logo/ambre/) et [`logo/orange/`](./logo/orange/), mêmes six fichiers dans chacun, tous en SVG :
+Dossiers `logo/<style>/<palette>/` (3 styles × 2 palettes), mêmes six fichiers dans chacun, tous en SVG.
+
+**Styles** :
+
+| Style | Description |
+|---|---|
+| `etoile` (v1) | Étoile pleine à sept branches + arc. Le plus simple et le plus lisible en petit. |
+| `emblem` (v2) | D'après l'emblème réel (dessin de la déesse) : rosette de sept pétales pleins en éventail, enveloppée par l'arc, avec des nœuds aux pieds de l'arc et en bout de tige courte (clin d'œil IA). |
+| `reseau` (v2) | Même rosette, pétales en contour avec un **nœud à chaque pointe** et un nœud central : la rosette lue comme un réseau de neurones. Le plus « IA ». |
+
+Palettes : `ambre`, `orange`.
 
 | Fichier | Usage |
 |---|---|
@@ -75,6 +85,7 @@ Les deux sont sous licence **SIL Open Font License**, utilisables gratuitement p
 
 ## Reste à faire
 
+0. **Choisir le style** (`etoile`, `emblem` ou `reseau`). À petite taille (16 px), les nœuds de `reseau` et `emblem` disparaissent : le favicon est renforcé mais reste moins net que celui de `etoile`.
 1. **Choisir la palette** (ambre ou orange) et **valider visuellement** la marque (forme de l'étoile, épaisseur de l'arc).
 2. **Vectoriser le logotype** (contours de Space Grotesk) pour avoir des fichiers « lockup » autonomes. Cela demande de télécharger le fichier de police (OFL), à faire avec ton accord.
 3. **Exports PNG** : icône Apple (180 px), icônes PWA (192 et 512), image de partage Open Graph (1200 × 630). Les SVG ne sont pas acceptés partout.
@@ -84,4 +95,4 @@ Les deux sont sous licence **SIL Open Font License**, utilisables gratuitement p
 
 ## Historique
 
-Les pistes explorées (A heptagramme, B registre, C constellation, D1 à D3) sont conservées dans [`explorations/`](./explorations/). La piste retenue est **D1**. Les versions suivantes se font en modifiant `generate.py` ; garder une copie datée de la sortie avant un changement de forme.
+Les pistes explorées (A heptagramme, B registre, C constellation, D1 à D3) sont conservées dans [`explorations/`](./explorations/). La piste D1 est devenue le style `etoile` (v1). Les styles `emblem` et `reseau` (v2) ont été ajoutés ensuite ; aucun n'est encore retenu. Les versions suivantes se font en modifiant `generate.py` ; garder une copie datée de la sortie avant un changement de forme.
