@@ -496,6 +496,53 @@ section.contact-block { padding: 28px 0 88px; }
 .project.dark .stack, .project.dark .link { color: #f29a5a; }
 .project .link .pi { width: 18px; height: 18px; }
 
+/* À propos : lien portfolio, liens d'étape */
+.portfolio-link { margin-top: 18px; }
+.portfolio-link .pi { width: 18px; height: 18px; }
+.plinks { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 8px 22px; }
+.plinks .link { margin: 0; }
+
+/* À propos : projets (robot en vedette) */
+.projects { grid-template-columns: 1.15fr 0.85fr; grid-template-rows: repeat(3, auto); }
+.project.robot { grid-row: 1 / span 3; align-content: start; }
+.project.robot h3 { font-size: 1.7rem; }
+.project.robot .route { width: 100%; max-width: 420px; color: #b6aea3; margin-bottom: 8px; overflow: visible; }
+.tags { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.tags li { padding: 5px 12px; border-radius: 999px; font-size: 0.85rem; font-weight: 600; border: 1px solid rgba(255, 255, 255, 0.18); color: var(--on-panel); }
+.bot { offset-path: path('M24 134 C80 134 84 72 140 80 S214 134 254 70 S318 38 320 36'); offset-distance: 0%; }
+@media (prefers-reduced-motion: no-preference) {
+  .bot { animation: drive 9s ease-in-out infinite alternate; }
+  .trail { animation: dash 1.4s linear infinite; }
+}
+@media (prefers-reduced-motion: reduce) { .bot { offset-distance: 100%; } }
+@keyframes drive { from { offset-distance: 0%; } to { offset-distance: 100%; } }
+@keyframes dash { to { stroke-dashoffset: -30; } }
+
+/* À propos : formation en escalier montant */
+.edu { list-style: none; margin: 48px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; align-items: start; }
+.edu-step { border-top: 3px solid var(--ink); padding-top: 18px; }
+.edu-step:nth-child(1) { margin-top: 112px; border-top-color: var(--accent); }
+.edu-step:nth-child(2) { margin-top: 56px; border-top-color: var(--accent-text); }
+.edu-year { font-family: var(--font-display); font-weight: 700; font-size: 2.6rem; letter-spacing: -0.03em; color: var(--accent-text); line-height: 1; }
+.edu-step h3 { margin-top: 12px; font-size: 1.3rem; }
+.edu-school { margin-top: 8px; color: var(--text2); }
+.edu-desc { margin-top: 8px; color: var(--text2); font-size: 0.95rem; }
+.certs { margin-top: 64px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.cert { display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; align-items: baseline; padding: 18px 20px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); text-decoration: none; color: inherit; transition: border-color 0.2s, transform 0.2s var(--ease); }
+.cert:hover { border-color: var(--accent); transform: translateY(-2px); }
+.cert-title { font-weight: 600; }
+.cert-by { grid-column: 1; color: var(--text2); font-size: 0.92rem; }
+.cert-when { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-size: 0.85rem; font-weight: 600; color: var(--text2); }
+.cert-when.now { color: var(--accent-text); padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
+.side-cards { margin-top: 28px; display: grid; grid-template-columns: 1.3fr 0.7fr; gap: 20px; }
+.side-card { padding: 28px; border-radius: calc(var(--radius) + 4px); background: var(--panel); color: var(--on-panel); }
+.side-card h3 { font-size: 1.25rem; }
+.side-card .sc-title { margin-top: 8px; color: #f29a5a; font-weight: 600; font-size: 0.95rem; }
+.side-card ul { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 14px; color: var(--on-panel2); }
+.side-card strong { color: var(--on-panel); }
+.langs li { display: grid; gap: 2px; }
+.langs span { font-size: 0.92rem; }
+
 /* Apparition au défilement : hiérarchie, une seule fois, désactivée si mouvement réduit */
 @media (prefers-reduced-motion: no-preference) {
   .js .reveal { opacity: 0; transform: translateY(22px); transition: opacity 0.7s var(--ease), transform 0.7s var(--ease); transition-delay: var(--d, 0ms); }
@@ -521,7 +568,9 @@ section.contact-block { padding: 28px 0 88px; }
   .why .sticky { position: static; }
   .shield { display: none; }
   .contact-grid { grid-template-columns: 1fr; gap: 24px; }
-  .prod, .terms, .inspect, .about-method, .kta, .projects, .about-top .wrap { grid-template-columns: 1fr; }
+  .prod, .terms, .inspect, .about-method, .kta, .projects, .about-top .wrap, .edu, .certs, .side-cards { grid-template-columns: 1fr; }
+  .project.robot { grid-row: auto; }
+  .edu-step:nth-child(1), .edu-step:nth-child(2) { margin-top: 0; }
   .node-when { display: none; }
   .prod { padding: 28px 22px; gap: 24px; }
   .scale { grid-template-columns: repeat(2, 1fr); row-gap: 20px; }

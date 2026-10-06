@@ -4,55 +4,60 @@ import Arrow from '../components/Arrow.astro';
 import Check from '../components/Check.astro';
 import Icon from '../components/Icon.astro';
 
-// Compétences : une cellule par domaine, tirées du CV.
+// Compétences : une cellule par domaine, tirées des CV.
 const skills = [
-  { q: 1, r: 0, icon: 'robot', t: 'Agents et automatisation', d: 'Orchestration, appel d\'outils, MCP, validation humaine, tâches planifiées.' },
-  { q: 0.5, r: 1, icon: 'files', t: 'RAG et connaissance', d: 'Ingestion de documents, embeddings, PostgreSQL avec pgvector, Chroma, recherche hybride.' },
-  { q: -0.5, r: 1, icon: 'database', t: 'Data engineering', d: 'Python, PySpark, Airflow, PostgreSQL, qualité de données et tests.' },
-  { q: -1, r: 0, icon: 'cloud', t: 'Cloud et déploiement', d: 'Azure, Databricks, Docker, AWS, Git et CI/CD.' },
-  { q: -0.5, r: -1, icon: 'eye', t: 'Vision par ordinateur', d: 'PyTorch, reconstruction 3D à partir d\'images 2D.' },
-  { q: 0.5, r: -1, icon: 'code', t: 'Go, Python, applications', d: 'Services backend, application de bureau avec Electron et React.' },
+  { q: 1, r: 0, icon: 'robot', t: 'Agents et automatisation', d: 'Orchestration multi-agents, appel d\'outils, MCP, validation humaine, tâches planifiées.' },
+  { q: 0.5, r: 1, icon: 'files', t: 'RAG et connaissance', d: 'Ingestion de documents, embeddings, PostgreSQL avec pgvector, Chroma, recherche hybride et réponses sourcées.' },
+  { q: -0.5, r: 1, icon: 'database', t: 'Data engineering', d: 'Python, PySpark, Airflow, PostgreSQL, architecture Médaillon, qualité de données et tests.' },
+  { q: -1, r: 0, icon: 'cloud', t: 'Cloud et déploiement', d: 'Azure Databricks, AWS, Docker, Git et CI/CD.' },
+  { q: -0.5, r: -1, icon: 'eye', t: 'Vision par ordinateur', d: 'PyTorch, YOLOv8, OpenCV, photogrammétrie, reconstruction 3D.' },
+  { q: 0.5, r: -1, icon: 'code', t: 'Go, Python, applications', d: 'Services backend, FastAPI, application de bureau avec Electron et React.' },
 ];
 
 // Parcours : une étape par expérience, dans l'ordre chronologique.
 const stages = [
   {
     place: 'Lyne et Frères',
-    role: 'Data analyst',
+    role: 'Data analyst, missions d\'appui stratégique',
     when: '2023 à 2025',
-    where: 'Missions d\'appui stratégique, Bénin et à distance',
+    where: 'Bénin et à distance',
     context: 'Entreprise familiale (agriculture et commerce) : mon premier déploiement en conditions réelles, auprès d\'équipes non techniques.',
     done: [
-      'Analyse des données commerciales, opérationnelles et agricoles avec Python et Pandas pour suivre les indicateurs et éclairer les décisions.',
-      'Rapports, tableaux de bord et interfaces Streamlit pour livrer les analyses aux équipes métier.',
-      'Déploiement d\'outils d\'IA internes open source (OpenWebUI, modèles ouverts), avec accompagnement et prise en main des employés.',
+      'Analyse de données commerciales, opérationnelles et de marché avec Python et Pandas, pour soutenir les décisions de diversification et le suivi des indicateurs.',
+      'Rapports et tableaux de bord interactifs avec Streamlit et des interfaces web, pour restituer les analyses au personnel.',
+      'Suivi analytique des activités agricoles, notamment les plantations de palmiers et les étapes de transformation, pour repérer des pistes d\'amélioration.',
+      'Mise à disposition d\'outils d\'IA internes open source (OpenWebUI, modèles ouverts) et accompagnement vers un usage responsable.',
     ],
-    skills: ['Python', 'Pandas', 'Streamlit', 'Tableaux de bord', 'OpenWebUI', 'Modèles ouverts', 'Accompagnement'],
+    skills: ['Python', 'Pandas', 'Streamlit', 'HTML, CSS, JavaScript', 'Tableaux de bord', 'OpenWebUI', 'Modèles ouverts', 'Accompagnement'],
   },
   {
     place: 'Groupe Sylvagreg',
-    role: 'Ingénieur machine learning',
+    role: 'Ingénieur machine learning, stage',
     when: 'Mai à août 2024',
     where: 'Lille',
     context: 'Recherche et développement en vision par ordinateur pour une entreprise de construction.',
     done: [
-      'Reconstruction 3D à partir d\'images 2D avec des modèles PyTorch.',
-      'Chaînes de prétraitement, d\'augmentation et d\'inférence.',
-      'Conteneurs Docker, déploiement sur AWS et interface de visualisation pour les équipes métier.',
+      'Solution de reconstruction 3D à partir d\'images 2D, combinant vision par ordinateur, photogrammétrie et modèles génératifs sous PyTorch.',
+      'Automatisation des chaînes de prétraitement, d\'augmentation de données et d\'inférence, pour fiabiliser les expériences.',
+      'Conteneurs Docker, déploiement sur AWS et interface de visualisation pour inspecter les reconstructions et faciliter les tests des utilisateurs.',
     ],
-    skills: ['PyTorch', 'Vision par ordinateur', 'Reconstruction 3D', 'Docker', 'AWS'],
-    link: { href: 'https://github.com/EngineerProjects/Sylva3dGUI', label: 'Voir le code de l\'interface' },
+    skills: ['PyTorch', 'Vision par ordinateur', 'Photogrammétrie', 'Modèles génératifs', 'Docker', 'AWS'],
+    links: [
+      { href: 'https://github.com/EngineerProjects/Sylva3dGUI', label: 'L\'interface' },
+      { href: 'https://github.com/EngineerProjects/sylva3D', label: 'Le moteur' },
+    ],
   },
   {
     place: 'Allianz France',
-    role: 'Data engineer et data scientist',
+    role: 'Ingénieur data et data scientist',
     when: 'Novembre 2025 à avril 2026',
     where: 'Paris',
-    context: 'Données d\'assurance : de la rigueur sur la donnée et sur les règles métier.',
+    context: 'Direction P4D, équipe Advanced Data et Climate. Des données d\'assurance : de la rigueur sur la donnée et sur les règles métier.',
     done: [
       'Migration d\'un datamart d\'assurance de SAS vers Python et PySpark, avec validation de la parité fonctionnelle sur plus de 15 000 lignes de code.',
-      'Architecture Médaillon sur Azure Databricks, avec plus de 150 règles métier intégrées.',
-      'Pipeline de qualité de données géospatiales et cadre de tests automatisés (SAS et Python) pour valider les indicateurs et contrôler les régressions.',
+      'Architecture Médaillon sur Azure Databricks intégrant plus de 150 règles de gestion métier, pour fournir des jeux de données fiables aux usages analytiques.',
+      'Pipeline de qualité de données géospatiales, conçu et automatisé pour fiabiliser le reporting et les traitements en aval.',
+      'Cadre de tests automatisés SAS et Python pour valider les indicateurs, contrôler les régressions et préparer la mise en production.',
     ],
     skills: ['PySpark', 'Azure Databricks', 'Architecture Médaillon', 'Qualité de données', 'Tests automatisés'],
   },
@@ -60,30 +65,43 @@ const stages = [
     place: 'Seshat AI',
     role: 'Fondateur et ingénieur IA',
     when: 'Depuis septembre 2026',
-    where: 'En France',
+    where: '',
     context: 'Conseil et intégration d\'IA souveraine, et conception des produits que je déploie.',
     done: [
-      'Conception d\'une plateforme d\'agents IA et d\'automatisation qui s\'intègre aux environnements d\'entreprise.',
-      'Architecture Python et Go, services backend local ou cloud et application de bureau Electron et React.',
-      'Orchestration d\'agents : appel d\'outils, MCP, validation humaine, tâches planifiées. RAG hybride et plusieurs modèles de langage.',
+      'Plateforme d\'IA modulaire : services Python et Go, backend local embarqué, backend cloud multi-organisations, application de bureau Electron et React, console d\'administration.',
+      'Moteur de RAG hybride : ingestion, découpage, embeddings de plusieurs fournisseurs, indexation PostgreSQL avec pgvector et Chroma, réponses sourcées.',
+      'Orchestration d\'agents qui exécutent des outils externes via MCP, avec validation humaine, permissions, audit et tâches planifiées.',
+      'Couche commune pour plusieurs modèles de langage (OpenAI, Mistral, Gemini, Ollama), identifiants stockés dans les trousseaux natifs du système et espaces de travail isolés.',
     ],
-    skills: ['Go', 'MCP', 'RAG hybride', 'pgvector', 'Chroma', 'OpenAI, Mistral, Gemini, Ollama', 'Electron et React', 'Permissions et audit'],
-    link: { href: 'https://github.com/KPO-Tech/seshat', label: 'Voir le code de Seshat' },
+    skills: ['Go', 'TypeScript', 'MCP', 'RAG hybride', 'pgvector', 'Chroma', 'Multi-LLM', 'Electron et React', 'Permissions et audit', 'Sécurité applicative'],
+    links: [{ href: 'https://github.com/KPO-Tech/seshat', label: 'Le code de Seshat' }],
   },
 ];
 
 const projects = [
-  { t: 'Tech Watch Agent', d: 'Plateforme de veille multi-agents : planification par sujet, collecte multi-sources, extraction des points clés, synthèses sourcées et rapports ciblés.', stack: 'LangGraph, RAG, FastAPI, pgvector, Docker', href: 'https://github.com/EngineerProjects/tech-watch-agent' },
-  { t: 'BI Retail', d: 'Chaîne de données ventes et chaîne logistique : ingestion, transformations PySpark, orchestration Airflow, entrepôt PostgreSQL et tableaux de bord Power BI.', stack: 'PySpark, Airflow, PostgreSQL, Power BI, Docker', href: 'https://github.com/EngineerProjects/BI_Retail' },
+  { t: 'Tech Watch Agent', d: 'Plateforme de veille multi-agents : planification par sujet, collecte multi-sources, extraction des points clés, synthèses sourcées et rapports ciblés. Orchestration LangGraph, mémoire sémantique pgvector.', stack: 'LangGraph, FastAPI, pgvector, React, Docker', href: 'https://github.com/EngineerProjects/tech-watch-agent' },
+  { t: 'BI Retail', d: 'Chaîne de données ventes et chaîne logistique : génération et ingestion, transformations PySpark, entrepôt PostgreSQL, orchestration Airflow et tableaux de bord Power BI.', stack: 'PySpark, Airflow, PostgreSQL, Power BI, Docker', href: 'https://github.com/EngineerProjects/BI_Retail' },
+  { t: 'Prévision d\'irradiance solaire', d: 'Préparation de données météo, variables temporelles et évaluation de modèles de prévision, avec une API REST pour exposer les résultats.', stack: 'Scikit-learn, Pandas, FastAPI', href: 'https://github.com/EngineerProjects/solar-forecasting' },
 ];
 
-const study = [
-  'Ingénieur JUNIA ISEN Lille, Big Data et Data Science (2026)',
-  'Licence JUNIA ISEN Rabat, Électronique et systèmes numériques (2023)',
-  'Parcours Microsoft AI Engineer (en cours)',
-  'Create ML Models in Microsoft Azure (2023)',
-  'Supervised Machine Learning, Stanford Online (2023)',
-  'Français natif, anglais B2',
+const steps = [
+  { y: '2022', t: 'Classe préparatoire MPSI', s: 'Cycle préparatoire Marie Stella', p: 'Cotonou, Bénin', d: 'Mathématiques, physique et sciences de l\'ingénieur.' },
+  { y: '2023', t: 'Licence Électronique et systèmes numériques', s: 'JUNIA ISEN', p: 'Rabat, Maroc' },
+  { y: '2026', t: 'Diplôme d\'ingénieur Big Data et Data Science', s: 'JUNIA ISEN', p: 'Lille, France' },
+];
+
+const certs = [
+  { t: 'Microsoft AI Engineer Career Path', by: 'Microsoft Learn', when: 'En cours', href: 'https://learn.microsoft.com/fr-fr/training/career-paths/ai-engineer', now: true },
+  { t: 'Se préparer au métier d\'analyste de données', by: 'Microsoft, LinkedIn Learning', when: '2024', href: 'https://www.linkedin.com/learning/certificates/fed380ef1713eb9d1633ac7cd02b74bf58cf5f4bcf7e5fd47cb39bce19649bae' },
+  { t: 'Create ML Models in Microsoft Azure', by: 'Microsoft, Coursera', when: '2023', href: 'https://www.coursera.org/account/accomplishments/verify/LU2ZQ972BWNF' },
+  { t: 'Supervised Machine Learning: Regression and Classification', by: 'DeepLearning.AI, Stanford Online', when: '2023', href: 'https://www.coursera.org/account/accomplishments/verify/MWJS4Q3S2C3L' },
+  { t: 'Data Analysis with Python', by: 'freeCodeCamp', when: '2023', href: 'https://www.freecodecamp.org/certification/amiche/data-analysis-with-python-v7' },
+];
+
+const langs = [
+  ['Français', 'langue maternelle'],
+  ['Anglais', 'B2, Linguaskill Business English'],
+  ['Yoruba, fon, goun', 'langues maternelles'],
 ];
 
 const method = [
@@ -96,13 +114,14 @@ const method = [
 <Base
   current="/a-propos"
   title="À propos | Seshat AI"
-  description="Stéphane Kpoviessi, ingénieur data et IA, fondateur de Seshat AI. Parcours, réalisations et façon de travailler."
+  description="Stéphane Kpoviessi, ingénieur data et IA, fondateur de Seshat AI. Parcours, réalisations, formation et façon de travailler."
 >
   <header class="page-head contact-head about-top">
     <div class="wrap">
       <div>
         <h1>Stéphane Kpoviessi</h1>
         <p class="lead">Ingénieur data et IA, fondateur de Seshat AI. Je conçois les outils que je déploie, et je les déploie chez vous.</p>
+        <p class="portfolio-link"><a class="link" href="https://kpoviessi-stephane.vercel.app/" rel="noopener">Voir mon portfolio complet <Icon name="arrow-up-right" /></a></p>
         <p class="sk-cap" data-skcap aria-live="polite"><strong>Mes domaines</strong><span>Survolez une cellule pour voir ce qu'elle recouvre.</span></p>
       </div>
       <div class="hive skills3d" data-sk>
@@ -112,7 +131,7 @@ const method = [
               <i class="l l1"></i><i class="l l2"></i><i class="l l3"></i><i class="l top"></i>
               <span class="ic mono" aria-hidden="true">SK</span>
             </div>
-            {skills.map((s, i) => (
+            {skills.map((s) => (
               <button class="cell sk" type="button" data-t={s.t} data-d={s.d} style={`--q:${s.q};--r:${s.r}`} aria-label={`${s.t} : ${s.d}`}>
                 <i class="l l1"></i><i class="l l2"></i><i class="l l3"></i><i class="l top"></i>
                 <span class="ic" aria-hidden="true"><Icon name={s.icon} /></span>
@@ -144,9 +163,13 @@ const method = [
                 <p class="lvl">Étape {i + 1} sur {stages.length}</p>
                 <h2>{s.place}</h2>
                 <p class="who">{s.role}</p>
-                <p class="fmt">{s.when}, {s.where}</p>
+                <p class="fmt">{s.where ? `${s.when}, ${s.where}` : s.when}</p>
                 <p class="ctx">{s.context}</p>
-                {s.link && <a class="link on-dark" href={s.link.href} rel="noopener">{s.link.label} <Arrow /></a>}
+                {s.links && (
+                  <p class="plinks">
+                    {s.links.map((l) => <a class="link on-dark" href={l.href} rel="noopener">{l.label} <Arrow /></a>)}
+                  </p>
+                )}
               </div>
               <div>
                 <ul class="deliver">
@@ -170,8 +193,33 @@ const method = [
     <div class="wrap">
       <h2 class="reveal">Projets techniques.</h2>
       <div class="projects">
+        <article class="project robot dark reveal">
+          <svg class="route" viewBox="0 0 340 170" aria-hidden="true">
+            <path id="trail" class="trail" d="M24 134 C80 134 84 72 140 80 S214 134 254 70 S318 38 320 36" fill="none" stroke="currentColor" stroke-width="2.5" stroke-dasharray="6 9" stroke-linecap="round" />
+            <g fill="none" stroke="currentColor" stroke-width="2" opacity="0.55">
+              <polygon points="92,112 104,105 116,112 116,126 104,133 92,126" />
+              <polygon points="196,52 208,45 220,52 220,66 208,73 196,66" />
+            </g>
+            <g fill="none" stroke="#f29a5a" stroke-width="2">
+              <rect x="124" y="64" width="32" height="32" rx="4" />
+              <rect x="238" y="54" width="32" height="32" rx="4" />
+              <rect x="302" y="20" width="32" height="32" rx="4" />
+            </g>
+            <g fill="#f29a5a">
+              <circle cx="140" cy="80" r="5" />
+              <circle cx="254" cy="70" r="5" />
+              <circle cx="318" cy="36" r="5" />
+            </g>
+            <circle cx="24" cy="134" r="7" fill="currentColor" opacity="0.5" />
+            <circle class="bot" r="8" fill="#ef7c2f" />
+          </svg>
+          <h3>Robot autonome de collecte de déchets</h3>
+          <p>Conçu pour la collecte autonome de déchets dans des environnements comme les plages : détection, classement et suivi des déchets en les distinguant des obstacles, puis planification d'un itinéraire de collecte avec l'algorithme de Dijkstra.</p>
+          <ul class="tags"><li>YOLOv8</li><li>OpenCV</li><li>Dijkstra</li><li>Apprentissage par renforcement</li></ul>
+          <p class="stack">Projet AceObject. Une piste d'apprentissage par renforcement a été explorée pour la décision et l'évitement d'obstacles.</p>
+        </article>
         {projects.map((p, i) => (
-          <a class={`project reveal ${i === 0 ? 'dark' : ''}`} href={p.href} rel="noopener" style={`--d:${i * 90}ms`}>
+          <a class="project reveal" href={p.href} rel="noopener" style={`--d:${(i + 1) * 90}ms`}>
             <h3>{p.t}</h3>
             <p>{p.d}</p>
             <p class="stack">{p.stack}</p>
@@ -179,13 +227,51 @@ const method = [
           </a>
         ))}
       </div>
-      <ul class="chips reveal">
-        {study.map((s) => <li>{s}</li>)}
-      </ul>
     </div>
   </section>
 
   <section class="block">
+    <div class="wrap">
+      <h2 class="reveal">Formation et certifications.</h2>
+      <ol class="edu">
+        {steps.map((s, i) => (
+          <li class="edu-step reveal" style={`--d:${i * 100}ms`}>
+            <p class="edu-year">{s.y}</p>
+            <h3>{s.t}</h3>
+            <p class="edu-school">{s.s}, {s.p}</p>
+            {s.d && <p class="edu-desc">{s.d}</p>}
+          </li>
+        ))}
+      </ol>
+      <div class="certs reveal">
+        {certs.map((c) => (
+          <a class="cert" href={c.href} rel="noopener">
+            <span class="cert-title">{c.t}</span>
+            <span class="cert-by">{c.by}</span>
+            <span class={`cert-when ${c.now ? 'now' : ''}`}>{c.when}</span>
+          </a>
+        ))}
+      </div>
+      <div class="side-cards">
+        <article class="side-card reveal">
+          <h3>Engagement associatif</h3>
+          <p class="sc-title">JUNIA ALUMNI, Commission Réseau</p>
+          <ul>
+            <li><strong>Vice-président</strong> (septembre 2024 à août 2025) : coordination du réseau, mobilisation des alumni et organisation d'événements professionnels.</li>
+            <li><strong>Responsable communication</strong> (septembre 2023 à août 2024) : communication et valorisation des initiatives du réseau.</li>
+          </ul>
+        </article>
+        <article class="side-card reveal" style="--d:100ms">
+          <h3>Langues</h3>
+          <ul class="langs">
+            {langs.map(([l, d]) => <li><strong>{l}</strong><span>{d}</span></li>)}
+          </ul>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="block band">
     <div class="wrap about-method">
       <div class="reveal">
         <h2>Comment je travaille.</h2>
