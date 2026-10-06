@@ -1,12 +1,11 @@
-# Legacy monorepo modules moved to dedicated repositories.
-seshat-backend/
-seshat-console/
-seshat-desktop/
-seshat-intelligence/
-seshat-server/
-shared/
-deploy/
-scripts/
+# Legacy monorepo modules live in dedicated repositories (see AGENTS.md).
+/seshat-backend/
+/seshat-console/
+/seshat-desktop/
+/seshat-intelligence/
+/seshat-server/
+/shared/
+/deploy/
 
 
 # Environment files
@@ -41,9 +40,6 @@ tmp/
 bin/
 dist/
 out/
-nexus-ui/out/
-seshat-ui/out/
-/api
 
 # Data
 data/
