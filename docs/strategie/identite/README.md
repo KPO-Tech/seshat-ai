@@ -165,15 +165,15 @@ Limites connues : à 16 px, seule la fenêtre et l'orange de la rosette se disti
 
 **KPO-Tech est l'ombrelle informelle de tous les projets tech** (aujourd'hui l'organisation GitHub `KPO-Tech`) ; ce n'est **pas une entreprise enregistrée**. L'activité immatriculée est **Seshat AI**. Conséquence : KPO-Tech sert de signature (« un projet KPO-Tech ») mais n'apparaît pas comme entité légale dans les mentions légales tant qu'elle n'existe pas officiellement. Page : [`apercu/kpo.html`](./apercu/kpo.html), code : [`src/kpomark.py`](./src/kpomark.py), fichiers : `logo/kpo-tech/<piste>/`.
 
-La marque mère reste **neutre** : elle ne reprend pas la rosette (celle de Seshat). Lien de parenté léger : mêmes polices, charbon et orange du desktop, traits arrondis, un nœud orange.
+Brief : une marque qui dit **groupe** et **tech**, originale, avec **`kpo.tech`** écrit en dessous (le nom prend la forme du domaine, et le point est le nœud orange). Elle reste **neutre** : pas la rosette, qui est celle de Seshat. Lien de parenté léger : mêmes polices, charbon et orange du desktop, nœuds et traits arrondis. Un premier jeu de trois pistes (logotype, K en réseau, maison) a été écarté.
 
 | Piste | Idée | Remarque |
 |---|---|---|
-| `KPO1-logotype` | Le nom seul : « KPO » en gras, « Tech » plus léger, un nœud orange à la place du trait d'union. | La plus sûre tant qu'il n'y a qu'une famille de produits ; pas de fichier SVG (texte en police web, à vectoriser). |
-| `KPO2-k-reseau` | Un K dessiné comme un graphe : tige, deux bras, nœuds, jonction orange. | Distinctive, lisible à 16 px, parle le même langage que les nœuds de Seshat. |
-| `KPO3-maison` | Un toit sur trois nœuds, dont un orange : la maison mère de plusieurs projets. | Le sens est juste, mais le toit se lit comme une icône « maison » générique (immobilier, domotique). |
+| `KPO1-grille` | Un K tracé (tige, bras, nœuds) posé sur une grille de points : un groupe de points, la jonction orange. | La plus originale ; un peu chargée à 16 px où la grille s'efface et il reste le K. |
+| `KPO2-cellules` | Sept cellules en nid d'abeille, dont une orange (le projet Seshat) ; sept, comme la déesse. | Dit « groupe » le plus clairement. Le nid d'abeille est une forme courante. |
+| `KPO3-hexagone` | Un K en réseau dans un hexagone. | Net et sûr, mais hexagone et lettre sont très répandus (puces, outils). |
 
-Statut : **aucune piste retenue**.
+Statut : **aucune piste retenue**. Le texte `kpo.tech` est écrit avec la police web : il sera vectorisé quand le fichier de la police Space Grotesk aura été téléchargé.
 
 ## Typographie
 

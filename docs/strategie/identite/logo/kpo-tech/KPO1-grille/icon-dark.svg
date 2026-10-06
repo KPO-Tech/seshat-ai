@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Seshat AI">
+  <rect x="1" y="1" width="98" height="98" rx="21" fill="#2F2E34"/>
+  <g transform="translate(50 50) scale(0.8) translate(-50 -50)">
+    <circle cx="41" cy="20" r="2.2" fill="#E7E2DA" opacity="0.3"/>
+    <circle cx="41" cy="50" r="2.2" fill="#E7E2DA" opacity="0.3"/>
+    <circle cx="41" cy="80" r="2.2" fill="#E7E2DA" opacity="0.3"/>
+    <circle cx="56" cy="35" r="2.2" fill="#E7E2DA" opacity="0.3"/>
+    <circle cx="56" cy="50" r="2.2" fill="#E7E2DA" opacity="0.3"/>
+    <circle cx="56" cy="65" r="2.2" fill="#E7E2DA" opacity="0.3"/>
+    <circle cx="71" cy="20" r="2.2" fill="#E7E2DA" opacity="0.3"/>
+    <circle cx="71" cy="35" r="2.2" fill="#E7E2DA" opacity="0.3"/>
+    <circle cx="71" cy="50" r="2.2" fill="#E7E2DA" opacity="0.3"/>
+    <circle cx="71" cy="65" r="2.2" fill="#E7E2DA" opacity="0.3"/>
+    <circle cx="71" cy="80" r="2.2" fill="#E7E2DA" opacity="0.3"/>
+    <path d="M26,20 V80 M26,50 L56,20 M26,50 L56,80" stroke="#E7E2DA" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <circle cx="26" cy="20" r="4.4" fill="#E7E2DA"/>
+    <circle cx="26" cy="35" r="4.4" fill="#E7E2DA"/>
+    <circle cx="26" cy="50" r="4.4" fill="#EF7C2F"/>
+    <circle cx="26" cy="65" r="4.4" fill="#E7E2DA"/>
+    <circle cx="26" cy="80" r="4.4" fill="#E7E2DA"/>
+    <circle cx="41" cy="35" r="4.4" fill="#E7E2DA"/>
+    <circle cx="41" cy="65" r="4.4" fill="#E7E2DA"/>
+    <circle cx="56" cy="20" r="4.4" fill="#E7E2DA"/>
+    <circle cx="56" cy="80" r="4.4" fill="#E7E2DA"/>
+  </g>
+</svg>

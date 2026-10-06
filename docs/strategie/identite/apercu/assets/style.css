@@ -117,6 +117,11 @@ th { background: #EFE8DE; font-weight: 600; }
 /* logotype KPO-Tech : KPO en gras, nœud orange à la place du trait d'union */
 .word .node { display: inline-block; width: .26em; height: .26em; border-radius: 50%; margin: 0 .09em; vertical-align: .2em; }
 
+/* symbole au-dessus, nom écrit comme le domaine en dessous */
+.stack { display: flex; flex-direction: column; align-items: center; gap: 6px; align-self: center; }
+.stack svg { width: 96px; height: 96px; }
+.word.domain { font-size: 24px; font-weight: 500; letter-spacing: -.01em; }
+
 /* maquette d'application (page Thèmes) */
 .app { display: grid; grid-template-columns: 130px 1fr; border-radius: 14px; overflow: hidden; border: 1px solid var(--b); background: var(--root); color: var(--tx); min-height: 300px; }
 .app aside { background: var(--side); padding: 14px 10px; border-right: 1px solid var(--b); }

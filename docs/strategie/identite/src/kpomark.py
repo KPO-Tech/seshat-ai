@@ -1,12 +1,15 @@
 """Logo de KPO-Tech : la marque mère (ombrelle informelle de tous les projets tech), distincte de la rosette Seshat.
 
-Trois pistes, avec un lien de parenté léger avec le logo Seshat (traits arrondis, nœuds, orange, charbon) :
-  KPO1-logotype   le nom seul, « KPO » en gras, « Tech » plus léger, un nœud orange à la place du trait d'union
-  KPO2-k-reseau   un K dessiné comme un graphe : une tige, deux bras, des nœuds
-  KPO3-maison     un toit sur trois nœuds, dont un orange : la maison mère de plusieurs projets
-Couleurs : mark.py. Le texte des logotypes est écrit avec la police web (Space Grotesk) ; il sera vectorisé
+Trois pistes qui disent « groupe » et « tech », avec un lien de parenté léger avec le logo Seshat
+(charbon, orange, nœuds, traits arrondis). Le nom s'écrit en dessous sous la forme du domaine,
+« kpo.tech », dont le point est le nœud orange.
+  KPO1-grille     une grille de points dont certains dessinent un K : un groupe de points, un point orange
+  KPO2-cellules   sept cellules en nid d'abeille, une cellule orange (le projet Seshat) ; sept, comme la déesse
+  KPO3-hexagone   un K en réseau dans un hexagone (la puce, la cellule)
+Couleurs : mark.py. Le texte « kpo.tech » est écrit avec la police web (Space Grotesk) ; il sera vectorisé
 quand le fichier de police aura été téléchargé.
 """
+import math
 from pathlib import Path
 
 import appicons as a
@@ -16,43 +19,64 @@ from render import pretty_svg
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def _stroke(color, w=6):
+def _stroke(color, w=4.4):
     return f'stroke="{color}" stroke-width="{w}" stroke-linecap="round" stroke-linejoin="round" fill="none"'
 
 
-def _node(x, y, r, fill):
-    return f'<circle cx="{x}" cy="{y}" r="{r}" fill="{fill}"/>'
+def _node(x, y, r, fill, opacity=None):
+    op = f' opacity="{opacity}"' if opacity is not None else ""
+    return f'<circle cx="{x}" cy="{y}" r="{r}" fill="{fill}"{op}/>'
 
 
-def k_reseau(line, acc):
-    """Un K dessiné comme un graphe : tige et deux bras, nœud orange à la jonction."""
-    return (f'<path d="M32,22 V78 M32,50 L66,22 M32,50 L66,78" {_stroke(line)}/>'
-            + _node(32, 50, 7, acc) + _node(66, 22, 5, line) + _node(66, 78, 5, line))
+def _hex(cx, cy, r):
+    """Hexagone à pointe en haut, centré en (cx, cy), de rayon r."""
+    pts = [(cx + r * math.cos(math.radians(-90 + 60 * k)), cy + r * math.sin(math.radians(-90 + 60 * k))) for k in range(6)]
+    return "M" + " L".join("%.2f,%.2f" % p for p in pts) + " Z"
 
 
-def maison(line, acc):
-    """Un toit sur trois nœuds reliés ; le nœud orange est un projet (Seshat)."""
-    return (f'<path d="M16,50 L50,20 L84,50" {_stroke(line)}/>'
-            f'<path d="M27,44 V80 H73 V44" {_stroke(line)}/>'
-            f'<g stroke="{line}" stroke-width="2.6" stroke-linecap="round" opacity=".7">'
-            '<line x1="50" y1="54" x2="38" y2="68"/><line x1="50" y1="54" x2="62" y2="68"/>'
-            '<line x1="38" y1="68" x2="62" y2="68"/></g>'
-            + _node(50, 54, 6, acc) + _node(38, 68, 4.4, line) + _node(62, 68, 4.4, line))
+# --- KPO1 : une grille de points dont certains dessinent un K ----------------------------
+def grille(line, acc):
+    """Un K tracé (tige et bras reliés par des nœuds) posé sur une grille de points discrets."""
+    xs, ys = (26, 41, 56, 71), (20, 35, 50, 65, 80)
+    lit = {(26, y) for y in ys} | {(41, 35), (56, 20), (41, 65), (56, 80)}
+    out = [_node(x, y, 2.2, line, opacity=0.3) for x in xs for y in ys if (x, y) not in lit]
+    out.append(f'<path d="M26,20 V80 M26,50 L56,20 M26,50 L56,80" {_stroke(line, 3.4)}/>')
+    for x, y in sorted(lit):
+        out.append(_node(x, y, 4.4, acc if (x, y) == (26, 50) else line))
+    return "".join(out)
 
 
-# nom -> (description, fonction du glyphe ou None pour le logotype seul)
+# --- KPO2 : sept cellules, une orange -------------------------------------------------------
+def cellules(line, acc):
+    r, d = 14, 14 * math.sqrt(3)
+    centers = [(50, 50)] + [(50 + d * math.cos(math.radians(60 * k)), 50 + d * math.sin(math.radians(60 * k)))
+                            for k in range(6)]
+    out = []
+    for i, (cx, cy) in enumerate(centers):
+        if i == 0:
+            out.append(f'<path d="{_hex(cx, cy, r)}" fill="{acc}" stroke="{acc}" stroke-width="3" stroke-linejoin="round"/>')
+        else:
+            out.append(f'<path d="{_hex(cx, cy, r)}" {_stroke(line, 3.6)}/>')
+    return "".join(out)
+
+
+# --- KPO3 : un K en réseau dans un hexagone ------------------------------------------------------
+def hexagone(line, acc):
+    k = (f'<path d="M40,36 V64 M40,50 L58,36 M40,50 L58,64" {_stroke(line, 4.4)}/>'
+         + _node(40, 50, 5.2, acc) + _node(58, 36, 3.8, line) + _node(58, 64, 3.8, line))
+    return f'<path d="{_hex(50, 50, 38)}" {_stroke(line, 5)}/>' + k
+
+
+# nom -> (description, fonction du glyphe)
 OPTIONS = {
-    "KPO1-logotype": ("Le nom seul : « KPO » en gras, « Tech » plus léger, un nœud orange à la place du trait d'union.", None),
-    "KPO2-k-reseau": ("Un K dessiné comme un graphe : une tige, deux bras, des nœuds ; le nœud de jonction est orange.", k_reseau),
-    "KPO3-maison": ("Un toit sur trois nœuds, dont un orange : la maison mère de plusieurs projets.", maison),
+    "KPO1-grille": ("Une grille de points dont certains dessinent un K : un groupe de points, un point orange.", grille),
+    "KPO2-cellules": ("Sept cellules en nid d'abeille, dont une orange (le projet Seshat) ; sept, comme la déesse.", cellules),
+    "KPO3-hexagone": ("Un K en réseau dans un hexagone : la puce, la cellule, le nœud de jonction orange.", hexagone),
 }
 
 
 def variants(name):
-    """Glyphes SVG d'une piste (vide pour le logotype seul)."""
     fn = OPTIONS[name][1]
-    if fn is None:
-        return {}
 
     def tile(body):
         return g.svg("0 0 100 100", f'<rect x="1" y="1" width="98" height="98" rx="21" fill="{a.CHAR}"/>'
@@ -67,12 +91,9 @@ def variants(name):
 
 def main():
     for name in OPTIONS:
-        v = variants(name)
-        if not v:
-            continue
         out = ROOT / "logo" / "kpo-tech" / name
         out.mkdir(parents=True, exist_ok=True)
-        for vname, content in v.items():
+        for vname, content in variants(name).items():
             (out / f"{vname}.svg").write_text(pretty_svg(content), encoding="utf-8")
         print("logo/kpo-tech", name)
 
