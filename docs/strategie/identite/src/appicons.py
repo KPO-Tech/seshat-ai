@@ -5,8 +5,8 @@ Usage autonome (SVG seulement) : python src/appicons.py ; le kit complet : pytho
 
 Sorties :
   logo/apps/<app>/<variante>.svg        versions officielles (Knowledge = K1, Automation = A2)
-  logo/apps/explorations/<app>/*.svg    pistes écartées, conservées pour mémoire
-Les pages d'aperçu (apercu/apps.html, apercu/explorations.html) sont produites par build.py.
+La page d'aperçu (apercu/apps.html) est produite par build.py.
+Les pistes écartées (K2 calame, K3 bibliothèque, A1 flux, A3 relecture) restent dans l'historique git.
 
 Règles de la famille :
   1. même tuile arrondie pour toutes les apps ;
@@ -145,37 +145,6 @@ def variants(fn):
     }
 
 
-# --- PISTES EXPLORÉES (conservées pour mémoire) -------------------------------
-S = stroke(CREAM, 4.5)
-O = f'fill="{ORANGE}"'
-EXPLORATIONS = {
-    "knowledge": {
-        "K2-calame": ("Le calame du scribe trace un lien jusqu'à un nœud (ressemble à un pinceau)",
-                      f'<line x1="74" y1="22" x2="50" y2="52" stroke="{CREAM}" stroke-width="7" stroke-linecap="round"/>'
-                      f'<path d="M51,50 L42,63 L56,57 Z" {O} stroke="{ORANGE}" stroke-width="2" stroke-linejoin="round"/>'
-                      f'<path d="M42,63 C34,72 30,66 25,75" stroke="{ORANGE}" stroke-width="3.6" stroke-linecap="round" fill="none"/>'
-                      + node(24, 77, 5, ORANGE)),
-        "K3-bibliotheque": ("Tranches de livres sous un arc (se lit comme un graphique en barres)",
-                            f'<rect x="22" y="44" width="15" height="34" rx="3" {S}/>'
-                            f'<rect x="42.5" y="32" width="15" height="46" rx="3" {S}/>'
-                            f'<rect x="63" y="40" width="15" height="38" rx="3" {S}/>'
-                            f'<path d="M20,26 Q50,8 80,26" {S}/>' + node(50, 46, 4.6, ORANGE)),
-    },
-    "automation": {
-        "A1-flux": ("Flux de trois étapes dont celle en cours est orange (proche d'un organigramme)",
-                    f'<path d="M24,66 L50,34 L76,66" {S}/>'
-                    f'<rect x="15" y="57" width="18" height="18" rx="4" fill="{CHAR}" stroke="{CREAM}" stroke-width="4.5"/>'
-                    f'<rect x="67" y="57" width="18" height="18" rx="4" fill="{CHAR}" stroke="{CREAM}" stroke-width="4.5"/>'
-                    + node(50, 34, 10, ORANGE) + f'<path d="M46.5,29.5 L56,34 L46.5,38.5 Z" fill="{CHAR}"/>'),
-        "A3-relecture": ("Frise d'exécution avec tête de lecture (ressemble à une épingle)",
-                         f'<path d="M18,66 H82" {S}/>' + node(24, 66, 5.4, ORANGE) + node(42, 66, 5.4, ORANGE)
-                         + f'<circle cx="60" cy="66" r="5.4" fill="{CHAR}" stroke="{CREAM}" stroke-width="3.6"/>'
-                         + f'<circle cx="78" cy="66" r="5.4" fill="{CHAR}" stroke="{CREAM}" stroke-width="3.6"/>'
-                         + f'<line x1="60" y1="38" x2="60" y2="60" stroke="{ORANGE}" stroke-width="4" stroke-linecap="round"/>'
-                         + f'<path d="M52,28 L68,28 L60,40 Z" {O} stroke="{ORANGE}" stroke-width="2" stroke-linejoin="round"/>'),
-    },
-}
-
 def main():
     """Écrit les SVG des apps (lisibles). Les pages d'aperçu : build.py."""
     from render import pretty_svg
@@ -186,11 +155,6 @@ def main():
         for vname, content in v.items():
             (out / f"{vname}.svg").write_text(pretty_svg(content), encoding="utf-8")
         print(key, len(v), "variantes")
-    for key, opts in EXPLORATIONS.items():
-        out = ROOT / "logo" / "apps" / "explorations" / key
-        out.mkdir(parents=True, exist_ok=True)
-        for name, (desc, body) in opts.items():
-            (out / f"{name}.svg").write_text(pretty_svg(tile(body)), encoding="utf-8")
 
 
 if __name__ == "__main__":

@@ -18,7 +18,6 @@ PAGES = [
     ("apps.html", "Icônes des apps"),
     ("cloud.html", "SeshatCloud"),
     ("runtime.html", "seshat (runtime)"),
-    ("explorations.html", "Explorations"),
 ]
 
 # Palette utilisée dans les aperçus du logo (celle du desktop)
@@ -163,33 +162,7 @@ def build_apps():
     return page("apps.html", "Icônes des apps SeshatOS", intro, body)
 
 
-# --- cloud.html et runtime.html : pistes de logo dérivées du logo principal -----------------
-def _tracks_page(filename, title, intro, template, module, folder, brand, extra=None):
-    sections = []
-    for name, (desc, _vb, _fn, _cy) in module.OPTIONS.items():
-        v = module.variants(name)
-        base = f"{LOGO_URL}/{folder}/{name}"
-
-        def lock(key, dark=False, label=""):
-            body = lockup(v[key], brand) + "\n" + file_link(f"{base}/{key}.svg", "fichier SVG")
-            return card(label, body, dark=dark)
-
-        icons = "\n".join([inline(v["icon-dark"], "a"), inline(v["icon-dark"], "b"),
-                            inline(v["icon-dark"], "c32"), inline(v["icon-dark"], "c16")])
-        icon_card = card("Icône", tpl("sizes", icons=icons) + "\n" + file_link(f"{base}/icon-dark.svg", "fichier SVG"))
-        cards = [lock("on-light", label="Fond clair"), lock("on-dark", dark=True, label="Fond sombre"),
-                 lock("mono-black", label="Monochrome noir"), icon_card]
-        sections.append(section(name, f"<p>{desc}</p>\n" + grid(cards)))
-    return page(filename, title, intro, tpl(template, options="\n".join(sections), **(extra or {})))
-
-
-def build_cloud():
-    return _tracks_page("cloud.html", "Logo de SeshatCloud",
-                        "Logo retenu pour SeshatCloud (piste Cl3, arc-nuage) et pistes écartées.",
-                        "page_cloud", cloudmark, "cloud/explorations", "Seshat Cloud",
-                        extra={"official": _cloud_official()})
-
-
+# --- cloud.html et runtime.html : logos officiels ------------------------------------------
 def _official_section(v, base, brand, title, fav_note):
     """Section « logo officiel » d'une marque : toutes les variantes, présentées de la même façon."""
     def lock(key, dark=False, label=""):
@@ -221,41 +194,14 @@ def _cloud_official():
                              "Traits renforcés : 56, 32 et 16 px")
 
 
+def build_cloud():
+    intro = "Logo officiel de SeshatCloud : le logo principal sous un arc en bord de nuage (retenu le 2026-10-06)."
+    return page("cloud.html", "Logo de SeshatCloud", intro, tpl("page_cloud", official=_cloud_official()))
+
+
 def build_runtime():
-    return _tracks_page("runtime.html", "Logo du runtime seshat",
-                        "Logo retenu pour le runtime open source seshat (piste Sh2, terminal) et pistes écartées.",
-                        "page_runtime", runtimemark, "runtime/explorations", "seshat",
-                        extra={"official": _runtime_official()})
-
-
-# --- explorations.html -------------------------------------------------------------
-LOGO_TRACKS = (
-    ("A-heptagramme", "A · Heptagramme : étoile à sept branches tracée d'un trait"),
-    ("B-registre", "B · Registre : un S en ligne de registre"),
-    ("C-constellation", "C · Constellation : sept nœuds reliés"),
-    ("D1-etoile-et-arc", "D1 · Étoile pleine et arc (devenu le style etoile v1)"),
-    ("D2-croissant-et-etoile", "D2 · Croissant et étoile en contour (écarté)"),
-    ("D3-etoile-graphe", "D3 · Étoile-graphe : sept nœuds et arc (non retenu)"),
-)
-
-
-def build_explorations():
-    cards = []
-    for name, desc in LOGO_TRACKS:
-        path = g.ROOT / "explorations" / f"{name}.svg"
-        if path.exists():
-            cards.append(card(desc, big(path.read_text(encoding="utf-8")) + "\n"
-                              + file_link(f"../explorations/{name}.svg", "fichier SVG")))
-    sections = [section("Logo : pistes de départ", grid(cards))]
-    for key, opts in apps.EXPLORATIONS.items():
-        cs = []
-        for n, (desc, body) in opts.items():
-            cs.append(card(n, f"<p>{desc}</p>\n" + big(apps.tile(body)) + "\n"
-                           + file_link(f"{LOGO_URL}/apps/explorations/{key}/{n}.svg", "fichier SVG")))
-        sections.append(section(f"{apps.GLYPHS[key][0]} : pistes écartées", grid(cs)))
-    body = tpl("page_explorations", sections="\n".join(sections))
-    return page("explorations.html", "Explorations",
-                "Les pistes écartées, conservées pour mémoire. Les versions retenues sont dans les autres pages.", body)
+    intro = "Logo officiel du runtime open source seshat : la rosette dans une fenêtre de terminal (retenu le 2026-10-06)."
+    return page("runtime.html", "Logo du runtime seshat", intro, tpl("page_runtime", official=_runtime_official()))
 
 
 # --- index.html --------------------------------------------------------------------
@@ -280,9 +226,8 @@ def build_index():
         "logo.html": "Trois styles, deux palettes, typographie, règles d'usage.",
         "themes.html": "Sombre actuel, clair actuel et clair chaud proposé, en maquette.",
         "apps.html": "Knowledge (K1) et Automation (A2) : huit variantes chacune.",
-        "cloud.html": "Trois pistes de logo pour SeshatCloud, dérivées du logo principal.",
-        "runtime.html": "Trois pistes de logo pour le runtime seshat (variation développeurs).",
-        "explorations.html": "Toutes les pistes écartées, conservées pour mémoire.",
+        "cloud.html": "Logo officiel de SeshatCloud : arc en bord de nuage.",
+        "runtime.html": "Logo officiel du runtime seshat : rosette dans un terminal.",
     }
     labels = dict(PAGES)
     pages = grid([card(labels[h], f"<p>{txt}</p>\n" + '<span class="go">Ouvrir →</span>', href=h, tag="a")
@@ -300,5 +245,4 @@ BUILDERS = {
     "apps.html": build_apps,
     "cloud.html": build_cloud,
     "runtime.html": build_runtime,
-    "explorations.html": build_explorations,
 }

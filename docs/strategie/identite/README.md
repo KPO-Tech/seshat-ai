@@ -1,6 +1,6 @@
 # Identité visuelle Seshat AI (v1, brouillon)
 
-**Point d'entrée : ouvrir [`apercu/index.html`](./apercu/index.html) dans un navigateur.** Il donne l'état des décisions, un aperçu d'ensemble et les liens vers les autres pages (logo, couleurs et thèmes, icônes des apps, explorations). Chaque carte renvoie vers le fichier SVG correspondant.
+**Point d'entrée : ouvrir [`apercu/index.html`](./apercu/index.html) dans un navigateur.** Il donne l'état des décisions, un aperçu d'ensemble et les liens vers les autres pages (logo, couleurs et thèmes, icônes des apps, SeshatCloud, runtime seshat). Chaque carte renvoie vers le fichier SVG correspondant.
 
 **Tout est généré par une seule commande**, depuis ce dossier (ou `make identite` à la racine du dépôt) :
 
@@ -19,7 +19,7 @@ identite/
   build.py         point d'entrée (génère, copie, vérifie les liens)
   src/             le code, sans HTML
     mark.py          logo : géométrie, styles (etoile, emblem, reseau), palettes
-    appicons.py      icônes des apps : K1 Knowledge, A2 Automation, pistes écartées
+    appicons.py      icônes des apps : K1 Knowledge, A2 Automation
     cloudmark.py     logo de SeshatCloud : trois pistes dérivées du logo principal
     runtimemark.py   logo du runtime seshat : trois pistes « développeurs »
     themes.py        données des trois thèmes du desktop
@@ -27,9 +27,8 @@ identite/
     render.py        mini moteur de modèles, SVG lisibles
   templates/       le HTML : une brique par fichier (card, grid, lockup…), une page par fichier (page_*.html)
   assets/          style.css, copié dans apercu/
-  explorations/    les premières pistes de logo (SVG, entrées de l'aperçu)
   logo/            SORTIE : tous les logos et icônes en SVG
-  apercu/          SORTIE : les cinq pages HTML + assets/style.css
+  apercu/          SORTIE : les six pages HTML + assets/style.css
 ```
 
 - **Changer une forme ou une couleur** : modifier une constante dans `src/mark.py` ou `src/appicons.py`, relancer `python build.py`.
@@ -134,7 +133,6 @@ Icônes **retenues** (décision du 2026-10-06) :
 
 Variantes officielles, dans `logo/apps/<app>/` : `icon-dark` (principal), `icon-light`, `icon-orange`, `glyph-on-dark`, `glyph-on-light`, `mono-black`, `mono-white`, `favicon` (traits renforcés, détails réduits).
 
-Pistes écartées (conservées dans `logo/apps/explorations/`, aperçu dans [`apercu/explorations.html`](./apercu/explorations.html)) : K2 calame (ressemble à un pinceau), K3 bibliothèque (se lit comme un graphique en barres), A1 flux (proche d'un organigramme), A3 relecture (ressemble à une épingle).
 
 Les autres apps (Data, Inbox, Companion, Team, Scheduling) n'ont **pas** d'icône : on les dessine quand on commence réellement chacune. Idées d'attributs de la déesse pour plus tard : la branche de palmier entaillée (le temps, donc plutôt Scheduling) et la corde à mesurer (Data).
 
@@ -148,7 +146,6 @@ SeshatCloud est la couche multi-tenant (organisations, équipes, administration 
 
 Variantes officielles, dans `logo/cloud/seshatcloud/` : `on-light`, `on-dark`, `mono-black`, `mono-white`, `icon-dark`, `icon-light`, `favicon` (traits renforcés, agrandi dans la tuile).
 
-Pistes écartées (`logo/cloud/explorations/`) : `Cl1-double-arc` (un second arc plus large ; à petite taille le dôme ressemble à un parapluie) et `Cl2-halo` (un arc de nœuds ; les petits points se fondent à 16 px).
 
 Point de vigilance : le bord de nuage remplace l'arc de Seshat, donc le lien direct avec l'emblème de la déesse est moins visible que sur le logo principal ; le nuage seul reste une forme courante, à vérifier lors de la recherche d'antériorité.
 
@@ -160,7 +157,6 @@ Point de vigilance : le bord de nuage remplace l'arc de Seshat, donc le lien dir
 
 Variantes officielles, dans `logo/runtime/seshat/` : `on-light`, `on-dark`, `mono-black`, `mono-white`, `icon-dark`, `icon-light`, `favicon`.
 
-Pistes écartées (`logo/runtime/explorations/`) : `Sh1-invite` (invite `>_` sous la rosette, lisible mais la rosette perd sa tige) et `Sh3-chevrons` (chevrons `< >` à la place de l'arc, la rosette se lit comme une couronne).
 
 Limites connues : à 16 px, seule la fenêtre et l'orange de la rosette se distinguent ; le logo n'a pas été vérifié dans un vrai README GitHub ni dans un terminal. Le remplacement de `seshat.png` dans le dépôt `seshat` reste à faire.
 
@@ -190,4 +186,6 @@ Les deux sont sous licence **SIL Open Font License**, utilisables gratuitement p
 
 ## Historique
 
-Les pistes explorées (A heptagramme, B registre, C constellation, D1 à D3) sont conservées dans [`explorations/`](./explorations/). La piste D1 est devenue le style `etoile` (v1). Les styles `emblem` et `reseau` (v2) ont été ajoutés ensuite ; aucun n'est encore retenu. Les versions suivantes se font en modifiant `src/mark.py` ; garder une copie datée de la sortie avant un changement de forme.
+Les pistes explorées puis abandonnées (logo : A heptagramme, B registre, C constellation, D2 et D3 ; apps : K2 calame, K3 bibliothèque, A1 flux, A3 relecture ; SeshatCloud : Cl1 double arc, Cl2 halo ; runtime : Sh1 invite, Sh3 chevrons) ont été retirées du dossier le 2026-10-06. Elles restent dans l'historique git de la branche `docs/identite-visuelle` (commits antérieurs à « remove the explored tracks »).
+
+La piste D1 est devenue le style `etoile` (v1). Les styles `emblem` et `reseau` (v2) ont été ajoutés ensuite ; les trois sont conservés. Les versions suivantes se font en modifiant `src/mark.py` ; garder une copie datée de la sortie avant un changement de forme.

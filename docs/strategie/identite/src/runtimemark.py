@@ -1,9 +1,7 @@
-"""Logo du runtime seshat (CLI, TUI, SDK) : le logo principal avec une variation « développeurs ».
+"""Logo officiel du runtime seshat (CLI, TUI, SDK) : la rosette du logo principal dans une fenêtre de terminal.
 
-RETENU (2026-10-06) : Sh2, la rosette dans une fenêtre de terminal à trois points
-(terminal() ci-dessous, variantes officielles dans official_variants()).
-Pistes écartées, conservées dans OPTIONS : Sh1 (invite « > _ ») et Sh3 (chevrons « < > »).
-Toutes dérivent de mark.reseau_inner (stalk=False pour libérer le bas).
+Retenu le 2026-10-06. Les autres pistes explorées (invite « > _ », chevrons « < > ») ont été
+abandonnées ; elles restent dans l'historique git. Dérivé de mark.reseau_inner (sans tige).
 Couleurs : mark.py (alignées sur seshat-desktop).
 """
 from pathlib import Path
@@ -13,15 +11,7 @@ import mark as g
 from render import pretty_svg
 
 ROOT = Path(__file__).resolve().parent.parent
-
-# deux chevrons de code ; leurs pointes tombent sur les nœuds EMB_FEET (13,46) et (87,46)
-CHEVRONS = "M25,26 L13,46 L25,66 M75,26 L87,46 L75,66"
-
-
-def _prompt(color, accent):
-    return (f'<path d="M34,73 L45,81 L34,89" fill="none" stroke="{accent}" stroke-width="4.2" '
-            f'stroke-linecap="round" stroke-linejoin="round"/>'
-            f'<path d="M53,89 H69" fill="none" stroke="{color}" stroke-width="4.2" stroke-linecap="round"/>')
+TERMINAL_VIEWBOX = "0 2 100 96"
 
 
 def terminal(color, accent, small=False):
@@ -41,37 +31,8 @@ def terminal(color, accent, small=False):
     return frame + f'<g transform="translate(7.5 29.5) scale(.85)">{rosette}</g>'
 
 
-# nom -> (description, viewBox de la marque seule, corps(arc, accent), centre vertical pour la tuile)
-OPTIONS = {
-    "Sh1-invite": ("La tige devient une invite de terminal « > _ » sous la rosette.",
-                   "6 0 88 96",
-                   lambda c, k: g.reseau_inner(c, k, stalk=False) + _prompt(c, k), 48),
-    "Sh3-chevrons": ("L'arc devient deux chevrons « < > » dont les pointes portent les nœuds.",
-                     "6 0 88 88",
-                     lambda c, k: g.reseau_inner(c, k, bow=CHEVRONS, stalk=False), 44),
-}
-
-
-def _tile(body, cy):
-    return g.svg("0 0 100 100", f'<rect x="1" y="1" width="98" height="98" rx="21" fill="{a.CHAR}"/>'
-                 f'<g transform="translate(50 50) scale(0.74) translate(-50 -{cy})">{body}</g>')
-
-
-def variants(name):
-    desc, vb, fn, cy = OPTIONS[name]
-    return {
-        "on-light": g.svg(vb, fn(a.CHAR, a.ORANGE_DEEP)),
-        "on-dark": g.svg(vb, fn(a.CREAM, a.ORANGE)),
-        "mono-black": g.svg(vb, fn("#000000", "#000000")),
-        "icon-dark": _tile(fn(a.CREAM, a.ORANGE), cy),
-    }
-
-
-TERMINAL_VIEWBOX = "0 2 100 96"
-
-
 def official_variants():
-    """Variantes officielles du logo du runtime seshat (piste Sh2, terminal)."""
+    """Variantes officielles du logo du runtime seshat."""
     def tile(body, fill, border=None):
         stroke = f' stroke="{border}" stroke-width="2"' if border else ""
         return g.svg("0 0 100 100", f'<rect x="1" y="1" width="98" height="98" rx="21" fill="{fill}"{stroke}/>'
@@ -88,17 +49,11 @@ def official_variants():
 
 
 def main():
-    official = ROOT / "logo" / "runtime" / "seshat"
-    official.mkdir(parents=True, exist_ok=True)
-    for vname, content in official_variants().items():
-        (official / f"{vname}.svg").write_text(pretty_svg(content), encoding="utf-8")
-    print("runtime officiel (Sh2 terminal)")
-    for name in OPTIONS:
-        out = ROOT / "logo" / "runtime" / "explorations" / name
-        out.mkdir(parents=True, exist_ok=True)
-        for vname, content in variants(name).items():
-            (out / f"{vname}.svg").write_text(pretty_svg(content), encoding="utf-8")
-        print("runtime exploration", name)
+    out = ROOT / "logo" / "runtime" / "seshat"
+    out.mkdir(parents=True, exist_ok=True)
+    for name, content in official_variants().items():
+        (out / f"{name}.svg").write_text(pretty_svg(content), encoding="utf-8")
+    print("logo/runtime/seshat")
 
 
 if __name__ == "__main__":

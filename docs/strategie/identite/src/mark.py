@@ -16,7 +16,7 @@ Styles :
 Concept : l'emblème de la déesse Seshat, une étoile à sept branches surmontée
 d'un arc, simplifié. Pour changer une couleur, modifier PALETTES. Pour changer
 la forme, modifier les constantes de GÉOMÉTRIE.
-Version du kit : v1 (piste D1, voir explorations/).
+Version du kit : v1 (piste D1). Les pistes de départ (A à D3) restent dans l'historique git.
 """
 import math
 from pathlib import Path

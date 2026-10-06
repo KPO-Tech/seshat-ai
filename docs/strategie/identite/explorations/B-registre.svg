@@ -1,5 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Seshat">
-<rect width="100" height="100" rx="22" fill="#0F1B3D"/>
-<path d="M70,28 H34 a8,8 0 0 0 0,16 H66 a8,8 0 0 1 0,16 H30" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="70" cy="72" r="5.2" fill="#E8A33D"/>
-</svg>
