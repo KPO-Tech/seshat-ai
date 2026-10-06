@@ -207,8 +207,16 @@ section.band { background: var(--band); }
 .page-head .lead { margin-top: 20px; max-width: 54ch; font-size: 1.2rem; color: var(--text2); }
 
 /* Services : nid d'abeille 3D (une cellule s'allume par niveau atteint) */
-.services-head .wrap { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 40px; align-items: center; }
-.hive { --rx: 58deg; --rz: -28deg; --w: 92px; --h: 106px; perspective: 1100px; width: 100%; max-width: 440px; justify-self: end; aspect-ratio: 1 / 0.9; display: grid; place-items: center; }
+.page-head.services-head { padding: 36px 0 0; }
+.services-head .wrap { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 40px; align-items: center; }
+.services-head h1 { font-size: clamp(2rem, 3.8vw, 3.2rem); max-width: 20ch; }
+.services-head h1 em { font-style: normal; color: var(--accent-text); }
+.services-head .lead { color: var(--text); opacity: 0.82; margin-top: 16px; font-size: 1.15rem; }
+.facts { list-style: none; margin: 24px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
+.facts li { padding: 9px 16px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); font-size: 0.95rem; color: var(--text2); }
+.facts strong { color: var(--text); font-weight: 600; }
+section.quest-block { padding: 8px 0 96px; }
+.hive { --rx: 58deg; --rz: -28deg; --w: 92px; --h: 106px; perspective: 1100px; width: 100%; max-width: 360px; justify-self: end; aspect-ratio: 1 / 0.78; --w: 78px; --h: 90px; display: grid; place-items: center; }
 .sway { transform-style: preserve-3d; }
 .plane { position: relative; width: 0; height: 0; transform-style: preserve-3d; transform: rotateX(var(--rx)) rotateZ(var(--rz)); transition: transform 0.35s var(--ease); }
 .cell { position: absolute; width: var(--w); height: var(--h); left: calc(var(--q) * var(--w) * 1.04 - var(--w) / 2); top: calc(var(--r) * var(--h) * 0.78 - var(--h) / 2); transform-style: preserve-3d; transform: translateZ(0); transition: transform 0.7s var(--ease); }
@@ -329,6 +337,7 @@ section.band { background: var(--band); }
   .node-name { font-size: 0.95rem; }
   .pilots { grid-template-columns: 1fr; }
   .page-head { padding: 56px 0 24px; }
+  .page-head.services-head { padding: 28px 0 0; }
   section.block { padding: 72px 0; }
   .nav a:not(.btn) { display: none; }
   .site-header .wrap { gap: 12px; }
