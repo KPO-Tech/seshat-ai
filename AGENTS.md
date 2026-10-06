@@ -1,47 +1,48 @@
 # Agent Notes
 
-This repository is the private workspace for the public Seshat AI website and related private collateral.
+This repository is the private workspace of the Seshat AI activity. It does three things only:
 
-## Active Areas
+1. **Define the project**: positioning, strategy, product framing, ideas (`docs/`).
+2. **Carry the public website** served at `seshat-ai.com` (`website/`).
+3. **Hold the CVs** (`private/cvs-specialises/`).
+
+Anything else belongs elsewhere. Product code lives in dedicated repositories:
+
+- `D:\Documents\PROJECTS\ai\seshat` (runtime, Apache-2.0)
+- `D:\Documents\PROJECTS\ai\SeshatOS` (local product)
+- `D:\Documents\PROJECTS\ai\SeshatCloud` (multi-tenant product, document-intelligence service)
+
+## Layout
 
 | Path | Purpose |
 | --- | --- |
-| `website/` | Public Seshat AI website served at `seshat-ai.com`. |
-| `docs/` | Project documentation and reference material. Do not reorganize unless requested. |
-| `private/cvs-specialises/` | Private CV and positioning collateral. |
-| `.github/workflows/` | Website CI and deployment automation. |
+| `docs/strategie/` | Positioning (`positionnement-commercial.md` is the source of truth for the offer), future ideas, dated archives. |
+| `docs/produits/` | Product framing per platform (general, chat, knowledge, automation), with Stitch designs. |
+| `website/` | Vite + React site, FR and EN, prerendered. Being redesigned from scratch. |
+| `private/cvs-specialises/` | LaTeX CV sources and PDFs, one folder per target role. `old/` holds previous versions. |
+| `.github/workflows/` | Website CI and deployment (Cloudflare Pages on push to `main`). |
 
-The product code previously hosted here now lives in dedicated repositories:
-
-- `D:\Documents\PROJECTS\ai\SeshatCloud`
-- `D:\Documents\PROJECTS\ai\SeshatOS`
-- `D:\Documents\PROJECTS\ai\seshat`
+`docs/README.md` is the map. Read `docs/strategie/positionnement-commercial.md` before writing any public copy.
 
 ## Common Commands
 
-Run commands from the repository root unless noted otherwise.
+Run from the repository root.
 
 ```bash
-make install
-make dev
-make build
+make install     # npm ci in website/
+make dev         # website dev server
+make build       # type-check, build, prerender
 make preview
-```
-
-Equivalent website-local commands:
-
-```bash
-cd website
-npm ci
-npm run dev
-npm run build
-npm run preview
+make cv-build    # build active CV PDFs (pdflatex)
+make clean
 ```
 
 ## Working Rules
 
-- Keep `website/` production-oriented: credibility, clear product positioning, and clean public links matter.
-- Do not commit `website/dist`, `website/dist-server`, `website/node_modules`, or local environment files.
-- Treat `private/` as sensitive. Only `private/cvs-specialises/` is intentionally versioned.
-- Keep old monorepo/backend/desktop/server work out of this repository; use the dedicated repositories above.
-- The `dev-old` branch preserves the pre-cleanup monorepo state.
+- Public copy follows the positioning document: services first, product as proof, honest maturity labels (available / beta / under construction / roadmap). Never invent figures, clients, connectors or demos.
+- Say "open source" only for `seshat` (Apache-2.0). SeshatOS and SeshatCloud are source-available.
+- Do not commit `website/dist`, `website/dist-server`, `website/node_modules` or environment files.
+- Treat `private/` as sensitive. Only `private/cvs-specialises/` is versioned; do not publish CV contact details on the site.
+- No product code, no backend or desktop documentation here: it goes in the dedicated repositories.
+- A superseded strategy document is archived with a dated banner, not edited in place.
+- The `dev-old` branch preserves the pre-cleanup monorepo, including the old engineering docs.

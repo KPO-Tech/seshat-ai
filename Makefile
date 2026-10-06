@@ -5,7 +5,7 @@ CV_DIR := private/cvs-specialises
 PDFLATEX ?= pdflatex
 POWERSHELL ?= powershell.exe
 
-.PHONY: help install dev build preview clean cv-build cv-clean-logs
+.PHONY: help install dev build preview clean cv-build cv-clean-logs identite identite-serve
 
 .DEFAULT_GOAL := help
 
@@ -23,6 +23,12 @@ build: ## Build the website
 
 preview: ## Preview the production build locally
 	cd $(WEBSITE_DIR) && npm run preview
+
+identite: ## Regenerate the visual identity kit (SVG logos and preview pages, checks links)
+	cd docs/strategie/identite && python build.py
+
+identite-serve: ## Serve the identity kit on http://127.0.0.1:8765/apercu/index.html
+	cd docs/strategie/identite && python -m http.server 8765 --bind 127.0.0.1
 
 cv-build: ## Build active CV PDFs and remove LaTeX auxiliary logs
 	$(POWERSHELL) -NoProfile -ExecutionPolicy Bypass -Command "$$ErrorActionPreference = 'Stop'; $$root = (Resolve-Path '$(CV_DIR)').Path; $$files = Get-ChildItem -LiteralPath $$root -Recurse -Filter '*.tex' | Where-Object { $$_.FullName -notmatch '\\old\\' }; foreach ($$file in $$files) { $$out = Join-Path $$file.Directory.FullName 'output'; New-Item -ItemType Directory -Force -Path $$out | Out-Null; & '$(PDFLATEX)' -interaction=nonstopmode -halt-on-error -output-directory $$out $$file.FullName; if ($$LASTEXITCODE -ne 0) { exit $$LASTEXITCODE } }; $$auxExt = @('.aux','.log','.out','.toc','.fls','.fdb_latexmk','.bbl','.blg','.nav','.snm'); Get-ChildItem -LiteralPath $$root -Recurse -File | Where-Object { $$auxExt -contains $$_.Extension -or $$_.Name -like '*.synctex.gz' } | Remove-Item -Force"

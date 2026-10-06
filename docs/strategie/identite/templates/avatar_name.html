@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500&display=swap" rel="stylesheet">
+  <style>
+    html, body { margin: 0; }
+    body { width: {{side}}px; height: {{side}}px; background: {{background}};
+           display: flex; flex-direction: column; align-items: center; justify-content: center; gap: {{gap}}px; }
+    .mark { width: {{mark}}px; height: {{mark}}px; }
+    .mark svg { width: 100%; height: 100%; display: block; }
+    .name { font: 500 {{font}}px 'Space Grotesk', system-ui, sans-serif; color: {{text}}; letter-spacing: -.01em; }
+    .node { display: inline-block; width: .26em; height: .26em; border-radius: 50%; background: {{accent}};
+            margin: 0 .09em; vertical-align: .2em; }
+  </style>
+</head>
+<body>
+  <div class="mark">
+    {{svg}}
+  </div>
+  <div class="name">kpo<span class="node"></span>tech</div>
+</body>
+</html>

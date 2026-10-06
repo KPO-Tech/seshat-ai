@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="10 10 80 80" role="img" aria-label="Seshat AI">
+  <path d="M50.00,36.00 L62.12,43.00 L62.12,57.00 L50.00,64.00 L37.88,57.00 L37.88,43.00 Z" fill="#EF7C2F" stroke="#EF7C2F" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M74.25,36.00 L86.37,43.00 L86.37,57.00 L74.25,64.00 L62.12,57.00 L62.12,43.00 Z" fill="none" stroke="#E7E2DA" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M62.12,57.00 L74.25,64.00 L74.25,78.00 L62.12,85.00 L50.00,78.00 L50.00,64.00 Z" fill="none" stroke="#E7E2DA" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M37.88,57.00 L50.00,64.00 L50.00,78.00 L37.88,85.00 L25.75,78.00 L25.75,64.00 Z" fill="none" stroke="#E7E2DA" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M25.75,36.00 L37.88,43.00 L37.88,57.00 L25.75,64.00 L13.63,57.00 L13.63,43.00 Z" fill="none" stroke="#E7E2DA" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M37.88,15.00 L50.00,22.00 L50.00,36.00 L37.88,43.00 L25.75,36.00 L25.75,22.00 Z" fill="none" stroke="#E7E2DA" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M62.12,15.00 L74.25,22.00 L74.25,36.00 L62.12,43.00 L50.00,36.00 L50.00,22.00 Z" fill="none" stroke="#E7E2DA" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
