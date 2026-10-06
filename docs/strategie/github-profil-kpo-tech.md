@@ -60,8 +60,15 @@ Choix faits dans ce texte :
 - « Open source » n'est dit que pour `seshat` ; SeshatOS est « source-available ».
 - KPO-Tech n'y est pas présenté comme une entreprise.
 
-## 4. À corriger dans les dépôts (hors profil)
+## 4. Dépôts : corrections du 2026-10-06
 
-- `seshat-releases` : sa description dit encore « Source lives in the private KPO-Tech/seshat-ai repo », ce qui n'est plus vrai (le code est dans `SeshatOS`, public).
-- `LocalIngest` : aucune description ni licence.
-- `SeshatOS` : GitHub affiche la licence comme « NOASSERTION » parce qu'il ne reconnaît pas la Commons Clause ; c'est attendu.
+Faites :
+- `seshat-releases` : description corrigée (« Auto-update feed for the SeshatOS desktop app: release binaries only. Source code: github.com/KPO-Tech/SeshatOS »).
+- `LocalIngest` : description ajoutée (CLI et interface terminal qui analysent un dépôt et génèrent un rapport Markdown). L'outil s'appelle « Code Ingest » dans son README.
+- Logos intégrés dans trois dépôts, sur la branche locale `docs/readme-logo` de chacun (un commit chacun, rien de poussé) : `seshat` (logo du runtime, terminal), `SeshatOS` (logo principal), `SeshatCloud` (logo cloud, plus le favicon de la console). L'ancienne image générique `seshat.png` est supprimée de `seshat` et `SeshatOS`.
+
+À décider ou à faire :
+- `LocalIngest` : **licence** à choisir (MIT comme `seshat-skills`, Apache-2.0 comme `seshat`, ou autre). Je n'en ai pas ajouté : c'est ton choix, et il faut d'abord savoir si le code reprend un projet existant (dans ce cas sa licence impose de conserver son avis de copyright).
+- `SeshatOS` : GitHub affiche la licence comme « NOASSERTION » parce qu'il ne reconnaît pas la Commons Clause ; c'est attendu, rien à corriger.
+- Logo **dans l'application desktop** (`seshat-desktop/public/seshat.svg`, composants `NexusLogo` et `SeshatLogo`) et icônes d'application (`logo1.png` à `logo4.png`, Electron) : non modifiés. Le logo en place n'a qu'une variante, il faut un composant qui suive le thème clair ou sombre.
+- Les trois branches `docs/readme-logo` : `SeshatOS` et `SeshatCloud` sont empilées sur leurs branches de documentation non fusionnées (`docs/link-seshatcloud`, `docs/status-and-legacy-docs`) ; `seshat` part de `origin/dev`.
