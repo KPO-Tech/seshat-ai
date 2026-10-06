@@ -50,31 +50,33 @@ const nav = [
     </header>
     <main id="contenu"><slot /></main>
     <footer class="site-footer">
+      <img class="foot-mark logo-light" src="/brand/mark-on-light.svg" alt="" width="260" height="260" />
+      <img class="foot-mark logo-dark" src="/brand/mark-on-dark.svg" alt="" width="260" height="260" />
       <div class="wrap">
-        <div>
-          <a class="brand" href="/">
-            <img class="logo-light" src="/brand/mark-on-light.svg" alt="" width="34" height="34" />
-            <img class="logo-dark" src="/brand/mark-on-dark.svg" alt="" width="34" height="34" />
-            Seshat AI
-          </a>
-          <p class="about">Conseil et intégration d'IA souveraine pour PME et ETI.</p>
+        <div class="foot-top">
+          <div>
+            <a class="brand" href="/">
+              <img class="logo-light" src="/brand/mark-on-light.svg" alt="" width="34" height="34" />
+              <img class="logo-dark" src="/brand/mark-on-dark.svg" alt="" width="34" height="34" />
+              Seshat AI
+            </a>
+            <p class="about">Conseil et intégration d'IA souveraine pour PME et ETI.</p>
+          </div>
+          <nav aria-label="Pied de page">
+            <ul class="foot-links">
+              {nav.map((n) => <li><a href={n.href}>{n.label}</a></li>)}
+              <li><a href="/contact">Contact</a></li>
+              <li><a href="https://github.com/KPO-Tech" rel="noopener">Code sur GitHub</a></li>
+            </ul>
+          </nav>
         </div>
-        <div>
-          <h4>Le site</h4>
+        <div class="foot-bottom">
+          <p>© 2026 Seshat AI</p>
           <ul>
-            {nav.map((n) => <li><a href={n.href}>{n.label}</a></li>)}
-            <li><a href="/contact">Contact</a></li>
-          </ul>
-        </div>
-        <div>
-          <h4>Informations</h4>
-          <ul>
-            <li><a href="https://github.com/KPO-Tech" rel="noopener">Code sur GitHub</a></li>
             <li><a href="/mentions-legales">Mentions légales</a></li>
             <li><a href="/confidentialite">Confidentialité</a></li>
           </ul>
         </div>
-        <p class="copy">© 2026 Seshat AI</p>
       </div>
     </footer>
     <script is:inline>
