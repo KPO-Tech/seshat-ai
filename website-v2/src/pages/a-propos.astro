@@ -172,7 +172,7 @@ const method = [
                 )}
               </div>
               <div>
-                <ul class="deliver">
+                <ul class={`deliver ${s.done.length >= 4 ? 'two' : ''}`}>
                   {s.done.map((x) => <li><Check />{x}</li>)}
                 </ul>
               </div>
