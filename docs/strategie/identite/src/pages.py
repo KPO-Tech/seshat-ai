@@ -5,6 +5,7 @@ Chaque fonction build_<page>() renvoie le HTML complet d'une page.
 """
 import appicons as apps
 import cloudmark
+import kpomark
 import mark as g
 import runtimemark
 import themes
@@ -18,6 +19,7 @@ PAGES = [
     ("apps.html", "Icônes des apps"),
     ("cloud.html", "SeshatCloud"),
     ("runtime.html", "seshat (runtime)"),
+    ("kpo.html", "KPO-Tech"),
 ]
 
 # Palette utilisée dans les aperçus du logo (celle du desktop)
@@ -204,6 +206,37 @@ def build_runtime():
     return page("runtime.html", "Logo du runtime seshat", intro, tpl("page_runtime", official=_runtime_official()))
 
 
+# --- kpo.html : logo de la marque mère KPO-Tech ----------------------------------------------
+def _kpo_label(ctx):
+    """Texte du logotype : « KPO » en gras, un nœud à la place du trait d'union, « Tech » plus léger."""
+    color = {"light": apps.ORANGE_DEEP, "dark": apps.ORANGE, "mono": "currentColor"}[ctx]
+    return (f'<b style="font-weight:700">KPO</b><span class="node" style="background:{color}"></span>'
+            f'<span style="font-weight:500">Tech</span>')
+
+
+def build_kpo():
+    sections = []
+    for name, (desc, fn) in kpomark.OPTIONS.items():
+        v = kpomark.variants(name)
+        base = f"{LOGO_URL}/kpo-tech/{name}"
+        cards = []
+        for key, ctx, dark, label in (("on-light", "light", False, "Fond clair"), ("on-dark", "dark", True, "Fond sombre"),
+                                      ("mono-black", "mono", False, "Monochrome noir")):
+            text = _kpo_label(ctx)
+            if fn is None:
+                body = tpl("wordmark", label=text)
+            else:
+                body = tpl("lockup", svg=inline(v[key]), label=text) + "\n" + file_link(f"{base}/{key}.svg", "fichier SVG")
+            cards.append(card(label, body, dark=dark))
+        if fn is not None:
+            icons = "\n".join([inline(v["icon-dark"], "a"), inline(v["icon-dark"], "b"),
+                                inline(v["icon-dark"], "c32"), inline(v["icon-dark"], "c16")])
+            cards.append(card("Icône", tpl("sizes", icons=icons) + "\n" + file_link(f"{base}/icon-dark.svg", "fichier SVG")))
+        sections.append(section(name, f"<p>{desc}</p>\n" + grid(cards)))
+    intro = "Trois pistes de logo pour KPO-Tech, la marque mère informelle de tous les projets tech. Aucune n'est encore retenue."
+    return page("kpo.html", "Logo de KPO-Tech", intro, tpl("page_kpo", options="\n".join(sections)))
+
+
 # --- index.html --------------------------------------------------------------------
 def build_index():
     pal = g.PALETTES[PAL]
@@ -228,6 +261,7 @@ def build_index():
         "apps.html": "Knowledge (K1) et Automation (A2) : huit variantes chacune.",
         "cloud.html": "Logo officiel de SeshatCloud : arc en bord de nuage.",
         "runtime.html": "Logo officiel du runtime seshat : rosette dans un terminal.",
+        "kpo.html": "Trois pistes de logo pour la marque mère KPO-Tech.",
     }
     labels = dict(PAGES)
     pages = grid([card(labels[h], f"<p>{txt}</p>\n" + '<span class="go">Ouvrir →</span>', href=h, tag="a")
@@ -245,4 +279,5 @@ BUILDERS = {
     "apps.html": build_apps,
     "cloud.html": build_cloud,
     "runtime.html": build_runtime,
+    "kpo.html": build_kpo,
 }

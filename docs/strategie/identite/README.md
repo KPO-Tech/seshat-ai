@@ -1,6 +1,6 @@
 # Identité visuelle Seshat AI (v1, brouillon)
 
-**Point d'entrée : ouvrir [`apercu/index.html`](./apercu/index.html) dans un navigateur.** Il donne l'état des décisions, un aperçu d'ensemble et les liens vers les autres pages (logo, couleurs et thèmes, icônes des apps, SeshatCloud, runtime seshat). Chaque carte renvoie vers le fichier SVG correspondant.
+**Point d'entrée : ouvrir [`apercu/index.html`](./apercu/index.html) dans un navigateur.** Il donne l'état des décisions, un aperçu d'ensemble et les liens vers les autres pages (logo, couleurs et thèmes, icônes des apps, SeshatCloud, runtime seshat, KPO-Tech). Chaque carte renvoie vers le fichier SVG correspondant.
 
 **Tout est généré par une seule commande**, depuis ce dossier (ou `make identite` à la racine du dépôt) :
 
@@ -21,14 +21,15 @@ identite/
     mark.py          logo : géométrie, styles (etoile, emblem, reseau), palettes
     appicons.py      icônes des apps : K1 Knowledge, A2 Automation
     cloudmark.py     logo de SeshatCloud : trois pistes dérivées du logo principal
-    runtimemark.py   logo du runtime seshat : trois pistes « développeurs »
+    runtimemark.py   logo officiel du runtime seshat (Sh2, terminal)
+    kpomark.py       logo de KPO-Tech : trois pistes (marque mère)
     themes.py        données des trois thèmes du desktop
     pages.py         assemblage : choisit les données, remplit les modèles
     render.py        mini moteur de modèles, SVG lisibles
   templates/       le HTML : une brique par fichier (card, grid, lockup…), une page par fichier (page_*.html)
   assets/          style.css, copié dans apercu/
   logo/            SORTIE : tous les logos et icônes en SVG
-  apercu/          SORTIE : les six pages HTML + assets/style.css
+  apercu/          SORTIE : les sept pages HTML + assets/style.css
 ```
 
 - **Changer une forme ou une couleur** : modifier une constante dans `src/mark.py` ou `src/appicons.py`, relancer `python build.py`.
@@ -159,6 +160,20 @@ Variantes officielles, dans `logo/runtime/seshat/` : `on-light`, `on-dark`, `mon
 
 
 Limites connues : à 16 px, seule la fenêtre et l'orange de la rosette se distinguent ; le logo n'a pas été vérifié dans un vrai README GitHub ni dans un terminal. Le remplacement de `seshat.png` dans le dépôt `seshat` reste à faire.
+
+## Logo de KPO-Tech (marque mère)
+
+**KPO-Tech est l'ombrelle informelle de tous les projets tech** (aujourd'hui l'organisation GitHub `KPO-Tech`) ; ce n'est **pas une entreprise enregistrée**. L'activité immatriculée est **Seshat AI**. Conséquence : KPO-Tech sert de signature (« un projet KPO-Tech ») mais n'apparaît pas comme entité légale dans les mentions légales tant qu'elle n'existe pas officiellement. Page : [`apercu/kpo.html`](./apercu/kpo.html), code : [`src/kpomark.py`](./src/kpomark.py), fichiers : `logo/kpo-tech/<piste>/`.
+
+La marque mère reste **neutre** : elle ne reprend pas la rosette (celle de Seshat). Lien de parenté léger : mêmes polices, charbon et orange du desktop, traits arrondis, un nœud orange.
+
+| Piste | Idée | Remarque |
+|---|---|---|
+| `KPO1-logotype` | Le nom seul : « KPO » en gras, « Tech » plus léger, un nœud orange à la place du trait d'union. | La plus sûre tant qu'il n'y a qu'une famille de produits ; pas de fichier SVG (texte en police web, à vectoriser). |
+| `KPO2-k-reseau` | Un K dessiné comme un graphe : tige, deux bras, nœuds, jonction orange. | Distinctive, lisible à 16 px, parle le même langage que les nœuds de Seshat. |
+| `KPO3-maison` | Un toit sur trois nœuds, dont un orange : la maison mère de plusieurs projets. | Le sens est juste, mais le toit se lit comme une icône « maison » générique (immobilier, domotique). |
+
+Statut : **aucune piste retenue**.
 
 ## Typographie
 

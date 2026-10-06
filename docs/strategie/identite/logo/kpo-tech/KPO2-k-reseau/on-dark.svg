@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="10 10 80 80" role="img" aria-label="Seshat AI">
+  <path d="M32,22 V78 M32,50 L66,22 M32,50 L66,78" stroke="#E7E2DA" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <circle cx="32" cy="50" r="7" fill="#EF7C2F"/>
+  <circle cx="66" cy="22" r="5" fill="#E7E2DA"/>
+  <circle cx="66" cy="78" r="5" fill="#E7E2DA"/>
+</svg>

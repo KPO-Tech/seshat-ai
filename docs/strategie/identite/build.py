@@ -23,6 +23,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 import appicons  # noqa: E402
 import cloudmark  # noqa: E402
+import kpomark  # noqa: E402
 import mark  # noqa: E402
 import pages  # noqa: E402
 import runtimemark  # noqa: E402
@@ -52,6 +53,7 @@ def main() -> int:
     appicons.main()
     cloudmark.main()
     runtimemark.main()
+    kpomark.main()
     OUT.mkdir(exist_ok=True)
     for old in OUT.glob("*.html"):
         old.unlink()
