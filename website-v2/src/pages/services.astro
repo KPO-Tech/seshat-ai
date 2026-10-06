@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import Arrow from '../components/Arrow.astro';
+import Check from '../components/Check.astro';
 
 const levels = [
   {
@@ -59,22 +60,31 @@ const pilots = [
 
   <section class="block">
     <div class="wrap">
-      <div class="levels">
-        {levels.map((l) => (
-          <article class="level reveal">
-            <div class="level-head">
-              <h2>{l.name}</h2>
-              <p class="who">{l.who}</p>
-              <p class="fmt">{l.format}</p>
-            </div>
-            <div>
-              <ul class="checks">
-                {l.items.map((i) => <li>{i}</li>)}
+      <div class="quest" data-quest>
+        <div class="rail" role="tablist" aria-label="Les trois niveaux d'engagement">
+          {levels.map((l, i) => (
+            <button class="node" role="tab" id={`tab-${i}`} aria-controls={`panel-${i}`} aria-selected={i === 0 ? 'true' : 'false'} type="button">
+              <span class="hex" aria-hidden="true"><span>{i + 1}</span></span>
+              <span class="node-name">{l.name}</span>
+            </button>
+          ))}
+        </div>
+        <div class="stage">
+          {levels.map((l, i) => (
+            <article class="panel" role="tabpanel" id={`panel-${i}`} aria-labelledby={`tab-${i}`} hidden={i !== 0}>
+              <div class="panel-head">
+                <p class="lvl">Niveau {i + 1} sur 3</p>
+                <h2>{l.name}</h2>
+                <p class="who">{l.who}</p>
+                <p class="fmt">{l.format}</p>
+              </div>
+              <ul class="deliver">
+                {l.items.map((it) => <li><Check />{it}</li>)}
               </ul>
               {l.note && <p class="level-note">{l.note}</p>}
-            </div>
-          </article>
-        ))}
+            </article>
+          ))}
+        </div>
       </div>
     </div>
   </section>
@@ -124,4 +134,30 @@ const pilots = [
       </div>
     </div>
   </section>
+  <script is:inline>
+    (function () {
+      var q = document.querySelector('[data-quest]');
+      if (!q) return;
+      var tabs = [].slice.call(q.querySelectorAll('[role=tab]'));
+      var panels = [].slice.call(q.querySelectorAll('[role=tabpanel]'));
+      function select(i, focus) {
+        tabs.forEach(function (t, k) {
+          t.setAttribute('aria-selected', k === i ? 'true' : 'false');
+          t.tabIndex = k === i ? 0 : -1;
+          t.classList.toggle('done', k < i);
+        });
+        panels.forEach(function (p, k) { p.hidden = k !== i; });
+        q.style.setProperty('--progress-ratio', String(i / (tabs.length - 1)));
+        if (focus) tabs[i].focus();
+      }
+      tabs.forEach(function (t, i) {
+        t.addEventListener('click', function () { select(i); });
+        t.addEventListener('keydown', function (e) {
+          if (e.key === 'ArrowRight') { e.preventDefault(); select(Math.min(i + 1, tabs.length - 1), true); }
+          if (e.key === 'ArrowLeft') { e.preventDefault(); select(Math.max(i - 1, 0), true); }
+        });
+      });
+      select(0);
+    })();
+  </script>
 </Base>

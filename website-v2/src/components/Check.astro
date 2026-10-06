@@ -1,0 +1,5 @@
+---
+import raw from '@phosphor-icons/core/assets/bold/check-bold.svg?raw';
+const svg = raw.replace('<svg ', '<svg class="tick" aria-hidden="true" focusable="false" ');
+---
+<Fragment set:html={svg} />
