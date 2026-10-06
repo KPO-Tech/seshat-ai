@@ -206,7 +206,7 @@ def build_runtime():
     return page("runtime.html", "Logo du runtime seshat", intro, tpl("page_runtime", official=_runtime_official()))
 
 
-# --- kpo.html : logo de la marque mère KPO-Tech ----------------------------------------------
+# --- kpo.html : logo officiel de la marque mère KPO-Tech ---------------------------------------
 def _kpo_label(ctx):
     """Nom écrit comme le domaine : kpo, un nœud à la place du point, tech."""
     color = {"light": apps.ORANGE_DEEP, "dark": apps.ORANGE, "mono": "currentColor"}[ctx]
@@ -214,21 +214,26 @@ def _kpo_label(ctx):
 
 
 def build_kpo():
-    sections = []
-    for name, (desc, _fn) in kpomark.OPTIONS.items():
-        v = kpomark.variants(name)
-        base = f"{LOGO_URL}/kpo-tech/{name}"
-        cards = []
-        for key, ctx, dark, label in (("on-light", "light", False, "Fond clair"), ("on-dark", "dark", True, "Fond sombre"),
-                                      ("mono-black", "mono", False, "Monochrome noir")):
-            body = tpl("stack", svg=inline(v[key]), label=_kpo_label(ctx)) + "\n" + file_link(f"{base}/{key}.svg", "fichier SVG")
-            cards.append(card(label, body, dark=dark))
-        icons = "\n".join([inline(v["icon-dark"], "a"), inline(v["icon-dark"], "b"),
-                            inline(v["icon-dark"], "c32"), inline(v["icon-dark"], "c16")])
-        cards.append(card("Icône", tpl("sizes", icons=icons) + "\n" + file_link(f"{base}/icon-dark.svg", "fichier SVG")))
-        sections.append(section(name, f"<p>{desc}</p>\n" + grid(cards)))
-    intro = "Trois pistes de logo pour KPO-Tech, la marque mère informelle de tous les projets tech. Aucune n'est encore retenue."
-    return page("kpo.html", "Logo de KPO-Tech", intro, tpl("page_kpo", options="\n".join(sections)))
+    v = kpomark.official_variants()
+    base = f"{LOGO_URL}/kpo-tech/kpotech"
+
+    def stack(key, ctx, dark, label):
+        body = tpl("stack", svg=inline(v[key]), label=_kpo_label(ctx)) + "\n" + file_link(f"{base}/{key}.svg", "fichier SVG")
+        return card(label, body, dark=dark)
+
+    def sizes(key, label):
+        icons = "\n".join([inline(v[key], "a"), inline(v[key], "b"), inline(v[key], "c32"), inline(v[key], "c16")])
+        return card(label, tpl("sizes", icons=icons) + "\n" + file_link(f"{base}/{key}.svg", "fichier SVG"))
+
+    fav = "\n".join([inline(v["favicon"], "b"), inline(v["favicon"], "c32"), inline(v["favicon"], "c16")])
+    cards = [stack("on-light", "light", False, "Fond clair"), stack("on-dark", "dark", True, "Fond sombre"),
+             stack("mono-black", "mono", False, "Monochrome noir"), stack("mono-white", "mono", True, "Monochrome blanc"),
+             sizes("icon-dark", "Icône sombre"), sizes("icon-light", "Icône claire"),
+             card("Favicon", tpl("sizes", icons=fav) + "\n<small>Traits renforcés, agrandi dans la tuile : 56, 32 et 16 px</small>\n"
+                  + file_link(f"{base}/favicon.svg", "fichier SVG"))]
+    intro = "Logo officiel de KPO-Tech, la marque mère informelle de tous les projets tech (retenu le 2026-10-06)."
+    return page("kpo.html", "Logo de KPO-Tech", intro,
+                tpl("page_kpo", official=section("Logo officiel : sept cellules", grid(cards))))
 
 
 # --- index.html --------------------------------------------------------------------
@@ -255,7 +260,7 @@ def build_index():
         "apps.html": "Knowledge (K1) et Automation (A2) : huit variantes chacune.",
         "cloud.html": "Logo officiel de SeshatCloud : arc en bord de nuage.",
         "runtime.html": "Logo officiel du runtime seshat : rosette dans un terminal.",
-        "kpo.html": "Trois pistes de logo pour la marque mère KPO-Tech.",
+        "kpo.html": "Logo officiel de la marque mère KPO-Tech : sept cellules.",
     }
     labels = dict(PAGES)
     pages = grid([card(labels[h], f"<p>{txt}</p>\n" + '<span class="go">Ouvrir →</span>', href=h, tag="a")
