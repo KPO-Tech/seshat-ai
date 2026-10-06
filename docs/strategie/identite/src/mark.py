@@ -27,8 +27,9 @@ ROOT = Path(__file__).resolve().parent.parent
 # accent        : sur fond sombre (encre)
 # accent_deep   : sur fond clair, usage graphique (contraste >= 3:1 avec le papier)
 # accent_text   : sur fond clair, usage texte (contraste >= 4,5:1 avec le papier)
-INK = "#0F1B3D"
-PAPER = "#F7F6F2"
+# Couleurs alignées sur seshat-desktop : charbon chaud et papier chaud
+INK = "#2F2E34"
+PAPER = "#F6F1EA"
 PALETTES = {
     "ambre": {
         "label": "Ambre",
@@ -38,9 +39,9 @@ PALETTES = {
     },
     "orange": {
         "label": "Orange",
-        "accent": "#F2711C",
-        "accent_deep": "#D9570B",
-        "accent_text": "#B84A08",
+        "accent": "#EF7C2F",        # orange du desktop
+        "accent_deep": "#C2570C",
+        "accent_text": "#A94A0A",
     },
 }
 

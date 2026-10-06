@@ -12,7 +12,7 @@ Règles de la famille :
   1. même tuile arrondie pour toutes les apps ;
   2. un seul accent, l'orange ; la forme distingue les apps, pas la couleur ;
   3. glyphe simple en traits arrondis et en nœuds, comme le logo Seshat.
-Couleurs : celles du desktop (seshat-desktop, tailwind.css) et du papier chaud proposé.
+Couleurs : mark.py (alignées sur seshat-desktop).
 
 Variantes officielles par app :
   icon-dark     tuile charbon, glyphe crème + orange            (usage principal)
@@ -28,8 +28,11 @@ from pathlib import Path
 import mark as g
 
 ROOT = Path(__file__).resolve().parent.parent
-CHAR, CREAM, ORANGE = "#2F2E34", "#E7E2DA", "#EF7C2F"
-PAPER, PAPER_BORDER, ORANGE_DEEP, CREAM_LIGHT = "#F6F1EA", "#E3DACD", "#C2570C", "#FFFCF8"
+# Une seule source pour les couleurs : mark.py (alignées sur seshat-desktop)
+CHAR, PAPER = g.INK, g.PAPER
+ORANGE = g.PALETTES["orange"]["accent"]
+ORANGE_DEEP = g.PALETTES["orange"]["accent_deep"]
+CREAM, PAPER_BORDER, CREAM_LIGHT = "#E7E2DA", "#E3DACD", "#FFFCF8"
 VIEWBOX_GLYPH = "10 10 80 80"
 
 

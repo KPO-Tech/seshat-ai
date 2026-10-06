@@ -72,33 +72,34 @@ Le **logotype** « Seshat AI » s'écrit en **Space Grotesk 600**. Les fichiers 
 
 ## Couleurs
 
-Deux palettes ont été générées avec la même forme ; l'encre et le papier sont communs. **Le choix entre ambre et orange reste à faire.**
+**Alignées sur `seshat-desktop`** (décision du 2026-10-06) : une seule source dans [`src/mark.py`](./src/mark.py), réutilisée par le logo, les icônes d'apps et le logo Cloud. Deux palettes, même base.
 
 Communes :
 
 | Nom | Valeur | Usage |
 |---|---|---|
-| Encre | `#0F1B3D` | Fonds sombres, titres, arc sur fond clair (15,6:1 sur Papier) |
-| Papier | `#F7F6F2` | Fond clair |
+| Charbon | `#2F2E34` | Fonds sombres, tuiles d'icônes, arc sur fond clair (12,0:1 sur Papier) |
+| Papier | `#F6F1EA` | Fond clair |
+| Crème | `#E7E2DA` | Texte et traits sur fond sombre |
 
-Palette **Ambre** (plus sobre, jaune doré) :
-
-| Nom | Valeur | Usage | Contraste |
-|---|---|---|---|
-| Ambre | `#E8A33D` | Accent sur fond sombre, boutons | 7,8:1 avec l'Encre |
-| Ambre profond | `#B86E10` | Accent graphique sur fond clair | 3,7:1 sur Papier |
-| Ambre texte | `#9A5A0B` | Texte accentué sur fond clair | 5,1:1 sur Papier (AA) |
-
-Palette **Orange** (plus vive, plus proche de l'ancien orange du site) :
+Palette **Orange** (celle du desktop, utilisée dans les aperçus) :
 
 | Nom | Valeur | Usage | Contraste |
 |---|---|---|---|
-| Orange | `#F2711C` | Accent sur fond sombre, boutons | 5,8:1 avec l'Encre |
-| Orange profond | `#D9570B` | Accent graphique sur fond clair | 3,7:1 sur Papier |
-| Orange texte | `#B84A08` | Texte accentué sur fond clair | 4,8:1 sur Papier (AA) |
+| Orange | `#EF7C2F` | Accent sur fond sombre, boutons | 4,9:1 avec le Charbon |
+| Orange profond | `#C2570C` | Accent graphique sur fond clair | 4,0:1 sur Papier |
+| Orange texte | `#A94A0A` | Texte accentué sur fond clair | 5,1:1 sur Papier (AA) |
+
+Palette **Ambre** (variante plus sobre, conservée) :
+
+| Nom | Valeur | Usage | Contraste |
+|---|---|---|---|
+| Ambre | `#E8A33D` | Accent sur fond sombre | 6,2:1 avec le Charbon |
+| Ambre profond | `#B86E10` | Accent graphique sur fond clair | 3,5:1 sur Papier |
+| Ambre texte | `#9A5A0B` | Texte accentué sur fond clair | 4,9:1 sur Papier (AA) |
 
 Règles :
-- L'accent vif (ambre ou orange) ne se pose **jamais sur fond clair** : contraste insuffisant (2,0:1 pour l'ambre, 2,7:1 pour l'orange). Sur clair, on utilise la version « profond » (graphique) ou « texte ».
+- L'accent vif (orange ou ambre) ne se pose **jamais sur fond clair** : contraste insuffisant (2,5:1 pour l'orange, 1,9:1 pour l'ambre). Sur clair, on utilise la version « profond » (graphique) ou « texte ».
 - Pas de dégradé, pas d'effet d'ombre sur le logo.
 - Contrastes calculés selon la formule WCAG ; un logo n'est pas soumis à une exigence de contraste, mais la lisibilité reste le critère.
 
@@ -112,7 +113,7 @@ La page [`apercu/themes.html`](./apercu/themes.html) (données dans [`src/themes
 | Clair actuel (`seshat-desktop`) | `#F7F7F5` / `#FFFFFF` / `#171717` | `#EF7C2F` | Conservé pour l'instant (jugé froid ; texte blanc sur bouton orange à 2,8:1) |
 | Clair chaud (proposé) | `#F6F1EA` / `#FFFCF8` / `#1F1B16` | `#EF7C2F` (bouton à texte sombre `#1F1B16`, 6,2:1) ; liens `#A94A0A` ; logo `#C2570C` | Gardé comme option : les trois versions sont conservées |
 
-Décision du 2026-10-06 : on garde les **trois** versions et on ne tranche pas encore. Les couleurs de la marque restent à aligner avec le desktop (orange `#EF7C2F`, charbon `#2F2E34`) ; les palettes `ambre` et `orange` de `src/mark.py` sont encore celles du premier jet (encre bleu nuit).
+Décision du 2026-10-06 : on garde les **trois** versions et on ne tranche pas encore. Les couleurs de la marque sont désormais alignées sur le desktop (voir « Couleurs »).
 
 ## Icônes des apps SeshatOS
 

@@ -19,7 +19,7 @@ PAGES = [
     ("explorations.html", "Explorations"),
 ]
 
-# Palette utilisée dans les aperçus du logo (alignement sur le desktop à venir)
+# Palette utilisée dans les aperçus du logo (celle du desktop)
 PAL = "orange"
 # Les pages sont dans apercu/ ; les SVG générés sont dans logo/ (un niveau au-dessus)
 LOGO_URL = "../logo"
@@ -107,8 +107,8 @@ def build_logo():
     body = tpl("page_logo", styles=styles, typography=tpl("typography"))
     intro = ("Inspiré de l'emblème de la déesse Seshat : une rosette de sept pétales sous un arc. Trois styles "
              "(<code>etoile</code> v1, <code>emblem</code> et <code>reseau</code> v2) et deux palettes, tous conservés. "
-             "Les palettes de cette page utilisent encore l'encre bleu nuit du premier jet ; leur alignement sur le "
-             "charbon et l'orange du desktop est à faire.")
+             "Les couleurs sont alignées sur le desktop : charbon <code>#2F2E34</code>, papier <code>#F6F1EA</code> et, "
+             "pour la palette orange, l'orange <code>#EF7C2F</code> ; l'ambre est la variante plus sobre.")
     return page("logo.html", "Logo", intro, body)
 
 
