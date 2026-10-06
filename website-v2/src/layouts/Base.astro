@@ -1,0 +1,103 @@
+---
+import '../styles/global.css';
+import sunRaw from '@phosphor-icons/core/assets/bold/sun-bold.svg?raw';
+import moonRaw from '@phosphor-icons/core/assets/bold/moon-bold.svg?raw';
+const sun = sunRaw.replace('<svg ', '<svg class="ico i-sun" aria-hidden="true" focusable="false" ');
+const moon = moonRaw.replace('<svg ', '<svg class="ico i-moon" aria-hidden="true" focusable="false" ');
+
+interface Props { title: string; description: string; current?: string }
+const { title, description, current } = Astro.props;
+const nav = [
+  { href: '/services', label: 'Services' },
+  { href: '/produits', label: 'Produits' },
+  { href: '/open-source', label: 'Open source' },
+  { href: '/a-propos', label: 'À propos' },
+];
+---
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="canonical" href={new URL(Astro.url.pathname, Astro.site)} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:locale" content="fr_FR" />
+    <script is:inline>
+      document.documentElement.classList.add('js');
+      try { var th = localStorage.getItem('theme'); if (th === 'light' || th === 'dark') document.documentElement.setAttribute('data-theme', th); } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <a class="skip" href="#contenu">Aller au contenu</a>
+    <header class="site-header">
+      <div class="wrap">
+        <a class="brand" href="/" aria-label="Seshat AI, accueil">
+          <img class="logo-light" src="/brand/mark-on-light.svg" alt="" width="34" height="34" />
+          <img class="logo-dark" src="/brand/mark-on-dark.svg" alt="" width="34" height="34" />
+          Seshat AI
+        </a>
+        <nav class="nav" aria-label="Navigation principale">
+          {nav.map((n) => <a href={n.href} aria-current={current === n.href ? 'page' : undefined}>{n.label}</a>)}
+          <a class="btn btn-primary btn-sm" href="/contact">Demander un diagnostic</a>
+          <button class="theme-toggle" type="button" aria-label="Changer de thème, clair ou sombre"><Fragment set:html={sun} /><Fragment set:html={moon} /></button>
+        </nav>
+      </div>
+    </header>
+    <main id="contenu"><slot /></main>
+    <footer class="site-footer">
+      <div class="wrap">
+        <div>
+          <a class="brand" href="/">
+            <img class="logo-light" src="/brand/mark-on-light.svg" alt="" width="34" height="34" />
+            <img class="logo-dark" src="/brand/mark-on-dark.svg" alt="" width="34" height="34" />
+            Seshat AI
+          </a>
+          <p class="about">Conseil et intégration d'IA souveraine pour PME et ETI.</p>
+        </div>
+        <div>
+          <h4>Le site</h4>
+          <ul>
+            {nav.map((n) => <li><a href={n.href}>{n.label}</a></li>)}
+            <li><a href="/contact">Contact</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>Informations</h4>
+          <ul>
+            <li><a href="https://github.com/KPO-Tech" rel="noopener">Code sur GitHub</a></li>
+            <li><a href="/mentions-legales">Mentions légales</a></li>
+            <li><a href="/confidentialite">Confidentialité</a></li>
+          </ul>
+        </div>
+        <p class="copy">© 2026 Seshat AI</p>
+      </div>
+    </footer>
+    <script is:inline>
+      (function () {
+        var btn = document.querySelector('.theme-toggle');
+        if (btn) btn.addEventListener('click', function () {
+          var root = document.documentElement;
+          var cur = root.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+          var next = cur === 'dark' ? 'light' : 'dark';
+          root.setAttribute('data-theme', next);
+          try { localStorage.setItem('theme', next); } catch (e) {}
+        });
+      })();
+    </script>
+    <script is:inline>
+      (function () {
+        var els = document.querySelectorAll('.reveal');
+        if (!('IntersectionObserver' in window)) { els.forEach(function (e) { e.classList.add('in'); }); return; }
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
+        }, { threshold: 0.15 });
+        els.forEach(function (e) { io.observe(e); });
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,127 @@
+---
+import Base from '../layouts/Base.astro';
+import Arrow from '../components/Arrow.astro';
+
+const levels = [
+  {
+    name: 'Diagnostic',
+    who: 'Pour le dirigeant qui veut savoir par où commencer.',
+    format: 'Court, à prix fixe, sur devis.',
+    items: [
+      'Entretiens et cartographie de vos processus.',
+      'Liste de cas d\'usage classés par valeur, rapidité, risque et faisabilité.',
+      'Recommandation d\'outils : Seshat, solution open source, SaaS ou développement spécifique.',
+      'Plan de pilote de 30 à 90 jours.',
+    ],
+  },
+  {
+    name: 'Pilote',
+    who: 'Pour valider un premier usage dans les conditions réelles.',
+    format: 'De 30 à 90 jours, sur devis.',
+    items: [
+      'Un seul cas d\'usage, mis en service.',
+      'Un indicateur de gain fixé à l\'avance : temps gagné, erreurs évitées ou délai de réponse.',
+      'Une validation humaine sur toute décision sensible.',
+      'Un bilan qui dit clairement si on continue, on ajuste ou on arrête.',
+    ],
+  },
+  {
+    name: 'Exploitation',
+    who: 'Pour faire durer ce qui fonctionne et l\'étendre.',
+    format: 'Récurrent, sur devis.',
+    items: [
+      'Hébergement, maintenance et évolution de la solution.',
+      'Extension à d\'autres cas d\'usage.',
+      'Multi-utilisateurs, administration centrale, journal d\'audit et tâches planifiées avec SeshatOS et SeshatCloud.',
+    ],
+    note: 'SeshatOS et SeshatCloud sont en construction : nous vous disons honnêtement ce qui est prêt et ce qui ne l\'est pas.',
+  },
+];
+
+const pilots = [
+  { t: 'Documentation interne', d: 'Poser une question et obtenir une réponse sourcée, en respectant les droits d\'accès de chacun.', tone: 'dark' },
+  { t: 'Documents métier', d: 'Lire, extraire et contrôler des documents, avec une validation humaine avant tout enregistrement.', tone: 'warm' },
+  { t: 'Socle numérique souverain', d: 'Messagerie professionnelle, documents partagés et automatisation administrative, hébergés chez vous.', tone: 'plain' },
+  { t: 'Reporting récurrent', d: 'Produire à intervalles réguliers les mêmes tableaux de bord et rapports, sans ressaisie.', tone: 'plain' },
+];
+---
+<Base
+  current="/services"
+  title="Services | Seshat AI"
+  description="Un diagnostic IA et automatisation, un pilote de 30 à 90 jours, puis l'exploitation. Des solutions auto-hébergées pour PME et ETI."
+>
+  <header class="page-head">
+    <div class="wrap">
+      <h1>Trois niveaux d'engagement, du plus petit au plus durable.</h1>
+      <p class="lead">Vous commencez par un diagnostic. La suite dépend de ce que nous y découvrons ensemble.</p>
+    </div>
+  </header>
+
+  <section class="block">
+    <div class="wrap">
+      <div class="levels">
+        {levels.map((l) => (
+          <article class="level reveal">
+            <div class="level-head">
+              <h2>{l.name}</h2>
+              <p class="who">{l.who}</p>
+              <p class="fmt">{l.format}</p>
+            </div>
+            <div>
+              <ul class="checks">
+                {l.items.map((i) => <li>{i}</li>)}
+              </ul>
+              {l.note && <p class="level-note">{l.note}</p>}
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="block band">
+    <div class="wrap">
+      <h2 class="reveal">Des pilotes qui tiennent aujourd'hui.</h2>
+      <div class="pilots">
+        {pilots.map((p, i) => (
+          <article class={`pilot ${p.tone} reveal`} style={`--d:${i * 80}ms`}>
+            <h3>{p.t}</h3>
+            <p>{p.d}</p>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap why">
+      <div class="sticky reveal">
+        <h2>Ce que nous ne faisons pas.</h2>
+      </div>
+      <div class="commitments">
+        <div class="reveal">
+          <h3>Pas de chatbot présenté comme une solution.</h3>
+          <p>Un assistant n'a de valeur que branché sur un vrai processus, avec un gain qu'on peut mesurer.</p>
+        </div>
+        <div class="reveal">
+          <h3>Pas d'agents sans contrôle humain.</h3>
+          <p>Sur les décisions sensibles, une personne relit et valide avant que quoi que ce soit ne parte.</p>
+        </div>
+        <div class="reveal">
+          <h3>Pas de solution imposée.</h3>
+          <p>Nous sélectionnons, configurons et intégrons l'outil qui convient, y compris open source, en préservant la souveraineté de vos données. Si une solution du marché répond mieux que la nôtre, le diagnostic le dit.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta">
+    <div class="wrap">
+      <h2 class="reveal">Commençons par un diagnostic.</h2>
+      <div class="reveal" style="--d:100ms">
+        <p>Un premier échange pour comprendre vos besoins et voir si l'IA peut vous aider.</p>
+        <a class="btn btn-primary" href="/contact">Demander un diagnostic <Arrow /></a>
+      </div>
+    </div>
+  </section>
+</Base>
