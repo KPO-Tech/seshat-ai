@@ -286,6 +286,8 @@ section.quest-block { padding: 8px 0 96px; }
 .panel .who { margin-top: 14px; color: var(--on-panel2); max-width: 36ch; }
 .panel .fmt { margin-top: 22px; display: inline-block; padding: 8px 14px; border-radius: var(--radius); border: 1px solid rgba(255, 255, 255, 0.16); font-weight: 600; font-size: 0.95rem; color: var(--on-panel); }
 .deliver { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; align-content: start; }
+.panel > div:last-child { display: flex; flex-direction: column; }
+.panel > div:last-child .deliver { flex: 1; align-content: stretch; grid-auto-rows: 1fr; }
 .deliver li { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: start; padding: 16px 18px; border-radius: var(--radius); background: rgba(255, 255, 255, 0.045); border: 1px solid rgba(255, 255, 255, 0.08); }
 .deliver .tick { width: 18px; height: 18px; margin-top: 3px; fill: var(--accent); }
 .panel .level-note { grid-column: 1 / -1; margin: 0; padding: 14px 18px; border-radius: var(--radius); background: rgba(239, 124, 47, 0.14); color: var(--on-panel); font-size: 0.98rem; }
@@ -503,10 +505,12 @@ section.contact-block { padding: 28px 0 88px; }
 .plinks .link { margin: 0; }
 
 /* À propos : projets (robot en vedette) */
-.projects { grid-template-columns: 1.15fr 0.85fr; grid-template-rows: repeat(3, auto); }
-.project.robot { grid-row: 1 / span 3; align-content: start; }
+.projects { grid-template-columns: 1.2fr 1fr 1fr; grid-template-rows: auto; }
+.project.robot { grid-column: 1 / -1; display: grid; grid-template-columns: 0.95fr 1.05fr; gap: 40px; align-items: center; padding: 40px; }
+.robot-text { display: grid; gap: 14px; align-content: center; }
+.robot-scene { display: grid; place-items: center; }
 .project.robot h3 { font-size: 1.7rem; }
-.project.robot .route { width: 100%; max-width: 420px; color: #b6aea3; margin-bottom: 8px; overflow: visible; }
+.project.robot .route { width: 100%; max-width: 460px; color: #b6aea3; overflow: visible; }
 .tags { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .tags li { padding: 5px 12px; border-radius: 999px; font-size: 0.85rem; font-weight: 600; border: 1px solid rgba(255, 255, 255, 0.18); color: var(--on-panel); }
 .bot { offset-path: path('M24 134 C80 134 84 72 140 80 S214 134 254 70 S318 38 320 36'); offset-distance: 0%; }
@@ -517,6 +521,22 @@ section.contact-block { padding: 28px 0 88px; }
 @media (prefers-reduced-motion: reduce) { .bot { offset-distance: 100%; } }
 @keyframes drive { from { offset-distance: 0%; } to { offset-distance: 100%; } }
 @keyframes dash { to { stroke-dashoffset: -30; } }
+
+/* À propos : petits visuels des projets */
+.pviz { min-height: 128px; display: grid; align-items: center; color: var(--text2); margin-bottom: 4px; }
+.pviz svg { width: 100%; max-width: 280px; height: auto; overflow: visible; }
+.pviz .flow { list-style: none; margin: 0; padding: 0; display: flex; align-items: flex-start; width: 100%; }
+.pviz .flow li { position: relative; flex: 1; display: grid; justify-items: center; gap: 8px; text-align: center; }
+.pviz .flow li + li::before { content: ''; position: absolute; top: 25px; right: 50%; width: 100%; height: 2px; background: var(--line); }
+.pviz .chip { position: relative; z-index: 1; width: 50px; height: 50px; display: grid; place-items: center; border-radius: var(--radius); background: var(--bg); border: 1px solid var(--line); color: var(--accent-text); }
+.pviz .cap { font-size: 0.8rem; font-weight: 600; color: var(--text2); line-height: 1.25; }
+@media (prefers-reduced-motion: no-preference) {
+  .spokes line { animation: dash 1.6s linear infinite; }
+  .hub { transform-box: fill-box; transform-origin: center; animation: pulse 2.4s var(--ease) infinite; }
+  .forecast { animation: dash 1.6s linear infinite; }
+  .js .project.in .chip { animation: chip-on 2.4s var(--ease) both; animation-delay: calc(0.4s + var(--k) * 0.45s); }
+}
+@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
 
 /* À propos : formation en escalier montant */
 .edu { list-style: none; margin: 48px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; align-items: start; }
@@ -569,7 +589,7 @@ section.contact-block { padding: 28px 0 88px; }
   .shield { display: none; }
   .contact-grid { grid-template-columns: 1fr; gap: 24px; }
   .prod, .terms, .inspect, .about-method, .kta, .projects, .about-top .wrap, .edu, .certs, .side-cards { grid-template-columns: 1fr; }
-  .project.robot { grid-row: auto; }
+  .project.robot { grid-template-columns: 1fr; padding: 28px 22px; gap: 24px; }
   .edu-step:nth-child(1), .edu-step:nth-child(2) { margin-top: 0; }
   .node-when { display: none; }
   .prod { padding: 28px 22px; gap: 24px; }
