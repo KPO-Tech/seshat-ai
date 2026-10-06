@@ -81,6 +81,30 @@ Règles :
 
 Décision du 2026-10-06 : on garde les **trois** versions et on ne tranche pas encore. Les couleurs de la marque restent à aligner avec le desktop (orange `#EF7C2F`, charbon `#2F2E34`) ; les palettes `ambre` et `orange` de `generate.py` sont encore celles du premier jet (encre bleu nuit).
 
+## Icônes des apps SeshatOS
+
+Chaque plateforme de SeshatOS a son icône, dans une **famille commune**. Aperçu : [`apps-kit.html`](./apps-kit.html), généré par [`apps.py`](./apps.py).
+
+Règles de la famille :
+1. même tuile arrondie pour toutes les apps ;
+2. **un seul accent, l'orange** : la forme distingue les apps, pas la couleur ;
+3. glyphe simple en traits arrondis et nœuds, comme le logo.
+
+Icônes **retenues** (décision du 2026-10-06) :
+
+| App | Piste | Idée |
+|---|---|---|
+| Knowledge | **K1, livre-graphe** | Un livre ouvert dont les pages sont un graphe de connaissance (la Maison des Livres de Seshat). |
+| Automation | **A2, point de contrôle** | Une branche, un anneau orange (validation humaine), puis la fusion : l'agent gouverné. |
+
+Variantes officielles, dans `logo/apps/<app>/` : `icon-dark` (principal), `icon-light`, `icon-orange`, `glyph-on-dark`, `glyph-on-light`, `mono-black`, `mono-white`, `favicon` (traits renforcés, détails réduits).
+
+Pistes écartées (conservées dans `logo/apps/explorations/`, aperçu `apps.html`) : K2 calame (ressemble à un pinceau), K3 bibliothèque (se lit comme un graphique en barres), A1 flux (proche d'un organigramme), A3 relecture (ressemble à une épingle).
+
+Les autres apps (Data, Inbox, Companion, Team, Scheduling) n'ont **pas** d'icône : on les dessine quand on commence réellement chacune. Idées d'attributs de la déesse pour plus tard : la branche de palmier entaillée (le temps, donc plutôt Scheduling) et la corde à mesurer (Data).
+
+Le logo Seshat AI et SeshatOS est le même (style `reseau` ou `emblem`). Pour SeshatCloud : même logo, ou une variante légère à décider.
+
 ## Typographie
 
 - **Space Grotesk** (600 à 700) : logotype, titres, chiffres clés.
