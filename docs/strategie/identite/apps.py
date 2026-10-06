@@ -6,8 +6,7 @@ Usage : python apps.py
 Sorties :
   logo/apps/<app>/<variante>.svg        versions officielles (Knowledge = K1, Automation = A2)
   logo/apps/explorations/<app>/*.svg    pistes écartées, conservées pour mémoire
-  apps-kit.html                         aperçu des versions officielles
-  apps.html                             aperçu des pistes explorées
+Les pages d'aperçu (apps.html, explorations.html) sont produites par build.py.
 
 Règles de la famille :
   1. même tuile arrondie pour toutes les apps ;
@@ -174,81 +173,22 @@ EXPLORATIONS = {
     },
 }
 
-CSS = (
-    "*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,sans-serif;background:#F6F1EA;color:#1F1B16;padding:28px 16px 60px}"
-    ".wrap{max-width:1100px;margin:auto}h1{font-size:24px;margin:0 0 6px}h2{font-size:19px;margin:34px 0 12px}h3{font-size:13px;margin:0 0 10px}"
-    "p{margin:0 0 12px;color:#5E564C;font-size:13px;line-height:1.45}"
-    ".g{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}"
-    ".c{border-radius:14px;padding:14px;border:1px solid #E3DACD;background:#FFFCF8;display:flex;flex-direction:column;gap:10px;align-items:flex-start}"
-    ".c.dk{background:#2F2E34;border-color:#2F2E34;color:#E7E2DA}.c.or{background:#EF7C2F;border-color:#EF7C2F}.c small{font-size:11px;opacity:.7}"
-    ".c svg{width:104px;height:104px}.sz{display:flex;gap:12px;align-items:end}.sz svg.b{width:56px;height:56px}.sz svg.c32{width:32px;height:32px}.sz svg.c16{width:16px;height:16px}"
-    ".ctx{display:flex;gap:10px;margin-top:6px;flex-wrap:wrap}.chip{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;font-size:13px;font-weight:600}"
-    ".chip svg{width:34px;height:34px}.cl{background:#fff;border:1px solid #E3DACD}.cd{background:#2F2E34;color:#E7E2DA}"
-    ".gx{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}.gx .c svg.a{width:112px;height:112px}"
-)
-
-
-def cls(s, name):
-    return s.replace("<svg", f'<svg class="{name}"', 1)
-
-
-def card(name, body, kind=""):
-    return f'<div class="c {kind}"><h3>{name}</h3>{body}</div>'
-
-
-def page(title, intro, sections):
-    return ('<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
-            f'<title>{title}</title><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">'
-            f'<style>{CSS}</style><div class="wrap"><h1>{title}</h1><p>{intro}</p>{sections}</div></html>')
-
-
 def main():
-    family = tile(f'<g transform="translate(50 50) scale(0.8) translate(-50 -43)">{g.reseau_inner(CREAM, ORANGE)}</g>')
-    official = []
+    """Écrit les SVG des apps (lisibles). Les pages d'aperçu : build.py."""
+    from common import pretty_svg
     for key, (label, fn, name) in GLYPHS.items():
         out = HERE / "logo" / "apps" / key
         out.mkdir(parents=True, exist_ok=True)
         v = variants(fn)
         for vname, content in v.items():
-            (out / f"{vname}.svg").write_text(content, encoding="utf-8")
-        d = v
-        cards = [
-            card("icon-dark", f'{d["icon-dark"]}<small>Usage principal</small>'),
-            card("icon-light", f'{d["icon-light"]}<small>Fond clair</small>'),
-            card("icon-orange", f'{d["icon-orange"]}<small>Tuile orange</small>'),
-            card("glyph-on-light", f'{d["glyph-on-light"]}<small>Glyphe seul, fond clair</small>'),
-            card("glyph-on-dark", f'{d["glyph-on-dark"]}<small>Glyphe seul, fond sombre</small>', "dk"),
-            card("mono-black", f'{d["mono-black"]}<small>Monochrome noir</small>'),
-            card("mono-white", f'{d["mono-white"]}<small>Monochrome blanc</small>', "dk"),
-            card("favicon", f'<div class="sz">{cls(d["favicon"], "b")}{cls(d["favicon"], "c32")}{cls(d["favicon"], "c16")}</div>'
-                            '<small>Favicon 56, 32 et 16 px (traits renforcés)</small>'),
-        ]
-        chips = (f'<div class="ctx"><div class="chip cl">{cls(d["icon-dark"], "x")}{label}</div>'
-                 f'<div class="chip cd">{cls(d["icon-dark"], "x")}{label}</div></div>')
-        official.append(f'<h2>{label} · {name}</h2><div class="g">{"".join(cards)}</div>{chips}')
+            (out / f"{vname}.svg").write_text(pretty_svg(content), encoding="utf-8")
         print(key, len(v), "variantes")
-    (HERE / "apps-kit.html").write_text(page(
-        "Icônes officielles des apps SeshatOS",
-        "Knowledge (K1) et Automation (A2) : même tuile, même accent orange, traits arrondis et nœuds. "
-        "Repère de famille : le logo Seshat AI / SeshatOS (style reseau) dans la même tuile, à gauche.",
-        f'<div class="c" style="flex-direction:row;align-items:center;margin-bottom:6px">{cls(family, "x")}'
-        '<p style="margin:0"><b>Repère :</b> logo Seshat AI / SeshatOS</p></div>' + "".join(official)), encoding="utf-8")
-
-    rows = []
     for key, opts in EXPLORATIONS.items():
         out = HERE / "logo" / "apps" / "explorations" / key
         out.mkdir(parents=True, exist_ok=True)
-        cards = []
         for name, (desc, body) in opts.items():
-            s = tile(body)
-            (out / f"{name}.svg").write_text(s, encoding="utf-8")
-            cards.append(card(name, f'<p>{desc}</p><div class="sz">{cls(s, "a")}{cls(s, "b")}{cls(s, "c32")}{cls(s, "c16")}</div>'))
-        rows.append(f'<h2>{GLYPHS[key][0]}</h2><div class="g gx">{"".join(cards)}</div>')
-    (HERE / "apps.html").write_text(page(
-        "Pistes d'icônes écartées",
-        "Retenues : K1 pour Knowledge et A2 pour Automation (voir apps-kit.html). Les pistes ci-dessous sont conservées pour mémoire.",
-        "".join(rows)), encoding="utf-8")
-    print("apps-kit.html, apps.html")
+            (out / f"{name}.svg").write_text(pretty_svg(tile(body)), encoding="utf-8")
+    print("Pour les pages d'aperçu : python build.py")
 
 
 if __name__ == "__main__":

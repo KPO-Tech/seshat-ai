@@ -1,8 +1,22 @@
 # Identité visuelle Seshat AI (v1, brouillon)
 
-Aperçu complet des deux palettes : ouvrir [`kit.html`](./kit.html) dans un navigateur.
+**Point d'entrée : ouvrir [`index.html`](./index.html) dans un navigateur.** Il donne l'état des décisions, un aperçu d'ensemble et les liens vers les autres pages (logo, couleurs et thèmes, icônes des apps, explorations).
 
-**Tout est généré par [`generate.py`](./generate.py)** (`python generate.py`, depuis ce dossier). La forme (géométrie) et les palettes y sont définies une seule fois : on modifie le script, on relance, les logos et l'aperçu se régénèrent. C'est le point de départ des versions suivantes.
+**Tout est généré par une seule commande**, depuis ce dossier (ou `make identite` à la racine du dépôt) :
+
+```bash
+python build.py
+```
+
+| Fichier | Rôle |
+|---|---|
+| [`build.py`](./build.py) | Point d'entrée : génère tous les SVG et les cinq pages HTML. |
+| [`generate.py`](./generate.py) | Logo : géométrie, styles (`etoile`, `emblem`, `reseau`) et palettes, définies une seule fois. |
+| [`apps.py`](./apps.py) | Icônes des apps : K1 (Knowledge), A2 (Automation) et les pistes écartées. |
+| [`proposal.py`](./proposal.py) | Données des trois thèmes du desktop comparés. |
+| [`common.py`](./common.py) | Mise en page commune, navigation, SVG et HTML écrits sur plusieurs lignes (lisibles). |
+
+Pages produites : `index.html`, `logo.html`, `themes.html`, `apps.html`, `explorations.html`. On modifie une constante dans un script, on relance `python build.py`, on recharge le navigateur.
 
 ## Le concept
 
@@ -71,7 +85,7 @@ Règles :
 
 ## Thèmes du desktop (comparaison)
 
-[`proposal.py`](./proposal.py) génère [`palette-proposal.html`](./palette-proposal.html) : les trois thèmes côte à côte avec le logo `reseau`.
+La page [`themes.html`](./themes.html) (données dans [`proposal.py`](./proposal.py)) montre les trois thèmes côte à côte avec le logo `reseau`.
 
 | Thème | Fond / panneau / texte | Accent | Statut |
 |---|---|---|---|
@@ -83,7 +97,7 @@ Décision du 2026-10-06 : on garde les **trois** versions et on ne tranche pas e
 
 ## Icônes des apps SeshatOS
 
-Chaque plateforme de SeshatOS a son icône, dans une **famille commune**. Aperçu : [`apps-kit.html`](./apps-kit.html), généré par [`apps.py`](./apps.py).
+Chaque plateforme de SeshatOS a son icône, dans une **famille commune**. Aperçu : [`apps.html`](./apps.html), généré par [`apps.py`](./apps.py) via `build.py`.
 
 Règles de la famille :
 1. même tuile arrondie pour toutes les apps ;
@@ -99,7 +113,7 @@ Icônes **retenues** (décision du 2026-10-06) :
 
 Variantes officielles, dans `logo/apps/<app>/` : `icon-dark` (principal), `icon-light`, `icon-orange`, `glyph-on-dark`, `glyph-on-light`, `mono-black`, `mono-white`, `favicon` (traits renforcés, détails réduits).
 
-Pistes écartées (conservées dans `logo/apps/explorations/`, aperçu `apps.html`) : K2 calame (ressemble à un pinceau), K3 bibliothèque (se lit comme un graphique en barres), A1 flux (proche d'un organigramme), A3 relecture (ressemble à une épingle).
+Pistes écartées (conservées dans `logo/apps/explorations/`, aperçu dans [`explorations.html`](./explorations.html)) : K2 calame (ressemble à un pinceau), K3 bibliothèque (se lit comme un graphique en barres), A1 flux (proche d'un organigramme), A3 relecture (ressemble à une épingle).
 
 Les autres apps (Data, Inbox, Companion, Team, Scheduling) n'ont **pas** d'icône : on les dessine quand on commence réellement chacune. Idées d'attributs de la déesse pour plus tard : la branche de palmier entaillée (le temps, donc plutôt Scheduling) et la corde à mesurer (Data).
 

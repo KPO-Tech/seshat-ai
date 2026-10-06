@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Couleurs et thèmes — Seshat AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+:root {
+  --ink: #2F2E34;
+  --paper: #F6F1EA;
+  --card: #FFFCF8;
+  --line: #E3DACD;
+  --text: #1F1B16;
+  --text2: #5E564C;
+  --accent: #EF7C2F;
+  --accent-text: #A94A0A;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: Inter, system-ui, sans-serif;
+  background: var(--paper);
+  color: var(--text);
+}
+header.top {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--ink);
+  color: #E7E2DA;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 10px 20px;
+  flex-wrap: wrap;
+}
+header.top b { font-family: 'Space Grotesk', Inter, sans-serif; font-size: 16px; letter-spacing: -.01em; }
+header.top nav { display: flex; gap: 4px; flex-wrap: wrap; }
+header.top a {
+  color: #B6AEA3;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+header.top a:hover { color: #fff; background: rgba(231, 226, 218, .08); }
+header.top a.on { color: #1F1B16; background: var(--accent); }
+.wrap { max-width: 1120px; margin: auto; padding: 28px 16px 72px; }
+h1 { font-family: 'Space Grotesk', Inter, sans-serif; font-size: 30px; margin: 0 0 6px; letter-spacing: -.02em; }
+h2 { font-family: 'Space Grotesk', Inter, sans-serif; font-size: 21px; margin: 40px 0 12px; letter-spacing: -.01em; }
+h3 { font-size: 13px; margin: 0 0 8px; }
+p { margin: 0 0 12px; color: var(--text2); font-size: 14px; line-height: 1.55; }
+code { background: #ECE5DA; padding: 1px 5px; border-radius: 5px; font-size: 12.5px; }
+small { font-size: 11.5px; opacity: .75; }
+.lead { max-width: 760px; font-size: 15px; }
+.grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.grid.wide { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+.card.dark { background: var(--ink); border-color: var(--ink); color: #E7E2DA; }
+.card.dark p { color: #B6AEA3; }
+a.card { text-decoration: none; color: inherit; transition: transform .12s, border-color .12s; }
+a.card:hover { transform: translateY(-2px); border-color: var(--accent); }
+.card .go { color: var(--accent-text); font-size: 13px; font-weight: 600; margin-top: auto; }
+.lock { display: flex; align-items: center; gap: 12px; }
+.lock svg { width: 60px; height: 60px; flex: none; }
+.word { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 30px; letter-spacing: -.025em; }
+.sizes { display: flex; gap: 12px; align-items: end; }
+.sizes svg.a { width: 112px; height: 112px; }
+.sizes svg.b { width: 56px; height: 56px; }
+.sizes svg.c32 { width: 32px; height: 32px; }
+.sizes svg.c16 { width: 16px; height: 16px; }
+.big svg { width: 104px; height: 104px; }
+.chips { display: flex; gap: 10px; flex-wrap: wrap; }
+.chip { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 10px; font-size: 13px; font-weight: 600; }
+.chip svg { width: 34px; height: 34px; }
+.chip.light { background: #fff; border: 1px solid var(--line); }
+.chip.darkc { background: var(--ink); color: #E7E2DA; }
+.swatches { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.sw { border-radius: 12px; padding: 12px; min-height: 92px; display: flex; flex-direction: column; justify-content: flex-end; font-size: 12px; font-weight: 500; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { background: #EFE8DE; font-weight: 600; }
+.t1 { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 42px; line-height: 1.05; letter-spacing: -.03em; color: var(--text); }
+.t2 { font-size: 16px; line-height: 1.55; color: var(--text); }
+.hero { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; margin: 8px 0 8px; }
+.hero svg.logo { width: 120px; height: 120px; }
+.note { border-left: 4px solid var(--accent); background: var(--card); padding: 12px 16px; border-radius: 0 12px 12px 0; font-size: 14px; color: var(--text2); }
+/* maquette d'application (page Thèmes) */
+.th h3 { font-size: 14px; }
+.app { display: grid; grid-template-columns: 130px 1fr; border-radius: 14px; overflow: hidden; border: 1px solid var(--b); background: var(--root); color: var(--tx); min-height: 300px; }
+.app aside { background: var(--side); padding: 14px 10px; border-right: 1px solid var(--b); }
+.app .brand { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; }
+.app .brand svg { width: 28px; height: 28px; }
+.app .brand b { font-size: 12px; }
+.app .nav { font-size: 12px; color: var(--tx2); padding: 7px 8px; border-radius: 8px; }
+.app .nav.on { background: var(--mut); color: var(--tx); font-weight: 600; }
+.app main { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.app .msg { font-size: 12.5px; line-height: 1.45; padding: 10px 12px; border-radius: 12px; max-width: 92%; }
+.app .me { background: var(--mut); align-self: flex-end; }
+.app .ai { background: var(--panel); border: 1px solid var(--b); }
+.app .ai a { color: var(--lnk); font-weight: 600; text-decoration: underline; }
+.app .meta { font-size: 11px; color: var(--tx3); }
+.app .row { display: flex; gap: 8px; margin-top: auto; }
+.app .btn { font-size: 12px; font-weight: 600; background: var(--acc); color: var(--btn); padding: 8px 14px; border-radius: 9px; }
+.app .btn.ghost { background: transparent; color: var(--tx2); border: 1px solid var(--b); }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <b>Seshat AI · identité</b>
+    <nav>
+      <a href="index.html">Accueil</a>
+      <a href="logo.html">Logo</a>
+      <a href="themes.html" class="on">Couleurs et thèmes</a>
+      <a href="apps.html">Icônes des apps</a>
+      <a href="explorations.html">Explorations</a>
+    </nav>
+  </header>
+  <div class="wrap">
+    <h1>Couleurs et thèmes</h1>
+    <p class="lead">Les thèmes actuels de <code>seshat-desktop</code> comparés à un clair chaud proposé, avec le logo <code>reseau</code> dans une maquette de chat.</p>
+    <div class="grid wide">
+      <section class="th" style="--root:#2F2E34;--side:#2C2A31;--panel:#3A3941;--mut:#4A4852;--b:#4D4A54;--tx:#E7E2DA;--tx2:#B6AEA3;--tx3:#918A82;--acc:#EF7C2F;--btn:#1F1B16;--lnk:#EF7C2F">
+        <h3>Sombre actuel (conservé)</h3>
+        <div class="app">
+          <aside>
+            <div class="brand">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="6 0 88 88" role="img" aria-label="Seshat AI">
+                <path d="M13,46 C11,24 30,10 47.5,12 C49,9 47.5,5.5 45.5,3 M52.5,12 C70,10 89,24 87,46 M52.5,12 C51,9 52.5,5.5 54.5,3" fill="none" stroke="#E7E2DA" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-96)" fill="none" stroke="#EF7C2F" stroke-width="2.6" stroke-linejoin="round"/>
+                <circle cx="19.17" cy="67.24" r="3.1" fill="#EF7C2F"/>
+                <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-64)" fill="none" stroke="#EF7C2F" stroke-width="2.6" stroke-linejoin="round"/>
+                <circle cx="22.14" cy="50.41" r="3.1" fill="#EF7C2F"/>
+                <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-32)" fill="none" stroke="#EF7C2F" stroke-width="2.6" stroke-linejoin="round"/>
+                <circle cx="33.57" cy="37.71" r="3.1" fill="#EF7C2F"/>
+                <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(0)" fill="none" stroke="#EF7C2F" stroke-width="2.6" stroke-linejoin="round"/>
+                <circle cx="50.00" cy="33.00" r="3.1" fill="#EF7C2F"/>
+                <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(32)" fill="none" stroke="#EF7C2F" stroke-width="2.6" stroke-linejoin="round"/>
+                <circle cx="66.43" cy="37.71" r="3.1" fill="#EF7C2F"/>
+                <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(64)" fill="none" stroke="#EF7C2F" stroke-width="2.6" stroke-linejoin="round"/>
+                <circle cx="77.86" cy="50.41" r="3.1" fill="#EF7C2F"/>
+                <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(96)" fill="none" stroke="#EF7C2F" stroke-width="2.6" stroke-linejoin="round"/>
+                <circle cx="80.83" cy="67.24" r="3.1" fill="#EF7C2F"/>
+                <line x1="50" y1="64" x2="50" y2="80" stroke="#E7E2DA" stroke-width="3.0" stroke-linecap="round"/>
+                <circle cx="50" cy="64" r="3.8" fill="#EF7C2F"/>
+                <circle cx="50" cy="80" r="3.4" fill="#E7E2DA"/>
+                <circle cx="13" cy="46" r="3.2" fill="#E7E2DA"/>
+                <circle cx="87" cy="46" r="3.2" fill="#E7E2DA"/>
+              </svg>
+              <b>Seshat AI</b>
+            </div>
+            <div class="nav on">Chat</div>
+            <div class="nav">Knowledge</div>
+            <div class="nav">Tâches planifiées</div>
+            <div class="nav">Skills</div>
+          </aside>
+          <main>
+            <div class="msg me">Quelles sont nos règles de remboursement ?</div>
+            <div class="msg ai">D'après la procédure RH v3 (mise à jour le 12 mars), le remboursement est plafonné à 80 €. <a>Voir la source</a></div>
+            <div class="meta">Source : procedure-rh-v3.pdf · il y a 2 h</div>
+            <div class="row"><span class="btn">Valider</span><span class="btn ghost">Ignorer</span></div>
+          </main>
+        </div>
+        <p style="margin-top:8px">Charbon chaud, texte crème 10,4:1, orange 4,9:1. Réussi : conservé.</p>
+      </section>
+      <section class="th" style="--root:#F7F7F5;--side:#EFEFEE;--panel:#FFFFFF;--mut:#F1F1F0;--b:#E1E1DF;--tx:#171717;--tx2:#5F6368;--tx3:#8A8D91;--acc:#EF7C2F;--btn:#FFFFFF;--lnk:#EF7C2F">
+        <h3>Clair actuel (conservé pour l'instant)</h3>
+        <div class="app">
+          <aside>
+            <div class="brand">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="6 0 88 88" role="img" aria-label="Seshat AI">
+                <path d="M13,46 C11,24 30,10 47.5,12 C49,9 47.5,5.5 45.5,3 M52.5,12 C70,10 89,24 87,46 M52.5,12 C51,9 52.5,5.5 54.5,3" fill="none" stroke="#171717" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-96)" fill="none" stroke="#EF7C2F" stroke-width="2.6" stroke-linejoin="round"/>
+                <circle cx="19.17" cy="67.24" r="3.1" fill="#EF7C2F"/>
+                <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-64)" fill="none" stroke="#EF7C2F" stroke-width="2.6" stroke-linejoin="round"/>
+                <circle cx="22.14" cy="50.41" r="3.1" fill="#EF7C2F"/>
+                <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-32)" fill="none" stroke="#EF7C2F" stroke-width="2.6" stroke-linejoin="round"/>
+                <circle cx="33.57" cy="37.71" r="3.1" fill="#EF7C2F"/>
+                <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(0)" fill="none" stroke="#EF7C2F" stroke-width="2.6" stroke-linejoin="round"/>
+                <circle cx="50.00" cy="33.00" r="3.1" fill="#EF7C2F"/>
+                <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(32)" fill="none" stroke="#EF7C2F" stroke-width="2.6" stroke-linejoin="round"/>
+                <circle cx="66.43" cy="37.71" r="3.1" fill="#EF7C2F"/>
+                <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(64)" fill="none" stroke="#EF7C2F" stroke-width="2.6" stroke-linejoin="round"/>
+                <circle cx="77.86" cy="50.41" r="3.1" fill="#EF7C2F"/>
+                <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(96)" fill="none" stroke="#EF7C2F" stroke-width="2.6" stroke-linejoin="round"/>
+                <circle cx="80.83" cy="67.24" r="3.1" fill="#EF7C2F"/>
+                <line x1="50" y1="64" x2="50" y2="80" stroke="#171717" stroke-width="3.0" stroke-linecap="round"/>
+                <circle cx="50" cy="64" r="3.8" fill="#EF7C2F"/>
+                <circle cx="50" cy="80" r="3.4" fill="#171717"/>
+                <circle cx="13" cy="46" r="3.2" fill="#171717"/>
+                <circle cx="87" cy="46" r="3.2" fill="#171717"/>
+              </svg>
+              <b>Seshat AI</b>
+            </div>
+            <div class="nav on">Chat</div>
+            <div class="nav">Knowledge</div>
+            <div class="nav">Tâches planifiées</div>
+            <div class="nav">Skills</div>
+          </aside>
+          <main>
+            <div class="msg me">Quelles sont nos règles de remboursement ?</div>
+            <div class="msg ai">D'après la procédure RH v3 (mise à jour le 12 mars), le remboursement est plafonné à 80 €. <a>Voir la source</a></div>
+            <div class="meta">Source : procedure-rh-v3.pdf · il y a 2 h</div>
+            <div class="row"><span class="btn">Valider</span><span class="btn ghost">Ignorer</span></div>
+          </main>
+        </div>
+        <p style="margin-top:8px">Gris froid. Texte blanc sur bouton orange 2,8:1, orange sur clair 2,6:1, texte atténué 3,1:1.</p>
+      </section>
+      <section class="th" style="--root:#F6F1EA;--side:#EDE6DC;--panel:#FFFCF8;--mut:#EFE8DE;--b:#E3DACD;--tx:#1F1B16;--tx2:#5E564C;--tx3:#7A7064;--acc:#EF7C2F;--btn:#1F1B16;--lnk:#A94A0A">
+        <h3>Clair chaud (proposé)</h3>
+        <div class="app">
+          <aside>
+            <div class="brand">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="6 0 88 88" role="img" aria-label="Seshat AI">
+                <path d="M13,46 C11,24 30,10 47.5,12 C49,9 47.5,5.5 45.5,3 M52.5,12 C70,10 89,24 87,46 M52.5,12 C51,9 52.5,5.5 54.5,3" fill="none" stroke="#2F2E34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-96)" fill="none" stroke="#C2570C" stroke-width="2.6" stroke-linejoin="round"/>
+                <circle cx="19.17" cy="67.24" r="3.1" fill="#C2570C"/>
+                <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-64)" fill="none" stroke="#C2570C" stroke-width="2.6" stroke-linejoin="round"/>
+                <circle cx="22.14" cy="50.41" r="3.1" fill="#C2570C"/>
+                <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-32)" fill="none" stroke="#C2570C" stroke-width="2.6" stroke-linejoin="round"/>
+                <circle cx="33.57" cy="37.71" r="3.1" fill="#C2570C"/>
+                <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(0)" fill="none" stroke="#C2570C" stroke-width="2.6" stroke-linejoin="round"/>
+                <circle cx="50.00" cy="33.00" r="3.1" fill="#C2570C"/>
+                <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(32)" fill="none" stroke="#C2570C" stroke-width="2.6" stroke-linejoin="round"/>
+                <circle cx="66.43" cy="37.71" r="3.1" fill="#C2570C"/>
+                <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(64)" fill="none" stroke="#C2570C" stroke-width="2.6" stroke-linejoin="round"/>
+                <circle cx="77.86" cy="50.41" r="3.1" fill="#C2570C"/>
+                <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(96)" fill="none" stroke="#C2570C" stroke-width="2.6" stroke-linejoin="round"/>
+                <circle cx="80.83" cy="67.24" r="3.1" fill="#C2570C"/>
+                <line x1="50" y1="64" x2="50" y2="80" stroke="#2F2E34" stroke-width="3.0" stroke-linecap="round"/>
+                <circle cx="50" cy="64" r="3.8" fill="#C2570C"/>
+                <circle cx="50" cy="80" r="3.4" fill="#2F2E34"/>
+                <circle cx="13" cy="46" r="3.2" fill="#2F2E34"/>
+                <circle cx="87" cy="46" r="3.2" fill="#2F2E34"/>
+              </svg>
+              <b>Seshat AI</b>
+            </div>
+            <div class="nav on">Chat</div>
+            <div class="nav">Knowledge</div>
+            <div class="nav">Tâches planifiées</div>
+            <div class="nav">Skills</div>
+          </aside>
+          <main>
+            <div class="msg me">Quelles sont nos règles de remboursement ?</div>
+            <div class="msg ai">D'après la procédure RH v3 (mise à jour le 12 mars), le remboursement est plafonné à 80 €. <a>Voir la source</a></div>
+            <div class="meta">Source : procedure-rh-v3.pdf · il y a 2 h</div>
+            <div class="row"><span class="btn">Valider</span><span class="btn ghost">Ignorer</span></div>
+          </main>
+        </div>
+        <p style="margin-top:8px">Papier chaud, texte 15,2:1, bouton orange à texte sombre 6,2:1, liens 5,1:1.</p>
+      </section>
+    </div>
+    <h2>Jetons de couleur</h2>
+    <table>
+      <tr><th>Jeton</th><th>Sombre actuel (conservé)</th><th>Clair actuel (conservé pour l'instant)</th><th>Clair chaud (proposé)</th></tr>
+      <tr><td>Fond</td><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#2F2E34;border:1px solid #bbb;margin-right:6px;vertical-align:-1px"></span>#2F2E34</td><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#F7F7F5;border:1px solid #bbb;margin-right:6px;vertical-align:-1px"></span>#F7F7F5</td><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#F6F1EA;border:1px solid #bbb;margin-right:6px;vertical-align:-1px"></span>#F6F1EA</td></tr>
+      <tr><td>Barre latérale</td><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#2C2A31;border:1px solid #bbb;margin-right:6px;vertical-align:-1px"></span>#2C2A31</td><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#EFEFEE;border:1px solid #bbb;margin-right:6px;vertical-align:-1px"></span>#EFEFEE</td><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#EDE6DC;border:1px solid #bbb;margin-right:6px;vertical-align:-1px"></span>#EDE6DC</td></tr>
+      <tr><td>Panneau</td><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#3A3941;border:1px solid #bbb;margin-right:6px;vertical-align:-1px"></span>#3A3941</td><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#FFFFFF;border:1px solid #bbb;margin-right:6px;vertical-align:-1px"></span>#FFFFFF</td><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#FFFCF8;border:1px solid #bbb;margin-right:6px;vertical-align:-1px"></span>#FFFCF8</td></tr>
+      <tr><td>Bordure</td><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#4D4A54;border:1px solid #bbb;margin-right:6px;vertical-align:-1px"></span>#4D4A54</td><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#E1E1DF;border:1px solid #bbb;margin-right:6px;vertical-align:-1px"></span>#E1E1DF</td><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#E3DACD;border:1px solid #bbb;margin-right:6px;vertical-align:-1px"></span>#E3DACD</td></tr>
+      <tr><td>Texte</td><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#E7E2DA;border:1px solid #bbb;margin-right:6px;vertical-align:-1px"></span>#E7E2DA</td><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#171717;border:1px solid #bbb;margin-right:6px;vertical-align:-1px"></span>#171717</td><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#1F1B16;border:1px solid #bbb;margin-right:6px;vertical-align:-1px"></span>#1F1B16</td></tr>
+      <tr><td>Texte secondaire</td><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#B6AEA3;border:1px solid #bbb;margin-right:6px;vertical-align:-1px"></span>#B6AEA3</td><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#5F6368;border:1px solid #bbb;margin-right:6px;vertical-align:-1px"></span>#5F6368</td><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#5E564C;border:1px solid #bbb;margin-right:6px;vertical-align:-1px"></span>#5E564C</td></tr>
+      <tr><td>Texte atténué</td><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#918A82;border:1px solid #bbb;margin-right:6px;vertical-align:-1px"></span>#918A82</td><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#8A8D91;border:1px solid #bbb;margin-right:6px;vertical-align:-1px"></span>#8A8D91</td><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#7A7064;border:1px solid #bbb;margin-right:6px;vertical-align:-1px"></span>#7A7064</td></tr>
+      <tr><td>Accent</td><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#EF7C2F;border:1px solid #bbb;margin-right:6px;vertical-align:-1px"></span>#EF7C2F</td><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#EF7C2F;border:1px solid #bbb;margin-right:6px;vertical-align:-1px"></span>#EF7C2F</td><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#EF7C2F;border:1px solid #bbb;margin-right:6px;vertical-align:-1px"></span>#EF7C2F</td></tr>
+      <tr><td>Texte du bouton</td><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#1F1B16;border:1px solid #bbb;margin-right:6px;vertical-align:-1px"></span>#1F1B16</td><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#FFFFFF;border:1px solid #bbb;margin-right:6px;vertical-align:-1px"></span>#FFFFFF</td><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#1F1B16;border:1px solid #bbb;margin-right:6px;vertical-align:-1px"></span>#1F1B16</td></tr>
+      <tr><td>Lien</td><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#EF7C2F;border:1px solid #bbb;margin-right:6px;vertical-align:-1px"></span>#EF7C2F</td><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#EF7C2F;border:1px solid #bbb;margin-right:6px;vertical-align:-1px"></span>#EF7C2F</td><td><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#A94A0A;border:1px solid #bbb;margin-right:6px;vertical-align:-1px"></span>#A94A0A</td></tr>
+    </table>
+    <h2>Ce qu'on garde</h2>
+    <div class="note">Décision du 2026-10-06 : on garde les trois versions et on ne tranche pas encore. L'orange <b>#EF7C2F</b> et le sombre charbon du desktop sont conservés. Le clair actuel a trois défauts mesurés (texte blanc sur bouton orange à 2,8:1, orange sur clair à 2,6:1, texte atténué à 3,1:1) ; le clair chaud les corrige.</div>
+  </div>
+</body>
+</html>

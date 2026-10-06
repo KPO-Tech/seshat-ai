@@ -209,86 +209,18 @@ STYLES = {
 }
 
 
-def cls(svg_text, name):
-    return svg_text.replace("<svg", f'<svg class="{name}"', 1)
-
-
-# --- PAGE D'APERÇU ------------------------------------------------------
-CSS = """
-:root{--ink:%(ink)s;--paper:%(paper)s}
-*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--paper);color:var(--ink);padding:32px 16px 64px}
-.wrap{max-width:1040px;margin:auto}h1{font-family:'Space Grotesk';font-size:30px;margin:0 0 6px;letter-spacing:-.02em}
-h2{font-family:'Space Grotesk';font-size:20px;margin:40px 0 12px}h3{font-size:14px;margin:0 0 8px}
-p{color:#55607a;line-height:1.5;margin:0 0 12px}.g{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
-.c{border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px;border:1px solid #e3e1da;background:#fff}.c small{font-size:12px;opacity:.7}
-.c.dk{background:var(--ink);border-color:var(--ink);color:#fff}
-.lock{display:flex;align-items:center;gap:12px}.lock svg{width:60px;height:60px;flex:none}
-.w{font-family:'Space Grotesk';font-weight:600;font-size:30px;letter-spacing:-.025em}
-.sz{display:flex;align-items:end;gap:14px}.sz svg.a{width:112px;height:112px}.sz svg.b{width:56px;height:56px}.sz svg.c32{width:32px;height:32px}.sz svg.c16{width:16px;height:16px}
-.pal{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}.sw{border-radius:12px;padding:12px;min-height:88px;display:flex;flex-direction:column;justify-content:end;font-size:12px;font-weight:500}
-.mock{border-radius:16px;overflow:hidden;border:1px solid #e3e1da;background:#fff}.mock .bar{display:flex;align-items:center;gap:8px;background:#ECEAE3;padding:8px 12px;font-size:12px}.mock .bar svg{width:16px;height:16px}
-.mock .hero{padding:28px 22px;background:var(--ink);color:#fff}.mock .hero b{font-family:'Space Grotesk';font-size:24px;letter-spacing:-.02em}
-.btn{display:inline-block;color:var(--ink);font-weight:600;border-radius:10px;padding:10px 16px;margin-top:12px;font-size:14px}
-""" % {"ink": INK, "paper": PAPER}
-
-
-def style_section(style, files_by_palette):
-    cards = []
-    for key, files in files_by_palette.items():
-        p = PALETTES[key]
-        L, D = files["seshat-mark-on-light.svg"], files["seshat-mark-on-dark.svg"]
-        cards.append(f'<div class="c"><div class="lock">{L}<span class="w">Seshat AI</span></div><small>{p["label"]} · fond clair</small></div>')
-        cards.append(f'<div class="c dk"><div class="lock">{D}<span class="w">Seshat AI</span></div><small>{p["label"]} · fond sombre</small></div>')
-    first = next(iter(files_by_palette.values()))
-    second = list(files_by_palette.values())[-1]
-    MB = first["seshat-mark-mono-black.svg"]
-    cards.append(f'<div class="c"><div class="lock">{MB}<span class="w">Seshat AI</span></div><small>Monochrome noir</small></div>')
-    ico = lambda f: (f'<div class="sz">{cls(f["seshat-app-icon.svg"], "a")}{cls(f["seshat-app-icon.svg"], "b")}'
-                     f'{cls(f["favicon.svg"], "c32")}{cls(f["favicon.svg"], "c16")}</div>')
-    cards.append(f'<div class="c">{ico(first)}<small>Icône 112 et 56 px, favicon 32 et 16 px (ambre)</small></div>')
-    return f'<h2>{STYLES[style]}</h2><div class="g">{"".join(cards)}</div>'
-
-
-def swatches():
-    c = lambda a, b: ("%.1f" % contrast(a, b)).replace(".", ",")
-    out = []
-    for key, p in PALETTES.items():
-        for bg, fg, n, d in (
-            (p["accent"], INK, f"{p['label']} {p['accent']}", f"sur sombre · {c(p['accent'], INK)}:1"),
-            (p["accent_deep"], "#fff", f"{p['label']} profond {p['accent_deep']}", f"graphique sur clair · {c(p['accent_deep'], PAPER)}:1"),
-            (p["accent_text"], "#fff", f"{p['label']} texte {p['accent_text']}", f"texte sur clair · {c(p['accent_text'], PAPER)}:1"),
-        ):
-            out.append(f'<div class="sw" style="background:{bg};color:{fg}">{n}<br>{d}</div>')
-    out.insert(0, f'<div class="sw" style="background:{INK};color:#fff">Encre {INK}<br>{c(INK, PAPER)}:1 sur papier</div>')
-    return f'<h2>Couleurs</h2><div class="pal">{"".join(out)}</div>'
-
-
-def build_kit(all_files):
-    sections = "".join(style_section(st, fp) for st, fp in all_files.items())
-    return f'''<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Seshat AI — kit d'identité</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<style>{CSS}</style><div class="wrap">
-<h1>Seshat AI — kit d'identité</h1>
-<p>Marque inspirée de l'emblème de la déesse Seshat : une rosette de sept pétales sur sa tige, surmontée d'un arc. Styles et palettes comparés ; généré par <code>generate.py</code>.</p>
-{swatches()}{sections}
-</div></html>'''
-
-
 def main():
-    all_files = {}
+    """Écrit les SVG dans logo/<style>/<palette>/ (lisibles, indentés). Les pages : build.py."""
+    from common import pretty_svg
     for style in STYLES:
-        all_files[style] = {}
         for key, p in PALETTES.items():
             out = HERE / "logo" / style / key
             out.mkdir(parents=True, exist_ok=True)
             files = build_files(style, p)
             for name, content in files.items():
-                (out / name).write_text(content, encoding="utf-8")
-            all_files[style][key] = files
+                (out / name).write_text(pretty_svg(content), encoding="utf-8")
             print(f"logo/{style}/{key}: {len(files)} fichiers")
-    (HERE / "kit.html").write_text(build_kit(all_files), encoding="utf-8")
-    print("kit.html")
+    print("Pour les pages d'aperçu : python build.py")
 
 
 if __name__ == "__main__":

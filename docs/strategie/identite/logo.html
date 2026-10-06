@@ -1,0 +1,661 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Logo — Seshat AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+:root {
+  --ink: #2F2E34;
+  --paper: #F6F1EA;
+  --card: #FFFCF8;
+  --line: #E3DACD;
+  --text: #1F1B16;
+  --text2: #5E564C;
+  --accent: #EF7C2F;
+  --accent-text: #A94A0A;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: Inter, system-ui, sans-serif;
+  background: var(--paper);
+  color: var(--text);
+}
+header.top {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--ink);
+  color: #E7E2DA;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 10px 20px;
+  flex-wrap: wrap;
+}
+header.top b { font-family: 'Space Grotesk', Inter, sans-serif; font-size: 16px; letter-spacing: -.01em; }
+header.top nav { display: flex; gap: 4px; flex-wrap: wrap; }
+header.top a {
+  color: #B6AEA3;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+header.top a:hover { color: #fff; background: rgba(231, 226, 218, .08); }
+header.top a.on { color: #1F1B16; background: var(--accent); }
+.wrap { max-width: 1120px; margin: auto; padding: 28px 16px 72px; }
+h1 { font-family: 'Space Grotesk', Inter, sans-serif; font-size: 30px; margin: 0 0 6px; letter-spacing: -.02em; }
+h2 { font-family: 'Space Grotesk', Inter, sans-serif; font-size: 21px; margin: 40px 0 12px; letter-spacing: -.01em; }
+h3 { font-size: 13px; margin: 0 0 8px; }
+p { margin: 0 0 12px; color: var(--text2); font-size: 14px; line-height: 1.55; }
+code { background: #ECE5DA; padding: 1px 5px; border-radius: 5px; font-size: 12.5px; }
+small { font-size: 11.5px; opacity: .75; }
+.lead { max-width: 760px; font-size: 15px; }
+.grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.grid.wide { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+.card.dark { background: var(--ink); border-color: var(--ink); color: #E7E2DA; }
+.card.dark p { color: #B6AEA3; }
+a.card { text-decoration: none; color: inherit; transition: transform .12s, border-color .12s; }
+a.card:hover { transform: translateY(-2px); border-color: var(--accent); }
+.card .go { color: var(--accent-text); font-size: 13px; font-weight: 600; margin-top: auto; }
+.lock { display: flex; align-items: center; gap: 12px; }
+.lock svg { width: 60px; height: 60px; flex: none; }
+.word { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 30px; letter-spacing: -.025em; }
+.sizes { display: flex; gap: 12px; align-items: end; }
+.sizes svg.a { width: 112px; height: 112px; }
+.sizes svg.b { width: 56px; height: 56px; }
+.sizes svg.c32 { width: 32px; height: 32px; }
+.sizes svg.c16 { width: 16px; height: 16px; }
+.big svg { width: 104px; height: 104px; }
+.chips { display: flex; gap: 10px; flex-wrap: wrap; }
+.chip { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 10px; font-size: 13px; font-weight: 600; }
+.chip svg { width: 34px; height: 34px; }
+.chip.light { background: #fff; border: 1px solid var(--line); }
+.chip.darkc { background: var(--ink); color: #E7E2DA; }
+.swatches { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.sw { border-radius: 12px; padding: 12px; min-height: 92px; display: flex; flex-direction: column; justify-content: flex-end; font-size: 12px; font-weight: 500; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { background: #EFE8DE; font-weight: 600; }
+.t1 { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 42px; line-height: 1.05; letter-spacing: -.03em; color: var(--text); }
+.t2 { font-size: 16px; line-height: 1.55; color: var(--text); }
+.hero { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; margin: 8px 0 8px; }
+.hero svg.logo { width: 120px; height: 120px; }
+.note { border-left: 4px solid var(--accent); background: var(--card); padding: 12px 16px; border-radius: 0 12px 12px 0; font-size: 14px; color: var(--text2); }
+/* maquette d'application (page Thèmes) */
+.th h3 { font-size: 14px; }
+.app { display: grid; grid-template-columns: 130px 1fr; border-radius: 14px; overflow: hidden; border: 1px solid var(--b); background: var(--root); color: var(--tx); min-height: 300px; }
+.app aside { background: var(--side); padding: 14px 10px; border-right: 1px solid var(--b); }
+.app .brand { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; }
+.app .brand svg { width: 28px; height: 28px; }
+.app .brand b { font-size: 12px; }
+.app .nav { font-size: 12px; color: var(--tx2); padding: 7px 8px; border-radius: 8px; }
+.app .nav.on { background: var(--mut); color: var(--tx); font-weight: 600; }
+.app main { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.app .msg { font-size: 12.5px; line-height: 1.45; padding: 10px 12px; border-radius: 12px; max-width: 92%; }
+.app .me { background: var(--mut); align-self: flex-end; }
+.app .ai { background: var(--panel); border: 1px solid var(--b); }
+.app .ai a { color: var(--lnk); font-weight: 600; text-decoration: underline; }
+.app .meta { font-size: 11px; color: var(--tx3); }
+.app .row { display: flex; gap: 8px; margin-top: auto; }
+.app .btn { font-size: 12px; font-weight: 600; background: var(--acc); color: var(--btn); padding: 8px 14px; border-radius: 9px; }
+.app .btn.ghost { background: transparent; color: var(--tx2); border: 1px solid var(--b); }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <b>Seshat AI · identité</b>
+    <nav>
+      <a href="index.html">Accueil</a>
+      <a href="logo.html" class="on">Logo</a>
+      <a href="themes.html">Couleurs et thèmes</a>
+      <a href="apps.html">Icônes des apps</a>
+      <a href="explorations.html">Explorations</a>
+    </nav>
+  </header>
+  <div class="wrap">
+    <h1>Logo</h1>
+    <p class="lead">Inspiré de l'emblème de la déesse Seshat : une rosette de sept pétales sous un arc. Trois styles (<code>etoile</code> v1, <code>emblem</code> et <code>reseau</code> v2) et deux palettes, tous conservés. Les palettes de ce kit utilisent encore l'encre bleu nuit du premier jet ; leur alignement sur le charbon et l'orange du desktop est à faire.</p>
+    <h2>v1 · Étoile et arc</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Ambre · fond clair</h3>
+        <div class="lock">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="10 11 80 80" role="img" aria-label="Seshat AI">
+            <path d="M20,35 Q50,1 80,35" fill="none" stroke="#0F1B3D" stroke-width="5.5" stroke-linecap="round"/>
+            <path d="M50.00,38.00 L55.42,53.74 L71.11,48.17 L62.19,62.22 L76.32,71.01 L59.77,72.79 L61.71,89.33 L50.00,77.50 L38.29,89.33 L40.23,72.79 L23.68,71.01 L37.81,62.22 L28.89,48.17 L44.58,53.74 Z" fill="#B86E10" stroke="#B86E10" stroke-width="2" stroke-linejoin="round"/>
+          </svg>
+          <span class="word">Seshat AI</span>
+        </div>
+      </div>
+      <div class="card dark">
+        <h3>Ambre · fond sombre</h3>
+        <div class="lock">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="10 11 80 80" role="img" aria-label="Seshat AI">
+            <path d="M20,35 Q50,1 80,35" fill="none" stroke="#FFFFFF" stroke-width="5.5" stroke-linecap="round"/>
+            <path d="M50.00,38.00 L55.42,53.74 L71.11,48.17 L62.19,62.22 L76.32,71.01 L59.77,72.79 L61.71,89.33 L50.00,77.50 L38.29,89.33 L40.23,72.79 L23.68,71.01 L37.81,62.22 L28.89,48.17 L44.58,53.74 Z" fill="#E8A33D" stroke="#E8A33D" stroke-width="2" stroke-linejoin="round"/>
+          </svg>
+          <span class="word">Seshat AI</span>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Orange · fond clair</h3>
+        <div class="lock">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="10 11 80 80" role="img" aria-label="Seshat AI">
+            <path d="M20,35 Q50,1 80,35" fill="none" stroke="#0F1B3D" stroke-width="5.5" stroke-linecap="round"/>
+            <path d="M50.00,38.00 L55.42,53.74 L71.11,48.17 L62.19,62.22 L76.32,71.01 L59.77,72.79 L61.71,89.33 L50.00,77.50 L38.29,89.33 L40.23,72.79 L23.68,71.01 L37.81,62.22 L28.89,48.17 L44.58,53.74 Z" fill="#D9570B" stroke="#D9570B" stroke-width="2" stroke-linejoin="round"/>
+          </svg>
+          <span class="word">Seshat AI</span>
+        </div>
+      </div>
+      <div class="card dark">
+        <h3>Orange · fond sombre</h3>
+        <div class="lock">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="10 11 80 80" role="img" aria-label="Seshat AI">
+            <path d="M20,35 Q50,1 80,35" fill="none" stroke="#FFFFFF" stroke-width="5.5" stroke-linecap="round"/>
+            <path d="M50.00,38.00 L55.42,53.74 L71.11,48.17 L62.19,62.22 L76.32,71.01 L59.77,72.79 L61.71,89.33 L50.00,77.50 L38.29,89.33 L40.23,72.79 L23.68,71.01 L37.81,62.22 L28.89,48.17 L44.58,53.74 Z" fill="#F2711C" stroke="#F2711C" stroke-width="2" stroke-linejoin="round"/>
+          </svg>
+          <span class="word">Seshat AI</span>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Monochrome noir</h3>
+        <div class="lock">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="10 11 80 80" role="img" aria-label="Seshat AI">
+            <path d="M20,35 Q50,1 80,35" fill="none" stroke="#000000" stroke-width="5.5" stroke-linecap="round"/>
+            <path d="M50.00,38.00 L55.42,53.74 L71.11,48.17 L62.19,62.22 L76.32,71.01 L59.77,72.79 L61.71,89.33 L50.00,77.50 L38.29,89.33 L40.23,72.79 L23.68,71.01 L37.81,62.22 L28.89,48.17 L44.58,53.74 Z" fill="#000000" stroke="#000000" stroke-width="2" stroke-linejoin="round"/>
+          </svg>
+          <span class="word">Seshat AI</span>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Icône 112 / 56 px · favicon 32 / 16 px</h3>
+        <div class="sizes">
+          <svg class="a" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Seshat AI">
+            <rect width="100" height="100" rx="22" fill="#0F1B3D"/>
+            <path d="M22,38 Q50,6 78,38" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round"/>
+            <path d="M50.00,39.00 L54.99,53.64 L69.55,48.41 L61.21,61.44 L74.37,69.56 L58.99,71.17 L60.85,86.52 L50.00,75.50 L39.15,86.52 L41.01,71.17 L25.63,69.56 L38.79,61.44 L30.45,48.41 L45.01,53.64 Z" fill="#E8A33D" stroke="#E8A33D" stroke-width="2" stroke-linejoin="round"/>
+          </svg>
+          <svg class="b" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Seshat AI">
+            <rect width="100" height="100" rx="22" fill="#0F1B3D"/>
+            <path d="M22,38 Q50,6 78,38" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round"/>
+            <path d="M50.00,39.00 L54.99,53.64 L69.55,48.41 L61.21,61.44 L74.37,69.56 L58.99,71.17 L60.85,86.52 L50.00,75.50 L39.15,86.52 L41.01,71.17 L25.63,69.56 L38.79,61.44 L30.45,48.41 L45.01,53.64 Z" fill="#E8A33D" stroke="#E8A33D" stroke-width="2" stroke-linejoin="round"/>
+          </svg>
+          <svg class="c32" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Seshat AI">
+            <rect width="100" height="100" rx="22" fill="#0F1B3D"/>
+            <path d="M22,38 Q50,6 78,38" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round"/>
+            <path d="M50.00,35.00 L56.07,51.39 L72.67,45.92 L63.65,60.88 L78.27,70.45 L60.95,72.73 L62.58,90.13 L50.00,78.00 L37.42,90.13 L39.05,72.73 L21.73,70.45 L36.35,60.88 L27.33,45.92 L43.93,51.39 Z" fill="#E8A33D" stroke="#E8A33D" stroke-width="2" stroke-linejoin="round"/>
+          </svg>
+          <svg class="c16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Seshat AI">
+            <rect width="100" height="100" rx="22" fill="#0F1B3D"/>
+            <path d="M22,38 Q50,6 78,38" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round"/>
+            <path d="M50.00,35.00 L56.07,51.39 L72.67,45.92 L63.65,60.88 L78.27,70.45 L60.95,72.73 L62.58,90.13 L50.00,78.00 L37.42,90.13 L39.05,72.73 L21.73,70.45 L36.35,60.88 L27.33,45.92 L43.93,51.39 Z" fill="#E8A33D" stroke="#E8A33D" stroke-width="2" stroke-linejoin="round"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+    <h2>v2 · Emblème (rosette pleine, nœuds)</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Ambre · fond clair</h3>
+        <div class="lock">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="6 0 88 88" role="img" aria-label="Seshat AI">
+            <path d="M13,46 C11,24 30,10 47.5,12 C49,9 47.5,5.5 45.5,3 M52.5,12 C70,10 89,24 87,46 M52.5,12 C51,9 52.5,5.5 54.5,3" fill="none" stroke="#0F1B3D" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(-96)" fill="#B86E10" stroke="#B86E10" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(-64)" fill="#B86E10" stroke="#B86E10" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(-32)" fill="#B86E10" stroke="#B86E10" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(0)" fill="#B86E10" stroke="#B86E10" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(32)" fill="#B86E10" stroke="#B86E10" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(64)" fill="#B86E10" stroke="#B86E10" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(96)" fill="#B86E10" stroke="#B86E10" stroke-width="1.2" stroke-linejoin="round"/>
+            <line x1="50" y1="64" x2="50" y2="80" stroke="#0F1B3D" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="13" cy="46" r="3.6" fill="#B86E10"/>
+            <circle cx="87" cy="46" r="3.6" fill="#B86E10"/>
+            <circle cx="50" cy="80" r="3.6" fill="#B86E10"/>
+            <circle cx="50" cy="64" r="3" fill="#0F1B3D"/>
+          </svg>
+          <span class="word">Seshat AI</span>
+        </div>
+      </div>
+      <div class="card dark">
+        <h3>Ambre · fond sombre</h3>
+        <div class="lock">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="6 0 88 88" role="img" aria-label="Seshat AI">
+            <path d="M13,46 C11,24 30,10 47.5,12 C49,9 47.5,5.5 45.5,3 M52.5,12 C70,10 89,24 87,46 M52.5,12 C51,9 52.5,5.5 54.5,3" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(-96)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(-64)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(-32)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(0)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(32)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(64)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(96)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+            <line x1="50" y1="64" x2="50" y2="80" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="13" cy="46" r="3.6" fill="#E8A33D"/>
+            <circle cx="87" cy="46" r="3.6" fill="#E8A33D"/>
+            <circle cx="50" cy="80" r="3.6" fill="#E8A33D"/>
+            <circle cx="50" cy="64" r="3" fill="#FFFFFF"/>
+          </svg>
+          <span class="word">Seshat AI</span>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Orange · fond clair</h3>
+        <div class="lock">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="6 0 88 88" role="img" aria-label="Seshat AI">
+            <path d="M13,46 C11,24 30,10 47.5,12 C49,9 47.5,5.5 45.5,3 M52.5,12 C70,10 89,24 87,46 M52.5,12 C51,9 52.5,5.5 54.5,3" fill="none" stroke="#0F1B3D" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(-96)" fill="#D9570B" stroke="#D9570B" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(-64)" fill="#D9570B" stroke="#D9570B" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(-32)" fill="#D9570B" stroke="#D9570B" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(0)" fill="#D9570B" stroke="#D9570B" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(32)" fill="#D9570B" stroke="#D9570B" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(64)" fill="#D9570B" stroke="#D9570B" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(96)" fill="#D9570B" stroke="#D9570B" stroke-width="1.2" stroke-linejoin="round"/>
+            <line x1="50" y1="64" x2="50" y2="80" stroke="#0F1B3D" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="13" cy="46" r="3.6" fill="#D9570B"/>
+            <circle cx="87" cy="46" r="3.6" fill="#D9570B"/>
+            <circle cx="50" cy="80" r="3.6" fill="#D9570B"/>
+            <circle cx="50" cy="64" r="3" fill="#0F1B3D"/>
+          </svg>
+          <span class="word">Seshat AI</span>
+        </div>
+      </div>
+      <div class="card dark">
+        <h3>Orange · fond sombre</h3>
+        <div class="lock">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="6 0 88 88" role="img" aria-label="Seshat AI">
+            <path d="M13,46 C11,24 30,10 47.5,12 C49,9 47.5,5.5 45.5,3 M52.5,12 C70,10 89,24 87,46 M52.5,12 C51,9 52.5,5.5 54.5,3" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(-96)" fill="#F2711C" stroke="#F2711C" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(-64)" fill="#F2711C" stroke="#F2711C" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(-32)" fill="#F2711C" stroke="#F2711C" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(0)" fill="#F2711C" stroke="#F2711C" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(32)" fill="#F2711C" stroke="#F2711C" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(64)" fill="#F2711C" stroke="#F2711C" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(96)" fill="#F2711C" stroke="#F2711C" stroke-width="1.2" stroke-linejoin="round"/>
+            <line x1="50" y1="64" x2="50" y2="80" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="13" cy="46" r="3.6" fill="#F2711C"/>
+            <circle cx="87" cy="46" r="3.6" fill="#F2711C"/>
+            <circle cx="50" cy="80" r="3.6" fill="#F2711C"/>
+            <circle cx="50" cy="64" r="3" fill="#FFFFFF"/>
+          </svg>
+          <span class="word">Seshat AI</span>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Monochrome noir</h3>
+        <div class="lock">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="6 0 88 88" role="img" aria-label="Seshat AI">
+            <path d="M13,46 C11,24 30,10 47.5,12 C49,9 47.5,5.5 45.5,3 M52.5,12 C70,10 89,24 87,46 M52.5,12 C51,9 52.5,5.5 54.5,3" fill="none" stroke="#000000" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(-96)" fill="#000000" stroke="#000000" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(-64)" fill="#000000" stroke="#000000" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(-32)" fill="#000000" stroke="#000000" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(0)" fill="#000000" stroke="#000000" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(32)" fill="#000000" stroke="#000000" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(64)" fill="#000000" stroke="#000000" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(96)" fill="#000000" stroke="#000000" stroke-width="1.2" stroke-linejoin="round"/>
+            <line x1="50" y1="64" x2="50" y2="80" stroke="#000000" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="13" cy="46" r="3.6" fill="#000000"/>
+            <circle cx="87" cy="46" r="3.6" fill="#000000"/>
+            <circle cx="50" cy="80" r="3.6" fill="#000000"/>
+            <circle cx="50" cy="64" r="3" fill="#000000"/>
+          </svg>
+          <span class="word">Seshat AI</span>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Icône 112 / 56 px · favicon 32 / 16 px</h3>
+        <div class="sizes">
+          <svg class="a" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Seshat AI">
+            <rect width="100" height="100" rx="22" fill="#0F1B3D"/>
+            <g transform="translate(50 50) scale(0.8) translate(-50 -43)">
+              <path d="M13,46 C11,24 30,10 47.5,12 C49,9 47.5,5.5 45.5,3 M52.5,12 C70,10 89,24 87,46 M52.5,12 C51,9 52.5,5.5 54.5,3" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(-96)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(-64)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(-32)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(0)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(32)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(64)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(96)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+              <line x1="50" y1="64" x2="50" y2="80" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+              <circle cx="13" cy="46" r="3.6" fill="#E8A33D"/>
+              <circle cx="87" cy="46" r="3.6" fill="#E8A33D"/>
+              <circle cx="50" cy="80" r="3.6" fill="#E8A33D"/>
+              <circle cx="50" cy="64" r="3" fill="#FFFFFF"/>
+            </g>
+          </svg>
+          <svg class="b" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Seshat AI">
+            <rect width="100" height="100" rx="22" fill="#0F1B3D"/>
+            <g transform="translate(50 50) scale(0.8) translate(-50 -43)">
+              <path d="M13,46 C11,24 30,10 47.5,12 C49,9 47.5,5.5 45.5,3 M52.5,12 C70,10 89,24 87,46 M52.5,12 C51,9 52.5,5.5 54.5,3" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(-96)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(-64)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(-32)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(0)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(32)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(64)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(96)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+              <line x1="50" y1="64" x2="50" y2="80" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+              <circle cx="13" cy="46" r="3.6" fill="#E8A33D"/>
+              <circle cx="87" cy="46" r="3.6" fill="#E8A33D"/>
+              <circle cx="50" cy="80" r="3.6" fill="#E8A33D"/>
+              <circle cx="50" cy="64" r="3" fill="#FFFFFF"/>
+            </g>
+          </svg>
+          <svg class="c32" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Seshat AI">
+            <rect width="100" height="100" rx="22" fill="#0F1B3D"/>
+            <g transform="translate(50 50) scale(0.8) translate(-50 -43)">
+              <path d="M13,46 C11,24 30,10 47.5,12 C49,9 47.5,5.5 45.5,3 M52.5,12 C70,10 89,24 87,46 M52.5,12 C51,9 52.5,5.5 54.5,3" fill="none" stroke="#FFFFFF" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-8.6,-18.0 0,-31 Q8.6,-18.0 0,-5Z" transform="translate(50 64) rotate(-96)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-8.6,-18.0 0,-31 Q8.6,-18.0 0,-5Z" transform="translate(50 64) rotate(-64)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-8.6,-18.0 0,-31 Q8.6,-18.0 0,-5Z" transform="translate(50 64) rotate(-32)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-8.6,-18.0 0,-31 Q8.6,-18.0 0,-5Z" transform="translate(50 64) rotate(0)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-8.6,-18.0 0,-31 Q8.6,-18.0 0,-5Z" transform="translate(50 64) rotate(32)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-8.6,-18.0 0,-31 Q8.6,-18.0 0,-5Z" transform="translate(50 64) rotate(64)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-8.6,-18.0 0,-31 Q8.6,-18.0 0,-5Z" transform="translate(50 64) rotate(96)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+              <line x1="50" y1="64" x2="50" y2="80" stroke="#FFFFFF" stroke-width="4.4" stroke-linecap="round"/>
+              <circle cx="50" cy="64" r="3" fill="#FFFFFF"/>
+            </g>
+          </svg>
+          <svg class="c16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Seshat AI">
+            <rect width="100" height="100" rx="22" fill="#0F1B3D"/>
+            <g transform="translate(50 50) scale(0.8) translate(-50 -43)">
+              <path d="M13,46 C11,24 30,10 47.5,12 C49,9 47.5,5.5 45.5,3 M52.5,12 C70,10 89,24 87,46 M52.5,12 C51,9 52.5,5.5 54.5,3" fill="none" stroke="#FFFFFF" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-8.6,-18.0 0,-31 Q8.6,-18.0 0,-5Z" transform="translate(50 64) rotate(-96)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-8.6,-18.0 0,-31 Q8.6,-18.0 0,-5Z" transform="translate(50 64) rotate(-64)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-8.6,-18.0 0,-31 Q8.6,-18.0 0,-5Z" transform="translate(50 64) rotate(-32)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-8.6,-18.0 0,-31 Q8.6,-18.0 0,-5Z" transform="translate(50 64) rotate(0)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-8.6,-18.0 0,-31 Q8.6,-18.0 0,-5Z" transform="translate(50 64) rotate(32)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-8.6,-18.0 0,-31 Q8.6,-18.0 0,-5Z" transform="translate(50 64) rotate(64)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-8.6,-18.0 0,-31 Q8.6,-18.0 0,-5Z" transform="translate(50 64) rotate(96)" fill="#E8A33D" stroke="#E8A33D" stroke-width="1.2" stroke-linejoin="round"/>
+              <line x1="50" y1="64" x2="50" y2="80" stroke="#FFFFFF" stroke-width="4.4" stroke-linecap="round"/>
+              <circle cx="50" cy="64" r="3" fill="#FFFFFF"/>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </div>
+    <h2>v2 · Réseau (rosette en contour, nœuds aux pointes)</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Ambre · fond clair</h3>
+        <div class="lock">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="6 0 88 88" role="img" aria-label="Seshat AI">
+            <path d="M13,46 C11,24 30,10 47.5,12 C49,9 47.5,5.5 45.5,3 M52.5,12 C70,10 89,24 87,46 M52.5,12 C51,9 52.5,5.5 54.5,3" fill="none" stroke="#0F1B3D" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-96)" fill="none" stroke="#B86E10" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="19.17" cy="67.24" r="3.1" fill="#B86E10"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-64)" fill="none" stroke="#B86E10" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="22.14" cy="50.41" r="3.1" fill="#B86E10"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-32)" fill="none" stroke="#B86E10" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="33.57" cy="37.71" r="3.1" fill="#B86E10"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(0)" fill="none" stroke="#B86E10" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="50.00" cy="33.00" r="3.1" fill="#B86E10"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(32)" fill="none" stroke="#B86E10" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="66.43" cy="37.71" r="3.1" fill="#B86E10"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(64)" fill="none" stroke="#B86E10" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="77.86" cy="50.41" r="3.1" fill="#B86E10"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(96)" fill="none" stroke="#B86E10" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="80.83" cy="67.24" r="3.1" fill="#B86E10"/>
+            <line x1="50" y1="64" x2="50" y2="80" stroke="#0F1B3D" stroke-width="3.0" stroke-linecap="round"/>
+            <circle cx="50" cy="64" r="3.8" fill="#B86E10"/>
+            <circle cx="50" cy="80" r="3.4" fill="#0F1B3D"/>
+            <circle cx="13" cy="46" r="3.2" fill="#0F1B3D"/>
+            <circle cx="87" cy="46" r="3.2" fill="#0F1B3D"/>
+          </svg>
+          <span class="word">Seshat AI</span>
+        </div>
+      </div>
+      <div class="card dark">
+        <h3>Ambre · fond sombre</h3>
+        <div class="lock">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="6 0 88 88" role="img" aria-label="Seshat AI">
+            <path d="M13,46 C11,24 30,10 47.5,12 C49,9 47.5,5.5 45.5,3 M52.5,12 C70,10 89,24 87,46 M52.5,12 C51,9 52.5,5.5 54.5,3" fill="none" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-96)" fill="none" stroke="#E8A33D" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="19.17" cy="67.24" r="3.1" fill="#E8A33D"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-64)" fill="none" stroke="#E8A33D" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="22.14" cy="50.41" r="3.1" fill="#E8A33D"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-32)" fill="none" stroke="#E8A33D" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="33.57" cy="37.71" r="3.1" fill="#E8A33D"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(0)" fill="none" stroke="#E8A33D" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="50.00" cy="33.00" r="3.1" fill="#E8A33D"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(32)" fill="none" stroke="#E8A33D" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="66.43" cy="37.71" r="3.1" fill="#E8A33D"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(64)" fill="none" stroke="#E8A33D" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="77.86" cy="50.41" r="3.1" fill="#E8A33D"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(96)" fill="none" stroke="#E8A33D" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="80.83" cy="67.24" r="3.1" fill="#E8A33D"/>
+            <line x1="50" y1="64" x2="50" y2="80" stroke="#FFFFFF" stroke-width="3.0" stroke-linecap="round"/>
+            <circle cx="50" cy="64" r="3.8" fill="#E8A33D"/>
+            <circle cx="50" cy="80" r="3.4" fill="#FFFFFF"/>
+            <circle cx="13" cy="46" r="3.2" fill="#FFFFFF"/>
+            <circle cx="87" cy="46" r="3.2" fill="#FFFFFF"/>
+          </svg>
+          <span class="word">Seshat AI</span>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Orange · fond clair</h3>
+        <div class="lock">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="6 0 88 88" role="img" aria-label="Seshat AI">
+            <path d="M13,46 C11,24 30,10 47.5,12 C49,9 47.5,5.5 45.5,3 M52.5,12 C70,10 89,24 87,46 M52.5,12 C51,9 52.5,5.5 54.5,3" fill="none" stroke="#0F1B3D" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-96)" fill="none" stroke="#D9570B" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="19.17" cy="67.24" r="3.1" fill="#D9570B"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-64)" fill="none" stroke="#D9570B" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="22.14" cy="50.41" r="3.1" fill="#D9570B"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-32)" fill="none" stroke="#D9570B" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="33.57" cy="37.71" r="3.1" fill="#D9570B"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(0)" fill="none" stroke="#D9570B" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="50.00" cy="33.00" r="3.1" fill="#D9570B"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(32)" fill="none" stroke="#D9570B" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="66.43" cy="37.71" r="3.1" fill="#D9570B"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(64)" fill="none" stroke="#D9570B" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="77.86" cy="50.41" r="3.1" fill="#D9570B"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(96)" fill="none" stroke="#D9570B" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="80.83" cy="67.24" r="3.1" fill="#D9570B"/>
+            <line x1="50" y1="64" x2="50" y2="80" stroke="#0F1B3D" stroke-width="3.0" stroke-linecap="round"/>
+            <circle cx="50" cy="64" r="3.8" fill="#D9570B"/>
+            <circle cx="50" cy="80" r="3.4" fill="#0F1B3D"/>
+            <circle cx="13" cy="46" r="3.2" fill="#0F1B3D"/>
+            <circle cx="87" cy="46" r="3.2" fill="#0F1B3D"/>
+          </svg>
+          <span class="word">Seshat AI</span>
+        </div>
+      </div>
+      <div class="card dark">
+        <h3>Orange · fond sombre</h3>
+        <div class="lock">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="6 0 88 88" role="img" aria-label="Seshat AI">
+            <path d="M13,46 C11,24 30,10 47.5,12 C49,9 47.5,5.5 45.5,3 M52.5,12 C70,10 89,24 87,46 M52.5,12 C51,9 52.5,5.5 54.5,3" fill="none" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-96)" fill="none" stroke="#F2711C" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="19.17" cy="67.24" r="3.1" fill="#F2711C"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-64)" fill="none" stroke="#F2711C" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="22.14" cy="50.41" r="3.1" fill="#F2711C"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-32)" fill="none" stroke="#F2711C" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="33.57" cy="37.71" r="3.1" fill="#F2711C"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(0)" fill="none" stroke="#F2711C" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="50.00" cy="33.00" r="3.1" fill="#F2711C"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(32)" fill="none" stroke="#F2711C" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="66.43" cy="37.71" r="3.1" fill="#F2711C"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(64)" fill="none" stroke="#F2711C" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="77.86" cy="50.41" r="3.1" fill="#F2711C"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(96)" fill="none" stroke="#F2711C" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="80.83" cy="67.24" r="3.1" fill="#F2711C"/>
+            <line x1="50" y1="64" x2="50" y2="80" stroke="#FFFFFF" stroke-width="3.0" stroke-linecap="round"/>
+            <circle cx="50" cy="64" r="3.8" fill="#F2711C"/>
+            <circle cx="50" cy="80" r="3.4" fill="#FFFFFF"/>
+            <circle cx="13" cy="46" r="3.2" fill="#FFFFFF"/>
+            <circle cx="87" cy="46" r="3.2" fill="#FFFFFF"/>
+          </svg>
+          <span class="word">Seshat AI</span>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Monochrome noir</h3>
+        <div class="lock">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="6 0 88 88" role="img" aria-label="Seshat AI">
+            <path d="M13,46 C11,24 30,10 47.5,12 C49,9 47.5,5.5 45.5,3 M52.5,12 C70,10 89,24 87,46 M52.5,12 C51,9 52.5,5.5 54.5,3" fill="none" stroke="#000000" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-96)" fill="none" stroke="#000000" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="19.17" cy="67.24" r="3.1" fill="#000000"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-64)" fill="none" stroke="#000000" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="22.14" cy="50.41" r="3.1" fill="#000000"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-32)" fill="none" stroke="#000000" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="33.57" cy="37.71" r="3.1" fill="#000000"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(0)" fill="none" stroke="#000000" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="50.00" cy="33.00" r="3.1" fill="#000000"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(32)" fill="none" stroke="#000000" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="66.43" cy="37.71" r="3.1" fill="#000000"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(64)" fill="none" stroke="#000000" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="77.86" cy="50.41" r="3.1" fill="#000000"/>
+            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(96)" fill="none" stroke="#000000" stroke-width="2.6" stroke-linejoin="round"/>
+            <circle cx="80.83" cy="67.24" r="3.1" fill="#000000"/>
+            <line x1="50" y1="64" x2="50" y2="80" stroke="#000000" stroke-width="3.0" stroke-linecap="round"/>
+            <circle cx="50" cy="64" r="3.8" fill="#000000"/>
+            <circle cx="50" cy="80" r="3.4" fill="#000000"/>
+            <circle cx="13" cy="46" r="3.2" fill="#000000"/>
+            <circle cx="87" cy="46" r="3.2" fill="#000000"/>
+          </svg>
+          <span class="word">Seshat AI</span>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Icône 112 / 56 px · favicon 32 / 16 px</h3>
+        <div class="sizes">
+          <svg class="a" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Seshat AI">
+            <rect width="100" height="100" rx="22" fill="#0F1B3D"/>
+            <g transform="translate(50 50) scale(0.8) translate(-50 -43)">
+              <path d="M13,46 C11,24 30,10 47.5,12 C49,9 47.5,5.5 45.5,3 M52.5,12 C70,10 89,24 87,46 M52.5,12 C51,9 52.5,5.5 54.5,3" fill="none" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-96)" fill="none" stroke="#E8A33D" stroke-width="2.6" stroke-linejoin="round"/>
+              <circle cx="19.17" cy="67.24" r="3.1" fill="#E8A33D"/>
+              <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-64)" fill="none" stroke="#E8A33D" stroke-width="2.6" stroke-linejoin="round"/>
+              <circle cx="22.14" cy="50.41" r="3.1" fill="#E8A33D"/>
+              <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-32)" fill="none" stroke="#E8A33D" stroke-width="2.6" stroke-linejoin="round"/>
+              <circle cx="33.57" cy="37.71" r="3.1" fill="#E8A33D"/>
+              <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(0)" fill="none" stroke="#E8A33D" stroke-width="2.6" stroke-linejoin="round"/>
+              <circle cx="50.00" cy="33.00" r="3.1" fill="#E8A33D"/>
+              <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(32)" fill="none" stroke="#E8A33D" stroke-width="2.6" stroke-linejoin="round"/>
+              <circle cx="66.43" cy="37.71" r="3.1" fill="#E8A33D"/>
+              <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(64)" fill="none" stroke="#E8A33D" stroke-width="2.6" stroke-linejoin="round"/>
+              <circle cx="77.86" cy="50.41" r="3.1" fill="#E8A33D"/>
+              <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(96)" fill="none" stroke="#E8A33D" stroke-width="2.6" stroke-linejoin="round"/>
+              <circle cx="80.83" cy="67.24" r="3.1" fill="#E8A33D"/>
+              <line x1="50" y1="64" x2="50" y2="80" stroke="#FFFFFF" stroke-width="3.0" stroke-linecap="round"/>
+              <circle cx="50" cy="64" r="3.8" fill="#E8A33D"/>
+              <circle cx="50" cy="80" r="3.4" fill="#FFFFFF"/>
+              <circle cx="13" cy="46" r="3.2" fill="#FFFFFF"/>
+              <circle cx="87" cy="46" r="3.2" fill="#FFFFFF"/>
+            </g>
+          </svg>
+          <svg class="b" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Seshat AI">
+            <rect width="100" height="100" rx="22" fill="#0F1B3D"/>
+            <g transform="translate(50 50) scale(0.8) translate(-50 -43)">
+              <path d="M13,46 C11,24 30,10 47.5,12 C49,9 47.5,5.5 45.5,3 M52.5,12 C70,10 89,24 87,46 M52.5,12 C51,9 52.5,5.5 54.5,3" fill="none" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-96)" fill="none" stroke="#E8A33D" stroke-width="2.6" stroke-linejoin="round"/>
+              <circle cx="19.17" cy="67.24" r="3.1" fill="#E8A33D"/>
+              <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-64)" fill="none" stroke="#E8A33D" stroke-width="2.6" stroke-linejoin="round"/>
+              <circle cx="22.14" cy="50.41" r="3.1" fill="#E8A33D"/>
+              <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-32)" fill="none" stroke="#E8A33D" stroke-width="2.6" stroke-linejoin="round"/>
+              <circle cx="33.57" cy="37.71" r="3.1" fill="#E8A33D"/>
+              <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(0)" fill="none" stroke="#E8A33D" stroke-width="2.6" stroke-linejoin="round"/>
+              <circle cx="50.00" cy="33.00" r="3.1" fill="#E8A33D"/>
+              <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(32)" fill="none" stroke="#E8A33D" stroke-width="2.6" stroke-linejoin="round"/>
+              <circle cx="66.43" cy="37.71" r="3.1" fill="#E8A33D"/>
+              <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(64)" fill="none" stroke="#E8A33D" stroke-width="2.6" stroke-linejoin="round"/>
+              <circle cx="77.86" cy="50.41" r="3.1" fill="#E8A33D"/>
+              <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(96)" fill="none" stroke="#E8A33D" stroke-width="2.6" stroke-linejoin="round"/>
+              <circle cx="80.83" cy="67.24" r="3.1" fill="#E8A33D"/>
+              <line x1="50" y1="64" x2="50" y2="80" stroke="#FFFFFF" stroke-width="3.0" stroke-linecap="round"/>
+              <circle cx="50" cy="64" r="3.8" fill="#E8A33D"/>
+              <circle cx="50" cy="80" r="3.4" fill="#FFFFFF"/>
+              <circle cx="13" cy="46" r="3.2" fill="#FFFFFF"/>
+              <circle cx="87" cy="46" r="3.2" fill="#FFFFFF"/>
+            </g>
+          </svg>
+          <svg class="c32" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Seshat AI">
+            <rect width="100" height="100" rx="22" fill="#0F1B3D"/>
+            <g transform="translate(50 50) scale(0.8) translate(-50 -43)">
+              <path d="M13,46 C11,24 30,10 47.5,12 C49,9 47.5,5.5 45.5,3 M52.5,12 C70,10 89,24 87,46 M52.5,12 C51,9 52.5,5.5 54.5,3" fill="none" stroke="#FFFFFF" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-96)" fill="none" stroke="#E8A33D" stroke-width="4" stroke-linejoin="round"/>
+              <circle cx="19.17" cy="67.24" r="3.6" fill="#E8A33D"/>
+              <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-64)" fill="none" stroke="#E8A33D" stroke-width="4" stroke-linejoin="round"/>
+              <circle cx="22.14" cy="50.41" r="3.6" fill="#E8A33D"/>
+              <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-32)" fill="none" stroke="#E8A33D" stroke-width="4" stroke-linejoin="round"/>
+              <circle cx="33.57" cy="37.71" r="3.6" fill="#E8A33D"/>
+              <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(0)" fill="none" stroke="#E8A33D" stroke-width="4" stroke-linejoin="round"/>
+              <circle cx="50.00" cy="33.00" r="3.6" fill="#E8A33D"/>
+              <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(32)" fill="none" stroke="#E8A33D" stroke-width="4" stroke-linejoin="round"/>
+              <circle cx="66.43" cy="37.71" r="3.6" fill="#E8A33D"/>
+              <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(64)" fill="none" stroke="#E8A33D" stroke-width="4" stroke-linejoin="round"/>
+              <circle cx="77.86" cy="50.41" r="3.6" fill="#E8A33D"/>
+              <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(96)" fill="none" stroke="#E8A33D" stroke-width="4" stroke-linejoin="round"/>
+              <circle cx="80.83" cy="67.24" r="3.6" fill="#E8A33D"/>
+              <line x1="50" y1="64" x2="50" y2="80" stroke="#FFFFFF" stroke-width="4.4" stroke-linecap="round"/>
+              <circle cx="50" cy="64" r="4.4" fill="#E8A33D"/>
+              <circle cx="50" cy="80" r="3.4" fill="#FFFFFF"/>
+              <circle cx="13" cy="46" r="3.2" fill="#FFFFFF"/>
+              <circle cx="87" cy="46" r="3.2" fill="#FFFFFF"/>
+            </g>
+          </svg>
+          <svg class="c16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Seshat AI">
+            <rect width="100" height="100" rx="22" fill="#0F1B3D"/>
+            <g transform="translate(50 50) scale(0.8) translate(-50 -43)">
+              <path d="M13,46 C11,24 30,10 47.5,12 C49,9 47.5,5.5 45.5,3 M52.5,12 C70,10 89,24 87,46 M52.5,12 C51,9 52.5,5.5 54.5,3" fill="none" stroke="#FFFFFF" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-96)" fill="none" stroke="#E8A33D" stroke-width="4" stroke-linejoin="round"/>
+              <circle cx="19.17" cy="67.24" r="3.6" fill="#E8A33D"/>
+              <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-64)" fill="none" stroke="#E8A33D" stroke-width="4" stroke-linejoin="round"/>
+              <circle cx="22.14" cy="50.41" r="3.6" fill="#E8A33D"/>
+              <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-32)" fill="none" stroke="#E8A33D" stroke-width="4" stroke-linejoin="round"/>
+              <circle cx="33.57" cy="37.71" r="3.6" fill="#E8A33D"/>
+              <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(0)" fill="none" stroke="#E8A33D" stroke-width="4" stroke-linejoin="round"/>
+              <circle cx="50.00" cy="33.00" r="3.6" fill="#E8A33D"/>
+              <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(32)" fill="none" stroke="#E8A33D" stroke-width="4" stroke-linejoin="round"/>
+              <circle cx="66.43" cy="37.71" r="3.6" fill="#E8A33D"/>
+              <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(64)" fill="none" stroke="#E8A33D" stroke-width="4" stroke-linejoin="round"/>
+              <circle cx="77.86" cy="50.41" r="3.6" fill="#E8A33D"/>
+              <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(96)" fill="none" stroke="#E8A33D" stroke-width="4" stroke-linejoin="round"/>
+              <circle cx="80.83" cy="67.24" r="3.6" fill="#E8A33D"/>
+              <line x1="50" y1="64" x2="50" y2="80" stroke="#FFFFFF" stroke-width="4.4" stroke-linecap="round"/>
+              <circle cx="50" cy="64" r="4.4" fill="#E8A33D"/>
+              <circle cx="50" cy="80" r="3.4" fill="#FFFFFF"/>
+              <circle cx="13" cy="46" r="3.2" fill="#FFFFFF"/>
+              <circle cx="87" cy="46" r="3.2" fill="#FFFFFF"/>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </div>
+    <h2>Typographie</h2>
+    <div class="grid wide">
+      <div class="card">
+        <h3>Space Grotesk 600–700 · titres et logotype</h3>
+        <div class="t1">Structurer pour que l'IA serve.</div>
+      </div>
+      <div class="card">
+        <h3>Inter 400–600 · texte courant</h3>
+        <div class="t2">Seshat AI aide les PME à identifier les bons cas d'usage, puis à déployer des solutions souveraines, auto-hébergées, avec validation humaine.</div>
+      </div>
+    </div>
+    <h2>Règles d'usage</h2>
+    <table>
+      <tr><th>Règle</th><th>Détail</th></tr>
+      <tr><td>Zone de protection</td><td>Au moins la largeur d'un pétale (ou d'une branche) autour de la marque.</td></tr>
+      <tr><td>Taille minimale</td><td>Marque seule 16 px (favicon renforcé) ; marque et logotype 96 px de large.</td></tr>
+      <tr><td>Accent vif sur fond clair</td><td>Interdit (contraste de 2,0 à 2,7:1) : utiliser la version « profond » ou « texte ».</td></tr>
+      <tr><td>Effets</td><td>Pas de dégradé, pas d'ombre, pas d'étirement, pas de teinte hors palette.</td></tr>
+      <tr><td>Fonds photo ou chargés</td><td>Versions monochromes.</td></tr>
+    </table>
+  </div>
+</body>
+</html>
