@@ -1,10 +1,11 @@
-"""Thèmes du desktop à comparer : sombre actuel, clair actuel, clair chaud proposé.
+"""Données des trois thèmes du desktop comparés : sombre actuel, clair actuel, clair chaud proposé.
 
-Ce module ne génère rien seul : build.py l'utilise pour la page themes.html.
 Valeurs sources : seshat-desktop/src/renderer/styles/tailwind.css (thèmes actuels).
+Le HTML de la maquette est dans templates/theme_card.html ; ce module n'a que des données
+et la fonction qui les y injecte.
 """
-import generate as g
-from common import inline, indent
+import mark as g
+from render import inline, tpl
 
 THEMES = {
     "Sombre actuel (conservé)": dict(
@@ -27,27 +28,7 @@ THEMES = {
 
 def theme_card(name, t):
     logo = inline(g.svg(g.EMB_VIEWBOX, g.reseau_inner(t["arc"], t["mark_accent"])))
-    style = (f"--root:{t['root']};--side:{t['side']};--panel:{t['panel']};--mut:{t['muted']};--b:{t['border']};"
-             f"--tx:{t['text']};--tx2:{t['text2']};--tx3:{t['text3']};--acc:{t['accent']};--btn:{t['btn_text']};--lnk:{t['link']}")
-    return f"""<section class="th" style="{style}">
-  <h3>{name}</h3>
-  <div class="app">
-    <aside>
-      <div class="brand">
-{indent(logo, 8)}
-        <b>Seshat AI</b>
-      </div>
-      <div class="nav on">Chat</div>
-      <div class="nav">Knowledge</div>
-      <div class="nav">Tâches planifiées</div>
-      <div class="nav">Skills</div>
-    </aside>
-    <main>
-      <div class="msg me">Quelles sont nos règles de remboursement ?</div>
-      <div class="msg ai">D'après la procédure RH v3 (mise à jour le 12 mars), le remboursement est plafonné à 80 €. <a>Voir la source</a></div>
-      <div class="meta">Source : procedure-rh-v3.pdf · il y a 2 h</div>
-      <div class="row"><span class="btn">Valider</span><span class="btn ghost">Ignorer</span></div>
-    </main>
-  </div>
-  <p style="margin-top:8px">{t['note']}</p>
-</section>"""
+    css_vars = (f"--root:{t['root']};--side:{t['side']};--panel:{t['panel']};--mut:{t['muted']};--b:{t['border']};"
+                f"--tx:{t['text']};--tx2:{t['text2']};--tx3:{t['text3']};--acc:{t['accent']};"
+                f"--btn:{t['btn_text']};--lnk:{t['link']}")
+    return tpl("theme_card", vars=css_vars, name=name, logo=logo, note=t["note"])

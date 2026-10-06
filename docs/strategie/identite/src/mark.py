@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
-"""Génère les logos Seshat AI (SVG) et la page d'aperçu kit.html.
+"""Logo Seshat AI : géométrie, styles et palettes (SVG).
 
-Usage, depuis ce dossier :
-    python generate.py
+Usage autonome (SVG seulement) : python src/mark.py ; le kit complet : python build.py
 
 Sortie :
     logo/<style>/<palette>/*.svg   marque sur clair, sur sombre, monochromes, icône, favicon
-    kit.html                       aperçu comparé de tous les styles et palettes
 
 Styles :
     etoile  v1 (piste D1) : étoile pleine à sept branches + arc
@@ -23,7 +21,7 @@ Version du kit : v1 (piste D1, voir explorations/).
 import math
 from pathlib import Path
 
-HERE = Path(__file__).parent
+ROOT = Path(__file__).resolve().parent.parent
 
 # --- PALETTES -----------------------------------------------------------
 # accent        : sur fond sombre (encre)
@@ -211,16 +209,15 @@ STYLES = {
 
 def main():
     """Écrit les SVG dans logo/<style>/<palette>/ (lisibles, indentés). Les pages : build.py."""
-    from common import pretty_svg
+    from render import pretty_svg
     for style in STYLES:
         for key, p in PALETTES.items():
-            out = HERE / "logo" / style / key
+            out = ROOT / "logo" / style / key
             out.mkdir(parents=True, exist_ok=True)
             files = build_files(style, p)
             for name, content in files.items():
                 (out / name).write_text(pretty_svg(content), encoding="utf-8")
             print(f"logo/{style}/{key}: {len(files)} fichiers")
-    print("Pour les pages d'aperçu : python build.py")
 
 
 if __name__ == "__main__":

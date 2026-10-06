@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Icônes des apps SeshatOS (famille).
 
-Usage : python apps.py
+Usage autonome (SVG seulement) : python src/appicons.py ; le kit complet : python build.py
 
 Sorties :
   logo/apps/<app>/<variante>.svg        versions officielles (Knowledge = K1, Automation = A2)
   logo/apps/explorations/<app>/*.svg    pistes écartées, conservées pour mémoire
-Les pages d'aperçu (apps.html, explorations.html) sont produites par build.py.
+Les pages d'aperçu (apercu/apps.html, apercu/explorations.html) sont produites par build.py.
 
 Règles de la famille :
   1. même tuile arrondie pour toutes les apps ;
@@ -25,9 +25,9 @@ Variantes officielles par app :
 import math
 from pathlib import Path
 
-import generate as g
+import mark as g
 
-HERE = Path(__file__).parent
+ROOT = Path(__file__).resolve().parent.parent
 CHAR, CREAM, ORANGE = "#2F2E34", "#E7E2DA", "#EF7C2F"
 PAPER, PAPER_BORDER, ORANGE_DEEP, CREAM_LIGHT = "#F6F1EA", "#E3DACD", "#C2570C", "#FFFCF8"
 VIEWBOX_GLYPH = "10 10 80 80"
@@ -175,20 +175,19 @@ EXPLORATIONS = {
 
 def main():
     """Écrit les SVG des apps (lisibles). Les pages d'aperçu : build.py."""
-    from common import pretty_svg
+    from render import pretty_svg
     for key, (label, fn, name) in GLYPHS.items():
-        out = HERE / "logo" / "apps" / key
+        out = ROOT / "logo" / "apps" / key
         out.mkdir(parents=True, exist_ok=True)
         v = variants(fn)
         for vname, content in v.items():
             (out / f"{vname}.svg").write_text(pretty_svg(content), encoding="utf-8")
         print(key, len(v), "variantes")
     for key, opts in EXPLORATIONS.items():
-        out = HERE / "logo" / "apps" / "explorations" / key
+        out = ROOT / "logo" / "apps" / "explorations" / key
         out.mkdir(parents=True, exist_ok=True)
         for name, (desc, body) in opts.items():
             (out / f"{name}.svg").write_text(pretty_svg(tile(body)), encoding="utf-8")
-    print("Pour les pages d'aperçu : python build.py")
 
 
 if __name__ == "__main__":

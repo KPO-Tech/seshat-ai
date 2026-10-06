@@ -4,122 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Identité visuelle Seshat AI — Seshat AI</title>
+  <link rel="stylesheet" href="assets/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <style>
-:root {
-  --ink: #2F2E34;
-  --paper: #F6F1EA;
-  --card: #FFFCF8;
-  --line: #E3DACD;
-  --text: #1F1B16;
-  --text2: #5E564C;
-  --accent: #EF7C2F;
-  --accent-text: #A94A0A;
-}
-* { box-sizing: border-box; }
-body {
-  margin: 0;
-  font-family: Inter, system-ui, sans-serif;
-  background: var(--paper);
-  color: var(--text);
-}
-header.top {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  background: var(--ink);
-  color: #E7E2DA;
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  padding: 10px 20px;
-  flex-wrap: wrap;
-}
-header.top b { font-family: 'Space Grotesk', Inter, sans-serif; font-size: 16px; letter-spacing: -.01em; }
-header.top nav { display: flex; gap: 4px; flex-wrap: wrap; }
-header.top a {
-  color: #B6AEA3;
-  text-decoration: none;
-  font-size: 13px;
-  font-weight: 500;
-  padding: 6px 10px;
-  border-radius: 8px;
-}
-header.top a:hover { color: #fff; background: rgba(231, 226, 218, .08); }
-header.top a.on { color: #1F1B16; background: var(--accent); }
-.wrap { max-width: 1120px; margin: auto; padding: 28px 16px 72px; }
-h1 { font-family: 'Space Grotesk', Inter, sans-serif; font-size: 30px; margin: 0 0 6px; letter-spacing: -.02em; }
-h2 { font-family: 'Space Grotesk', Inter, sans-serif; font-size: 21px; margin: 40px 0 12px; letter-spacing: -.01em; }
-h3 { font-size: 13px; margin: 0 0 8px; }
-p { margin: 0 0 12px; color: var(--text2); font-size: 14px; line-height: 1.55; }
-code { background: #ECE5DA; padding: 1px 5px; border-radius: 5px; font-size: 12.5px; }
-small { font-size: 11.5px; opacity: .75; }
-.lead { max-width: 760px; font-size: 15px; }
-.grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-.grid.wide { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
-.card {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  align-items: flex-start;
-}
-.card.dark { background: var(--ink); border-color: var(--ink); color: #E7E2DA; }
-.card.dark p { color: #B6AEA3; }
-a.card { text-decoration: none; color: inherit; transition: transform .12s, border-color .12s; }
-a.card:hover { transform: translateY(-2px); border-color: var(--accent); }
-.card .go { color: var(--accent-text); font-size: 13px; font-weight: 600; margin-top: auto; }
-.lock { display: flex; align-items: center; gap: 12px; }
-.lock svg { width: 60px; height: 60px; flex: none; }
-.word { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 30px; letter-spacing: -.025em; }
-.sizes { display: flex; gap: 12px; align-items: end; }
-.sizes svg.a { width: 112px; height: 112px; }
-.sizes svg.b { width: 56px; height: 56px; }
-.sizes svg.c32 { width: 32px; height: 32px; }
-.sizes svg.c16 { width: 16px; height: 16px; }
-.big svg { width: 104px; height: 104px; }
-.chips { display: flex; gap: 10px; flex-wrap: wrap; }
-.chip { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 10px; font-size: 13px; font-weight: 600; }
-.chip svg { width: 34px; height: 34px; }
-.chip.light { background: #fff; border: 1px solid var(--line); }
-.chip.darkc { background: var(--ink); color: #E7E2DA; }
-.swatches { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
-.sw { border-radius: 12px; padding: 12px; min-height: 92px; display: flex; flex-direction: column; justify-content: flex-end; font-size: 12px; font-weight: 500; }
-table { border-collapse: collapse; width: 100%; font-size: 13px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
-th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
-th { background: #EFE8DE; font-weight: 600; }
-.t1 { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 42px; line-height: 1.05; letter-spacing: -.03em; color: var(--text); }
-.t2 { font-size: 16px; line-height: 1.55; color: var(--text); }
-.hero { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; margin: 8px 0 8px; }
-.hero svg.logo { width: 120px; height: 120px; }
-.note { border-left: 4px solid var(--accent); background: var(--card); padding: 12px 16px; border-radius: 0 12px 12px 0; font-size: 14px; color: var(--text2); }
-/* maquette d'application (page Thèmes) */
-.th h3 { font-size: 14px; }
-.app { display: grid; grid-template-columns: 130px 1fr; border-radius: 14px; overflow: hidden; border: 1px solid var(--b); background: var(--root); color: var(--tx); min-height: 300px; }
-.app aside { background: var(--side); padding: 14px 10px; border-right: 1px solid var(--b); }
-.app .brand { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; }
-.app .brand svg { width: 28px; height: 28px; }
-.app .brand b { font-size: 12px; }
-.app .nav { font-size: 12px; color: var(--tx2); padding: 7px 8px; border-radius: 8px; }
-.app .nav.on { background: var(--mut); color: var(--tx); font-weight: 600; }
-.app main { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
-.app .msg { font-size: 12.5px; line-height: 1.45; padding: 10px 12px; border-radius: 12px; max-width: 92%; }
-.app .me { background: var(--mut); align-self: flex-end; }
-.app .ai { background: var(--panel); border: 1px solid var(--b); }
-.app .ai a { color: var(--lnk); font-weight: 600; text-decoration: underline; }
-.app .meta { font-size: 11px; color: var(--tx3); }
-.app .row { display: flex; gap: 8px; margin-top: auto; }
-.app .btn { font-size: 12px; font-weight: 600; background: var(--acc); color: var(--btn); padding: 8px 14px; border-radius: 9px; }
-.app .btn.ghost { background: transparent; color: var(--tx2); border: 1px solid var(--b); }
-  </style>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- polices chargées sans bloquer l'affichage ; la pile système prend le relais en attendant -->
+  <link rel="stylesheet" media="print" onload="this.media='all'"
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">
 </head>
 <body>
   <header class="top">
-    <b>Seshat AI · identité</b>
+    <a class="brand" href="index.html">Seshat AI · identité</a>
     <nav>
       <a href="index.html" class="on">Accueil</a>
       <a href="logo.html">Logo</a>
@@ -127,13 +21,14 @@ th { background: #EFE8DE; font-weight: 600; }
       <a href="apps.html">Icônes des apps</a>
       <a href="explorations.html">Explorations</a>
     </nav>
+    <span></span>
   </header>
-  <div class="wrap">
+  <main class="wrap">
     <h1>Identité visuelle Seshat AI</h1>
     <p class="lead">Un point d'entrée pour tout le kit : logo, couleurs, thèmes, icônes des apps. Tout est généré par <code>python build.py</code> à partir de quelques constantes.</p>
     <h2>État des décisions</h2>
     <div class="note">
-      <ul style="color:#5E564C;line-height:1.7;font-size:14px;margin:0;padding-left:20px">
+      <ul>
         <li><b>Logo</b> : styles v2 <code>emblem</code> et <code>reseau</code> retenus (l'étoile v1 est gardée), deux palettes conservées.</li>
         <li><b>Thèmes du desktop</b> : les trois versions conservées, aucune tranchée.</li>
         <li><b>Icônes des apps</b> : K1 pour Knowledge, A2 pour Automation. Les autres apps plus tard.</li>
@@ -222,41 +117,47 @@ th { background: #EFE8DE; font-weight: 600; }
       <div class="card">
         <h3>Apps</h3>
         <div class="chips">
-          <div class="chip light"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="icône">
-          <rect x="1" y="1" width="98" height="98" rx="21" fill="#2F2E34"/>
-          <path d="M50,72 C41,65 28,64 18,68 L18,32 C28,28 41,29 50,36 Z" stroke="#E7E2DA" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-          <path d="M50,72 C59,65 72,64 82,68 L82,32 C72,28 59,29 50,36 Z" stroke="#E7E2DA" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-          <g stroke="#E7E2DA" stroke-width="2.4" stroke-linecap="round" opacity=".75">
-            <line x1="50" y1="52" x2="31" y2="46"/>
-            <line x1="50" y1="52" x2="69" y2="46"/>
-            <line x1="50" y1="52" x2="34" y2="58"/>
-            <line x1="50" y1="52" x2="66" y2="58"/>
-          </g>
-          <circle cx="50" cy="52" r="5.2" fill="#EF7C2F"/>
-          <circle cx="31" cy="46" r="3.4" fill="#EF7C2F"/>
-          <circle cx="69" cy="46" r="3.4" fill="#EF7C2F"/>
-          <circle cx="34" cy="58" r="3.4" fill="#EF7C2F"/>
-          <circle cx="66" cy="58" r="3.4" fill="#EF7C2F"/>
-        </svg>Knowledge</div>
-          <div class="chip light"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="icône">
-          <rect x="1" y="1" width="98" height="98" rx="21" fill="#2F2E34"/>
-          <path d="M26,50 C36.96,50.00 39.34,38.97 47.53,34.18" stroke="#E7E2DA" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-          <path d="M64.26,34.90 C70.26,39.99 71.02,50.00 74.00,50.00" stroke="#E7E2DA" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-          <path d="M26,50 C40,50 40,68 56,68 C70,68 70,50 74,50" stroke="#E7E2DA" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-          <circle cx="21" cy="50" r="5" fill="#E7E2DA"/>
-          <circle cx="56" cy="32" r="7.5" stroke="#EF7C2F" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-          <circle cx="56" cy="68" r="4.4" fill="#E7E2DA"/>
-          <circle cx="79" cy="50" r="6.5" fill="#EF7C2F"/>
-        </svg>Automation</div>
+          <div class="chip light">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="icône">
+              <rect x="1" y="1" width="98" height="98" rx="21" fill="#2F2E34"/>
+              <path d="M50,72 C41,65 28,64 18,68 L18,32 C28,28 41,29 50,36 Z" stroke="#E7E2DA" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+              <path d="M50,72 C59,65 72,64 82,68 L82,32 C72,28 59,29 50,36 Z" stroke="#E7E2DA" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+              <g stroke="#E7E2DA" stroke-width="2.4" stroke-linecap="round" opacity=".75">
+                <line x1="50" y1="52" x2="31" y2="46"/>
+                <line x1="50" y1="52" x2="69" y2="46"/>
+                <line x1="50" y1="52" x2="34" y2="58"/>
+                <line x1="50" y1="52" x2="66" y2="58"/>
+              </g>
+              <circle cx="50" cy="52" r="5.2" fill="#EF7C2F"/>
+              <circle cx="31" cy="46" r="3.4" fill="#EF7C2F"/>
+              <circle cx="69" cy="46" r="3.4" fill="#EF7C2F"/>
+              <circle cx="34" cy="58" r="3.4" fill="#EF7C2F"/>
+              <circle cx="66" cy="58" r="3.4" fill="#EF7C2F"/>
+            </svg>
+            Knowledge
+          </div>
+          <div class="chip light">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="icône">
+              <rect x="1" y="1" width="98" height="98" rx="21" fill="#2F2E34"/>
+              <path d="M26,50 C36.96,50.00 39.34,38.97 47.53,34.18" stroke="#E7E2DA" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+              <path d="M64.26,34.90 C70.26,39.99 71.02,50.00 74.00,50.00" stroke="#E7E2DA" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+              <path d="M26,50 C40,50 40,68 56,68 C70,68 70,50 74,50" stroke="#E7E2DA" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+              <circle cx="21" cy="50" r="5" fill="#E7E2DA"/>
+              <circle cx="56" cy="32" r="7.5" stroke="#EF7C2F" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+              <circle cx="56" cy="68" r="4.4" fill="#E7E2DA"/>
+              <circle cx="79" cy="50" r="6.5" fill="#EF7C2F"/>
+            </svg>
+            Automation
+          </div>
         </div>
       </div>
     </div>
     <h2>Couleurs du desktop</h2>
     <div class="swatches">
-      <div class="sw" style="background:#2F2E34;color:#fff;">Charbon #2F2E34<br>fond sombre du desktop</div>
-      <div class="sw" style="background:#EF7C2F;color:#1F1B16;">Orange #EF7C2F<br>accent du desktop</div>
-      <div class="sw" style="background:#E7E2DA;color:#1F1B16;">Crème #E7E2DA<br>texte sur sombre</div>
-      <div class="sw" style="background:#F6F1EA;color:#1F1B16;border:1px solid #ddd;">Papier #F6F1EA<br>clair chaud proposé</div>
+      <div class="sw" style="background:#2F2E34;color:#fff">Charbon #2F2E34<br>fond sombre du desktop</div>
+      <div class="sw" style="background:#EF7C2F;color:#1F1B16">Orange #EF7C2F<br>accent du desktop</div>
+      <div class="sw" style="background:#E7E2DA;color:#1F1B16">Crème #E7E2DA<br>texte sur sombre</div>
+      <div class="sw bordered" style="background:#F6F1EA;color:#1F1B16">Papier #F6F1EA<br>clair chaud proposé</div>
     </div>
     <h2>Typographie</h2>
     <div class="grid wide">
@@ -292,6 +193,9 @@ th { background: #EFE8DE; font-weight: 600; }
         <span class="go">Ouvrir →</span>
       </a>
     </div>
-  </div>
+  </main>
+  <footer class="foot">
+    Généré par <code>python build.py</code> depuis <code>src/</code> et <code>templates/</code>. Ne pas modifier ces pages à la main.
+  </footer>
 </body>
 </html>

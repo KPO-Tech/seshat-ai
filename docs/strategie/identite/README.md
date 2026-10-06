@@ -1,6 +1,6 @@
 # Identité visuelle Seshat AI (v1, brouillon)
 
-**Point d'entrée : ouvrir [`index.html`](./index.html) dans un navigateur.** Il donne l'état des décisions, un aperçu d'ensemble et les liens vers les autres pages (logo, couleurs et thèmes, icônes des apps, explorations).
+**Point d'entrée : ouvrir [`apercu/index.html`](./apercu/index.html) dans un navigateur.** Il donne l'état des décisions, un aperçu d'ensemble et les liens vers les autres pages (logo, couleurs et thèmes, icônes des apps, explorations). Chaque carte renvoie vers le fichier SVG correspondant.
 
 **Tout est généré par une seule commande**, depuis ce dossier (ou `make identite` à la racine du dépôt) :
 
@@ -8,15 +8,33 @@
 python build.py
 ```
 
-| Fichier | Rôle |
-|---|---|
-| [`build.py`](./build.py) | Point d'entrée : génère tous les SVG et les cinq pages HTML. |
-| [`generate.py`](./generate.py) | Logo : géométrie, styles (`etoile`, `emblem`, `reseau`) et palettes, définies une seule fois. |
-| [`apps.py`](./apps.py) | Icônes des apps : K1 (Knowledge), A2 (Automation) et les pistes écartées. |
-| [`proposal.py`](./proposal.py) | Données des trois thèmes du desktop comparés. |
-| [`common.py`](./common.py) | Mise en page commune, navigation, SVG et HTML écrits sur plusieurs lignes (lisibles). |
+Elle écrit les SVG dans `logo/`, les pages dans `apercu/`, puis **vérifie que tous les liens locaux mènent à un fichier existant**.
 
-Pages produites : `index.html`, `logo.html`, `themes.html`, `apps.html`, `explorations.html`. On modifie une constante dans un script, on relance `python build.py`, on recharge le navigateur.
+Pour parcourir les pages avec un serveur local (plus fiable que certains serveurs d'éditeur) : `make identite-serve`, puis ouvrir `http://127.0.0.1:8765/apercu/index.html`.
+
+### Organisation : le code et le HTML sont séparés
+
+```text
+identite/
+  build.py         point d'entrée (génère, copie, vérifie les liens)
+  src/             le code, sans HTML
+    mark.py          logo : géométrie, styles (etoile, emblem, reseau), palettes
+    appicons.py      icônes des apps : K1 Knowledge, A2 Automation, pistes écartées
+    themes.py        données des trois thèmes du desktop
+    pages.py         assemblage : choisit les données, remplit les modèles
+    render.py        mini moteur de modèles, SVG lisibles
+  templates/       le HTML : une brique par fichier (card, grid, lockup…), une page par fichier (page_*.html)
+  assets/          style.css, copié dans apercu/
+  explorations/    les premières pistes de logo (SVG, entrées de l'aperçu)
+  logo/            SORTIE : tous les logos et icônes en SVG
+  apercu/          SORTIE : les cinq pages HTML + assets/style.css
+```
+
+- **Changer une forme ou une couleur** : modifier une constante dans `src/mark.py` ou `src/appicons.py`, relancer `python build.py`.
+- **Changer un texte ou la structure d'une page** : modifier le fichier de `templates/` (par exemple `page_index.html`), relancer.
+- **Changer le style** : modifier `assets/style.css`, relancer (copié dans `apercu/`).
+- Les dossiers `logo/` et `apercu/` sont entièrement régénérés : ne pas y modifier de fichier à la main.
+
 
 ## Le concept
 
@@ -85,7 +103,7 @@ Règles :
 
 ## Thèmes du desktop (comparaison)
 
-La page [`themes.html`](./themes.html) (données dans [`proposal.py`](./proposal.py)) montre les trois thèmes côte à côte avec le logo `reseau`.
+La page [`apercu/themes.html`](./apercu/themes.html) (données dans [`src/themes.py`](./src/themes.py)) montre les trois thèmes côte à côte avec le logo `reseau`.
 
 | Thème | Fond / panneau / texte | Accent | Statut |
 |---|---|---|---|
@@ -93,11 +111,11 @@ La page [`themes.html`](./themes.html) (données dans [`proposal.py`](./proposal
 | Clair actuel (`seshat-desktop`) | `#F7F7F5` / `#FFFFFF` / `#171717` | `#EF7C2F` | Conservé pour l'instant (jugé froid ; texte blanc sur bouton orange à 2,8:1) |
 | Clair chaud (proposé) | `#F6F1EA` / `#FFFCF8` / `#1F1B16` | `#EF7C2F` (bouton à texte sombre `#1F1B16`, 6,2:1) ; liens `#A94A0A` ; logo `#C2570C` | Gardé comme option : les trois versions sont conservées |
 
-Décision du 2026-10-06 : on garde les **trois** versions et on ne tranche pas encore. Les couleurs de la marque restent à aligner avec le desktop (orange `#EF7C2F`, charbon `#2F2E34`) ; les palettes `ambre` et `orange` de `generate.py` sont encore celles du premier jet (encre bleu nuit).
+Décision du 2026-10-06 : on garde les **trois** versions et on ne tranche pas encore. Les couleurs de la marque restent à aligner avec le desktop (orange `#EF7C2F`, charbon `#2F2E34`) ; les palettes `ambre` et `orange` de `src/mark.py` sont encore celles du premier jet (encre bleu nuit).
 
 ## Icônes des apps SeshatOS
 
-Chaque plateforme de SeshatOS a son icône, dans une **famille commune**. Aperçu : [`apps.html`](./apps.html), généré par [`apps.py`](./apps.py) via `build.py`.
+Chaque plateforme de SeshatOS a son icône, dans une **famille commune**. Aperçu : [`apercu/apps.html`](./apercu/apps.html), généré par `build.py` à partir de [`src/appicons.py`](./src/appicons.py).
 
 Règles de la famille :
 1. même tuile arrondie pour toutes les apps ;
@@ -113,7 +131,7 @@ Icônes **retenues** (décision du 2026-10-06) :
 
 Variantes officielles, dans `logo/apps/<app>/` : `icon-dark` (principal), `icon-light`, `icon-orange`, `glyph-on-dark`, `glyph-on-light`, `mono-black`, `mono-white`, `favicon` (traits renforcés, détails réduits).
 
-Pistes écartées (conservées dans `logo/apps/explorations/`, aperçu dans [`explorations.html`](./explorations.html)) : K2 calame (ressemble à un pinceau), K3 bibliothèque (se lit comme un graphique en barres), A1 flux (proche d'un organigramme), A3 relecture (ressemble à une épingle).
+Pistes écartées (conservées dans `logo/apps/explorations/`, aperçu dans [`apercu/explorations.html`](./apercu/explorations.html)) : K2 calame (ressemble à un pinceau), K3 bibliothèque (se lit comme un graphique en barres), A1 flux (proche d'un organigramme), A3 relecture (ressemble à une épingle).
 
 Les autres apps (Data, Inbox, Companion, Team, Scheduling) n'ont **pas** d'icône : on les dessine quand on commence réellement chacune. Idées d'attributs de la déesse pour plus tard : la branche de palmier entaillée (le temps, donc plutôt Scheduling) et la corde à mesurer (Data).
 
@@ -145,4 +163,4 @@ Les deux sont sous licence **SIL Open Font License**, utilisables gratuitement p
 
 ## Historique
 
-Les pistes explorées (A heptagramme, B registre, C constellation, D1 à D3) sont conservées dans [`explorations/`](./explorations/). La piste D1 est devenue le style `etoile` (v1). Les styles `emblem` et `reseau` (v2) ont été ajoutés ensuite ; aucun n'est encore retenu. Les versions suivantes se font en modifiant `generate.py` ; garder une copie datée de la sortie avant un changement de forme.
+Les pistes explorées (A heptagramme, B registre, C constellation, D1 à D3) sont conservées dans [`explorations/`](./explorations/). La piste D1 est devenue le style `etoile` (v1). Les styles `emblem` et `reseau` (v2) ont été ajoutés ensuite ; aucun n'est encore retenu. Les versions suivantes se font en modifiant `src/mark.py` ; garder une copie datée de la sortie avant un changement de forme.
