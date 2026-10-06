@@ -477,7 +477,7 @@ section.contact-block { padding: 28px 0 88px; }
 .node[aria-selected='true'] .node-when { color: var(--accent-text); font-weight: 600; }
 .panel .ctx { margin-top: 18px; color: var(--on-panel); max-width: 40ch; }
 .panel .link.on-dark { margin-top: 20px; color: #f29a5a; }
-.unlocked { margin-top: 24px; }
+.unlocked { margin-top: 28px; }
 .unl-title { font-size: 0.85rem; font-weight: 600; color: #f29a5a; margin-bottom: 10px; }
 .unl { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .unl li { padding: 6px 12px; border-radius: 999px; font-size: 0.88rem; border: 1px solid rgba(255, 255, 255, 0.14); color: var(--on-panel2); }
