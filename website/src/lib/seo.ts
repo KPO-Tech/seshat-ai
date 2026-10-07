@@ -29,6 +29,10 @@ export function organizationNode(lang: Lang) {
     logo: { '@type': 'ImageObject', url: `${SITE}/brand/mark-on-light.svg` },
     description: orgDescription[lang],
     email: legal.email,
+    contactPoint: [
+      { '@type': 'ContactPoint', contactType: 'sales', email: legal.email, availableLanguage: ['fr', 'en'] },
+      { '@type': 'ContactPoint', contactType: 'technical support', email: legal.supportEmail, availableLanguage: ['fr', 'en'] },
+    ],
     founder: { '@id': ID.founder },
     sameAs: [GITHUB_ORG],
     knowsAbout: ['Artificial intelligence', 'Self-hosted AI', 'AI agents', 'Process automation', 'Document search (RAG)', 'Go'],

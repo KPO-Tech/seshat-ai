@@ -4,6 +4,7 @@ import Search from 'astro-pagefind/components/Search.astro';
 import Arrow from '../components/Arrow.astro';
 import Icon from '../components/Icon.astro';
 import { dict, docUrl } from '../i18n';
+import { legal } from '../data/legal';
 import { docsFor, groupBySection, sortItems } from '../lib/docs';
 
 const d = dict('en').docs;
@@ -45,6 +46,7 @@ const first = items[0];
           </a>
         ))}
       </div>
+      <p class="docs-help">{d.home.help} <a href={`mailto:${legal.supportEmail}`}>{legal.supportEmail}</a></p>
     </div>
   </section>
 

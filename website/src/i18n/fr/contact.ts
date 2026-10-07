@@ -30,8 +30,15 @@ export default {
     ],
     note: "Vos informations ne servent qu'à vous répondre.",
   },
+  direct: {
+    title: 'Ou écrivez-nous directement',
+    contactLabel: 'Contact',
+    contactText: 'Un diagnostic, un pilote, une question sur l’offre.',
+    supportLabel: 'Support',
+    supportText: 'Une question sur le runtime Seshat, la documentation ou un produit déjà installé.',
+  },
   status: {
-    unavailable: "L'envoi n'est pas encore disponible sur ce site. Merci de réessayer prochainement.",
+    unavailable: "Le formulaire n'est pas encore disponible. Écrivez-nous directement à contact@seshat-ai.com.",
     sending: 'Envoi en cours...',
     ok: 'Merci, votre message est bien parti. Nous revenons vers vous.',
     error: "Le message n'a pas pu partir. Merci de réessayer dans un instant.",

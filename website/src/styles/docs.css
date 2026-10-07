@@ -272,3 +272,6 @@ body.shell { --dtop: 60px; --side: 290px; }
 
 /* Recherche : variables du composant Pagefind (--pf-*) aux couleurs du site, clair et sombre */
 .pagefind-ui { --pf-background: var(--surface); --pf-text: var(--text); --pf-text-secondary: var(--text2); --pf-text-muted: var(--text2); --pf-border: var(--line); --pf-border-focus: var(--accent); --pf-hover: var(--band); --pf-border-radius: 12px; --pf-font: var(--font-body); --pf-mark: color-mix(in srgb, var(--accent) 30%, transparent); --pf-skeleton: var(--band); }
+
+.docs-help { margin-top: 28px; color: var(--text2); }
+.docs-help a { color: var(--accent-text); font-weight: 600; }
