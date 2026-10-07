@@ -9,6 +9,7 @@ const en: typeof fr = {
     { page: 'products', label: 'Products' },
     { page: 'openSource', label: 'Open source' },
     { page: 'docs', label: 'Docs' },
+    { page: 'blog', label: 'Blog' },
     { page: 'about', label: 'About' },
   ],
   cta: 'Request an assessment',

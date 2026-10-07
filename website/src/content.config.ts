@@ -18,4 +18,26 @@ const docs = defineCollection({
   }),
 });
 
-export const collections = { docs };
+// Un article de blog = un fichier .md ou .mdx dans src/content/blog/<langue>/<adresse>.
+// L'identifiant (ex. « en/running-agents-safely ») donne la langue et l'adresse de l'article.
+const blog = defineCollection({
+  loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/blog' }),
+  schema: z.object({
+    title: z.string(),
+    description: z.string(),
+    // Date de publication et de dernière révision, au format AAAA-MM-JJ
+    date: z.string(),
+    updated: z.string().optional(),
+    // pme = dirigeants de PME, dev = développeurs, proof = preuves (mesures, audits, captures)
+    category: z.enum(['pme', 'dev', 'proof']),
+    // Brouillon : visible avec « npm run dev », absent du site publié
+    draft: z.boolean().default(false),
+    // Adresse (sans la langue) de la même page dans l'autre langue, quand elle existe
+    translationOf: z.string().optional(),
+    // Image de partage et de carte (chemin sous /public), sinon l'image par défaut de la langue
+    cover: z.string().optional(),
+    tags: z.array(z.string()).default([]),
+  }),
+});
+
+export const collections = { docs, blog };
