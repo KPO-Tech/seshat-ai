@@ -1,0 +1,65 @@
+---
+title: Memory and compaction
+description: "How Seshat keeps your sessions, stays inside the model's context window, and remembers things across sessions."
+section: concepts
+order: 5
+updated: "2026-10-07"
+---
+import Callout from '@/components/docs/Callout.astro';
+import Flow from '@/components/docs/Flow.astro';
+
+<Flow items={[
+  { icon: 'database', label: 'Session history' },
+  { icon: 'chat-circle-text', label: 'Context window' },
+  { icon: 'arrows-in-line-vertical', label: 'Compaction' },
+  { icon: 'brain', label: 'Long-term notes' },
+]} />
+
+Seshat has three kinds of memory, each with its own job.
+
+## 1. Session history
+
+Every conversation is saved in a local SQLite database: messages, tool results, token usage and metadata. Sessions survive restarts and can be resumed.
+
+```bash
+seshat chat --continue          # the most recent session
+seshat chat --resume <id>       # a specific one
+seshat sessions list
+```
+
+## 2. The context window and compaction
+
+A model can only read so much at once. Seshat tracks how much of the window a session uses. When it passes a threshold, it **compacts**: older messages are summarised into a shorter form so the session can go on.
+
+By default, automatic compaction starts at **85%** of the usable window and aims for about 50% afterwards. In the Go SDK, turn it on with `AutoCompact` in `ClientConfig`.
+
+<Callout type="note" title="A summary is a summary">
+After compaction the model works from the summary, not from the original words. For details that must not be lost, store them as a note (below) or in a file of your project.
+</Callout>
+
+## 3. Notes that last
+
+The agent can keep notes across sessions with the memory tools. They form a small knowledge graph of named entities and observations:
+
+| Tool | Use |
+|---|---|
+| `memory_create_entities` | Create entities (a person, a project, a decision) |
+| `memory_add_observations` | Add facts to an entity |
+| `memory_search_nodes` | Search what is stored |
+| `memory_open_nodes` | Read specific entities |
+
+You can also read and edit memory yourself from the command line:
+
+```bash
+seshat memory                                          # show user memory
+seshat memory --scope project                          # this project's memory
+seshat memory --action set --key style --value "short answers, no preamble"
+seshat memory --action clear --scope user
+seshat memory --action context                         # what would be given to the agent
+```
+
+`--scope` is `user`, `project` or `cross` (shared across sessions).
+
+## Documents and knowledge
+
+Memory is about the conversation and what the agent learns. For large bodies of documents, Seshat has a retrieval layer (chunking, embeddings, hybrid search) in the SDK. It is covered in its own page.
