@@ -43,6 +43,7 @@ out/
 
 # Data
 data/
+!website/src/data/
 *.db
 *.db-shm
 *.db-wal
