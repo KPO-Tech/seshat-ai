@@ -1,0 +1,67 @@
+---
+title: Tools and providers
+description: "How a tool call is checked and executed, and how Seshat talks to many model providers through one interface."
+section: concepts
+order: 7
+updated: "2026-10-07"
+---
+import Callout from '@/components/docs/Callout.astro';
+import Flow from '@/components/docs/Flow.astro';
+
+Two things sit on each side of the loop: **tools** are what the agent can do, **providers** are the models that decide.
+
+## Tools
+
+Tools cover the work an agent needs to do on a machine and on the web: files (read, edit, write, glob, grep), shell, web fetch and search, tasks, worktrees, language servers, notebooks, memory, knowledge search, sub-agents, and everything an MCP server adds. Their exact list depends on your configuration, so ask the runtime rather than a document: `client.ToolNames()` in the SDK.
+
+### The pipeline of one call
+
+<Flow items={[
+  { icon: 'magnifying-glass', label: 'Find the tool' },
+  { icon: 'check-circle', label: 'Validate input' },
+  { icon: 'plug', label: 'Pre hooks' },
+  { icon: 'shield-check', label: 'Permissions' },
+  { icon: 'play', label: 'Run' },
+  { icon: 'plug', label: 'Post hooks' },
+]} />
+
+1. The tool is looked up in the registry and must be enabled.
+2. Its input is validated and completed.
+3. Pre-tool hooks run and can change the call or block it.
+4. The permission pipeline decides: allow, deny or ask.
+5. The tool runs.
+6. Post-tool hooks run, the result is formatted for the model and cut to its size limit.
+
+Calls that declare themselves concurrency-safe run together; the others run one after another, in order.
+
+### The permission pipeline
+
+| Step | What it checks |
+|---|---|
+| 1. Deny rules | Path patterns for file tools, command patterns for the shell, explicit denials |
+| 2. The tool's own check | For example the safety scanner of the shell tool |
+| 3. Always-allow rules | Read-only tools and patterns known to be safe |
+| 4. The permission mode | `bypass` allows, `never` refuses, `auto` asks a classifier, `onRequest` asks the user |
+
+If a classifier refuses too often in `auto` mode, Seshat steps back to asking you, and in a headless run it refuses instead of waiting for someone who is not there. The modes are listed in [Using the CLI](/en/docs/guides/cli#permission-modes).
+
+### Add your own
+
+Implement the `Tool` interface and register it. See [Tools](/en/docs/sdk/tools). To add tools without writing Go, connect an MCP server: [Skills and MCP](/en/docs/concepts/skills-and-mcp).
+
+## Providers
+
+A provider runs a model. Seshat hides their differences behind one interface, so the loop never cares which one it is talking to. Each provider has an adapter for its wire format, and most OpenAI-compatible gateways reuse an existing adapter. The supported providers are listed in [Configuration](/en/docs/getting-started/configuration#supported-providers).
+
+### When a call fails
+
+| Layer | Behaviour |
+|---|---|
+| Retry | Within one provider, rate limits, network errors and overloads are retried with exponential backoff and jitter. Authentication and client errors are not |
+| Circuit breaker | Optional. After repeated failures a provider is skipped for a while, then probed again |
+| Fallback models | Configured. Cheaper or alternative models of the same provider are tried first |
+| Fallback providers | Configured. Then other providers, before giving up |
+
+<Callout type="note" title="Fallbacks need configuration">
+Retries are always on. The circuit breaker and the fallback lists belong to the provider's routing configuration, which today comes with the Anthropic defaults. You change them through the provider configuration. See [Providers and authentication](/en/docs/sdk/providers-and-auth).
+</Callout>

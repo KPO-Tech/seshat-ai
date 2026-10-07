@@ -1,0 +1,125 @@
+---
+import { runtimeSourceNode } from '../lib/seo';
+import Base from '../layouts/Base.astro';
+import Arrow from '../components/Arrow.astro';
+import Icon from '../components/Icon.astro';
+import { dict, rich, url } from '../i18n';
+import type { Lang } from '../i18n';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const t = dict(lang).openSource;
+
+const rows = [
+  { name: 'Seshat', logo: '/brand/seshat.svg', info: t.matrix.seshat, can: [true, true, true, true] },
+  { name: 'SeshatOS', logo: '/brand/seshatos.svg', info: t.matrix.os, can: [true, true, true, false] },
+];
+const repoMeta = [
+  { logo: '/brand/seshat.svg', tone: 'ok', href: 'https://github.com/KPO-Tech/seshat', slug: 'KPO-Tech/seshat', dark: true },
+  { logo: '/brand/seshatos.svg', tone: 'wip', href: 'https://github.com/KPO-Tech/SeshatOS', slug: 'KPO-Tech/SeshatOS', dark: false },
+  { logo: '', tone: 'ok', href: 'https://github.com/KPO-Tech/seshat-skills', slug: 'KPO-Tech/seshat-skills', dark: false },
+];
+---
+<Base title={t.meta.title} description={t.meta.description} lang={lang} page="openSource" schema={[runtimeSourceNode()]}>
+  <header class="page-head contact-head">
+    <div class="wrap">
+      <h1>{t.head.title}</h1>
+      <p class="lead">{t.head.lead}</p>
+    </div>
+  </header>
+
+  <section class="block" style="padding-top:32px">
+    <div class="wrap">
+      <div class="terms">
+        <article class="term reveal">
+          <h2><Icon name="git-branch" /> {t.terms.openTitle}</h2>
+          <p set:html={rich(t.terms.open)} />
+          <p class="term-note">{t.terms.openNote}</p>
+        </article>
+        <article class="term alt reveal" style="--d:100ms">
+          <h2><Icon name="book-open-text" /> {t.terms.srcTitle}</h2>
+          <p set:html={rich(t.terms.src)} />
+        </article>
+      </div>
+      <p class="intro reveal" style="margin-top:20px">{t.terms.honest}</p>
+    </div>
+  </section>
+
+  <section class="block band">
+    <div class="wrap">
+      <h2 class="reveal">{t.matrix.title}</h2>
+      <div class="matrix-wrap reveal">
+        <table class="matrix">
+          <thead>
+            <tr>
+              <th scope="col">{t.matrix.colBrick}</th>
+              {t.matrix.cols.map((c) => <th scope="col">{c}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr>
+                <th scope="row">
+                  <span class="mrow"><img src={r.logo} alt="" width="36" height="36" /><span><strong>{r.name}</strong><small>{r.info.kind}, {r.info.lic}</small></span></span>
+                </th>
+                {r.can.map((ok) => (
+                  <td>
+                    {ok
+                      ? <span class="yes"><Icon name="check" /><span class="sr">{t.matrix.yes}</span></span>
+                      : <span class="no"><Icon name="x" /><span class="sr">{t.matrix.no}</span></span>}
+                  </td>
+                ))}
+              </tr>
+            ))}
+            <tr>
+              <th scope="row">
+                <span class="mrow"><img src="/brand/seshatcloud.svg" alt="" width="36" height="36" /><span><strong>SeshatCloud</strong><small>{t.matrix.cloud.kind}</small></span></span>
+              </th>
+              <td colspan="4" class="draft">{t.matrix.cloud.draft}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="fine reveal">{t.matrix.fine}</p>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap">
+      <h2 class="reveal">{t.where.title}</h2>
+      <div class="repos">
+        {t.where.repos.map((r, i) => (
+          <a class={`repo ${repoMeta[i].dark ? 'dark' : ''} reveal`} href={repoMeta[i].href} rel="noopener" style={i ? `--d:${i * 90}ms` : undefined}>
+            <span class="repo-top">
+              {repoMeta[i].logo ? <img src={repoMeta[i].logo} alt="" width="48" height="48" /> : <span class="repo-icon"><Icon name="git-branch" /></span>}
+              <span class={`badge ${repoMeta[i].tone}`}>{r.badge}</span>
+            </span>
+            <h3>{r.name}</h3>
+            <p>{r.text}</p>
+            <span class="link"><Icon name="github-logo" /> {repoMeta[i].slug} <Arrow /></span>
+          </a>
+        ))}
+      </div>
+      <div class="repo-notes">
+        <p class="reveal"><Icon name="lock-key" /> <span set:html={rich(t.where.noteCloud)} /></p>
+        <p class="reveal"><Icon name="github-logo" /> {t.where.noteAllA}<a class="link" href="https://github.com/KPO-Tech" rel="noopener">{t.where.noteAllLink}</a>.</p>
+      </div>
+      <article class="inspect-card reveal" style="margin-top:20px">
+        <h3>{t.where.thirdTitle}</h3>
+        <p>{t.where.thirdText}</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="cta">
+    <div class="wrap">
+      <div class="cta-box">
+        <h2 class="reveal">{t.cta.title}</h2>
+        <div class="reveal" style="--d:100ms">
+          <p>{t.cta.text}</p>
+          <a class="btn btn-primary" href={url(lang, 'contact')}>{t.cta.button} <Arrow /></a>
+        </div>
+      </div>
+    </div>
+  </section>
+</Base>

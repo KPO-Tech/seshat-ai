@@ -1,0 +1,115 @@
+---
+import Base from '../layouts/Base.astro';
+import Arrow from '../components/Arrow.astro';
+import { dict } from '../i18n';
+import type { Lang } from '../i18n';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const t = dict(lang).contact;
+const endpoint = import.meta.env.PUBLIC_FORM_ENDPOINT ?? '';
+---
+<Base title={t.meta.title} description={t.meta.description} lang={lang} page="contact">
+  <header class="page-head contact-head">
+    <div class="wrap">
+      <h1>{t.head.title}</h1>
+      <p class="lead">{t.head.lead}</p>
+    </div>
+  </header>
+
+  <section class="block contact-block">
+    <div class="wrap contact-grid">
+      <form
+        class="form reveal"
+        method="post"
+        action={endpoint}
+        data-endpoint={endpoint}
+        data-sending={t.status.sending}
+        data-ok={t.status.ok}
+        data-error={t.status.error}
+        data-unavailable={t.status.unavailable}
+        novalidate
+      >
+        <div class="field half">
+          <label for="nom">{t.labels.name}</label>
+          <input id="nom" name="nom" type="text" autocomplete="name" required />
+        </div>
+        <div class="field half">
+          <label for="email">{t.labels.email}</label>
+          <input id="email" name="email" type="email" autocomplete="email" required />
+        </div>
+        <div class="field half">
+          <label for="entreprise">{t.labels.company}</label>
+          <input id="entreprise" name="entreprise" type="text" autocomplete="organization" />
+        </div>
+        <div class="field half">
+          <label for="taille">{t.labels.size}</label>
+          <select id="taille" name="taille">
+            <option value="">{t.labels.sizeNone}</option>
+            {t.labels.sizes.map((s) => <option>{s}</option>)}
+          </select>
+        </div>
+        <div class="field">
+          <label for="message">{t.labels.message}</label>
+          <textarea id="message" name="message" rows="4" required></textarea>
+          <p class="help">{t.labels.help}</p>
+        </div>
+        <div class="field check">
+          <input id="consent" name="consent" type="checkbox" required />
+          <label for="consent">{t.labels.consentA}<a href="/confidentialite" hreflang="fr">{t.labels.consentLink}</a></label>
+        </div>
+        <div class="field hp" aria-hidden="true">
+          <label for="site">{t.labels.honeypot}</label>
+          <input id="site" name="site" type="text" tabindex="-1" autocomplete="off" />
+        </div>
+        <button class="btn btn-primary" type="submit">{t.labels.submit} <Arrow /></button>
+        <p class="status" role="status" aria-live="polite"></p>
+      </form>
+
+      <aside class="next reveal" style="--d:100ms">
+        <h2>{t.next.title}</h2>
+        <ol>
+          {t.next.steps.map((s, i) => (
+            <li><span class="hexnum" aria-hidden="true"><span>{i + 1}</span></span><p><strong>{s.b}</strong>{s.r}</p></li>
+          ))}
+        </ol>
+        <p class="aside-note">{t.next.note}</p>
+      </aside>
+    </div>
+  </section>
+
+  <script is:inline>
+    (function () {
+      var form = document.querySelector('.form');
+      if (!form) return;
+      var status = form.querySelector('.status');
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        status.className = 'status';
+        if (!form.checkValidity()) {
+          form.reportValidity();
+          return;
+        }
+        if (form.site.value) return;
+        var endpoint = form.dataset.endpoint;
+        if (!endpoint) {
+          status.classList.add('err');
+          status.textContent = form.dataset.unavailable;
+          return;
+        }
+        status.textContent = form.dataset.sending;
+        fetch(endpoint, { method: 'POST', body: new FormData(form), headers: { Accept: 'application/json' } })
+          .then(function (r) {
+            if (!r.ok) throw new Error('http ' + r.status);
+            form.reset();
+            status.classList.add('ok');
+            status.textContent = form.dataset.ok;
+          })
+          .catch(function () {
+            status.classList.add('err');
+            status.textContent = form.dataset.error;
+          });
+      });
+    })();
+  </script>
+</Base>

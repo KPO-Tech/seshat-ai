@@ -1,0 +1,20 @@
+---
+// Route unique de toutes les pages traduites : une entrée par page et par langue (voir src/i18n/index.ts).
+import { allRoutes } from '../i18n';
+import Home from '../views/Home.astro';
+import Services from '../views/Services.astro';
+import Products from '../views/Products.astro';
+import OpenSource from '../views/OpenSource.astro';
+import About from '../views/About.astro';
+import Contact from '../views/Contact.astro';
+
+const views = { home: Home, services: Services, products: Products, openSource: OpenSource, about: About, contact: Contact } as const;
+
+export function getStaticPaths() {
+  return allRoutes().filter((r) => ['home', 'services', 'products', 'openSource', 'about', 'contact'].includes(r.page)).map((r) => ({ params: { slug: r.slug }, props: { lang: r.lang, page: r.page } }));
+}
+
+const { lang, page } = Astro.props;
+const View = views[page as keyof typeof views];
+---
+<View lang={lang} />

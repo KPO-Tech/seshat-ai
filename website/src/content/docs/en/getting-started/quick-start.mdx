@@ -1,0 +1,78 @@
+---
+title: Quick start
+description: "From a fresh install to your first agent session, in five minutes."
+section: start
+order: 2
+updated: "2026-10-07"
+---
+import Callout from '@/components/docs/Callout.astro';
+import Steps from '@/components/docs/Steps.astro';
+import Flow from '@/components/docs/Flow.astro';
+
+<Flow items={[
+  { icon: 'download-simple', label: 'Install' },
+  { icon: 'key', label: 'Configure a provider' },
+  { icon: 'chat-circle-text', label: 'Chat' },
+]} />
+
+You need Seshat installed first: see [Installation](/en/docs/getting-started/installation).
+
+<Steps>
+
+1. **Configure your provider.** Give Seshat an API key and pick a model.
+
+   ```bash
+   seshat config --provider anthropic --api-key sk-ant-...
+   seshat config --model anthropic:claude-sonnet-4-20250514
+   seshat config --print
+   ```
+
+   The last command prints the current configuration so you can check it.
+
+2. **Start a chat.** This opens the terminal interface.
+
+   ```bash
+   seshat chat
+   ```
+
+3. **Or run a one-shot task** without opening the interface. Seshat does the work and prints the result.
+
+   ```bash
+   seshat run "list all TODO comments in this codebase"
+   ```
+
+</Steps>
+
+<Callout type="tip" title="No API key?">
+Use [Ollama](https://ollama.com) for free local inference. With Ollama running on your machine:
+
+```bash
+seshat config --provider ollama --model ollama:llama3.2
+```
+</Callout>
+
+## Pick up where you left off
+
+Sessions are saved locally. You can come back to them at any time:
+
+```bash
+seshat chat --continue              # resume the most recent session
+seshat chat --resume <session-id>   # resume a specific session
+seshat sessions list                # browse past sessions
+```
+
+## Useful shortcuts in the terminal interface
+
+| Shortcut | Action |
+|---|---|
+| `ctrl+p` | Settings and every shortcut |
+| `ctrl+m` | Choose a model |
+| `ctrl+s` | Sessions |
+| `ctrl+n` | New session |
+| `ctrl+t` | Tasks |
+| `ctrl+g` | Help |
+| `ctrl+c` | Quit |
+
+## Next step
+
+Learn how [providers and API keys](/en/docs/getting-started/configuration) are configured, or run [your first agent](/en/docs/getting-started/first-agent) on a real task.

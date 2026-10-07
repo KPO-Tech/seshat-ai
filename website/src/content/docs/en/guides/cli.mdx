@@ -1,0 +1,115 @@
+---
+title: Using the CLI
+description: "Every `seshat` command, the options you will use most, background runs, sessions and the terminal shortcuts."
+section: guides
+order: 1
+updated: "2026-10-07"
+---
+import Callout from '@/components/docs/Callout.astro';
+
+`seshat` with no arguments opens the interactive terminal interface, the same as `seshat chat`. Everything else is a subcommand.
+
+## Commands at a glance
+
+| Command | What it does |
+|---|---|
+| `seshat chat` | Interactive session in the terminal interface |
+| `seshat run "prompt"` | One task, then exit. Add `--bg` to run it in the background |
+| `seshat config` | Set the provider, model and keys, or show them with `--print` |
+| `seshat sessions` | List, inspect, delete and prune saved sessions |
+| `seshat memory` | Read and write the notes the agent keeps |
+| `seshat trust` | Trust the configuration files of a project |
+| `seshat login` | Sign in with a ChatGPT subscription (no API key) |
+| `seshat doctor` | Check configuration, storage, credentials and helper tools |
+| `seshat repomap` | Print a compact structural map of the repository |
+| `seshat workflow run <file>` | Run a workflow described in YAML or JSON |
+| `seshat companion` | Configure the companion profile added to sessions |
+| `seshat ps`, `logs`, `attach`, `kill` | Manage background runs |
+| `seshat version` | Print the version |
+
+## Chat
+
+```bash
+seshat chat                                   # new session
+seshat chat --continue                        # resume the most recent session
+seshat chat --resume <session-id>             # resume a specific one
+seshat chat --model anthropic:claude-sonnet-4-20250514
+seshat chat --permission-mode onRequest
+seshat chat --no-tui                          # plain text mode, no full-screen interface
+```
+
+Useful options: `--cwd DIR` to work in another folder, `--db PATH` to use another session database, `--show-thinking` to display the model's reasoning.
+
+## One-shot and background runs
+
+```bash
+seshat run "summarise the open TODOs in this repository"
+seshat run --bg --name nightly-audit "review the last 20 commits for risky changes"
+```
+
+A background run is a local child process. Follow it with the other commands:
+
+```bash
+seshat ps                          # list background sessions
+seshat logs nightly-audit -f       # follow the output (--stream stdout|stderr)
+seshat kill nightly-audit          # stop it
+```
+
+<Callout type="note" title="attach">
+`seshat attach <id-or-name>` currently prints the command that follows the log. It does not open an interactive view yet.
+</Callout>
+
+## Sessions
+
+Sessions are stored in a local SQLite database.
+
+```bash
+seshat sessions list --status active --n 20
+seshat sessions info <id>
+seshat sessions delete <id...>        # or --all
+seshat sessions prune --older-than 30 --closed
+```
+
+## Permission modes
+
+`--permission-mode` decides who approves the actions of the agent:
+
+| Mode | Behaviour |
+|---|---|
+| `onRequest` | The default. Seshat asks before actions that need approval |
+| `acceptEdits` | Safe file operations in the working directory are allowed without asking |
+| `auto` | A classifier approves the actions |
+| `never` | Nothing is ever asked: a refused action goes back to the model as a failure. For headless and background runs |
+| `granular` | Fine-grained control of each approval flow |
+| `bypass` | No permission check at all |
+
+<Callout type="warning" title="bypass and yolo">
+`bypass` and the yolo toggle (`ctrl+y`) remove the questions. Use them only in a project you trust and, if possible, in a disposable environment.
+</Callout>
+
+## Shortcuts in the terminal interface
+
+| Shortcut | Action |
+|---|---|
+| `ctrl+p` | Settings and the list of shortcuts |
+| `ctrl+m` or `ctrl+l` | Models (on terminals that cannot tell `ctrl+m` from Enter, use `ctrl+l`) |
+| `ctrl+,` | Providers |
+| `ctrl+s` | Sessions |
+| `ctrl+n` | New session |
+| `ctrl+t` | Show or hide tasks |
+| `ctrl+d` | Show or hide details |
+| `ctrl+y` | Toggle yolo mode |
+| `ctrl+j` | New line in the prompt |
+| `ctrl+o` | Open your editor |
+| `ctrl+f`, `ctrl+v` | Attach a file, paste an image |
+| `ctrl+u` | Copy the last message |
+| `ctrl+g` | More help |
+| `ctrl+c` | Quit |
+
+## Check your setup
+
+```bash
+seshat doctor          # add --json for machine-readable output
+```
+
+It checks the local configuration, the storage, provider credentials and the helper tools, so it is the first thing to run when something does not work.

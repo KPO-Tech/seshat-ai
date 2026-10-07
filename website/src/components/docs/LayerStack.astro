@@ -1,0 +1,47 @@
+---
+// Illustration « Architecture » : les couches du runtime en plaques 3D empilées. Survoler une ligne de la légende
+// éclaire la plaque correspondante. Les textes viennent de la page MDX. Premier élément = couche du haut.
+import Icon from '../Icon.astro';
+interface Layer { name: string; text: string; icon: string }
+interface Props { layers: Layer[] }
+const { layers } = Astro.props;
+const n = layers.length;
+---
+<figure class="lstack" data-lstack>
+  <div class="lstack-scene" aria-hidden="true">
+    <div class="lstack-plane">
+      {layers.map((l, i) => (
+        <div class="plate" data-i={i} style={`--z:${(n - 1 - i) * 62}px`}>
+          <span class="plate-ic"><Icon name={l.icon} /></span>
+        </div>
+      ))}
+    </div>
+  </div>
+  <ol class="lstack-list">
+    {layers.map((l, i) => (
+      <li data-i={i} tabindex="0">
+        <span class="lstack-ic"><Icon name={l.icon} /></span>
+        <span><strong>{l.name}</strong><small>{l.text}</small></span>
+      </li>
+    ))}
+  </ol>
+</figure>
+<script is:inline>
+  (function () {
+    document.querySelectorAll('[data-lstack]').forEach(function (root) {
+      var plates = [].slice.call(root.querySelectorAll('.plate'));
+      var items = [].slice.call(root.querySelectorAll('.lstack-list li'));
+      function pick(i) {
+        root.setAttribute('data-active', String(i));
+        plates.forEach(function (p, k) { p.classList.toggle('on', k === i); });
+        items.forEach(function (it, k) { it.classList.toggle('on', k === i); });
+      }
+      items.forEach(function (it, i) {
+        it.addEventListener('mouseenter', function () { pick(i); });
+        it.addEventListener('focus', function () { pick(i); });
+        it.addEventListener('click', function () { pick(i); });
+      });
+      pick(0);
+    });
+  })();
+</script>

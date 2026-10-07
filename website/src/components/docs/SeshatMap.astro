@@ -1,0 +1,31 @@
+---
+// Illustration « Qu'est-ce que Seshat ? » : le runtime au centre, ses surfaces d'entrée, et les produits construits dessus.
+// Les textes sont passés par la page MDX pour rester dans la langue de la page.
+import Icon from '../Icon.astro';
+interface Item { name: string; note?: string; icon?: string }
+interface Props { productsLabel: string; products: Item[]; surfacesLabel: string; surfaces: Item[]; coreLabel: string; core: string[] }
+const { productsLabel, products, surfacesLabel, surfaces, coreLabel, core } = Astro.props;
+---
+<figure class="smap" aria-label={coreLabel}>
+  <div class="smap-row">
+    <p class="smap-label">{productsLabel}</p>
+    <div class="smap-items">
+      {products.map((p) => <div class="smap-chip smap-prod"><img src={p.icon} alt="" width="40" height="40" /><span><strong>{p.name}</strong>{p.note && <small>{p.note}</small>}</span></div>)}
+    </div>
+  </div>
+  <div class="smap-link" aria-hidden="true"></div>
+  <div class="smap-row">
+    <p class="smap-label">{surfacesLabel}</p>
+    <div class="smap-items">
+      {surfaces.map((s) => <div class="smap-chip"><span class="smap-ic"><Icon name={s.icon ?? 'code'} /></span><span><strong>{s.name}</strong>{s.note && <small>{s.note}</small>}</span></div>)}
+    </div>
+  </div>
+  <div class="smap-link" aria-hidden="true"></div>
+  <div class="smap-core">
+    <span class="smap-hex"><img src="/brand/seshat.svg" alt="" width="64" height="64" /></span>
+    <div>
+      <strong>{coreLabel}</strong>
+      <ul>{core.map((c) => <li>{c}</li>)}</ul>
+    </div>
+  </div>
+</figure>

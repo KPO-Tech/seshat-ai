@@ -43,11 +43,13 @@ out/
 
 # Data
 data/
+!website/src/data/
 *.db
 *.db-shm
 *.db-wal
 
 website/dist/
 website/node_modules/
-
-website/dist-server/
+website-old/dist/
+website-old/node_modules/
+website-old/dist-server/

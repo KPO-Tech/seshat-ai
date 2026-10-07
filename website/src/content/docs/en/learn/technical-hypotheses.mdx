@@ -1,0 +1,82 @@
+---
+title: Technical hypotheses
+description: "The bets behind Seshat, written down with how we would know each one is right, and what would show it is wrong."
+section: learn
+order: 4
+updated: "2026-10-07"
+---
+import Callout from '@/components/docs/Callout.astro';
+
+Seshat is built on assumptions about what agent systems need. Hiding them behind product language would make them impossible to test, so here they are, each with a way to be proven wrong. Where the evidence is not in yet, this page says so.
+
+<Callout type="note" title="Bets, not facts">
+These are hypotheses. The project is early, and several of them have little real-world evidence yet.
+</Callout>
+
+## 1. Chat is not enough: AI needs an execution layer
+
+**If it is right,** the core must own sessions, tools, persistence, permissions and recovery, and not stop at a prompt and a reply.
+
+**We will know when** people choose the runtime for work that continues over time, not as a chat window.
+
+**It is wrong if** most of the value turns out to come from simple chat, and governed execution is a minor extra.
+
+## 2. The complete agent is the basic unit
+
+**If it is right,** identity, history, permissions and memory belong to full sessions first, and a sub-agent is an internal tool, not the main idea.
+
+**We will know when** persistent agents with roles and histories prove more useful for serious work than disposable workers.
+
+**It is wrong if** teams mostly prefer stateless specialists and durable identity adds little.
+
+*Where it stands:* sub-agents work today. Persistent named agents exist only as internal building blocks.
+
+## 3. The next jump is organised work, not only stronger solo agents
+
+**If it is right,** the architecture must leave room for roles, explicit coordination and collaboration that lasts.
+
+**We will know when** sub-agent flows and team missions give better results than isolated sessions.
+
+**It is wrong if** people mostly want one excellent agent and coordination stays marginal.
+
+*Where it stands:* untested at scale. Delegation exists; teams do not yet.
+
+## 4. Explicit coordination beats hidden orchestration
+
+**If it is right,** mailboxes, task boards, reports and roles matter more than opaque graph logic or hidden global state.
+
+**We will know when** visible coordination makes agents easier to govern, inspect and trust in real organisations.
+
+**It is wrong if** invisible orchestration keeps outperforming explicit coordination.
+
+## 5. Shared memory should be explicit, small and structured
+
+**If it is right,** decisions and mission notes should be visible artifacts, not one large hidden context.
+
+**We will know when** a team can tell why an agent acted, what it knew and what was shared.
+
+**It is wrong if** strict memory boundaries cost too much and hidden shared state is what really works.
+
+## 6. Work can be automated step by step, once it is observable and governed
+
+**If it is right,** the runtime and the platform should support scheduled runs, auditable actions and domain-specific surfaces.
+
+**We will know when** organisations automate real workflows with human supervision and measurable benefit.
+
+**It is wrong if** most target workflows stay too ambiguous or too heavy on governance to automate reliably. Then the claim has to narrow.
+
+*Where it stands:* automation exists in SeshatOS and SeshatCloud, not in the runtime itself.
+
+## 7. An open, self-hostable, multi-provider base beats a closed single-vendor stack
+
+**If it is right,** provider portability, MCP, skills and SDKs are architectural commitments, not marketing.
+
+**We will know when** developers and operators extend the system because it is open enough to be worth building on.
+
+**It is wrong if** the ecosystem never forms and users simply want one tightly coupled vendor stack.
+
+*Where it stands:* the runtime is open source and supports many providers today. The ecosystem is small.
+
+## Why publish this
+
+A project that states its bets can be corrected. If a hypothesis fails, the direction changes, and the documentation should say so rather than defend it. For the larger picture, see [Vision and direction](/en/docs/learn/vision).

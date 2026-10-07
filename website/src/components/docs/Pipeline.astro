@@ -1,0 +1,37 @@
+---
+// Schéma de pipeline à deux voies reliées par un élément central (ex. : ingestion et recherche autour de l'index).
+// Chaque étape a une icône, un titre et une courte explication.
+// Usage MDX : <Pipeline lanes={[{ label, steps: [{ icon, title, text }] }, ...]} middle={{ icon, name, note }} />
+// `middle` s'affiche entre la première et la deuxième voie.
+import Icon from '../Icon.astro';
+interface Step { icon: string; title: string; text: string }
+interface Lane { label: string; steps: Step[] }
+interface Props { lanes: Lane[]; middle?: { icon: string; name: string; note?: string } }
+const { lanes, middle } = Astro.props;
+---
+<figure class="pipe">
+  {lanes.map((lane, li) => (
+    <>
+      <section class="pipe-lane">
+        <h4 class="pipe-label">{lane.label}</h4>
+        <ol class="pipe-steps">
+          {lane.steps.map((s, i) => (
+            <li style={`--k:${i}`}>
+              <span class="pipe-num">{i + 1}</span>
+              <span class="pipe-ic"><Icon name={s.icon} /></span>
+              <strong>{s.title}</strong>
+              <small>{s.text}</small>
+            </li>
+          ))}
+        </ol>
+      </section>
+      {li === 0 && middle && (
+        <div class="pipe-mid" aria-hidden="false">
+          <span class="pipe-arrow" aria-hidden="true"></span>
+          <div class="pipe-store"><span class="pipe-ic"><Icon name={middle.icon} /></span><span><strong>{middle.name}</strong>{middle.note && <small>{middle.note}</small>}</span></div>
+          <span class="pipe-arrow up" aria-hidden="true"></span>
+        </div>
+      )}
+    </>
+  ))}
+</figure>

@@ -1,0 +1,26 @@
+# En-têtes HTTP (Cloudflare Pages).
+
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  Strict-Transport-Security: max-age=31536000
+
+# Fichiers à empreinte (nom change à chaque build) : cache d'un an.
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Médias qui changent rarement.
+/videos/*
+  Cache-Control: public, max-age=2592000
+/brand/*
+  Cache-Control: public, max-age=604800
+/captures/*
+  Cache-Control: public, max-age=604800
+/og/*
+  Cache-Control: public, max-age=604800
+
+# Index de recherche : régénéré à chaque build, toujours revalidé.
+/pagefind/*
+  Cache-Control: public, max-age=0, must-revalidate

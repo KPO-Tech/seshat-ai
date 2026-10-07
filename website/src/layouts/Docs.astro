@@ -1,0 +1,141 @@
+---
+// Mise en page des pages de documentation : menu à gauche, contenu au centre, sommaire à droite.
+import Base from './Base.astro';
+import githubRaw from '@phosphor-icons/core/assets/bold/github-logo-bold.svg?raw';
+import listRaw from '@phosphor-icons/core/assets/bold/list-bold.svg?raw';
+import sunRaw from '@phosphor-icons/core/assets/bold/sun-bold.svg?raw';
+import moonRaw from '@phosphor-icons/core/assets/bold/moon-bold.svg?raw';
+import Search from 'astro-pagefind/components/Search.astro';
+import { dict, docUrl, url } from '../i18n';
+import { techArticleNode } from '../lib/seo';
+import type { DocGroup, DocItem } from '../lib/docs';
+
+interface Heading { depth: number; slug: string; text: string }
+interface Props {
+  title: string;
+  description: string;
+  slug: string;
+  groups: DocGroup[];
+  headings: Heading[];
+  prev?: DocItem;
+  next?: DocItem;
+  updated?: string;
+  sectionTitle: string;
+}
+const { title, description, slug, groups, headings, prev, next, updated, sectionTitle } = Astro.props;
+const lang = 'en';
+const d = dict(lang).docs;
+const c = dict(lang).common;
+const ic = (raw: string, cls = 'ico') => raw.replace('<svg ', `<svg class="${cls}" aria-hidden="true" focusable="false" `);
+const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
+---
+<Base
+  title={`${title} | Seshat AI`}
+  description={description}
+  lang="en"
+  monolingual
+  shell
+  ogImage="/og/og-docs.png"
+  ogType="article"
+  crumbs={[{ name: 'Seshat AI', path: '/en' }, { name: d.ui.docsHome, path: docUrl() }, { name: title, path: docUrl(slug) }]}
+  schema={[techArticleNode({ url: new URL(docUrl(slug), 'https://seshat-ai.com').href, headline: title, description, dateModified: updated, section: sectionTitle })]}
+>
+  <header class="dtop" data-pagefind-ignore>
+    <button class="dtop-burger" type="button" aria-label={d.ui.menu} aria-controls="docs-side"><Fragment set:html={ic(listRaw)} /></button>
+    <a class="dtop-brand" href={url(lang, 'home')} aria-label={c.brandAria}>
+      <img class="logo-light" src="/brand/mark-on-light.svg" alt="" width="30" height="30" />
+      <img class="logo-dark" src="/brand/mark-on-dark.svg" alt="" width="30" height="30" />
+      <span>Seshat AI</span>
+    </a>
+    <a class="dtop-section" href={docUrl()}>{d.ui.docsHome}</a>
+    <div class="dtop-search"><Search id="docs-search" className="pagefind-ui" uiOptions={{ showImages: false, translations: { placeholder: d.ui.search } }} /></div>
+    <div class="dtop-actions">
+      <a class="dtop-btn" href="https://github.com/KPO-Tech/seshat" rel="noopener" aria-label="GitHub"><Fragment set:html={ic(githubRaw)} /><span>GitHub</span></a>
+      <button class="theme-toggle" type="button" aria-label={c.themeToggle}><Fragment set:html={ic(sunRaw, 'ico i-sun')} /><Fragment set:html={ic(moonRaw, 'ico i-moon')} /></button>
+    </div>
+  </header>
+  <div class="docs">
+    <aside class="docs-side" id="docs-side" data-pagefind-ignore>
+      <div class="docs-menu">
+        <nav aria-label={d.ui.menu}>
+          <a class="docs-home-link" href={docUrl()}>{d.ui.docsHome}</a>
+          {groups.map((g) => (
+            <div class="docs-group">
+              <h4>{d.sections[g.section].title}</h4>
+              <ul>
+                {g.items.map((it) => (
+                  <li><a href={docUrl(it.slug)} aria-current={it.slug === slug ? 'page' : undefined}>{it.entry.data.title}</a></li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </nav>
+      </div>
+    </aside>
+
+    <article class="docs-main" data-pagefind-body>
+      <p class="docs-crumb" data-pagefind-ignore><a href={docUrl()}>{d.ui.docsHome}</a> / {sectionTitle}</p>
+      <h1>{title}</h1>
+      <p class="docs-lead">{description}</p>
+      <div class="prose"><slot /></div>
+      {updated && <p class="docs-updated" data-pagefind-ignore>{d.ui.updated} {updated}</p>}
+      {(prev || next) && (
+        <nav class="docs-pager" data-pagefind-ignore aria-label="Navigation">
+          {prev ? <a class="prev" href={docUrl(prev.slug)}><small>{d.ui.previous}</small><span>{prev.entry.data.title}</span></a> : <span></span>}
+          {next ? <a class="next" href={docUrl(next.slug)}><small>{d.ui.next}</small><span>{next.entry.data.title}</span></a> : <span></span>}
+        </nav>
+      )}
+    </article>
+
+    {toc.length > 0 && (
+      <aside class="docs-toc" data-pagefind-ignore>
+        <p>{d.ui.onThisPage}</p>
+        <ul>
+          {toc.map((h) => <li class={h.depth === 3 ? 'sub' : ''}><a href={`#${h.slug}`}>{h.text}</a></li>)}
+        </ul>
+      </aside>
+    )}
+  </div>
+
+  <script is:inline define:vars={{ copy: d.ui.copy, copied: d.ui.copied }}>
+    (function () {
+      // Bouton « Copier » sur chaque bloc de code
+      document.querySelectorAll('.prose pre').forEach(function (pre) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'copy-code';
+        btn.textContent = copy;
+        btn.addEventListener('click', function () {
+          var text = pre.innerText;
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(function () {
+              btn.textContent = copied;
+              setTimeout(function () { btn.textContent = copy; }, 1600);
+            }, function () {});
+          }
+        });
+        pre.appendChild(btn);
+      });
+      // Menu latéral ouvert/fermé sur les petits écrans
+      var burger = document.querySelector('.dtop-burger');
+      if (burger) burger.addEventListener('click', function () { document.body.classList.toggle('docs-nav-open'); });
+      document.querySelectorAll('.docs-side a').forEach(function (a) { a.addEventListener('click', function () { document.body.classList.remove('docs-nav-open'); }); });
+      // Lien actif du sommaire pendant la lecture
+      var links = [].slice.call(document.querySelectorAll('.docs-toc a'));
+      if (links.length && 'IntersectionObserver' in window) {
+        var map = {};
+        links.forEach(function (a) { map[a.getAttribute('href').slice(1)] = a; });
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (en) {
+            if (en.isIntersecting) {
+              links.forEach(function (a) { a.removeAttribute('aria-current'); });
+              var a = map[en.target.id];
+              if (a) a.setAttribute('aria-current', 'true');
+            }
+          });
+        }, { rootMargin: '-80px 0px -70% 0px' });
+        Object.keys(map).forEach(function (id) { var el = document.getElementById(id); if (el) io.observe(el); });
+      }
+    })();
+  </script>
+</Base>

@@ -1,0 +1,100 @@
+---
+title: gRPC API
+description: "Run Seshat as a service and call it from any language: the methods, streaming, authentication and TLS."
+section: sdk
+order: 6
+updated: "2026-10-07"
+---
+import Callout from '@/components/docs/Callout.astro';
+
+The gRPC server lets programs written in any language use Seshat. It runs one service, `seshat.SeshatService`, defined in `pkg/grpc/proto/seshat.proto`.
+
+<Callout type="warning" title="Experimental and partial">
+The server exposes part of the SDK only: queries, skills, MCP and models. Permission requests, questions to the user, plans and sessions do not go through this contract. Authentication is one shared token, not per user: if callers must be told apart, put the server behind your own gateway.
+</Callout>
+
+## Start the server
+
+```bash
+make build-grpc && ./bin/seshat-grpc
+# or, from the source tree
+go run ./cmd/grpc
+```
+
+It listens on `127.0.0.1:50051` by default and is closed to the network until you configure it.
+
+## Settings
+
+| Variable | Default | Effect |
+|---|---|---|
+| `SESHAT_GRPC_HOST` | `127.0.0.1` | Address to listen on. Anything other than loopback needs a token, or the server refuses to start. In a container, use `0.0.0.0` and a token |
+| `SESHAT_GRPC_PORT` | `50051` | Port |
+| `SESHAT_GRPC_AUTH_TOKEN` | empty | When set, every call except `HealthCheck` needs `authorization: Bearer <token>` or fails with `Unauthenticated` |
+| `SESHAT_GRPC_TLS_CERT`, `SESHAT_GRPC_TLS_KEY` | empty | Turn TLS on (both or neither). Send the token over a network only with TLS |
+| `SESHAT_GRPC_ALLOW_INSECURE_REMOTE` | `false` | Accept a non-loopback address without a token, when the network in front of the server is your protection |
+| `SESHAT_GRPC_ALLOW_STDIO_MCP` | `false` | Let `ConnectMCP` start a stdio server, which is a command run on the host. Refused with `PermissionDenied` otherwise |
+| `SESHAT_GRPC_ENABLE_REFLECTION` | `false` | Server reflection |
+| `SESHAT_GRPC_MAX_CONCURRENT_RPCS` | `10` | Concurrent calls |
+| `SESHAT_GRPC_KEEPALIVE_TIME` | `30s` | Keepalive |
+
+More on the reasons in [Security and trust](/en/docs/concepts/security-and-trust).
+
+## Methods
+
+| Method | Type | Purpose |
+|---|---|---|
+| `Query` | unary | One request, returns when the agent is done |
+| `QueryStream` | server streaming | The answer as chunks, with runtime events, then a final message |
+| `ListSkills`, `GetSkillDetails` | unary | List skills, read one |
+| `ListMCP`, `ConnectMCP`, `DisconnectMCP` | unary | Manage MCP servers (`stdio`, `http`, `sse`, `ws`) |
+| `GetModels` | unary | Models known to the provider registry |
+| `HealthCheck` | unary | Status, version and uptime |
+
+### Query
+
+`QueryRequest` fields: `prompt`, `model` (`provider:model`), `tools`, `context_id` (to continue a conversation), `max_tokens` and `api_key` (a key or OAuth token for this request). The `stream` and `temperature` fields are deprecated and ignored: choose `Query` or `QueryStream` instead.
+
+```bash
+grpcurl -plaintext \
+  -import-path pkg/grpc/proto -proto seshat.proto \
+  -d '{"prompt":"hello","model":"anthropic:claude-sonnet-4-20250514"}' \
+  localhost:50051 seshat.SeshatService/Query
+```
+
+### QueryStream
+
+The stream sends `QueryResponse` messages. `item_type` tells you which kind:
+
+| `item_type` | Carries | Meaning |
+|---|---|---|
+| `chunk` | `content`, `chunk` | A piece of text |
+| `runtime_event` | `runtime_event` | A structured event: type, session, turn, tool name and stage, stop reason, error |
+| `final` | `conversation_id`, `content`, `token_usage`, `stopped` | The end result |
+
+## With a token
+
+```bash
+grpcurl -plaintext -H "authorization: Bearer $TOKEN" \
+  -import-path pkg/grpc/proto -proto seshat.proto \
+  -d '{}' localhost:50051 seshat.SeshatService/GetModels
+```
+
+In Go, add the metadata to the context:
+
+```go
+ctx = metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+token)
+```
+
+Reflection is off by default, so give `grpcurl` the `.proto` file as above.
+
+## Generate a client
+
+Use `pkg/grpc/proto/seshat.proto` with `protoc` for your language. After you change the file in the repository, regenerate the Go code and check it builds:
+
+```bash
+protoc --proto_path=pkg/grpc/proto \
+  --go_out=. --go_opt=module=github.com/KPO-Tech/seshat \
+  --go-grpc_out=. --go-grpc_opt=module=github.com/KPO-Tech/seshat \
+  pkg/grpc/proto/seshat.proto
+go build ./cmd/grpc
+```

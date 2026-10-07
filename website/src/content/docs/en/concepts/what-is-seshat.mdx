@@ -1,0 +1,58 @@
+---
+title: What is Seshat?
+description: "A runtime for AI agents, the three ways to use it, and how it fits with the rest of the Seshat family."
+section: concepts
+order: 1
+updated: "2026-10-07"
+---
+import Callout from '@/components/docs/Callout.astro';
+import SeshatMap from '@/components/docs/SeshatMap.astro';
+import LinkCards from '@/components/docs/LinkCards.astro';
+
+Seshat is an open source **runtime for AI agents**, written in Go. It runs the loop that turns a language model into something that can act: it sends your request to the model, executes the tools the model asks for, feeds the results back, and repeats until the task is done.
+
+<SeshatMap
+  productsLabel="Products built on Seshat"
+  products={[
+    { name: 'SeshatOS', note: 'Desktop app: chat and projects', icon: '/brand/seshatos.svg' },
+    { name: 'SeshatCloud', note: 'Hosted platform', icon: '/brand/seshatcloud.svg' },
+  ]}
+  surfacesLabel="Ways to use the runtime"
+  surfaces={[
+    { name: 'Terminal', note: 'seshat chat, seshat run', icon: 'terminal-window' },
+    { name: 'Go SDK', note: 'Embed it in your code', icon: 'code' },
+    { name: 'gRPC server', note: 'Plug it into a larger system', icon: 'plugs-connected' },
+  ]}
+  coreLabel="The runtime"
+  core={['Query loop', 'Tools', 'Providers', 'Sessions', 'Skills', 'MCP']}
+/>
+
+## Runtime and framework
+
+Seshat is both. As a **runtime** you install it and use it as is: the terminal agent is ready after one command. As a **framework** you import it, add your own tools and providers, and ship your own agent.
+
+## Three ways to use it
+
+| Surface | Use it when | Start here |
+|---|---|---|
+| **Terminal** | You want an agent for your own work | [Quick start](/en/docs/getting-started/quick-start) |
+| **Go SDK** | You are building an application with an agent inside | [Your first agent](/en/docs/getting-started/first-agent) |
+| **gRPC server** | The agent must run as a service for other programs | [Installation](/en/docs/getting-started/installation) |
+
+## What it gives you
+
+- **Model choice.** Many providers, from hosted APIs to local models with Ollama. Switch without changing your code.
+- **Tools.** Files, shell, search, web and more, each guarded by permissions.
+- **Memory of your work.** Sessions are saved locally and can be resumed.
+- **Your rules.** Skills are Markdown files that teach the agent your conventions. MCP servers add external tools.
+
+<Callout type="note" title="What it does not do">
+Seshat does not host a model and does not send your files anywhere by itself. Your code and sessions stay on your machine; only the requests to the provider you chose leave it.
+</Callout>
+
+## Next
+
+<LinkCards cards={[
+  { title: 'Architecture', text: 'The layers of the runtime and what happens in the loop.', href: '/en/docs/concepts/architecture', icon: 'stack' },
+  { title: 'Installation', text: 'Get the binary and run it.', href: '/en/docs/getting-started/installation', icon: 'download-simple' },
+]} />

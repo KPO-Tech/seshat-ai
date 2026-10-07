@@ -1,0 +1,161 @@
+---
+title: Providers and models
+description: "Every provider Seshat supports, with the models it knows, their context window and their capabilities."
+section: reference
+order: 1
+updated: "2026-10-07"
+---
+import Callout from '@/components/docs/Callout.astro';
+
+{/* Généré par scripts/sync-models.mjs : ne pas modifier à la main. */}
+
+This page is generated from the provider registry of the runtime. How to set keys and endpoints is in [Configuration](/en/docs/getting-started/configuration), and the code side in [Providers and authentication](/en/docs/sdk/providers-and-auth).
+
+<Callout type="note" title="Models change often">
+Providers retire and add models all the time. The list below is what the runtime ships with. You can use any model name your provider accepts, and `ollama` models are whatever you have pulled locally.
+</Callout>
+
+## Providers
+
+| Provider ID | Service | Authentication | Vision | Prompt cache |
+|---|---|---|:---:|:---:|
+| `anthropic` | Anthropic | api_key | Yes | Yes |
+| `openai` | OpenAI | api_key | Yes | Yes |
+| `mistral` | Mistral AI | api_key | Yes | No |
+| `gemini` | Google Gemini | api_key | Yes | No |
+| `deepseek` | DeepSeek | api_key | Yes | No |
+| `ollama` | Ollama | none | No | No |
+| `openrouter` | OpenRouter | api_key | Yes | No |
+| `codex` | Codex | oauth | No | No |
+| `z-ai` | Z.ai | api_key | Yes | Yes |
+| `minimax` | MiniMax | api_key | Yes | Yes |
+| `bedrock` | AWS Bedrock | aws | Yes | Yes |
+| `vertex` | Google Cloud Vertex AI | gcp | Yes | Yes |
+| `foundry` | Azure AI Foundry | api_key | Yes | Yes |
+| `workers-ai` | Cloudflare Workers AI | api_key | No | No |
+| `opencode` | OpenCode Zen | api_key | Yes | No |
+| `kimi` | Kimi (Moonshot AI) | api_key | Yes | Yes |
+
+## Models
+
+### Anthropic (`anthropic`)
+
+| Model ID | Context | Max output | Prompt cache |
+|---|---|:---:|:---:|
+| `claude-sonnet-4-20250514` | 200K | 64K | Yes |
+| `claude-3-5-sonnet-20241022` | 200K | 8K | Yes |
+| `claude-3-5-haiku-20241022` | 200K | 8K | Yes |
+
+### OpenAI (`openai`)
+
+| Model ID | Context | Max output | Prompt cache |
+|---|---|:---:|:---:|
+| `gpt-5.5` | 272K | 32K | Yes |
+| `gpt-5.4-mini` | 272K | 16K | Yes |
+| `gpt-4o` | 128K | 16K | Yes |
+
+### Mistral AI (`mistral`)
+
+| Model ID | Context | Max output | Prompt cache |
+|---|---|:---:|:---:|
+| `mistral-large-latest` | 131K | 16K | No |
+| `mistral-small-latest` | 131K | 8K | No |
+| `open-mistral-7b` | 32K | 4K | No |
+
+### Google Gemini (`gemini`)
+
+| Model ID | Context | Max output | Prompt cache |
+|---|---|:---:|:---:|
+| `gemini-2.0-pro` | 2M | 8K | No |
+| `gemini-2.0-flash` | 1M | 8K | No |
+| `gemini-1.5-flash` | 1M | 8K | No |
+
+### DeepSeek (`deepseek`)
+
+| Model ID | Context | Max output | Prompt cache |
+|---|---|:---:|:---:|
+| `deepseek-v4-flash` | 1M | 393K | No |
+| `deepseek-v4-pro` | 1M | 393K | No |
+| `deepseek-v4-flash-vision-exp` | 1M | 393K | No |
+
+### OpenRouter (`openrouter`)
+
+| Model ID | Context | Max output | Prompt cache |
+|---|---|:---:|:---:|
+| `anthropic/claude-3.5-sonnet` | 200K | 8K | No |
+| `openai/gpt-4o` | 128K | 16K | No |
+| `deepseek/deepseek-r1` | 64K | 32K | No |
+
+### Codex (`codex`)
+
+| Model ID | Context | Max output | Prompt cache |
+|---|---|:---:|:---:|
+| `gpt-5.6-sol` | 200K | 100K | No |
+| `gpt-5.5` | 200K | 100K | No |
+| `gpt-5.4-mini` | 272K | 16K | No |
+
+### Z.ai (`z-ai`)
+
+| Model ID | Context | Max output | Prompt cache |
+|---|---|:---:|:---:|
+| `glm-5.1` | 200K | 128K | Yes |
+| `glm-4.7` | 1M | 8K | No |
+| `glm-4.5` | 200K | 8K | No |
+
+### MiniMax (`minimax`)
+
+| Model ID | Context | Max output | Prompt cache |
+|---|---|:---:|:---:|
+| `MiniMax-M2.7` | 204K | 128K | Yes |
+| `MiniMax-M2.5` | 204K | 128K | Yes |
+| `MiniMax-M2.1` | 204K | 8K | No |
+
+### AWS Bedrock (`bedrock`)
+
+| Model ID | Context | Max output | Prompt cache |
+|---|---|:---:|:---:|
+| `anthropic.claude-3-5-sonnet-20241022` | 200K | 8K | Yes |
+| `anthropic.claude-3-5-haiku-20241022` | 200K | 8K | Yes |
+| `anthropic.claude-3-opus-20240229` | 200K | 4K | Yes |
+
+### Google Cloud Vertex AI (`vertex`)
+
+| Model ID | Context | Max output | Prompt cache |
+|---|---|:---:|:---:|
+| `claude-3-5-sonnet@20241022` | 200K | 8K | Yes |
+| `claude-3-5-haiku@20241022` | 200K | 8K | Yes |
+| `claude-3-opus@20240229` | 200K | 4K | Yes |
+
+### Azure AI Foundry (`foundry`)
+
+| Model ID | Context | Max output | Prompt cache |
+|---|---|:---:|:---:|
+| `claude-3-5-sonnet-20241022` | 200K | 8K | Yes |
+| `claude-3-5-haiku-20241022` | 200K | 8K | Yes |
+| `claude-3-opus-20240229` | 200K | 4K | Yes |
+
+### Cloudflare Workers AI (`workers-ai`)
+
+| Model ID | Context | Max output | Prompt cache |
+|---|---|:---:|:---:|
+| `@cf/meta/llama-3.1-70b-instruct` | 128K | 4K | No |
+| `@cf/deepseek-ai/deepseek-r1` | 46K | 4K | No |
+| `@cf/qwen/qwen2.5-coder-7b` | 32K | 4K | No |
+
+### OpenCode Zen (`opencode`)
+
+| Model ID | Context | Max output | Prompt cache |
+|---|---|:---:|:---:|
+| `claude-sonnet-4` | 200K | 64K | No |
+| `gpt-5.3-codex` | 200K | 100K | No |
+| `glm-5.1` | 200K | 128K | No |
+
+### Kimi (Moonshot AI) (`kimi`)
+
+| Model ID | Context | Max output | Prompt cache |
+|---|---|:---:|:---:|
+| `kimi-k3` | 1M | 1M | Yes |
+| `kimi-k2.7-code` | 262K | 262K | Yes |
+| `kimi-k2.7-code-highspeed` | 262K | 262K | Yes |
+| `kimi-k2.6` | 262K | 262K | Yes |
+| `kimi-k2.5` | 262K | 262K | Yes |

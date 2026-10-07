@@ -1,0 +1,91 @@
+---
+title: Installation
+description: "Install the Seshat binary with one command, with the Go toolchain, or from source."
+section: start
+order: 1
+updated: "2026-10-07"
+---
+import Callout from '@/components/docs/Callout.astro';
+import Steps from '@/components/docs/Steps.astro';
+import LinkCards from '@/components/docs/LinkCards.astro';
+
+Seshat ships as a single binary. Pick the route that fits you: a one-line install script for end users, the Go toolchain for developers, or a source build if you want to hack on it.
+
+<Callout type="note" title="Platforms">
+The install script supports **Linux** and **macOS**, on `amd64` and `arm64`. On Windows, use the Go toolchain below.
+</Callout>
+
+## Install with the script
+
+<Steps>
+
+1. **Run the installer.**
+
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/KPO-Tech/seshat/main/scripts/install.sh | bash
+   ```
+
+2. **Reload your shell** if the installer asks you to, or open a new terminal. The installer adds `~/.local/bin` to your `PATH`.
+
+3. **Check the installation.**
+
+   ```bash
+   seshat version
+   ```
+
+</Steps>
+
+### What the script does
+
+- Detects your system and downloads the matching binary from the GitHub release.
+- Verifies its SHA-256 checksum, and stops if it does not match.
+- Installs it in `~/.local/bin` and adds that folder to your shell profile if needed.
+- Prepares the runtime folder `~/.config/seshat-cli/` (it follows `XDG_CONFIG_HOME` when set). The database and your sessions are created on first run.
+
+### Options
+
+```bash
+# Pin a specific version
+VERSION=v1.3.0 bash <(curl -fsSL https://raw.githubusercontent.com/KPO-Tech/seshat/main/scripts/install.sh)
+
+# Install somewhere else
+INSTALL_DIR=/usr/local/bin bash <(curl -fsSL https://raw.githubusercontent.com/KPO-Tech/seshat/main/scripts/install.sh)
+```
+
+## Install with the Go toolchain
+
+You need **Go 1.25 or later**.
+
+```bash
+go install github.com/KPO-Tech/seshat/cmd/cli@latest
+```
+
+## Build from source
+
+```bash
+git clone https://github.com/KPO-Tech/seshat
+cd seshat
+make build
+```
+
+This produces two binaries in `bin/`:
+
+| Binary | Purpose |
+|---|---|
+| `bin/seshat` | Interactive terminal agent: chat, run tools, manage sessions |
+| `bin/seshat-grpc` | gRPC server, to embed Seshat in a larger system |
+
+## Use it as a library
+
+To embed the runtime in your own Go application, add the SDK to your module:
+
+```bash
+go get github.com/KPO-Tech/seshat@latest
+```
+
+## Next step
+
+<LinkCards cards={[
+  { title: 'Quick start', text: 'Configure a provider and start your first chat.', href: '/en/docs/getting-started/quick-start', icon: 'rocket-launch' },
+  { title: 'Configuration', text: 'Providers, API keys and environment variables.', href: '/en/docs/getting-started/configuration', icon: 'gear' },
+]} />
