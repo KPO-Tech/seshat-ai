@@ -30,7 +30,7 @@ export function dict(lang: Lang) {
 
 // Pages traduites et leur adresse dans chaque langue. Ajouter une langue : ajouter sa colonne.
 // L'adresse de la page d'accueil de la langue par défaut est vide (`/`).
-export type PageKey = 'home' | 'services' | 'products' | 'openSource' | 'about' | 'contact';
+export type PageKey = 'home' | 'services' | 'products' | 'openSource' | 'about' | 'contact' | 'docs';
 
 export const slugs: Record<PageKey, Record<Lang, string>> = {
   home: { fr: '', en: 'en' },
@@ -39,11 +39,18 @@ export const slugs: Record<PageKey, Record<Lang, string>> = {
   openSource: { fr: 'open-source', en: 'en/open-source' },
   about: { fr: 'a-propos', en: 'en/about' },
   contact: { fr: 'contact', en: 'en/contact' },
+  docs: { fr: 'docs', en: 'en/docs' },
 };
 
 // Adresse d'une page dans une langue, par exemple url('en', 'products') donne '/en/products'.
 export function url(lang: Lang, page: PageKey): string {
   return '/' + slugs[page][lang];
+}
+
+// Adresse d'une page de documentation : /docs/<section>/<page> en français, /en/docs/... en anglais.
+export function docUrl(lang: Lang, slug = ''): string {
+  const base = url(lang, 'docs');
+  return slug ? `${base}/${slug}` : base;
 }
 
 // Pour getStaticPaths de src/pages/[...slug].astro : une entrée par page et par langue.

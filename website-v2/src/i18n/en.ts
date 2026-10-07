@@ -5,5 +5,6 @@ import products from './en/products';
 import openSource from './en/openSource';
 import about from './en/about';
 import contact from './en/contact';
+import docs from './en/docs';
 
-export default { common, home, services, products, openSource, about, contact };
+export default { common, home, services, products, openSource, about, contact, docs };

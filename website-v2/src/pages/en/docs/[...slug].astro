@@ -1,0 +1,12 @@
+---
+// Pages de documentation en anglais (langue source).
+import DocPage from '../../../views/DocPage.astro';
+import { docsFor } from '../../../lib/docs';
+
+export async function getStaticPaths() {
+  const items = await docsFor('en');
+  return items.map((item) => ({ params: { slug: item.slug }, props: { item } }));
+}
+const { item } = Astro.props;
+---
+<DocPage lang="en" item={item} />

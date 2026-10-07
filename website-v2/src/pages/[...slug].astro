@@ -11,7 +11,7 @@ import Contact from '../views/Contact.astro';
 const views = { home: Home, services: Services, products: Products, openSource: OpenSource, about: About, contact: Contact } as const;
 
 export function getStaticPaths() {
-  return allRoutes().map((r) => ({ params: { slug: r.slug }, props: { lang: r.lang, page: r.page } }));
+  return allRoutes().filter((r) => ['home', 'services', 'products', 'openSource', 'about', 'contact'].includes(r.page)).map((r) => ({ params: { slug: r.slug }, props: { lang: r.lang, page: r.page } }));
 }
 
 const { lang, page } = Astro.props;

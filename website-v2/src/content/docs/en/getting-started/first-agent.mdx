@@ -1,0 +1,81 @@
+---
+title: Your first agent
+description: Give Seshat a real task, watch it work with tools, then teach it your conventions with a skill.
+section: start
+order: 4
+updated: "2026-10-07"
+---
+import Callout from '@/components/docs/Callout.astro';
+import Steps from '@/components/docs/Steps.astro';
+import Flow from '@/components/docs/Flow.astro';
+
+An agent is a model that can act: it reads files, runs commands, searches the web, and keeps going until the task is done. Seshat runs that loop for you, and asks before anything sensitive.
+
+<Flow items={[
+  { icon: 'chat-circle-text', label: 'You ask' },
+  { icon: 'robot', label: 'The model decides' },
+  { icon: 'wrench', label: 'Tools run' },
+  { icon: 'check-circle', label: 'Result' },
+]} />
+
+## Run a task
+
+<Steps>
+
+1. **Open a project folder** in your terminal. Seshat works in the folder where you start it.
+
+   ```bash
+   cd path/to/your/project
+   ```
+
+2. **Start a session.**
+
+   ```bash
+   seshat chat
+   ```
+
+3. **Ask for something concrete.** For example:
+
+   ```text
+   List all TODO comments in this codebase and group them by file.
+   ```
+
+4. **Watch it work.** Seshat shows its reasoning, each tool it calls with the result, and the final answer. Press `ctrl+t` to see its task list.
+
+</Steps>
+
+<Callout type="warning" title="Permissions">
+Seshat asks for confirmation before sensitive actions. The `ctrl+y` shortcut turns on auto-approval ("yolo" mode): use it only in a project you trust.
+</Callout>
+
+## Teach it your conventions with a skill
+
+A skill is a Markdown file that is added to the agent's instructions. Put your team's rules in `.seshat/skills/` in your project:
+
+```text
+.seshat/skills/
+  git-workflow.md       never commit to main, always open a pull request
+  security-rules.md     never log secrets, validate external input
+```
+
+The next session follows them. The official collection, [seshat-skills](https://github.com/KPO-Tech/seshat-skills), can be installed from any URL directly from the command line.
+
+## Use it from your own code
+
+The same runtime can be embedded in a Go application:
+
+```go
+import "github.com/KPO-Tech/seshat/pkg/sdk"
+
+client, err := sdk.NewClient(sdk.DefaultClientConfig())
+if err != nil {
+    // handle the error
+}
+defer client.Close()
+
+resp, err := client.Query(ctx, "Write a Go function that reverses a string", nil)
+```
+
+## Where to go next
+
+Read [What is Seshat?](/en/docs/concepts/what-is-seshat) to see how the pieces fit together, and the [Architecture](/en/docs/concepts/architecture) for what happens inside the loop.

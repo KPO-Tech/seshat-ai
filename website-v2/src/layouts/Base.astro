@@ -12,11 +12,13 @@ const globe = globeRaw.replace('<svg ', '<svg class="ico" aria-hidden="true" foc
 
 // `page` : la page traduite affichée (sert au menu, au sélecteur de langue et à hreflang).
 // Sans `page`, la page n'existe que dans une langue (pages légales) : pas de sélecteur.
-interface Props { title: string; description: string; lang?: Lang; page?: PageKey }
-const { title, description, lang = defaultLang, page } = Astro.props;
+interface Props { title: string; description: string; lang?: Lang; page?: PageKey; altHrefs?: Record<Lang, string> }
+const { title, description, lang = defaultLang, page, altHrefs } = Astro.props;
 const c = dict(lang).common;
 const home = page ? url(lang, 'home') : url(defaultLang, 'home');
-const alternates = page ? locales.map((l) => ({ lang: l, href: url(l, page) })) : [];
+const alternates = altHrefs
+  ? locales.map((l) => ({ lang: l, href: altHrefs[l] }))
+  : page ? locales.map((l) => ({ lang: l, href: url(l, page) })) : [];
 const others = alternates.filter((a) => a.lang !== lang);
 const canonical = new URL(Astro.url.pathname, Astro.site);
 ---
@@ -31,7 +33,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="canonical" href={canonical} />
     {alternates.map((a) => <link rel="alternate" hreflang={a.lang} href={new URL(a.href, Astro.site)} />)}
-    {alternates.length > 0 && <link rel="alternate" hreflang="x-default" href={new URL(url(defaultLang, page as PageKey), Astro.site)} />}
+    {alternates.length > 0 && <link rel="alternate" hreflang="x-default" href={new URL(alternates.find((a) => a.lang === defaultLang)!.href, Astro.site)} />}
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:locale" content={ogLocales[lang]} />

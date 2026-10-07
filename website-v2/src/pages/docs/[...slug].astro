@@ -1,0 +1,12 @@
+---
+// Pages de documentation en français. Une page non traduite affiche la version anglaise, avec un bandeau.
+import DocPage from '../../views/DocPage.astro';
+import { docsFor } from '../../lib/docs';
+
+export async function getStaticPaths() {
+  const items = await docsFor('fr');
+  return items.map((item) => ({ params: { slug: item.slug }, props: { item } }));
+}
+const { item } = Astro.props;
+---
+<DocPage lang="fr" item={item} />

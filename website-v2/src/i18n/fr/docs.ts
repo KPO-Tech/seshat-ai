@@ -1,0 +1,35 @@
+export default {
+  meta: {
+    title: 'Documentation | Seshat AI',
+    description: "Installer Seshat, lancer un premier agent et comprendre comment fonctionne le runtime : démarrage, concepts, SDK, guides et référence.",
+  },
+  ui: {
+    menu: 'Menu de la documentation',
+    search: 'Rechercher dans la documentation',
+    onThisPage: 'Sur cette page',
+    previous: 'Précédent',
+    next: 'Suivant',
+    updated: 'Mis à jour le',
+    untranslated: "Cette page n'est pas encore traduite : elle s'affiche en anglais.",
+    docsHome: 'Documentation',
+    copy: 'Copier',
+    copied: 'Copié',
+  },
+  sections: {
+    start: { title: 'Démarrer', desc: 'Installer Seshat et lancer un premier agent en quelques minutes.' },
+    concepts: { title: 'Concepts', desc: "Les idées et l'architecture qui font le runtime." },
+    sdk: { title: 'SDK et API', desc: 'Intégrer Seshat dans votre application.' },
+    guides: { title: 'Guides', desc: 'Des guides pas à pas.' },
+    learn: { title: 'Apprendre', desc: "Des approfondissements sur l'IA agentique." },
+    reference: { title: 'Référence', desc: 'Fournisseurs, outils, configuration.' },
+  },
+  home: {
+    title: 'Documentation',
+    lead: 'Installer Seshat, lancer un premier agent et comprendre comment le runtime fonctionne.',
+    installTitle: 'Installer en une commande',
+    installNote: 'Linux et macOS. Ensuite, configurez un fournisseur et lancez seshat chat.',
+    start: 'Commencer',
+    browse: 'Parcourir',
+    pages: 'pages',
+  },
+};

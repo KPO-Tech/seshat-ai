@@ -8,6 +8,7 @@ const en: typeof fr = {
     { page: 'services', label: 'Services' },
     { page: 'products', label: 'Products' },
     { page: 'openSource', label: 'Open source' },
+    { page: 'docs', label: 'Docs' },
     { page: 'about', label: 'About' },
   ],
   cta: 'Request an assessment',

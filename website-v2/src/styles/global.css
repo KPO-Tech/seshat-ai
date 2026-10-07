@@ -1,5 +1,6 @@
 @import '@fontsource-variable/space-grotesk';
 @import '@fontsource-variable/inter';
+@import './docs.css';
 
 :root {
   --ink: #2f2e34;

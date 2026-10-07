@@ -1,0 +1,115 @@
+---
+// Mise en page des pages de documentation : menu à gauche, contenu au centre, sommaire à droite.
+import Base from './Base.astro';
+import Search from 'astro-pagefind/components/Search.astro';
+import { dict, docUrl, locales } from '../i18n';
+import type { Lang } from '../i18n';
+import type { DocGroup, DocItem } from '../lib/docs';
+
+interface Heading { depth: number; slug: string; text: string }
+interface Props {
+  lang: Lang;
+  title: string;
+  description: string;
+  slug: string;
+  groups: DocGroup[];
+  headings: Heading[];
+  prev?: DocItem;
+  next?: DocItem;
+  updated?: string;
+  translated: boolean;
+  sectionTitle: string;
+}
+const { lang, title, description, slug, groups, headings, prev, next, updated, translated, sectionTitle } = Astro.props;
+const d = dict(lang).docs;
+const altHrefs = Object.fromEntries(locales.map((l) => [l, docUrl(l, slug)])) as Record<Lang, string>;
+const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
+---
+<Base title={`${title} | Seshat AI`} description={description} lang={lang} page="docs" altHrefs={altHrefs}>
+  <div class="docs">
+    <aside class="docs-side" data-pagefind-ignore>
+      <details class="docs-menu" open>
+        <summary>{d.ui.menu}</summary>
+        <div class="docs-search"><Search id="docs-search" className="pagefind-ui" uiOptions={{ showImages: false, translations: { placeholder: d.ui.search } }} /></div>
+        <nav aria-label={d.ui.menu}>
+          <a class="docs-home-link" href={docUrl(lang)}>{d.ui.docsHome}</a>
+          {groups.map((g) => (
+            <div class="docs-group">
+              <h4>{d.sections[g.section].title}</h4>
+              <ul>
+                {g.items.map((it) => (
+                  <li><a href={docUrl(lang, it.slug)} aria-current={it.slug === slug ? 'page' : undefined}>{it.entry.data.title}</a></li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </nav>
+      </details>
+    </aside>
+
+    <article class="docs-main" data-pagefind-body>
+      <p class="docs-crumb" data-pagefind-ignore><a href={docUrl(lang)}>{d.ui.docsHome}</a> / {sectionTitle}</p>
+      <h1>{title}</h1>
+      <p class="docs-lead">{description}</p>
+      {!translated && <p class="docs-untranslated" data-pagefind-ignore>{d.ui.untranslated}</p>}
+      <div class="prose"><slot /></div>
+      {updated && <p class="docs-updated" data-pagefind-ignore>{d.ui.updated} {updated}</p>}
+      {(prev || next) && (
+        <nav class="docs-pager" data-pagefind-ignore aria-label="Navigation">
+          {prev ? <a class="prev" href={docUrl(lang, prev.slug)}><small>{d.ui.previous}</small><span>{prev.entry.data.title}</span></a> : <span></span>}
+          {next ? <a class="next" href={docUrl(lang, next.slug)}><small>{d.ui.next}</small><span>{next.entry.data.title}</span></a> : <span></span>}
+        </nav>
+      )}
+    </article>
+
+    {toc.length > 0 && (
+      <aside class="docs-toc" data-pagefind-ignore>
+        <p>{d.ui.onThisPage}</p>
+        <ul>
+          {toc.map((h) => <li class={h.depth === 3 ? 'sub' : ''}><a href={`#${h.slug}`}>{h.text}</a></li>)}
+        </ul>
+      </aside>
+    )}
+  </div>
+
+  <script is:inline define:vars={{ copy: d.ui.copy, copied: d.ui.copied }}>
+    (function () {
+      // Bouton « Copier » sur chaque bloc de code
+      document.querySelectorAll('.prose pre').forEach(function (pre) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'copy-code';
+        btn.textContent = copy;
+        btn.addEventListener('click', function () {
+          var text = pre.innerText;
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(function () {
+              btn.textContent = copied;
+              setTimeout(function () { btn.textContent = copy; }, 1600);
+            }, function () {});
+          }
+        });
+        pre.appendChild(btn);
+      });
+      // Menu replié sur les petits écrans
+      var menu = document.querySelector('.docs-menu');
+      if (menu && matchMedia('(max-width: 960px)').matches) menu.removeAttribute('open');
+      // Lien actif du sommaire pendant la lecture
+      var links = [].slice.call(document.querySelectorAll('.docs-toc a'));
+      if (links.length && 'IntersectionObserver' in window) {
+        var map = {};
+        links.forEach(function (a) { map[a.getAttribute('href').slice(1)] = a; });
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (en) {
+            if (en.isIntersecting) {
+              links.forEach(function (a) { a.removeAttribute('aria-current'); });
+              var a = map[en.target.id];
+              if (a) a.setAttribute('aria-current', 'true');
+            }
+          });
+        }, { rootMargin: '-80px 0px -70% 0px' });
+        Object.keys(map).forEach(function (id) { var el = document.getElementById(id); if (el) io.observe(el); });
+      }
+    })();
+  </script>
+</Base>
