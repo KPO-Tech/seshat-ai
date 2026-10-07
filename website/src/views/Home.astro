@@ -4,10 +4,12 @@ import Arrow from '../components/Arrow.astro';
 import Icon from '../components/Icon.astro';
 import { dict, url } from '../i18n';
 import type { Lang } from '../i18n';
+import { videoNode } from '../lib/seo';
 
 interface Props { lang: Lang }
 const { lang } = Astro.props;
 const t = dict(lang).home;
+const videoName = t.hero.videoAria.replace(/^[^:]*:\s*/, '').replace(/^./, (c) => c.toUpperCase());
 const cellIcons = ['database', 'code', 'user-check', 'plugs-connected'];
 const productMeta = [
   { logo: '/brand/seshat.svg', tone: 'ok', code: 'https://github.com/KPO-Tech/seshat' },
@@ -15,7 +17,13 @@ const productMeta = [
   { logo: '/brand/seshatcloud.svg', tone: 'wip', code: '' },
 ];
 ---
-<Base title={t.meta.title} description={t.meta.description} lang={lang} page="home">
+<Base
+  title={t.meta.title}
+  description={t.meta.description}
+  lang={lang}
+  page="home"
+  schema={[videoNode({ name: videoName, description: t.meta.description, contentPath: t.hero.videoSrc, thumbnailPath: t.hero.poster, seconds: 44, uploadDate: '2026-10-07', lang })]}
+>
   <section class="hero">
     <div class="wrap">
       <div>
