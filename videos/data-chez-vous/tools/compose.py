@@ -1,13 +1,17 @@
 """Génère index.html du film « Vos données restent chez vous » (HyperFrames, 1920x1080, 44 s).
 
+Langue : `python tools/compose.py` (français, par défaut) ou `python tools/compose.py en` (anglais).
+
 Le gabarit ci-dessous est le film ; ce script y insère les icônes (Phosphor, inline) puis écrit index.html.
 Lancer :  python tools/compose.py
 """
 import random
 import re
 import shutil
+import sys
 from pathlib import Path
 
+LANG = sys.argv[1] if len(sys.argv) > 1 else "fr"
 ROOT = Path(__file__).resolve().parent.parent
 SITE = ROOT.parent.parent / "website-v2"
 ICONS = SITE / "node_modules/@phosphor-icons/core/assets/bold"
@@ -31,6 +35,32 @@ particles = "".join(
     f'<i class="pt" style="left:{rnd.randint(40, 1840)}px;top:{rnd.randint(120, 980)}px;width:{(s := rnd.choice([26, 34, 44, 58]))}px;height:{int(s * 1.15)}px"></i>'
     for _ in range(16)
 )
+
+# --- traductions : le français est la source, chaque paire (français, langue) remplace un texte du gabarit ---
+TRANSLATIONS = {
+    "en": [
+        ('<html lang="fr"', '<html lang="en"'),
+        ('<span class="w">Vos</span><span class="w">données</span><span class="w">restent</span><span class="w acc">chez vous.</span>',
+         '<span class="w">Your</span><span class="w">data</span><span class="w">stays</span><span class="w acc">with you.</span>'),
+        ("<h2>Beaucoup d'outils d'IA envoient vos documents <em>chez un tiers.</em></h2>", "<h2>Many AI tools send your documents <em>to a third party.</em></h2>"),
+        ("<h2>Avec Seshat, l'IA <em>vient chez vous.</em></h2>", "<h2>With Seshat, AI <em>comes to you.</em></h2>"),
+        ("Déployée sur votre infrastructure, avec les modèles que vous choisissez.", "Deployed on your infrastructure, with the models you choose."),
+        ('>Votre entreprise</div>', '>Your company</div>'),
+        ('>Services tiers</div>', '>Third-party services</div>'),
+        ('>Vos données</span><span id="n2" class="note">Votre infrastructure</span><span id="n3" class="note">Vous gardez le contrôle</span>',
+         '>Your data</span><span id="n2" class="note">Your infrastructure</span><span id="n3" class="note">You stay in control</span>'),
+        ("<h3>Vos données restent chez vous.</h3><p>Des solutions auto-hébergées, sur une infrastructure que vous contrôlez.</p>",
+         "<h3>Your data stays with you.</h3><p>Self-hosted solutions, on infrastructure you control.</p>"),
+        ("<h3>Vous pouvez inspecter le code.</h3><p>Le runtime Seshat est open source. SeshatOS est public en source-available.</p>",
+         "<h3>You can inspect the code.</h3><p>The Seshat runtime is open source. SeshatOS is public as source-available.</p>"),
+        ("<h3>Un humain valide l'important.</h3><p>Une personne relit et valide les décisions sensibles.</p>",
+         "<h3>A human validates what matters.</h3><p>A person reviews and approves sensitive decisions.</p>"),
+        ("<h3>Le bon outil, pas forcément le nôtre.</h3><p>Si une solution du marché convient mieux, le diagnostic vous le dit.</p>",
+         "<h3>The right tool, not necessarily ours.</h3><p>If a market solution fits better, the assessment tells you.</p>"),
+        ("Conseil et intégration d'IA souveraine pour PME et ETI.", "Sovereign AI consulting and integration for SMEs and mid-sized companies."),
+        ("#tag { left: 0; top: 740px; width: 1920px; text-align: center; font-size: 46px;", "#tag { left: 0; top: 740px; width: 1920px; text-align: center; font-size: 42px;"),
+    ],
+}
 
 TEMPLATE = r"""<!doctype html>
 <html lang="fr" data-resolution="landscape">
@@ -283,7 +313,12 @@ TEMPLATE = r"""<!doctype html>
 </html>
 """
 
-html = TEMPLATE.replace("[[PARTICLES]]", particles)
+template = TEMPLATE
+for fr_text, new_text in TRANSLATIONS.get(LANG, []):
+    if fr_text not in template:
+        sys.exit(f"texte introuvable dans le gabarit : {fr_text[:60]}")
+    template = template.replace(fr_text, new_text)
+html = template.replace("[[PARTICLES]]", particles)
 html = re.sub(r"\[\[([a-z\-]+)\]\]", lambda m: icon(m.group(1)), html)
 (ROOT / "index.html").write_text(html, encoding="utf-8")
-print("index.html écrit :", len(html) // 1024, "Ko")
+print(f"index.html écrit ({LANG}) :", len(html) // 1024, "Ko")

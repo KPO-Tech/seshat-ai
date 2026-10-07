@@ -36,12 +36,18 @@ Demande : Python 3 avec numpy, Node, ffmpeg, et les icônes Phosphor du site (`w
 python tools/cut_music.py
 
 # 2. le film
-python tools/compose.py
+python tools/compose.py            # français (par défaut)
 npx hyperframes@0.8.138 check
 npx hyperframes@0.8.138 render --workers 1 --quality looks
+
+python tools/compose.py en         # version anglaise (textes dans TRANSLATIONS de compose.py)
+npx hyperframes@0.8.138 render --workers 1 --quality looks -o renders/data-chez-vous-en.mp4
+python tools/compose.py            # remet le français dans index.html
 ```
 
-Le rendu sort dans `renders/` (non versionné). La version web (H.264, environ 4,6 Mo) est dans `website-v2/public/videos/`.
+Pour une autre langue, ajouter une entrée dans `TRANSLATIONS` (une paire texte français, texte traduit par texte du film). Le texte long peut demander d'ajuster une taille de police, comme pour l'anglais.
+
+Le rendu sort dans `renders/` (non versionné). Les versions web (H.264, environ 4,6 Mo chacune, avec leur image d'aperçu) sont dans `website-v2/public/videos/` : `data-chez-vous.mp4` (français) et `data-chez-vous-en.mp4` (anglais).
 
 ## Musique et licence
 
