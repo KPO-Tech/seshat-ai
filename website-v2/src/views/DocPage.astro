@@ -3,19 +3,17 @@ import { render } from 'astro:content';
 import Docs from '../layouts/Docs.astro';
 import { docsFor, groupBySection, sortItems } from '../lib/docs';
 import { dict } from '../i18n';
-import type { Lang } from '../i18n';
 import type { DocItem } from '../lib/docs';
 
-interface Props { lang: Lang; item: DocItem }
-const { lang, item } = Astro.props;
-const items = sortItems(await docsFor(lang));
+interface Props { item: DocItem }
+const { item } = Astro.props;
+const items = sortItems(await docsFor());
 const groups = groupBySection(items);
 const index = items.findIndex((i) => i.slug === item.slug);
 const { Content, headings } = await render(item.entry);
-const d = dict(lang).docs;
+const d = dict('en').docs;
 ---
 <Docs
-  lang={lang}
   title={item.entry.data.title}
   description={item.entry.data.description}
   slug={item.slug}
@@ -24,7 +22,6 @@ const d = dict(lang).docs;
   prev={index > 0 ? items[index - 1] : undefined}
   next={index < items.length - 1 ? items[index + 1] : undefined}
   updated={item.entry.data.updated}
-  translated={item.translated}
   sectionTitle={d.sections[item.entry.data.section].title}
 >
   <Content />

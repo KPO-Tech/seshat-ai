@@ -12,12 +12,14 @@ const globe = globeRaw.replace('<svg ', '<svg class="ico" aria-hidden="true" foc
 
 // `page` : la page traduite affichée (sert au menu, au sélecteur de langue et à hreflang).
 // Sans `page`, la page n'existe que dans une langue (pages légales) : pas de sélecteur.
-interface Props { title: string; description: string; lang?: Lang; page?: PageKey; altHrefs?: Record<Lang, string>; shell?: boolean }
+interface Props { title: string; description: string; lang?: Lang; page?: PageKey; altHrefs?: Record<Lang, string>; shell?: boolean; monolingual?: boolean }
 // `shell` : pages sans en-tête ni pied de page du site (la documentation fournit sa propre barre).
-const { title, description, lang = defaultLang, page, altHrefs, shell = false } = Astro.props;
+const { title, description, lang = defaultLang, page, altHrefs, shell = false, monolingual = false } = Astro.props;
 const c = dict(lang).common;
 const home = page ? url(lang, 'home') : url(defaultLang, 'home');
-const alternates = altHrefs
+// `monolingual` : page qui n'existe que dans une langue (documentation) : ni sélecteur ni hreflang.
+const alternates = monolingual ? []
+  : altHrefs
   ? locales.map((l) => ({ lang: l, href: altHrefs[l] }))
   : page ? locales.map((l) => ({ lang: l, href: url(l, page) })) : [];
 const others = alternates.filter((a) => a.lang !== lang);

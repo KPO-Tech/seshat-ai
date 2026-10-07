@@ -1,10 +1,10 @@
 // Outils de la documentation : lecture de la collection et construction du menu.
 import { getCollection, type CollectionEntry } from 'astro:content';
-import { locales, type Lang } from '../i18n';
+import type { Lang } from '../i18n';
 
 export type Doc = CollectionEntry<'docs'>;
 
-// La documentation est écrite d'abord dans cette langue ; les autres langues se traduisent ensuite page par page.
+// La documentation n'est écrite qu'en anglais. Les contenus vivent dans src/content/docs/en/.
 export const SOURCE_LANG: Lang = 'en';
 
 export const SECTION_ORDER = ['start', 'concepts', 'sdk', 'guides', 'learn', 'reference'] as const;
@@ -13,8 +13,6 @@ export type SectionKey = (typeof SECTION_ORDER)[number];
 export interface DocItem {
   slug: string;
   entry: Doc;
-  /** faux quand la page n'existe pas dans la langue demandée et que la version source s'affiche à la place */
-  translated: boolean;
 }
 
 function split(id: string): { lang: string; slug: string } {
@@ -22,21 +20,13 @@ function split(id: string): { lang: string; slug: string } {
   return { lang, slug: rest.join('/') };
 }
 
-// Toutes les pages visibles dans une langue : la version traduite si elle existe, sinon la version source.
-export async function docsFor(lang: Lang): Promise<DocItem[]> {
+// Toutes les pages de la documentation (anglais uniquement).
+export async function docsFor(): Promise<DocItem[]> {
   const all = await getCollection('docs');
-  const own = new Map<string, Doc>();
-  const source = new Map<string, Doc>();
-  for (const e of all) {
-    const { lang: l, slug } = split(e.id);
-    if (l === lang) own.set(slug, e);
-    if (l === SOURCE_LANG) source.set(slug, e);
-  }
-  const slugs = new Set([...source.keys(), ...own.keys()]);
-  return [...slugs].map((slug) => {
-    const entry = own.get(slug) ?? source.get(slug)!;
-    return { slug, entry, translated: own.has(slug) || lang === SOURCE_LANG };
-  });
+  return all
+    .map((entry) => ({ ...split(entry.id), entry }))
+    .filter((e) => e.lang === SOURCE_LANG)
+    .map(({ slug, entry }) => ({ slug, entry }));
 }
 
 export function sortItems(items: DocItem[]): DocItem[] {
@@ -53,5 +43,3 @@ export function groupBySection(items: DocItem[]): DocGroup[] {
   const sorted = sortItems(items);
   return SECTION_ORDER.map((section) => ({ section, items: sorted.filter((i) => i.entry.data.section === section) })).filter((g) => g.items.length > 0);
 }
-
-export const languagesWithDocs = locales;

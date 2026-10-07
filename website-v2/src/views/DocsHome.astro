@@ -3,20 +3,16 @@ import Base from '../layouts/Base.astro';
 import Search from 'astro-pagefind/components/Search.astro';
 import Arrow from '../components/Arrow.astro';
 import Icon from '../components/Icon.astro';
-import { dict, docUrl, locales } from '../i18n';
-import type { Lang } from '../i18n';
+import { dict, docUrl } from '../i18n';
 import { docsFor, groupBySection, sortItems } from '../lib/docs';
 
-interface Props { lang: Lang }
-const { lang } = Astro.props;
-const d = dict(lang).docs;
-const items = sortItems(await docsFor(lang));
+const d = dict('en').docs;
+const items = sortItems(await docsFor());
 const groups = groupBySection(items);
 const sectionIcons: Record<string, string> = { start: 'rocket-launch', concepts: 'lightbulb', sdk: 'code', guides: 'compass', learn: 'graduation-cap', reference: 'books' };
-const altHrefs = Object.fromEntries(locales.map((l) => [l, docUrl(l)])) as Record<Lang, string>;
 const first = items[0];
 ---
-<Base title={d.meta.title} description={d.meta.description} lang={lang} page="docs" altHrefs={altHrefs}>
+<Base title={d.meta.title} description={d.meta.description} lang="en" page="docs" monolingual>
   <header class="page-head docs-hero">
     <div class="wrap">
       <div>
@@ -40,7 +36,7 @@ const first = items[0];
     <div class="wrap">
       <div class="docs-cards">
         {groups.map((g, i) => (
-          <a class={`docs-card ${i === 0 ? 'dark' : ''}`} href={docUrl(lang, g.items[0].slug)}>
+          <a class={`docs-card ${i === 0 ? 'dark' : ''}`} href={docUrl(g.items[0].slug)}>
             <span class="docs-card-ic"><Icon name={sectionIcons[g.section]} /></span>
             <h2>{d.sections[g.section].title}</h2>
             <p>{d.sections[g.section].desc}</p>

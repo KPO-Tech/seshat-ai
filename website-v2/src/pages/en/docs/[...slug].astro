@@ -4,9 +4,9 @@ import DocPage from '../../../views/DocPage.astro';
 import { docsFor } from '../../../lib/docs';
 
 export async function getStaticPaths() {
-  const items = await docsFor('en');
+  const items = await docsFor();
   return items.map((item) => ({ params: { slug: item.slug }, props: { item } }));
 }
 const { item } = Astro.props;
 ---
-<DocPage lang="en" item={item} />
+<DocPage item={item} />

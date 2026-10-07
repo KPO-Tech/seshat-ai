@@ -1,6 +1,5 @@
-import type fr from '../fr/docs';
-
-const en: typeof fr = {
+// La documentation n'existe qu'en anglais : le dictionnaire français réutilise celui-ci.
+const en = {
   meta: {
     title: 'Documentation | Seshat AI',
     description: 'Install Seshat, run your first agent and understand how the runtime works: getting started, concepts, SDK, guides and reference.',
@@ -12,7 +11,6 @@ const en: typeof fr = {
     previous: 'Previous',
     next: 'Next',
     updated: 'Updated on',
-    untranslated: 'This page is not translated yet: it is shown in English.',
     docsHome: 'Documentation',
     copy: 'Copy',
     copied: 'Copied',

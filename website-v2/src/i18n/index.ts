@@ -39,7 +39,8 @@ export const slugs: Record<PageKey, Record<Lang, string>> = {
   openSource: { fr: 'open-source', en: 'en/open-source' },
   about: { fr: 'a-propos', en: 'en/about' },
   contact: { fr: 'contact', en: 'en/contact' },
-  docs: { fr: 'docs', en: 'en/docs' },
+  // La documentation n'existe qu'en anglais : le menu français y renvoie aussi.
+  docs: { fr: 'en/docs', en: 'en/docs' },
 };
 
 // Adresse d'une page dans une langue, par exemple url('en', 'products') donne '/en/products'.
@@ -47,9 +48,9 @@ export function url(lang: Lang, page: PageKey): string {
   return '/' + slugs[page][lang];
 }
 
-// Adresse d'une page de documentation : /docs/<section>/<page> en français, /en/docs/... en anglais.
-export function docUrl(lang: Lang, slug = ''): string {
-  const base = url(lang, 'docs');
+// Adresse d'une page de documentation (anglais uniquement) : /en/docs/<section>/<page>.
+export function docUrl(slug = ''): string {
+  const base = url('en', 'docs');
   return slug ? `${base}/${slug}` : base;
 }
 
