@@ -7,6 +7,7 @@ export default {
     { page: 'products', label: 'Produits' },
     { page: 'openSource', label: 'Open source' },
     { page: 'docs', label: 'Documentation' },
+    { page: 'blog', label: 'Blog' },
     { page: 'about', label: 'À propos' },
   ],
   cta: 'Demander un diagnostic',

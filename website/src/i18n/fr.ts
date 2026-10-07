@@ -6,5 +6,6 @@ import openSource from './fr/openSource';
 import about from './fr/about';
 import contact from './fr/contact';
 import docs from './fr/docs';
+import blog from './fr/blog';
 
-export default { common, home, services, products, openSource, about, contact, docs };
+export default { common, home, services, products, openSource, about, contact, docs, blog };

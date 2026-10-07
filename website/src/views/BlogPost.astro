@@ -1,0 +1,90 @@
+---
+import { render } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import Arrow from '../components/Arrow.astro';
+import { dict, url } from '../i18n';
+import type { Lang } from '../i18n';
+import { postsFor, allPosts, translationOf, formatDate } from '../lib/blog';
+import type { PostItem } from '../lib/blog';
+import { blogPostingNode, SITE, GITHUB_RUNTIME } from '../lib/seo';
+import { legal } from '../data/legal';
+
+interface Props { lang: Lang; post: PostItem }
+const { lang, post } = Astro.props;
+const t = dict(lang).blog;
+const d = post.entry.data;
+const { Content } = await render(post.entry);
+const same = await postsFor(lang);
+const related = same
+  .filter((p) => p.slug !== post.slug)
+  .sort((a, b) => Number(b.entry.data.category === d.category) - Number(a.entry.data.category === d.category))
+  .slice(0, 2);
+const other: Lang = lang === 'fr' ? 'en' : 'fr';
+const twin = translationOf(post, (await allPosts()).filter((p) => p.lang === other));
+const path = `${url(lang, 'blog')}/${post.slug}`;
+const altHrefs = twin ? ({ [lang]: path, [other]: `${url(other, 'blog')}/${twin.slug}` } as Record<Lang, string>) : undefined;
+const image = d.cover ?? `/og/og-${lang}.png`;
+const isPme = d.category === 'pme';
+---
+<Base
+  title={`${d.title} | Seshat AI`}
+  description={d.description}
+  lang={lang}
+  page="blog"
+  ogType="article"
+  ogImage={image}
+  altHrefs={altHrefs}
+  monolingual={!twin}
+  feed={`${url(lang, 'blog')}/rss.xml`}
+  crumbs={[{ name: 'Seshat AI', path: url(lang, 'home') }, { name: 'Blog', path: url(lang, 'blog') }, { name: d.title, path }]}
+  schema={[blogPostingNode({ url: new URL(path, SITE).href, headline: d.title, description: d.description, datePublished: d.date, dateModified: d.updated, lang, image: new URL(image, SITE).href, section: t.categories[d.category], keywords: d.tags })]}
+>
+  <article class="post">
+    <header class="post-head">
+      <div class="wrap-narrow">
+        <p class="post-crumb"><a href={url(lang, 'blog')}>{t.labels.back}</a></p>
+        <p class="post-card-tags">
+          <span class={`pill pill-${d.category}`}>{t.categories[d.category]}</span>
+          {d.draft && <span class="pill pill-draft">{t.labels.draft}</span>}
+        </p>
+        <h1>{d.title}</h1>
+        <p class="lead">{d.description}</p>
+        <p class="post-meta">{t.labels.by} {legal.usageName} · <time datetime={d.date}>{formatDate(d.date, lang)}</time>{d.updated && <> · {t.labels.updated} <time datetime={d.updated}>{formatDate(d.updated, lang)}</time></>} · {post.minutes} {t.labels.minutes}</p>
+      </div>
+    </header>
+
+    <div class="wrap-narrow post-body">
+      <div class="prose"><Content /></div>
+
+      <aside class="post-cta">
+        <h2>{isPme ? t.cta.pme.title : t.cta.dev.title}</h2>
+        <p>{isPme ? t.cta.pme.text : t.cta.dev.text}</p>
+        <p class="post-cta-actions">
+          {isPme
+            ? <a class="btn btn-primary" href={url(lang, 'contact')}>{t.cta.pme.button} <Arrow /></a>
+            : <>
+                <a class="btn btn-primary" href="/en/docs">{t.cta.dev.button} <Arrow /></a>
+                <a class="btn btn-light" href={GITHUB_RUNTIME} rel="noopener">{t.cta.dev.second}</a>
+              </>}
+        </p>
+      </aside>
+
+      {related.length > 0 && (
+        <section class="post-related">
+          <h2>{t.labels.related}</h2>
+          <ul class="blog-grid">
+            {related.map((p) => (
+              <li>
+                <a class="post-card" href={`${url(lang, 'blog')}/${p.slug}`}>
+                  <span class="post-card-tags"><span class={`pill pill-${p.entry.data.category}`}>{t.categories[p.entry.data.category]}</span></span>
+                  <h3>{p.entry.data.title}</h3>
+                  <span class="post-meta"><time datetime={p.entry.data.date}>{formatDate(p.entry.data.date, lang)}</time> · {p.minutes} {t.labels.minutes}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  </article>
+</Base>
