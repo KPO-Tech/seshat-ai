@@ -24,6 +24,7 @@ const en = {
     reference: { title: 'Reference', desc: 'Providers, tools, configuration.' },
   },
   home: {
+    help: 'A question or something that does not work?',
     title: 'Documentation',
     lead: 'Install Seshat, run your first agent and understand how the runtime works.',
     installTitle: 'Install with one command',

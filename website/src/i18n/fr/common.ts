@@ -16,6 +16,7 @@ export default {
   footer: {
     tagline: "Conseil et intégration d'IA souveraine pour PME et ETI.",
     navAria: 'Pied de page',
+    support: 'Support',
     contact: 'Contact',
     github: 'Code sur GitHub',
     legal: 'Mentions légales',

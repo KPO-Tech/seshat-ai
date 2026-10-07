@@ -3,6 +3,7 @@ import Base from '../layouts/Base.astro';
 import Arrow from '../components/Arrow.astro';
 import { dict } from '../i18n';
 import type { Lang } from '../i18n';
+import { legal } from '../data/legal';
 
 interface Props { lang: Lang }
 const { lang } = Astro.props;
@@ -74,6 +75,13 @@ const endpoint = import.meta.env.PUBLIC_FORM_ENDPOINT ?? '';
           ))}
         </ol>
         <p class="aside-note">{t.next.note}</p>
+        <div class="direct">
+          <h3>{t.direct.title}</h3>
+          <ul>
+            <li><span>{t.direct.contactLabel}</span><a href={`mailto:${legal.email}`}>{legal.email}</a><small>{t.direct.contactText}</small></li>
+            <li><span>{t.direct.supportLabel}</span><a href={`mailto:${legal.supportEmail}`}>{legal.supportEmail}</a><small>{t.direct.supportText}</small></li>
+          </ul>
+        </div>
       </aside>
     </div>
   </section>

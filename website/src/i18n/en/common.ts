@@ -18,6 +18,7 @@ const en: typeof fr = {
   footer: {
     tagline: 'Sovereign AI consulting and integration for SMEs and mid-sized companies.',
     navAria: 'Footer',
+    support: 'Support',
     contact: 'Contact',
     github: 'Code on GitHub',
     legal: 'Legal notices (in French)',

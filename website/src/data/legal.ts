@@ -15,6 +15,7 @@ export const legal = {
   registered: '28 septembre 2026',
   address: '92 rue Nationale, 95000 Cergy, France',
   email: 'contact@seshat-ai.com',
+  supportEmail: 'support@seshat-ai.com',
   phone: '',
   host: {
     name: 'Cloudflare, Inc.',

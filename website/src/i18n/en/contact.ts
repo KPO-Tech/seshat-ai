@@ -32,8 +32,15 @@ const en: typeof fr = {
     ],
     note: 'Your information is only used to reply to you.',
   },
+  direct: {
+    title: 'Or write to us directly',
+    contactLabel: 'Contact',
+    contactText: 'An assessment, a pilot, a question about the offer.',
+    supportLabel: 'Support',
+    supportText: 'A question about the Seshat runtime, the documentation or a product you already installed.',
+  },
   status: {
-    unavailable: 'Sending is not available on this site yet. Please try again soon.',
+    unavailable: 'The form is not available yet. Write to us directly at contact@seshat-ai.com.',
     sending: 'Sending...',
     ok: 'Thank you, your message has been sent. We will get back to you.',
     error: 'The message could not be sent. Please try again in a moment.',
