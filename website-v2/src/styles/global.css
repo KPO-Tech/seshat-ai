@@ -136,6 +136,26 @@ section.band { background: var(--band); }
 .tile.big h3 { font-size: clamp(1.8rem, 3vw, 2.4rem); }
 .tile.warm { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); }
 
+/* Accueil : documents éparpillés dans la grande tuile */
+.tile.big { justify-content: space-between; }
+.scatter { position: relative; flex: 1; min-height: 190px; margin-bottom: 8px; }
+.sc { position: absolute; width: 68px; height: 68px; padding: 18px; border-radius: 16px; background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.16); color: var(--on-panel2); display: grid; place-items: center; }
+.sc .pi { width: 100%; height: 100%; fill: currentColor; }
+.s1 { left: 4%; top: 6%; transform: rotate(-12deg); }
+.s2 { left: 22%; top: 46%; transform: rotate(9deg); width: 60px; height: 60px; }
+.s3 { left: 40%; top: 4%; transform: rotate(7deg); }
+.s4 { left: 56%; top: 52%; transform: rotate(-8deg); width: 76px; height: 76px; }
+.s5 { left: 72%; top: 8%; transform: rotate(14deg); width: 58px; height: 58px; }
+.s6 { left: 86%; top: 46%; transform: rotate(-6deg); width: 62px; height: 62px; }
+.sc.seek { left: 46%; top: 30%; width: 84px; height: 84px; padding: 22px; border-radius: 50%; background: var(--accent); border-color: transparent; color: #1f1b16; box-shadow: 0 0 0 10px rgba(239, 124, 47, 0.2); }
+@media (prefers-reduced-motion: no-preference) {
+  .sc:not(.seek) { animation: drift 7s ease-in-out infinite alternate; }
+  .s2 { animation-delay: -1.5s; } .s3 { animation-delay: -3s; } .s4 { animation-delay: -4.5s; } .s5 { animation-delay: -2s; } .s6 { animation-delay: -5s; }
+  .sc.seek { animation: hunt 9s ease-in-out infinite alternate; }
+}
+@keyframes drift { from { translate: 0 0; } to { translate: 6px -10px; } }
+@keyframes hunt { from { translate: -150px 30px; } 50% { translate: 20px -20px; } to { translate: 150px 20px; } }
+
 /* 2. Offre : escalier */
 .steps { margin-top: 64px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; align-items: start; }
 .step { border-top: 3px solid var(--ink); padding-top: 22px; }
