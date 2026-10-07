@@ -22,6 +22,9 @@ export default defineConfig({
   server: { port: 4321 },
   // Cloudflare Pages sert /page sans barre finale : les adresses canoniques et le plan du site font de même.
   trailingSlash: 'never',
+  // Un fichier par page (services.html, servi sur /services) : Cloudflare Pages redirige /services/ vers /services
+  // au lieu de l'inverse, ce qui correspond aux adresses canoniques sans barre finale.
+  build: { format: 'file' },
   integrations: [
     mdx(),
     // Plan du site avec les liens hreflang entre les pages françaises et anglaises.
