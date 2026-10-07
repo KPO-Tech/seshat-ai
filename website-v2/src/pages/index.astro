@@ -17,9 +17,14 @@ import Icon from '../components/Icon.astro';
           <a class="btn btn-ghost" href="/services">Voir l'offre</a>
         </div>
       </div>
-      <figure class="film">
-        <img class="mark" src="/brand/mark-on-dark.svg" alt="" width="240" height="240" />
-        <figcaption><strong>Vos données restent chez vous.</strong> Film en préparation.</figcaption>
+      <figure class="filmwrap">
+        <div class="film">
+          <video controls playsinline preload="metadata" poster="/videos/data-chez-vous-poster.jpg" aria-label="Film : vos données restent chez vous">
+            <source src="/videos/data-chez-vous.mp4" type="video/mp4" />
+            Votre navigateur ne lit pas cette vidéo.
+          </video>
+        </div>
+        <figcaption><strong>Vos données restent chez vous.</strong> Film de 44 secondes, avec musique. Musique : « Running Out of Time », Ahjay Stelino (Mixkit).</figcaption>
       </figure>
     </div>
   </section>
