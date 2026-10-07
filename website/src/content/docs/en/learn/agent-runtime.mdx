@@ -1,0 +1,44 @@
+---
+title: What is an agent runtime?
+description: "The difference between a runtime, a framework and a platform, and how to choose the one you need."
+section: learn
+order: 1
+updated: "2026-10-07"
+---
+import Callout from '@/components/docs/Callout.astro';
+import LayerStack from '@/components/docs/LayerStack.astro';
+
+An AI agent is a model that can act: it reads, runs commands, searches and keeps going until a goal is reached. Three words are used for the software around it, and they are not the same thing.
+
+<LayerStack layers={[
+  { name: 'Platform', text: 'Accounts, teams, billing, dashboards, hosting. What an organisation uses.', icon: 'buildings' },
+  { name: 'Runtime', text: 'Runs the loop: model calls, tools, permissions, sessions, recovery. What an agent runs on.', icon: 'arrows-clockwise' },
+  { name: 'Framework', text: 'Parts you assemble yourself: prompts, chains, graphs, wrappers. What a developer builds with.', icon: 'puzzle-piece' },
+  { name: 'Model', text: 'The language model itself, from a provider or run locally.', icon: 'cpu' },
+]} />
+
+## Framework
+
+A framework gives you building blocks and leaves the assembly to you. You decide how the loop runs, where state lives, how tools are checked, what happens on failure. That is flexible, and it means every project re-solves the same problems: retries, permissions, resuming a session, keeping the context in budget.
+
+## Runtime
+
+A runtime is the part that **runs** the agent. It owns the loop and the concerns that every agent shares, so you do not rebuild them: the model call with its retries, the execution of tools with permission checks, sessions that can be saved and resumed, compaction when the context fills, streaming of progress. You configure it and extend it with tools, skills and hooks instead of writing the loop.
+
+Seshat is a runtime. It is also usable as a framework, because you can embed it and add your own tools and providers, but its centre is the loop and what surrounds it. See [One runtime, one loop](/en/docs/concepts/mono-run).
+
+## Platform
+
+A platform is what an organisation needs on top: people and teams, access rules, shared knowledge, scheduling, auditing, hosting. A platform is built on a runtime. In the Seshat family, SeshatOS and SeshatCloud are products built on the Seshat runtime.
+
+## Which one do you need?
+
+| If you want to… | Look at |
+|---|---|
+| Understand how agents work by building one from small parts | A framework |
+| Get a working agent now, with safe defaults, and extend it | A runtime |
+| Give a whole organisation agents with accounts, rules and audit | A platform |
+
+<Callout type="note" title="They are not exclusive">
+A platform contains a runtime, and a runtime can be driven by code written with a framework. The question is where you want to spend your effort: on the loop, on the agent's behaviour, or on the organisation around it.
+</Callout>

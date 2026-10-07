@@ -21,7 +21,8 @@ Dependencies are one-way: `SeshatOS` and `SeshatCloud` import `seshat/pkg/*`; `s
 |---|---|
 | `docs/strategie/` | Positioning, future ideas, dated strategy archive. Start with [`positionnement-commercial.md`](./docs/strategie/positionnement-commercial.md), the source of truth for the offer. |
 | `docs/produits/` | Product framing per platform (general, chat, knowledge, automation) and Stitch designs. |
-| `website/` | Public website served at `seshat-ai.com` (Vite + React). Being redesigned from scratch. |
+| `website/` | Public website served at `seshat-ai.com` (Astro, French and English, plus the English documentation). |
+| `website-old/` | The previous Vite + React site, kept for reference until it is deleted. |
 | `private/cvs-specialises/` | Private CVs (LaTeX sources and PDFs), one folder per target role, `old/` for previous versions. |
 | `.github/workflows/` | Website CI and deployment. |
 
@@ -42,7 +43,7 @@ make preview
 
 Equivalent: `cd website && npm ci && npm run dev`.
 
-Rules: do not commit `website/dist`, `website/dist-server`, `website/node_modules` or local environment files. Treat `private/` as sensitive.
+Rules: do not commit `website/dist`, `website/node_modules`, `website-old/dist`, `website-old/dist-server`, `website-old/node_modules` or local environment files. Treat `private/` as sensitive.
 
 ## Branches
 

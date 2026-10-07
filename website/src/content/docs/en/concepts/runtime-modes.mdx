@@ -1,0 +1,42 @@
+---
+title: Runtime modes
+description: "Three separate ideas that are easy to mix up: how you reach Seshat, how it executes, and who approves its actions."
+section: concepts
+order: 2
+updated: "2026-10-07"
+---
+import Callout from '@/components/docs/Callout.astro';
+
+When people talk about "modes" they usually mean one of three different things. Seshat keeps them separate.
+
+| Question | Setting | Values |
+|---|---|---|
+| **How do I reach the runtime?** | Entry surface | Terminal (CLI), Go SDK, gRPC server |
+| **How does it behave?** | Execution mode | `execute`, `plan`, `pair_programming` |
+| **Who approves what it does?** | Permission mode | `onRequest`, `acceptEdits`, `auto`, `never`, `granular`, `bypass` |
+
+You can combine them freely: for example, `plan` mode with `onRequest` approvals through the SDK.
+
+## Entry surfaces
+
+All surfaces drive the same runtime, so the same sessions, tools and providers are behind each of them.
+
+- **Terminal**: `seshat chat` and `seshat run`, for your own work.
+- **Go SDK**: `sdk.NewClient`, to embed an agent in an application.
+- **gRPC server**: `cmd/grpc`, to run the agent as a service for other programs. The gRPC surface is experimental and partial: one service, `SeshatService`, with `Query`, `QueryStream`, skills, MCP, models and health methods. See the [gRPC API](/en/docs/sdk/grpc-api).
+
+## Execution modes
+
+| Mode | What it does |
+|---|---|
+| `execute` | The default. Tools run normally |
+| `plan` | Tools are described but not run. Use it to review what the agent intends to do before it does it |
+| `pair_programming` | Collaborative: the agent works alongside you with more feedback and suggestions than autonomous execution |
+
+## Permission modes
+
+These decide who approves the agent's actions, not what it does. The full table is in [Using the CLI](/en/docs/guides/cli#permission-modes).
+
+<Callout type="tip" title="Where to start">
+Keep `execute` with `onRequest`. Move to `plan` when you want to read the plan first, and to `never` for background jobs that must not wait for you.
+</Callout>

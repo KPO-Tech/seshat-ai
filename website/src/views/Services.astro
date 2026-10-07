@@ -1,0 +1,174 @@
+---
+import Base from '../layouts/Base.astro';
+import Arrow from '../components/Arrow.astro';
+import Check from '../components/Check.astro';
+import Icon from '../components/Icon.astro';
+import { dict, url } from '../i18n';
+import type { Lang } from '../i18n';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const t = dict(lang).services;
+
+// Cellules du nid d'abeille (colonne, ligne) et niveau à partir duquel elles s'allument.
+const cells = [
+  { q: 0, r: 0, from: 1 },
+  { q: 1, r: 0, from: 2 },
+  { q: -0.5, r: 1, from: 2 },
+  { q: -0.5, r: -1, from: 2 },
+  { q: -1, r: 0, from: 3 },
+  { q: 0.5, r: 1, from: 3 },
+  { q: 0.5, r: -1, from: 3 },
+];
+
+// Éléments qui ne dépendent pas de la langue : teinte et icônes de chaque pilote.
+const pilotMeta = [
+  { tone: 'dark', icons: ['chat-circle-text', 'files', 'quotes'] },
+  { tone: 'warm', icons: ['file-text', 'table', 'user-check'] },
+  { tone: 'plain', icons: ['envelope-simple', 'folder-simple', 'lightning'] },
+  { tone: 'plain', icons: ['database', 'chart-bar', 'calendar-check'] },
+];
+---
+<Base title={t.meta.title} description={t.meta.description} lang={lang} page="services">
+  <header class="page-head services-head">
+    <div class="wrap">
+      <div>
+        <h1>{t.head.titleA}<em>{t.head.titleEm}</em></h1>
+        <p class="lead">{t.head.lead}</p>
+      </div>
+      <div class="hive" data-hive data-level="1" aria-hidden="true">
+        <div class="sway">
+          <div class="plane">
+            {cells.map((c) => (
+              <div class="cell" data-from={c.from} style={`--q:${c.q};--r:${c.r}`}>
+                <i class="l l1"></i><i class="l l2"></i><i class="l l3"></i><i class="l top"></i>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section class="block quest-block">
+    <div class="wrap">
+      <div class="quest" data-quest>
+        <div class="rail" role="tablist" aria-label={t.railAria}>
+          {t.levels.map((l, i) => (
+            <button class="node" role="tab" id={`tab-${i}`} aria-controls={`panel-${i}`} aria-selected={i === 0 ? 'true' : 'false'} type="button">
+              <span class="hex" aria-hidden="true"><span>{i + 1}</span></span>
+              <span class="node-name">{l.name}</span>
+            </button>
+          ))}
+        </div>
+        <div class="stage">
+          {t.levels.map((l, i) => (
+            <article class="panel" role="tabpanel" id={`panel-${i}`} aria-labelledby={`tab-${i}`} hidden={i !== 0}>
+              <div class="panel-head">
+                <p class="lvl">{t.levelLabel.replace('{n}', String(i + 1))}</p>
+                <h2>{l.name}</h2>
+                <p class="who">{l.who}</p>
+                <p class="fmt">{l.format}</p>
+              </div>
+              <ul class="deliver">
+                {l.items.map((it) => <li><Check />{it}</li>)}
+              </ul>
+              {l.note && <p class="level-note">{l.note}</p>}
+            </article>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block band">
+    <div class="wrap">
+      <h2 class="reveal">{t.pilotsTitle}</h2>
+      <div class="pilots">
+        {t.pilots.map((p, i) => (
+          <article class={`pilot ${pilotMeta[i].tone} reveal`} style={`--d:${i * 80}ms`}>
+            <ol class="flow" aria-hidden="true">
+              {p.flow.map((label, k) => (
+                <li style={`--k:${k}`}><span class="chip"><Icon name={pilotMeta[i].icons[k]} /></span><span class="cap">{label}</span></li>
+              ))}
+            </ol>
+            <h3>{p.t}</h3>
+            <p>{p.d}</p>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap">
+      <h2 class="reveal">{t.swapsTitle}</h2>
+      <div class="swaps">
+        {t.swaps.map((s, i) => (
+          <article class="swap reveal" style={`--d:${i * 90}ms`}>
+            <p class="no"><Icon name="x-circle" /><s>{s.no}</s></p>
+            <p class="yes"><Icon name="check-circle" /><span><strong>{s.title}</strong> {s.yes}</span></p>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="cta">
+    <div class="wrap">
+      <div class="cta-box">
+        <h2 class="reveal">{t.cta.title}</h2>
+        <div class="reveal" style="--d:100ms">
+          <p>{t.cta.text}</p>
+          <a class="btn btn-primary" href={url(lang, 'contact')}>{t.cta.button} <Arrow /></a>
+        </div>
+      </div>
+    </div>
+  </section>
+  <script is:inline>
+    (function () {
+      var q = document.querySelector('[data-quest]');
+      if (!q) return;
+      var tabs = [].slice.call(q.querySelectorAll('[role=tab]'));
+      var panels = [].slice.call(q.querySelectorAll('[role=tabpanel]'));
+      function select(i, focus) {
+        tabs.forEach(function (t, k) {
+          t.setAttribute('aria-selected', k === i ? 'true' : 'false');
+          t.tabIndex = k === i ? 0 : -1;
+          t.classList.toggle('done', k < i);
+        });
+        panels.forEach(function (p, k) { p.hidden = k !== i; });
+        q.style.setProperty('--progress-ratio', String(i / (tabs.length - 1)));
+        var hv = document.querySelector('[data-hive]');
+        if (hv) hv.setAttribute('data-level', String(i + 1));
+        if (focus) tabs[i].focus();
+      }
+      tabs.forEach(function (t, i) {
+        t.addEventListener('click', function () { select(i); });
+        t.addEventListener('keydown', function (e) {
+          if (e.key === 'ArrowRight') { e.preventDefault(); select(Math.min(i + 1, tabs.length - 1), true); }
+          if (e.key === 'ArrowLeft') { e.preventDefault(); select(Math.max(i - 1, 0), true); }
+        });
+      });
+      select(0);
+    })();
+  </script>
+  <script is:inline>
+    (function () {
+      var head = document.querySelector('.services-head');
+      var hive = document.querySelector('[data-hive]');
+      if (!head || !hive || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      head.addEventListener('pointermove', function (e) {
+        var b = head.getBoundingClientRect();
+        var dx = (e.clientX - b.left) / b.width - 0.5;
+        var dy = (e.clientY - b.top) / b.height - 0.5;
+        hive.style.setProperty('--rx', (58 + dy * -10) + 'deg');
+        hive.style.setProperty('--rz', (-28 + dx * 16) + 'deg');
+      });
+      head.addEventListener('pointerleave', function () {
+        hive.style.removeProperty('--rx');
+        hive.style.removeProperty('--rz');
+      });
+    })();
+  </script>
+</Base>

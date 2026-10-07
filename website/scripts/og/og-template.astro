@@ -1,0 +1,53 @@
+---
+import '../styles/global.css';
+---
+<html><head><meta charset="utf-8" /></head><body style="margin:0"><canvas id="c" width="1200" height="630"></canvas>
+<script is:inline>
+(async function () {
+  await document.fonts.load('700 70px "Space Grotesk Variable"');
+  await document.fonts.load('400 30px "Inter Variable"');
+  var logo = new Image();
+  await new Promise(function (ok) { logo.onload = ok; logo.src = '/brand/mark-on-light.svg'; });
+  var c = document.getElementById('c'), g = c.getContext('2d');
+  function wrap(text, font, maxW) {
+    g.font = font; var words = text.split(' '), lines = [], cur = '';
+    words.forEach(function (w) { var t = cur ? cur + ' ' + w : w; if (g.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t; });
+    if (cur) lines.push(cur); return lines;
+  }
+  async function render(name, title, em, sub, size) {
+    c.width = size.w; c.height = size.h;
+    g.fillStyle = '#f6f1ea'; g.fillRect(0, 0, size.w, size.h);
+    if (size.icon) {
+      var s = size.w * 0.62; g.drawImage(logo, (size.w - s) / 2, (size.h - s) / 2, s, s);
+    } else {
+      g.fillStyle = '#ef7c2f'; g.fillRect(0, 0, 14, size.h);
+      g.drawImage(logo, 80, 64, 88, 88);
+      g.fillStyle = '#2F2E34'; g.font = '600 40px "Space Grotesk Variable"'; g.textBaseline = 'middle'; g.fillText('Seshat AI', 184, 108);
+      g.textBaseline = 'alphabetic';
+      var f = '700 68px "Space Grotesk Variable"';
+      var emWords = em.split(' ').length, all = (title + ' ' + em).split(' '), total = all.length;
+      // retour à la ligne mot par mot, les derniers mots (em) sont en accent
+      g.font = f; var lines = [], cur = [];
+      all.forEach(function (w, i) { var t = cur.concat([{ w: w, em: i >= total - emWords }]); if (g.measureText(t.map(function (o) { return o.w; }).join(' ')).width > 1060 && cur.length) { lines.push(cur); cur = [{ w: w, em: i >= total - emWords }]; } else cur = t; });
+      lines.push(cur);
+      var y = 270;
+      lines.forEach(function (ln) {
+        var x = 80;
+        ln.forEach(function (o, i) { var txt = o.w + (i < ln.length - 1 ? ' ' : ''); g.fillStyle = o.em ? '#C2570C' : '#2F2E34'; g.fillText(txt, x, y); x += g.measureText(txt).width; });
+        y += 80;
+      });
+      g.fillStyle = '#5f5a52'; g.font = '400 30px "Inter Variable"';
+      wrap(sub, '400 30px "Inter Variable"', 1040).forEach(function (ln, i) { g.fillText(ln, 80, y + 8 + i * 42); });
+      g.fillStyle = '#C2570C'; g.font = '600 30px "Space Grotesk Variable"'; g.fillText('seshat-ai.com', 80, size.h - 44);
+    }
+    var blob = await new Promise(function (ok) { c.toBlob(ok, 'image/png'); });
+    await fetch('http://127.0.0.1:8799/save?name=' + name, { method: 'POST', body: blob });
+  }
+  var big = { w: 1200, h: 630 };
+  await render('og-fr.png', "L'IA utile, qui reste", 'chez vous.', "Conseil et intégration d'IA souveraine pour PME et ETI.", big);
+  await render('og-en.png', 'Useful AI that stays', 'with you.', 'Sovereign AI consulting and integration for SMEs and mid-sized companies.', big);
+  await render('og-docs.png', 'Seshat', 'documentation.', 'The open source runtime for AI agents, written in Go. Install it, run an agent, embed it.', big);
+  await render('apple-touch-icon.png', '', '', '', { w: 180, h: 180, icon: true });
+  document.title = 'done';
+})();
+</script></body></html>

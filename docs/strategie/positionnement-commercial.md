@@ -6,7 +6,7 @@ Ce qui change par rapport à la v1 : le positionnement est désormais **services
 
 ## 1. Contexte
 
-Seshat AI est une activité réelle, portée par une auto-entreprise immatriculée (nom légal et code APE à renseigner : voir §10). Ce n'est plus seulement un ensemble de projets techniques.
+Seshat AI est une activité réelle, portée par une auto-entreprise immatriculée (entrepreneur individuel immatriculé le 2026-09-28, nom commercial Seshat, code APE 62.01Z : voir §11, décision 1). Ce n'est plus seulement un ensemble de projets techniques.
 
 La différence avec un freelance IA classique : en plus de la prestation, il existe un socle logiciel propre (runtime open source, produit local, couche cloud) que le client peut inspecter et déployer chez lui.
 
@@ -174,7 +174,7 @@ Les trois licences sont encore marquées « brouillon, non relu par un juriste �
 
 | # | Décision | Impact |
 |---|---|---|
-| 1 | Nom légal exact de l'entreprise et code APE | Mentions légales, licences, factures, footer |
+| 1 | ~~Nom légal exact de l'entreprise et code APE~~ **Réglé le 2026-10-07** : Olaolouwa Kpoviessi, entrepreneur individuel, nom commercial Seshat, APE 62.01Z, immatriculé au RNE le 2026-09-28. À reporter dans les licences (titulaire du droit d'auteur) et sur les factures. Site et domaine hébergés chez Cloudflare. | Licences, factures, footer |
 | 2 | Valider le client type par situation (§6) et choisir le premier secteur à approcher (preuve par secteur, sans s'y limiter) | Message, exemples, prospection |
 | 3 | Affichage de prix ou de fourchettes | Page Services, taux de conversion |
 | 4 | Disponibilité affichée pour des missions freelance | Page Services et À propos |

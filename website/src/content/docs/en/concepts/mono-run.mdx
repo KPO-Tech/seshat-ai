@@ -1,0 +1,72 @@
+---
+title: One runtime, one loop
+description: "Why Seshat keeps sessions, prompts, tools, permissions and storage in a single runtime, and what happens in each turn."
+section: concepts
+order: 6
+updated: "2026-10-07"
+---
+import Callout from '@/components/docs/Callout.astro';
+import Hub from '@/components/docs/Hub.astro';
+import Flow from '@/components/docs/Flow.astro';
+
+Many agent projects are a loop glued to separate pieces: a prompt builder here, a tool wrapper there, a permission check bolted on, a database somewhere else. Seshat takes the opposite approach, sometimes called **mono-run**: one runtime owns the whole life of a run, so every part sees the same state.
+
+<Hub
+  title="The Seshat runtime"
+  caption="One process that owns the run from the first message to the saved result."
+  items={[
+    { icon: 'chat-circle-text', name: 'Sessions', note: 'History, status, resume' },
+    { icon: 'text-aa', name: 'Prompts', note: 'Built every turn from layers' },
+    { icon: 'wrench', name: 'Tools', note: 'Resolved, validated, executed' },
+    { icon: 'shield-check', name: 'Permissions', note: 'Checked before any tool runs' },
+    { icon: 'cpu', name: 'Providers', note: 'Retries and fallbacks' },
+    { icon: 'database', name: 'Storage', note: 'Sessions and artifacts' },
+    { icon: 'arrows-in-line-vertical', name: 'Compaction', note: 'Keeps the context in budget' },
+    { icon: 'broadcast', name: 'Events', note: 'Streaming and hooks' },
+  ]}
+/>
+
+## Why it matters
+
+- **Permissions cannot be skipped.** A tool call always goes through the same pipeline, whether it comes from the terminal, the SDK or the gRPC server.
+- **The prompt knows the state.** The prompt is rebuilt each turn with the current session, tools and memory, so it never describes tools that are not there.
+- **Failures are handled in one place.** Retries, fallbacks and recovery live next to the loop that needs them.
+- **One thing to embed.** You adopt a runtime, not a set of parts to wire together.
+
+The price is that the runtime is opinionated. If you want full control of every step, a framework of small parts may suit you better.
+
+## What happens in a turn
+
+<Flow items={[
+  { icon: 'arrows-in-line-vertical', label: 'Compact if full' },
+  { icon: 'cpu', label: 'Call the model' },
+  { icon: 'wrench', label: 'Run the tools' },
+  { icon: 'plus-circle', label: 'Add results' },
+  { icon: 'check-circle', label: 'Stop' },
+]} />
+
+Each turn repeats these steps until the model has nothing left to do:
+
+1. **Compaction.** If the context window is filling up, older messages are summarised first.
+2. **Model call.** The conversation is sent to the provider, streaming when possible. Recoverable errors are retried, and a failing model or provider can be replaced by a fallback.
+3. **Tool calls.** If the model asked for tools, they run. Calls that are safe to run together run in parallel; the others run one after another.
+4. **Results.** Tool results are added to the conversation and the loop goes round again.
+5. **Stop.** When the model ends its turn, stop hooks get a chance to ask for one more cycle. Otherwise the run ends and returns its messages, tool calls and token usage.
+
+## When something goes wrong
+
+| Situation | What the runtime does |
+|---|---|
+| Rate limit or timeout | Waits with exponential backoff and retries |
+| The answer is cut off at the token limit | Adds a continuation message and goes on |
+| The model announces a next step but stops | Nudges it to continue, up to a limit you can set |
+| A model keeps failing | Tries the fallback models, then the fallback providers |
+| Everything failed | Returns an error with the recovery context |
+
+<Callout type="note" title="Limits you control">
+`MaxTurns`, `TurnTokenBudget`, `ContinuationNudgeLimit` and `MaxConsecutiveDenials` in the client config bound what one request can spend. See [Go SDK](/en/docs/sdk/go-sdk).
+</Callout>
+
+## Where to read more
+
+The layers are described in [Architecture](/en/docs/concepts/architecture), the tool pipeline in [Tools and providers](/en/docs/concepts/tools-and-providers), and the full design notes in the repository: [architecture.md](https://github.com/KPO-Tech/seshat/blob/main/docs/architecture.md).

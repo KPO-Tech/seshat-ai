@@ -1,0 +1,14 @@
+---
+// Encadré : note, astuce ou avertissement. Usage MDX : <Callout type="tip" title="Astuce">texte</Callout>
+import Icon from '../Icon.astro';
+interface Props { type?: 'note' | 'tip' | 'warning'; title?: string }
+const { type = 'note', title } = Astro.props;
+const icons = { note: 'info', tip: 'lightbulb', warning: 'warning' } as const;
+---
+<aside class={`callout ${type}`}>
+  <span class="callout-ic"><Icon name={icons[type]} /></span>
+  <div>
+    {title && <strong class="callout-title">{title}</strong>}
+    <div class="callout-body"><slot /></div>
+  </div>
+</aside>

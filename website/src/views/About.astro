@@ -1,0 +1,336 @@
+---
+import { founderNode } from '../lib/seo';
+import Base from '../layouts/Base.astro';
+import Arrow from '../components/Arrow.astro';
+import Check from '../components/Check.astro';
+import Icon from '../components/Icon.astro';
+import { dict, rich, url } from '../i18n';
+import type { Lang } from '../i18n';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const t = dict(lang).about;
+
+// Éléments qui ne dépendent pas de la langue : position et icône des cellules, liens, noms propres.
+const skillMeta = [
+  { q: 1, r: 0, icon: 'robot' },
+  { q: 0.5, r: 1, icon: 'files' },
+  { q: -0.5, r: 1, icon: 'database' },
+  { q: -1, r: 0, icon: 'cloud' },
+  { q: -0.5, r: -1, icon: 'eye' },
+  { q: 0.5, r: -1, icon: 'code' },
+];
+const skills = t.skills.map((s, i) => ({ ...s, ...skillMeta[i] }));
+
+const stageLinks = [
+  [],
+  ['https://github.com/EngineerProjects/Sylva3dGUI', 'https://github.com/EngineerProjects/sylva3D'],
+  [],
+  ['https://github.com/KPO-Tech/seshat'],
+];
+const stages = t.journey.stages.map((s, i) => ({
+  ...s,
+  links: s.linkLabels.map((label, k) => ({ label, href: stageLinks[i][k] })),
+}));
+
+const projectMeta = [
+  { stack: 'LangGraph, FastAPI, pgvector, React, Docker', viz: 'agents', href: 'https://github.com/EngineerProjects/tech-watch-agent' },
+  { stack: 'PySpark, Airflow, PostgreSQL, Power BI, Docker', viz: 'pipeline', href: 'https://github.com/EngineerProjects/BI_Retail' },
+  { stack: 'Scikit-learn, Pandas, FastAPI', viz: 'chart', href: 'https://github.com/EngineerProjects/solar-forecasting' },
+];
+const flowIcons = ['database', 'lightning', 'warehouse', 'chart-bar'];
+const projects = t.projects.items.map((p, i) => ({ ...p, ...projectMeta[i] }));
+
+const years = ['2022', '2023', '2026'];
+const steps = t.education.steps.map((s, i) => ({ ...s, y: years[i] }));
+
+const certs = [
+  { t: 'Microsoft AI Engineer Career Path', by: 'Microsoft Learn', when: '', now: true, href: 'https://learn.microsoft.com/fr-fr/training/career-paths/ai-engineer' },
+  { t: "Se préparer au métier d'analyste de données", by: 'Microsoft, LinkedIn Learning', when: '2024', now: false, href: 'https://www.linkedin.com/learning/certificates/fed380ef1713eb9d1633ac7cd02b74bf58cf5f4bcf7e5fd47cb39bce19649bae' },
+  { t: 'Create ML Models in Microsoft Azure', by: 'Microsoft, Coursera', when: '2023', now: false, href: 'https://www.coursera.org/account/accomplishments/verify/LU2ZQ972BWNF' },
+  { t: 'Supervised Machine Learning: Regression and Classification', by: 'DeepLearning.AI, Stanford Online', when: '2023', now: false, href: 'https://www.coursera.org/account/accomplishments/verify/MWJS4Q3S2C3L' },
+  { t: 'Data Analysis with Python', by: 'freeCodeCamp', when: '2023', now: false, href: 'https://www.freecodecamp.org/certification/amiche/data-analysis-with-python-v7' },
+];
+
+const reach = [
+  { icon: 'linkedin-logo', t: 'LinkedIn', d: 'linkedin.com/in/stephanekpoviessi', href: 'https://linkedin.com/in/stephanekpoviessi' },
+  { icon: 'github-logo', t: 'GitHub', d: 'github.com/KPO-Tech', href: 'https://github.com/KPO-Tech' },
+  { icon: 'globe', t: 'Portfolio', d: 'kpoviessi-stephane.vercel.app', href: 'https://kpoviessi-stephane.vercel.app/' },
+];
+---
+<Base title={t.meta.title} description={t.meta.description} lang={lang} page="about" schema={[founderNode()]}>
+  <header class="page-head contact-head about-top">
+    <div class="wrap">
+      <div>
+        <h1>Stéphane Kpoviessi</h1>
+        <p class="lead">{t.head.lead}</p>
+        <p class="portfolio-link"><a class="link" href="https://kpoviessi-stephane.vercel.app/" rel="noopener">{t.head.portfolio} <Icon name="arrow-up-right" /></a></p>
+        <p class="sk-cap" data-skcap aria-live="polite"><strong>{t.head.capTitle}</strong><span>{t.head.capHint}</span></p>
+      </div>
+      <div class="hive skills3d" data-sk>
+        <div class="sway">
+          <div class="plane">
+            <div class="cell core" style="--q:0;--r:0">
+              <i class="l l1"></i><i class="l l2"></i><i class="l l3"></i><i class="l top"></i>
+              <span class="ic mono" aria-hidden="true">SK</span>
+            </div>
+            {skills.map((s) => (
+              <button class="cell sk" type="button" data-t={s.t} data-d={s.d} style={`--q:${s.q};--r:${s.r}`} aria-label={`${s.t}. ${s.d}`}>
+                <i class="l l1"></i><i class="l l2"></i><i class="l l3"></i><i class="l top"></i>
+                <span class="ic" aria-hidden="true"><Icon name={s.icon} /></span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section class="block quest-block" style="padding-top:32px">
+    <div class="wrap">
+      <h2 class="reveal">{t.journey.title}</h2>
+      <div class="quest" data-quest style="--n:4;margin-top:40px">
+        <div class="rail" role="tablist" aria-label={t.journey.railAria}>
+          {stages.map((s, i) => (
+            <button class="node" role="tab" id={`tab-${i}`} aria-controls={`panel-${i}`} aria-selected={i === 0 ? 'true' : 'false'} type="button">
+              <span class="hex" aria-hidden="true"><span>{i + 1}</span></span>
+              <span class="node-name">{s.place}</span>
+              <span class="node-when">{s.when}</span>
+            </button>
+          ))}
+        </div>
+        <div class="stage">
+          {stages.map((s, i) => (
+            <article class="panel" role="tabpanel" id={`panel-${i}`} aria-labelledby={`tab-${i}`} hidden={i !== 0}>
+              <div class="panel-head">
+                <p class="lvl">{t.journey.stepLabel.replace('{n}', String(i + 1)).replace('{total}', String(stages.length))}</p>
+                <h2>{s.place}</h2>
+                <p class="who">{s.role}</p>
+                <p class="fmt">{s.where ? `${s.when}, ${s.where}` : s.when}</p>
+                <p class="ctx">{s.context}</p>
+                {s.links.length > 0 && (
+                  <p class="plinks">
+                    {s.links.map((l) => <a class="link on-dark" href={l.href} rel="noopener">{l.label} <Arrow /></a>)}
+                  </p>
+                )}
+              </div>
+              <div>
+                <ul class={`deliver ${s.done.length >= 4 ? 'two' : ''}`}>
+                  {s.done.map((x) => <li><Check />{x}</li>)}
+                </ul>
+              </div>
+              <div class="unlocked">
+                <p class="unl-title">{t.journey.unlocked}</p>
+                <ul class="unl">
+                  {stages.slice(0, i + 1).map((st, k) => st.skills.map((sk) => <li class={k === i ? 'new' : 'old'}>{sk}</li>))}
+                </ul>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block band">
+    <div class="wrap">
+      <h2 class="reveal">{t.projects.title}</h2>
+      <div class="projects">
+        <article class="project robot dark reveal">
+          <div class="robot-scene">
+            <svg class="route" viewBox="0 0 340 170" aria-hidden="true">
+              <path id="trail" class="trail" d="M24 134 C80 134 84 72 140 80 S214 134 254 70 S318 38 320 36" fill="none" stroke="currentColor" stroke-width="2.5" stroke-dasharray="6 9" stroke-linecap="round" />
+              <g fill="none" stroke="currentColor" stroke-width="2" opacity="0.55">
+                <polygon points="92,112 104,105 116,112 116,126 104,133 92,126" />
+                <polygon points="196,52 208,45 220,52 220,66 208,73 196,66" />
+              </g>
+              <g fill="none" stroke="#f29a5a" stroke-width="2">
+                <rect x="124" y="64" width="32" height="32" rx="4" />
+                <rect x="238" y="54" width="32" height="32" rx="4" />
+                <rect x="302" y="20" width="32" height="32" rx="4" />
+              </g>
+              <g fill="#f29a5a">
+                <circle cx="140" cy="80" r="5" />
+                <circle cx="254" cy="70" r="5" />
+                <circle cx="318" cy="36" r="5" />
+              </g>
+              <circle cx="24" cy="134" r="7" fill="currentColor" opacity="0.5" />
+              <circle class="bot" r="8" fill="#ef7c2f" />
+            </svg>
+          </div>
+          <div class="robot-text">
+            <h3>{t.projects.robot.title}</h3>
+            <p>{t.projects.robot.text}</p>
+            <ul class="tags">{t.projects.robot.tags.map((tag) => <li>{tag}</li>)}</ul>
+            <p class="stack">{t.projects.robot.note}</p>
+          </div>
+        </article>
+        {projects.map((p, i) => (
+          <a class="project reveal" href={p.href} rel="noopener" style={`--d:${(i + 1) * 90}ms`}>
+            <div class="pviz" aria-hidden="true">
+              {p.viz === 'agents' && (
+                <svg viewBox="0 0 260 120" class="viz-agents">
+                  <g stroke="currentColor" stroke-width="2" stroke-dasharray="5 7" fill="none" class="spokes">
+                    <line x1="130" y1="60" x2="36" y2="26" /><line x1="130" y1="60" x2="36" y2="94" /><line x1="130" y1="60" x2="224" y2="26" /><line x1="130" y1="60" x2="224" y2="94" />
+                  </g>
+                  <g fill="none" stroke="currentColor" stroke-width="2"><circle cx="36" cy="26" r="11" /><circle cx="36" cy="94" r="11" /><circle cx="224" cy="26" r="11" /><circle cx="224" cy="94" r="11" /></g>
+                  <circle cx="130" cy="60" r="17" fill="#ef7c2f" class="hub" />
+                </svg>
+              )}
+              {p.viz === 'pipeline' && (
+                <ol class="flow">
+                  {t.projects.flow.map((label, k) => (
+                    <li style={`--k:${k}`}><span class="chip"><Icon name={flowIcons[k]} /></span><span class="cap">{label}</span></li>
+                  ))}
+                </ol>
+              )}
+              {p.viz === 'chart' && (
+                <svg viewBox="0 0 260 120" class="viz-chart">
+                  <line x1="8" y1="104" x2="252" y2="104" stroke="currentColor" stroke-width="1.5" opacity="0.4" />
+                  <path d="M10 102 C54 100 66 24 114 24 S176 98 250 102" fill="none" stroke="currentColor" stroke-width="2.5" opacity="0.55" />
+                  <path class="forecast" d="M10 104 C52 100 64 30 112 30 S172 96 250 102" fill="none" stroke="#ef7c2f" stroke-width="2.5" stroke-dasharray="6 7" stroke-linecap="round" />
+                </svg>
+              )}
+            </div>
+            <h3>{p.t}</h3>
+            <p>{p.d}</p>
+            <p class="stack">{p.stack}</p>
+            <span class="link"><Icon name="github-logo" /> {t.projects.github} <Arrow /></span>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap">
+      <h2 class="reveal">{t.education.title}</h2>
+      <ol class="edu">
+        {steps.map((s, i) => (
+          <li class="edu-step reveal" style={`--d:${i * 100}ms`}>
+            <p class="edu-year">{s.y}</p>
+            <h3>{s.t}</h3>
+            <p class="edu-school">{s.s}, {s.p}</p>
+            {s.d && <p class="edu-desc">{s.d}</p>}
+          </li>
+        ))}
+      </ol>
+      <div class="certs reveal">
+        {certs.map((c) => (
+          <a class="cert" href={c.href} rel="noopener">
+            <span class="cert-title">{c.t}</span>
+            <span class="cert-by">{c.by}</span>
+            <span class={`cert-when ${c.now ? 'now' : ''}`}>{c.now ? t.education.inProgress : c.when}</span>
+          </a>
+        ))}
+      </div>
+      <div class="side-cards">
+        <article class="side-card reveal">
+          <h3>{t.education.assocTitle}</h3>
+          <p class="sc-title">{t.education.assocOrg}</p>
+          <ul>
+            {t.education.assoc.map((a) => <li set:html={rich(a)} />)}
+          </ul>
+        </article>
+        <article class="side-card reveal" style="--d:100ms">
+          <h3>{t.education.langsTitle}</h3>
+          <ul class="langs">
+            {t.education.langs.map(([l, d]) => <li><strong>{l}</strong><span>{d}</span></li>)}
+          </ul>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="block band">
+    <div class="wrap about-method">
+      <div class="reveal">
+        <h2>{t.method.title}</h2>
+        <p class="intro">{t.method.intro}</p>
+      </div>
+      <aside class="next reveal" style="--d:100ms">
+        <ol>
+          {t.method.steps.map((m, i) => (
+            <li><span class="hexnum" aria-hidden="true"><span>{i + 1}</span></span><p><strong>{m.t}.</strong> {m.d}</p></li>
+          ))}
+        </ol>
+      </aside>
+    </div>
+  </section>
+
+  <section class="cta">
+    <div class="wrap">
+      <div class="cta-box perso">
+        <div class="reveal">
+          <h2>{t.reach.title}</h2>
+          <p>{t.reach.text}</p>
+          <a class="btn btn-primary" href={url(lang, 'contact')}>{t.reach.button} <Arrow /></a>
+        </div>
+        <ul class="reach reveal" style="--d:100ms">
+          {reach.map((r) => (
+            <li>
+              <a href={r.href} rel="noopener">
+                <span class="reach-ic"><Icon name={r.icon} /></span>
+                <span class="reach-txt"><strong>{r.t}</strong><small>{r.d}</small></span>
+                <Arrow />
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <script is:inline>
+    (function () {
+      var q = document.querySelector('[data-quest]');
+      if (q) {
+        var tabs = [].slice.call(q.querySelectorAll('[role=tab]'));
+        var panels = [].slice.call(q.querySelectorAll('[role=tabpanel]'));
+        var select = function (i, focus) {
+          tabs.forEach(function (t, k) {
+            t.setAttribute('aria-selected', k === i ? 'true' : 'false');
+            t.tabIndex = k === i ? 0 : -1;
+            t.classList.toggle('done', k < i);
+          });
+          panels.forEach(function (p, k) { p.hidden = k !== i; });
+          q.style.setProperty('--progress-ratio', String(i / (tabs.length - 1)));
+          if (focus) tabs[i].focus();
+        };
+        tabs.forEach(function (t, i) {
+          t.addEventListener('click', function () { select(i); });
+          t.addEventListener('keydown', function (e) {
+            if (e.key === 'ArrowRight') { e.preventDefault(); select(Math.min(i + 1, tabs.length - 1), true); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); select(Math.max(i - 1, 0), true); }
+          });
+        });
+        select(0);
+      }
+
+      var hive = document.querySelector('[data-sk]');
+      var cap = document.querySelector('[data-skcap]');
+      if (!hive || !cap) return;
+      var show = function (el) {
+        cap.querySelector('strong').textContent = el.getAttribute('data-t');
+        cap.querySelector('span').textContent = el.getAttribute('data-d');
+        [].forEach.call(hive.querySelectorAll('.sk'), function (c) { c.classList.toggle('on', c === el); });
+      };
+      [].forEach.call(hive.querySelectorAll('.sk'), function (c) {
+        c.addEventListener('mouseenter', function () { show(c); });
+        c.addEventListener('focus', function () { show(c); });
+        c.addEventListener('click', function () { show(c); });
+      });
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      var head = document.querySelector('.about-top');
+      head.addEventListener('pointermove', function (e) {
+        var b = head.getBoundingClientRect();
+        hive.style.setProperty('--rx', (56 + ((e.clientY - b.top) / b.height - 0.5) * -10) + 'deg');
+        hive.style.setProperty('--rz', (-28 + ((e.clientX - b.left) / b.width - 0.5) * 16) + 'deg');
+      });
+      head.addEventListener('pointerleave', function () {
+        hive.style.removeProperty('--rx');
+        hive.style.removeProperty('--rz');
+      });
+    })();
+  </script>
+</Base>

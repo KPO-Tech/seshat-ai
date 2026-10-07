@@ -1,0 +1,79 @@
+---
+import Base from '../layouts/Base.astro';
+import { legal as l } from '../data/legal';
+---
+<Base
+  title="Mentions légales | Seshat AI"
+  description="Éditeur, hébergeur, propriété intellectuelle et crédits du site seshat-ai.com."
+>
+  <header class="page-head contact-head">
+    <div class="wrap">
+      <h1>Mentions légales</h1>
+      <p class="lead">Qui édite ce site, où il est hébergé, et ce que vous pouvez en faire.</p>
+    </div>
+  </header>
+
+  <section class="block legal-block">
+    <div class="wrap legal">
+      <article>
+        <h2>Éditeur du site</h2>
+        <dl>
+          <div><dt>Nom</dt><dd>{l.name}, {l.form}, connu sous le nom de {l.usageName}</dd></div>
+          <div><dt>Nom commercial</dt><dd>{l.tradeName} ({l.brand})</dd></div>
+          <div><dt>SIREN</dt><dd>{l.siren}</dd></div>
+          <div><dt>SIRET</dt><dd>{l.siret}</dd></div>
+          <div><dt>Code APE</dt><dd>{l.ape}, {l.apeLabel}</dd></div>
+          <div><dt>Immatriculation</dt><dd>Au registre national des entreprises (RNE) depuis le {l.registered}</dd></div>
+          <div><dt>Adresse</dt><dd>{l.address}</dd></div>
+          <div><dt>Courrier électronique</dt><dd><a href={`mailto:${l.email}`}>{l.email}</a></dd></div>
+          {l.phone && <div><dt>Téléphone</dt><dd>{l.phone}</dd></div>}
+        </dl>
+      </article>
+
+      <article>
+        <h2>Directeur de la publication</h2>
+        <p>{l.name}.</p>
+      </article>
+
+      <article>
+        <h2>Hébergement et nom de domaine</h2>
+        <dl>
+          <div><dt>Hébergeur</dt><dd>{l.host.name}, {l.host.address}. <a href={l.host.site} rel="noopener">cloudflare.com</a></dd></div>
+          <div><dt>Nom de domaine</dt><dd>{l.site}, enregistré auprès de {l.registrar}</dd></div>
+        </dl>
+      </article>
+
+      <article>
+        <h2>Propriété intellectuelle</h2>
+        <p>Les textes, images, films et éléments graphiques du site, y compris le nom et le logo Seshat AI, sont la propriété de l'éditeur, sauf mention contraire. Leur reproduction ou leur réutilisation sans autorisation préalable n'est pas permise.</p>
+        <p>Les logiciels présentés sur le site relèvent de leurs propres licences : le runtime Seshat est publié sous licence Apache-2.0 (avec, pour l'interface en terminal, du code de Crush soumis à la licence FSL-1.1-MIT) ; SeshatOS et SeshatCloud sont publiés en source-available, selon les conditions indiquées dans leurs dépôts. La page <a href="/open-source">Open source</a> en donne le résumé.</p>
+      </article>
+
+      <article>
+        <h2>Crédits</h2>
+        <ul>
+          <li>Musique du film d'accueil : « Running Out of Time », Ahjay Stelino, via <a href="https://mixkit.co" rel="noopener">Mixkit</a> (licence Mixkit pour la musique gratuite).</li>
+          <li>Polices : Space Grotesk et Inter, sous licence SIL Open Font License.</li>
+          <li>Icônes : <a href="https://phosphoricons.com" rel="noopener">Phosphor Icons</a>, sous licence MIT.</li>
+        </ul>
+      </article>
+
+      <article>
+        <h2>Données personnelles</h2>
+        <p>Le traitement des données personnelles est décrit dans la <a href="/confidentialite">politique de confidentialité</a>.</p>
+      </article>
+
+      <article>
+        <h2>Responsabilité et liens</h2>
+        <p>L'éditeur s'efforce de publier des informations exactes et à jour, sans pouvoir garantir qu'elles soient exhaustives. Les liens vers des sites tiers (dépôts GitHub, réseaux professionnels, documentation) sont proposés à titre d'information : l'éditeur n'est pas responsable de leur contenu.</p>
+      </article>
+
+      <article>
+        <h2>Droit applicable</h2>
+        <p>Le présent site et ses mentions sont soumis au droit français.</p>
+      </article>
+
+      <p class="legal-date">Dernière mise à jour : {l.updated}.</p>
+    </div>
+  </section>
+</Base>

@@ -1,0 +1,7 @@
+---
+const icons = import.meta.glob('/node_modules/@phosphor-icons/core/assets/bold/*-bold.svg', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+const { name } = Astro.props as { name: string };
+const raw = icons[`/node_modules/@phosphor-icons/core/assets/bold/${name}-bold.svg`] ?? '';
+const svg = raw.replace('<svg ', '<svg class="pi" aria-hidden="true" focusable="false" ');
+---
+<Fragment set:html={svg} />

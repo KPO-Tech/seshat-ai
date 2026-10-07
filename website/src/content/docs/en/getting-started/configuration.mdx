@@ -1,0 +1,73 @@
+---
+title: Configuration
+description: "Choose a provider and a model, set API keys, and enable the optional tools."
+section: start
+order: 3
+updated: "2026-10-07"
+---
+import Callout from '@/components/docs/Callout.astro';
+
+Seshat needs at least one model provider. You can configure it from the command line, or with environment variables.
+
+## From the command line
+
+```bash
+seshat config --provider anthropic --api-key sk-ant-...   # set a provider and its key
+seshat config --model anthropic:claude-sonnet-4-20250514  # choose the model (provider:model)
+seshat config --print                                     # show the current configuration
+```
+
+In the terminal interface, press `ctrl+,` for providers and `ctrl+m` for models. API keys entered there are stored encrypted, per provider.
+
+## With environment variables
+
+Set the variable of the provider you want. This is the simplest way for servers and scripts:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+```
+
+Seshat reads its settings from environment variables, from a `.env` file, and from a `.seshat.yaml` file.
+
+<Callout type="note" title="Where things are stored">
+The runtime folder is `~/.config/seshat-cli/` (or `$XDG_CONFIG_HOME/seshat-cli/`). Your sessions are saved there, in a local SQLite database.
+</Callout>
+
+## Supported providers
+
+| Provider | ID | Authentication | Setting |
+|---|---|---|---|
+| Anthropic | `anthropic` | API key | `ANTHROPIC_API_KEY` |
+| OpenAI | `openai` | API key | `OPENAI_API_KEY` |
+| Mistral AI | `mistral` | API key | `MISTRAL_API_KEY` |
+| Google Gemini | `gemini` | API key | `GOOGLE_API_KEY` |
+| DeepSeek | `deepseek` | API key | `DEEPSEEK_API_KEY` |
+| Ollama | `ollama` | None | Local, `localhost:11434` |
+| OpenRouter | `openrouter` | API key | `OPENROUTER_API_KEY` |
+| Codex | `codex` | OAuth | `seshat login`, or `CODEX_API_KEY` |
+| Z.ai | `z-ai` | API key | `Z_AI_API_KEY` |
+| MiniMax | `minimax` | API key | `MINIMAX_API_KEY` |
+| AWS Bedrock | `bedrock` | AWS credentials | `AWS_ACCESS_KEY_ID` and `AWS_REGION` |
+| Google Cloud Vertex AI | `vertex` | Google Cloud | `ANTHROPIC_VERTEX_PROJECT_ID` and `CLOUD_ML_REGION` |
+| Azure AI Foundry | `foundry` | API key | `ANTHROPIC_FOUNDRY_API_KEY` |
+| Cloudflare Workers AI | `workers-ai` | API key | `CLOUDFLARE_API_KEY` |
+| OpenCode Zen | `opencode` | API key | `OPENCODE_API_KEY` |
+| Kimi (Moonshot AI) | `kimi` | API key | `KIMI_API_KEY` |
+
+The models each provider offers, with their context sizes and capabilities, are in [Providers and models](/en/docs/reference/models).
+
+## Optional tools
+
+Some tools are registered automatically but only become active when their key is set.
+
+| Tool | What it does | Setting |
+|---|---|---|
+| `generate_image` | Image generation | `OPENAI_API_KEY` |
+| `text_to_speech` | Speech synthesis | `OPENAI_API_KEY` |
+| `speech_to_text` | Transcription | `OPENAI_API_KEY` |
+| `devto_publish` | Publish to DEV | `DEV_TO_API_KEY` |
+| `notebook_*` | Work in a live Jupyter kernel | `JUPYTER_SERVER_URL` and `JUPYTER_TOKEN` |
+
+<Callout type="tip" title="Search tools need ripgrep">
+The `glob` and `grep` tools use [ripgrep](https://github.com/BurntSushi/ripgrep). Install it with your package manager if you do not have it.
+</Callout>

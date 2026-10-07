@@ -1,0 +1,61 @@
+---
+import Base from '../layouts/Base.astro';
+import Search from 'astro-pagefind/components/Search.astro';
+import Arrow from '../components/Arrow.astro';
+import Icon from '../components/Icon.astro';
+import { dict, docUrl } from '../i18n';
+import { docsFor, groupBySection, sortItems } from '../lib/docs';
+
+const d = dict('en').docs;
+const items = sortItems(await docsFor());
+const groups = groupBySection(items);
+const sectionIcons: Record<string, string> = { start: 'rocket-launch', concepts: 'lightbulb', sdk: 'code', guides: 'compass', learn: 'graduation-cap', reference: 'books' };
+const first = items[0];
+---
+<Base title={d.meta.title} description={d.meta.description} lang="en" page="docs" monolingual ogImage="/og/og-docs.png">
+  <header class="page-head docs-hero">
+    <div class="wrap">
+      <div>
+        <h1>{d.home.title}</h1>
+        <p class="lead">{d.home.lead}</p>
+        <div class="docs-hero-search"><Search id="docs-home-search" className="pagefind-ui" uiOptions={{ showImages: false, translations: { placeholder: d.ui.search } }} /></div>
+      </div>
+      <div class="install docs-install">
+        <div class="cmd-bar">
+          <span class="cmd-label">{d.home.installTitle}</span>
+          <button class="copy" type="button" data-copy="curl -fsSL https://raw.githubusercontent.com/KPO-Tech/seshat/main/scripts/install.sh | bash" data-copied={d.ui.copied}>{d.ui.copy}</button>
+        </div>
+        <pre class="cmd"><code><span class="t-p">$</span> <span class="t-c">curl</span> <span class="t-f">-fsSL</span> <span class="t-u">https://raw.githubusercontent.com/KPO-Tech/seshat/main/scripts/install.sh</span> <span class="t-o">|</span> <span class="t-c">bash</span>
+<span class="t-p">$</span> <span class="t-c">seshat</span> <span class="t-a">chat</span></code></pre>
+        <p class="docs-install-note">{d.home.installNote}</p>
+      </div>
+    </div>
+  </header>
+
+  <section class="block" style="padding-top:24px">
+    <div class="wrap">
+      <div class="docs-cards">
+        {groups.map((g, i) => (
+          <a class={`docs-card ${i === 0 ? 'dark' : ''}`} href={docUrl(g.items[0].slug)}>
+            <span class="docs-card-ic"><Icon name={sectionIcons[g.section]} /></span>
+            <h2>{d.sections[g.section].title}</h2>
+            <p>{d.sections[g.section].desc}</p>
+            <span class="docs-card-meta">{g.items.length} {d.home.pages}</span>
+            <span class="link">{i === 0 ? d.home.start : d.home.browse} <Arrow /></span>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <script is:inline>
+    (function () {
+      var cp = document.querySelector('.copy');
+      if (cp) cp.addEventListener('click', function () {
+        var text = cp.getAttribute('data-copy');
+        var done = function () { var old = cp.textContent; cp.textContent = cp.getAttribute('data-copied'); setTimeout(function () { cp.textContent = old; }, 1600); };
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, function () {});
+      });
+    })();
+  </script>
+</Base>

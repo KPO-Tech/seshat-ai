@@ -1,0 +1,99 @@
+---
+title: Streaming, events and hooks
+description: "Show progress while the agent works, answer permission questions from your own interface, and plug code into the lifecycle."
+section: sdk
+order: 3
+updated: "2026-10-07"
+---
+import Callout from '@/components/docs/Callout.astro';
+
+`SubmitMessage` waits for the whole turn. To build an interface, you listen while it runs. The SDK gives you three hooks into a running agent: callbacks, a prompt bridge and lifecycle hooks.
+
+## Streaming text
+
+Set a callback on the client or on a session. It receives each piece of the answer as it arrives.
+
+```go
+session.SetResponseChunkFn(func(c sdk.ResponseChunk) {
+    fmt.Print(c.Delta)
+})
+
+resp, err := session.SubmitMessage(ctx, "Explain this repository")
+```
+
+`ResponseChunk` has a `Type` (`content_block_start`, `content_block_delta`, `content_block_stop`, `message_delta`, `message_stop`, `error`) and a `Delta` with the text. Thinking and tool input arrive as other delta types, described by `DeltaType` and `PartialJSON`.
+
+## Tool progress
+
+```go
+session.SetProgressFn(func(p sdk.ToolProgress) {
+    fmt.Println("tool:", p)
+})
+```
+
+Use it to show "running `bash`…" lines or a progress bar while a tool works.
+
+## Runtime events
+
+One callback receives structured events for the whole turn: when it starts and ends, chunks, tool progress, permission and prompt requests, plans, tasks and compaction.
+
+```go
+session.SetRuntimeEventFn(func(e sdk.RuntimeEvent) {
+    switch e.Type {
+    case sdk.RuntimeEventTypeTurnCompleted:
+        fmt.Println("done after", e.TurnNumber, "turns")
+    case "tool.permission_required":
+        // show your own approval UI
+    }
+})
+```
+
+The event types include `turn.started`, `turn.completed`, `turn.failed`, `response.chunk`, `tool.progress`, `tool.permission_required`, `prompt.request`, `plan.submitted`, `execution_mode.changed` and `task.changed`. Events from a sub-agent carry `AgentToolUseID`, which identifies the tool call that started it.
+
+<Callout type="note" title="Not every event is sent yet">
+`plan.status_changed` is reserved: nothing emits it today. Do not rely on it.
+</Callout>
+
+## Answering permission questions
+
+When a tool needs approval and the mode is `onRequest`, the runtime calls your prompt function. Without one, the action is not approved.
+
+```go
+client.SetPromptFn(func(ctx context.Context, req sdk.PromptRequest) (sdk.PromptResponse, error) {
+    if req.Type == "confirm" {
+        tool, _ := req.Metadata["tool_name"].(string)
+        ok := askUser("Allow " + tool + "?")   // your own UI
+        return sdk.PromptResponse{Value: ok}, nil
+    }
+    return sdk.PromptResponse{Cancelled: true}, nil
+})
+```
+
+For a permission question, return `Value: true` to allow it once, `Value: "always"` to allow that tool for the session, or `Cancelled: true` to refuse. `Metadata` contains `tool_name`, `tool_input`, `tool_use_id` and `working_directory`.
+
+<Callout type="warning" title="Headless runs">
+With `PermissionModeNever`, nothing is asked: a tool that would need approval is refused and the refusal goes back to the model. Use it for background jobs. Use `PermissionModeBypass` only in a sandbox you can throw away.
+</Callout>
+
+## Lifecycle hooks
+
+A hook runs your code at a point of the lifecycle and can let the action go on, stop it, or deny it.
+
+```go
+id := client.RegisterHook(sdk.HookEventPreToolUse,
+    func(ctx context.Context, p sdk.HookProgress) (*sdk.HookResult, error) {
+        // inspect the call, log it, or refuse it
+        if risky(p) {
+            return &sdk.HookResult{Action: "deny", Message: "blocked by policy"}, nil
+        }
+        return nil, nil // continue
+    })
+
+client.HookRegistry().Remove(id)
+```
+
+Returning `nil, nil` means continue. The other actions are the strings `"stop"` and `"deny"` (`deny` carries a message back to the model); a result can also carry `UpdatedInput` to change a tool's input.
+
+Events cover the session (`session_start`, `session_end`), the loop (`query_start`, `iteration_start`, `tool_uses_start`…), the turn (`turn_start`, `turn_end`) and tools (`pre_tool_use`, `post_tool_use`).
+
+For shell commands instead of Go code, set `PreToolHooks` in the config: each entry has a `Matcher` (a regular expression on the tool name), a `Command` and a `Timeout`.

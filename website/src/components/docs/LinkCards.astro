@@ -1,0 +1,16 @@
+---
+// Cartes de liens. Usage MDX : <LinkCards cards={[{ title, text, href, icon }]} />
+import Icon from '../Icon.astro';
+interface Card { title: string; text: string; href: string; icon?: string }
+interface Props { cards: Card[] }
+const { cards } = Astro.props;
+---
+<div class="linkcards">
+  {cards.map((c) => (
+    <a class="linkcard" href={c.href}>
+      {c.icon && <span class="linkcard-ic"><Icon name={c.icon} /></span>}
+      <strong>{c.title}</strong>
+      <span>{c.text}</span>
+    </a>
+  ))}
+</div>

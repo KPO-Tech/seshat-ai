@@ -1,0 +1,189 @@
+---
+import Base from '../layouts/Base.astro';
+import Arrow from '../components/Arrow.astro';
+import Icon from '../components/Icon.astro';
+import { dict, url } from '../i18n';
+import type { Lang } from '../i18n';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const t = dict(lang).home;
+const cellIcons = ['database', 'code', 'user-check', 'plugs-connected'];
+const productMeta = [
+  { logo: '/brand/seshat.svg', tone: 'ok', code: 'https://github.com/KPO-Tech/seshat' },
+  { logo: '/brand/seshatos.svg', tone: 'wip', code: 'https://github.com/KPO-Tech/SeshatOS' },
+  { logo: '/brand/seshatcloud.svg', tone: 'wip', code: '' },
+];
+---
+<Base title={t.meta.title} description={t.meta.description} lang={lang} page="home">
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <h1>{t.hero.titleA}<em>{t.hero.titleEm}</em></h1>
+        <p class="lead">{t.hero.lead}</p>
+        <div class="actions">
+          <a class="btn btn-primary" href={url(lang, 'contact')}>{t.hero.primary} <Arrow /></a>
+          <a class="btn btn-ghost" href={url(lang, 'services')}>{t.hero.secondary}</a>
+        </div>
+      </div>
+      <figure class="filmwrap">
+        <div class="film">
+          <video controls playsinline preload="metadata" poster={t.hero.poster} aria-label={t.hero.videoAria}>
+            <source src={t.hero.videoSrc} type="video/mp4" />
+            {t.hero.videoFallback}
+          </video>
+        </div>
+      </figure>
+    </div>
+  </section>
+
+  <section class="block band">
+    <div class="wrap">
+      <h2 class="reveal">{t.situations.title}</h2>
+      <div class="bento">
+        <article class="tile big reveal">
+          <div class="scatter" aria-hidden="true">
+            <span class="sc s1"><Icon name="file-pdf" /></span>
+            <span class="sc s2"><Icon name="envelope-simple" /></span>
+            <span class="sc s3"><Icon name="table" /></span>
+            <span class="sc s4"><Icon name="folder-simple" /></span>
+            <span class="sc s5"><Icon name="note" /></span>
+            <span class="sc s6"><Icon name="file-text" /></span>
+            <span class="sc seek"><Icon name="magnifying-glass" /></span>
+          </div>
+          <h3>{t.situations.items[0].t}</h3>
+          <p>{t.situations.items[0].p}</p>
+        </article>
+        <article class="tile warm reveal" style="--d:80ms">
+          <h3>{t.situations.items[1].t}</h3>
+          <p>{t.situations.items[1].p}</p>
+        </article>
+        <article class="tile reveal" style="--d:160ms">
+          <h3>{t.situations.items[2].t}</h3>
+          <p>{t.situations.items[2].p}</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap">
+      <h2 class="reveal">{t.steps.title}</h2>
+      <div class="steps">
+        {t.steps.items.map((s, i) => (
+          <article class="step reveal" style={i ? `--d:${i * 100}ms` : undefined}>
+            <h3>{s.name}</h3>
+            <p class="what">{s.what}</p>
+            <dl>
+              <div><dt>{t.steps.youGet}</dt><dd>{s.got}</dd></div>
+              {s.format && <div><dt>{t.steps.formatLabel}</dt><dd>{s.format}</dd></div>}
+            </dl>
+          </article>
+        ))}
+      </div>
+      <p class="after-steps reveal"><a class="link" href={url(lang, 'services')}>{t.steps.more} <Arrow /></a></p>
+    </div>
+  </section>
+
+  <section class="block band">
+    <div class="wrap why">
+      <div class="reveal">
+        <h2>{t.commitments.title}</h2>
+        <div class="shield" data-shield data-active="0" aria-hidden="true">
+          <span class="outside"><Icon name="cloud-slash" />{t.commitments.outside}</span>
+          <div class="perimeter">
+            <span class="where">{t.commitments.where}</span>
+            <ul>
+              {t.commitments.cells.map((cell, i) => <li data-n={i}><Icon name={cellIcons[i]} /><span>{cell}</span></li>)}
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="commitments" data-commitments>
+        {t.commitments.items.map((it) => (
+          <div class="reveal">
+            <h3>{it.t}</h3>
+            <p>{it.p}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap">
+      <h2 class="reveal">{t.proofs.title}</h2>
+      <div class="proofs">
+        {t.proofs.items.map((p) => (
+          <article class="proof reveal">
+            <div>
+              <h3>{p.sector}</h3>
+              <p class="who">{p.who}</p>
+            </div>
+            {p.note ? (
+              <div>
+                <p>{p.text}</p>
+                <p class="note">{p.note}</p>
+              </div>
+            ) : (
+              <p>{p.text}</p>
+            )}
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="block band">
+    <div class="wrap">
+      <h2 class="reveal">{t.products.title}</h2>
+      <div class="products">
+        {t.products.items.map((p, i) => (
+          <article class="product reveal" style={i ? `--d:${i * 100}ms` : undefined}>
+            <img src={productMeta[i].logo} alt="" width="56" height="56" />
+            <h3>{p.name}</h3>
+            <span class={`badge ${productMeta[i].tone}`}>{p.badge}</span>
+            <p>{p.text}</p>
+            <p class="licence">{p.licence}</p>
+            {productMeta[i].code && <a class="link" href={productMeta[i].code} rel="noopener"><Icon name="github-logo" /> {t.products.codeLink}</a>}
+          </article>
+        ))}
+      </div>
+      <div class="after-products reveal">
+        <a class="link" href={url(lang, 'products')}>{t.products.moreProducts} <Arrow /></a>
+        <a class="link" href={url(lang, 'openSource')}>{t.products.moreLicences} <Arrow /></a>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta">
+    <div class="wrap">
+      <div class="cta-box">
+        <h2 class="reveal">{t.cta.title}</h2>
+        <div class="reveal" style="--d:100ms">
+          <p>{t.cta.text}</p>
+          <a class="btn btn-primary" href={url(lang, 'contact')}>{t.cta.button} <Arrow /></a>
+        </div>
+      </div>
+    </div>
+  </section>
+  <script is:inline>
+    (function () {
+      var shield = document.querySelector('[data-shield]');
+      var items = [].slice.call(document.querySelectorAll('[data-commitments] > div'));
+      if (!shield || !items.length) return;
+      shield.classList.add('live');
+      function pick(i) {
+        shield.setAttribute('data-active', String(i));
+        items.forEach(function (it, k) { it.classList.toggle('is-active', k === i); });
+      }
+      items.forEach(function (it, i) {
+        it.tabIndex = 0;
+        it.addEventListener('mouseenter', function () { pick(i); });
+        it.addEventListener('focus', function () { pick(i); });
+        it.addEventListener('click', function () { pick(i); });
+      });
+      pick(0);
+    })();
+  </script>
+</Base>

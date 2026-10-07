@@ -1,0 +1,26 @@
+{
+  "name": "seshat-website",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prebuild": "node ./scripts/generate-sitemap.mjs",
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build && vite build --ssr src/entry-server.tsx --outDir dist-server && node ./scripts/prerender.mjs",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "framer-motion": "^12.42.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.6.2"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^4.5.2",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
+  },
+  "description": "Marketing website for Seshat, the open-source self-hosted agent platform for governed execution and enterprise deployment."
+}

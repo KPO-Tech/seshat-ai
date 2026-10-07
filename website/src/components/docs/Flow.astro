@@ -1,0 +1,12 @@
+---
+// Parcours en icônes (comme sur la page Services). Usage MDX : <Flow items={[{ icon: 'file-text', label: 'Document' }, ...]} />
+import Icon from '../Icon.astro';
+interface Item { icon: string; label: string }
+interface Props { items: Item[] }
+const { items } = Astro.props;
+---
+<ol class="docflow" aria-hidden="true">
+  {items.map((it, i) => (
+    <li style={`--k:${i}`}><span class="chip"><Icon name={it.icon} /></span><span class="cap">{it.label}</span></li>
+  ))}
+</ol>

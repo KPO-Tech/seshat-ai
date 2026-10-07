@@ -1,0 +1,25 @@
+export default {
+  skip: 'Aller au contenu',
+  brandAria: 'Seshat AI, accueil',
+  navAria: 'Navigation principale',
+  nav: [
+    { page: 'services', label: 'Services' },
+    { page: 'products', label: 'Produits' },
+    { page: 'openSource', label: 'Open source' },
+    { page: 'docs', label: 'Documentation' },
+    { page: 'about', label: 'À propos' },
+  ],
+  cta: 'Demander un diagnostic',
+  ctaShort: 'Diagnostic',
+  themeToggle: 'Changer de thème, clair ou sombre',
+  langSwitch: 'Changer de langue',
+  footer: {
+    tagline: "Conseil et intégration d'IA souveraine pour PME et ETI.",
+    navAria: 'Pied de page',
+    contact: 'Contact',
+    github: 'Code sur GitHub',
+    legal: 'Mentions légales',
+    privacy: 'Confidentialité',
+    copyright: '© 2026 Seshat AI',
+  },
+};

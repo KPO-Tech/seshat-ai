@@ -1,0 +1,82 @@
+---
+title: Security and trust
+description: "What Seshat refuses to do by default: untrusted project files, secrets in commands, the local network and the gRPC server."
+section: concepts
+order: 3
+updated: "2026-10-07"
+---
+import Callout from '@/components/docs/Callout.astro';
+
+An agent reads files and runs commands, so what it reads can be hostile: a repository you just cloned, a web page, a tool result. Seshat is built so that the safe behaviour is the default and loosening it is a decision you take.
+
+## Project files are not trusted until you say so
+
+The terminal interface reads its configuration from your own files, and also from the project: `.seshat.json` or `seshat.json` (from the working directory up to the git root) and `.seshat/seshat.json`. A cloned repository can carry any of them.
+
+Some sections run something or send something somewhere, so they are **ignored until the project is trusted**:
+
+| Section | Why it is held back |
+|---|---|
+| `mcp` / `mcpServers` | A stdio MCP server is a command line started when Seshat opens |
+| `hooks` | Shell commands run on tool events |
+| `lsp` | Language servers are programs |
+| `providers` | A base URL decides who receives your API key |
+| `permissions` | `allowed_tools` removes the permission questions |
+| `image_generation`, `text_to_speech`, `speech_to_text` | Endpoints and keys |
+| `options.context_paths`, `options.skills_paths` | They can send any file of the machine to the model provider, or add instructions |
+
+Models, display options and disabled tools still apply. Your own configuration, in the runtime folder, is never restricted. When something is ignored, the interface shows a warning at startup.
+
+```bash
+seshat trust              # trust this project's configuration files as they are now
+seshat trust --status     # list the files, their state and what they hold
+seshat trust --untrust    # withdraw the trust
+```
+
+Trust is recorded for the **content** of each file (its SHA-256). If a pull changes a file, it has to be trusted again.
+
+<Callout type="tip" title="A simple rule">
+Trust a project you wrote or read, not one you only cloned.
+</Callout>
+
+## The `.env` file of the working directory
+
+Seshat also reads a `.env` in the folder where it starts. An entry is ignored, with a warning, when:
+
+- its value contains a shell substitution (`$(...)` or a backquote);
+- its name decides what runs or where Seshat looks for its configuration: `PATH`, `SHELL`, `HOME`, `LD_*`, `GIT_*`, `NODE_OPTIONS`, `SESHAT_RUNTIME_ROOT`, `SESHAT_BASH_*` and a few others.
+
+Keys, models and URLs are still read. If a `*_BASE_URL` points outside your machine, Seshat applies it but prints a warning that names the server which will receive your requests and their API key.
+
+## Secrets stay out of the commands the model runs
+
+The `bash` tool, background commands and the terminal's shell no longer inherit the whole environment. Variables whose name says secret (`*_API_KEY`, `*_TOKEN`, `*_SECRET`, `*_PASSWORD`, `DATABASE_URL`…), the families used by the providers, and values that plainly look like credentials are removed. `PATH`, `HOME`, the locale, proxies and build settings stay.
+
+| Setting | Effect |
+|---|---|
+| `SESHAT_BASH_ENV_ALLOW=NAME,PREFIX_*` | Keep the variables you name, for a command that really needs `GITHUB_TOKEN` |
+| `SESHAT_BASH_INHERIT_ENV=true` | Go back to passing the whole environment |
+
+## The local network is off limits to `web_fetch`
+
+The web fetch tool refuses loopback, private, link-local, carrier-grade NAT and multicast addresses, IPv4 addresses hidden in NAT64 addresses, and cloud metadata names, both before and after DNS resolution. A page cannot tell the agent to read your router or a cloud metadata endpoint.
+
+## The gRPC server is closed by default
+
+`cmd/grpc` listens on `127.0.0.1`. To listen elsewhere you must give it a token, or explicitly accept the risk:
+
+| Setting | Meaning |
+|---|---|
+| `SESHAT_GRPC_HOST` | Address to listen on. Anything other than loopback needs a token, or the server refuses to start |
+| `SESHAT_GRPC_AUTH_TOKEN` | With it, every call except `HealthCheck` needs `authorization: Bearer <token>` |
+| `SESHAT_GRPC_TLS_CERT`, `SESHAT_GRPC_TLS_KEY` | Turn TLS on |
+| `SESHAT_GRPC_ALLOW_STDIO_MCP=true` | Allow `ConnectMCP` to start a stdio server. Refused by default |
+| `SESHAT_GRPC_ALLOW_INSECURE_REMOTE=true` | Listen on a non-local address with no token. Not recommended |
+
+<Callout type="warning" title="Upgrading a deployment">
+If a client reached the gRPC server from outside its host or container, set `SESHAT_GRPC_HOST=0.0.0.0` and a token. This changed in version 1.3.0.
+</Callout>
+
+## Permissions
+
+On top of all this, every sensitive action goes through the permission system. See the [permission modes](/en/docs/guides/cli#permission-modes).

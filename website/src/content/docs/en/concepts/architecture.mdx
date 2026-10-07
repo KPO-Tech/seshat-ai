@@ -1,0 +1,40 @@
+---
+title: Architecture
+description: "The layers of the Seshat runtime and what happens inside the query loop."
+section: concepts
+order: 2
+updated: "2026-10-07"
+---
+import Callout from '@/components/docs/Callout.astro';
+import LayerStack from '@/components/docs/LayerStack.astro';
+import Flow from '@/components/docs/Flow.astro';
+
+Seshat is organised in layers. Each one only depends on the layers below it, so you can use the top of the stack as an end user or reach down and replace a piece.
+
+<LayerStack layers={[
+  { name: 'Interfaces', text: 'The terminal agent, the gRPC server and the Go SDK. They all drive the same runtime.', icon: 'terminal-window' },
+  { name: 'Query loop', text: 'Sends the conversation to the model, runs the tools it requests, and repeats until the task is done.', icon: 'arrows-clockwise' },
+  { name: 'Tools and permissions', text: 'Files, shell, search, web, MCP servers and skills. Sensitive actions ask first.', icon: 'wrench' },
+  { name: 'Providers and storage', text: 'The model providers behind one interface, and local storage for sessions.', icon: 'database' },
+]} />
+
+## The query loop
+
+Every request goes through the same cycle:
+
+<Flow items={[
+  { icon: 'chat-circle-text', label: 'Messages' },
+  { icon: 'robot', label: 'Model' },
+  { icon: 'wrench', label: 'Tool calls' },
+  { icon: 'shield-check', label: 'Permissions' },
+  { icon: 'arrows-clockwise', label: 'Repeat' },
+]} />
+
+1. Your message and the conversation so far are sent to the model.
+2. If the model answers with text only, the loop ends.
+3. If it asks for tools, Seshat checks permissions, runs them, and adds the results to the conversation.
+4. The model is called again with those results, until it has nothing left to do.
+
+<Callout type="tip" title="Go deeper">
+The full design notes, with the package layout, live in the repository: [architecture.md](https://github.com/KPO-Tech/seshat/blob/main/docs/architecture.md).
+</Callout>

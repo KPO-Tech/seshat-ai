@@ -1,11 +1,12 @@
 # Seshat AI website workspace
 
 WEBSITE_DIR := website
+OLD_WEBSITE_DIR := website-old
 CV_DIR := private/cvs-specialises
 PDFLATEX ?= pdflatex
 POWERSHELL ?= powershell.exe
 
-.PHONY: help install dev build preview clean cv-build cv-clean-logs identite identite-serve
+.PHONY: help install dev dev-old build-old build preview clean cv-build cv-clean-logs identite identite-serve
 
 .DEFAULT_GOAL := help
 
@@ -17,6 +18,12 @@ install: ## Install website dependencies
 
 dev: ## Start the website dev server
 	cd $(WEBSITE_DIR) && npm run dev
+
+dev-old: ## Start the previous (deployed) website dev server
+	cd $(OLD_WEBSITE_DIR) && npm run dev
+
+build-old: ## Build the previous (deployed) website
+	cd $(OLD_WEBSITE_DIR) && npm run build
 
 build: ## Build the website
 	cd $(WEBSITE_DIR) && npm run build
