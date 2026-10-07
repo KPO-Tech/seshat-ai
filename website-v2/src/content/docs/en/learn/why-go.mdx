@@ -1,0 +1,47 @@
+---
+title: Why Go for AI agents?
+description: "Why Seshat is written in Go, what that gives you, and what it costs."
+section: learn
+order: 3
+updated: "2026-10-07"
+---
+import Callout from '@/components/docs/Callout.astro';
+
+Python is the natural language for research and for experimenting with models. Seshat does not argue against that. The question is different: what language suits the layer that **runs** agents, the part that owns sessions, tools, permissions, streaming and recovery, and has to be deployed and kept alive?
+
+That layer behaves like infrastructure, and infrastructure has different needs from a notebook.
+
+## What the runtime does all day
+
+It waits on a model that streams its answer, runs several tools at once, keeps connections to MCP servers open, saves sessions, emits events, handles timeouts and retries, and does this for many sessions in the same process. Most of this is waiting and coordinating, not computing.
+
+## What Go gives it
+
+| Need | What Go offers | Effect on Seshat |
+|---|---|---|
+| Many things at once | Goroutines and channels in the language | Tool calls run in parallel while streaming and permission checks continue, without a heavy framework |
+| Simple deployment | The toolchain produces one native executable | The CLI and the gRPC server are single files, with no interpreter or virtual environment to install |
+| One codebase on several systems | Cross-compilation, and the CLI builds without CGO | The same code runs on Linux, macOS and Windows |
+| Solid networking | HTTP, JSON, contexts and profiling in the standard library | Fewer critical foundations depend on deep dependency stacks |
+| Long-lived code | A small language, fast compiles, readable code | The runtime stays understandable as providers, tools and permissions grow |
+| Many surfaces, one behaviour | The same compiled runtime behind CLI, SDK and gRPC | Execution semantics do not drift between implementations |
+
+A measurement, since it is easy to claim and rarely checked: `seshat version` starts in about 90 milliseconds on a laptop running Windows. That matters for a command-line tool and for processes started per request.
+
+## What it costs
+
+| Area | Honest cost |
+|---|---|
+| Model experimentation | Python still has the richer ecosystem for research, notebooks and model-adjacent libraries |
+| Interfaces | A Go core is a good engine, but you still want a UI stack at the edge. SeshatOS uses a desktop shell for that |
+| Library expectations | Many developers expect a Python or JavaScript package first. Seshat answers with gRPC and a clear contract, not a rewrite in each language |
+| Familiarity | Most AI engineers reach for Python first, so this choice has to be explained, which is the point of this page |
+| Binary size | The executable is large, around 118 MB for the CLI on our test machine. "One file" does not mean "small file" |
+
+## How other languages use it
+
+You do not have to write Go to use Seshat. Teams in other languages call the runtime through [gRPC](/en/docs/sdk/grpc-api) with stubs generated from the `.proto` file, or through the [HTTP API of SeshatOS](/en/docs/sdk/http-api). Go developers embed it directly with the [SDK](/en/docs/sdk/go-sdk).
+
+<Callout type="note" title="The principle">
+Choose the language for the system you are building, not for the loudest trend around it. Seshat is Go at the runtime layer because that layer is closer to a server than to a research notebook. Your agents' behaviour, prompts and skills can live anywhere.
+</Callout>

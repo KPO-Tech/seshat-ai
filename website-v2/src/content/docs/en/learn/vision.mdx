@@ -1,0 +1,68 @@
+---
+title: Vision and direction
+description: "The problem Seshat starts from, the idea behind it, the principles it keeps, and the three levels it grows through."
+section: learn
+order: 2
+updated: "2026-10-07"
+---
+import Callout from '@/components/docs/Callout.astro';
+import LayerStack from '@/components/docs/LayerStack.astro';
+
+## The problem
+
+AI tools tend to sit at two extremes. On one side are **chat interfaces**: good at conversation, weak when you need something done, such as reading your code, running commands, working through many steps and delivering a result. On the other side are **developer frameworks**: powerful, but tied to a language and often a provider, and meant to be built with rather than deployed.
+
+Between the two, something is missing: a **runtime**. A self-contained program that turns a model into a capable agent, with real tools, real permissions and real sessions, which you can call from your code, your terminal or your services. See [What is an agent runtime?](/en/docs/learn/agent-runtime).
+
+## The idea
+
+> One runtime. Any model. Any language. Any deployment.
+
+A runtime should behave like a database server: you deploy it, you connect to it, and it takes care of the hard parts. In practice:
+
+- A Go developer embeds it with the [SDK](/en/docs/sdk/go-sdk).
+- A team in another language calls it through [gRPC](/en/docs/sdk/grpc-api).
+- Someone at a terminal uses it as a [command-line agent](/en/docs/guides/cli), whatever the provider.
+- A product team builds accounts, workspaces and billing on top, without touching the core. That is what SeshatOS and SeshatCloud do.
+
+The runtime itself stays small: no users, no billing, no lock-in.
+
+## Principles
+
+**Local first.** The runtime works on your machine, with your data. Models can be local (Ollama) or remote, per session. A runtime that works offline is easier to trust.
+
+**Provider agnostic.** Sessions and skills are not tied to one company's model. A failing provider can be replaced by another. See [Tools and providers](/en/docs/concepts/tools-and-providers).
+
+**Safe by default.** Permissions, sandboxing, compaction, retries and session recovery are part of the baseline, not add-ons. See [Security and trust](/en/docs/concepts/security-and-trust).
+
+**Extensible without forking.** You add [tools](/en/docs/sdk/tools), [skills and MCP servers](/en/docs/concepts/skills-and-mcp), [hooks](/en/docs/sdk/events-and-hooks) and credential resolvers through interfaces, not by changing the core.
+
+**Written in Go on purpose.** See [Why Go?](/en/docs/learn/why-go).
+
+## What Seshat is not
+
+- **Not a framework.** You do not write your agent's logic inside Seshat. You call it from your code, service or terminal.
+- **Not a product.** It has no concept of users or organisations. Those belong to the layers above.
+- **Not a Python or TypeScript library.** Other languages use it through gRPC.
+- **Not a chatbot.** It is built for multi-step work where the model uses tools to reach a goal.
+- **Not finished.** Some of what is described below is future work.
+
+## Three levels
+
+The project grows one level at a time. A level must be solid before the next one starts.
+
+<LayerStack layers={[
+  { name: 'Level 3: a team', text: 'Several persistent agents with roles, an inbox and a shared task board, coordinating over hours. Future work.', icon: 'users-three' },
+  { name: 'Level 2: delegation', text: 'One agent hands work to sub-agents, in parallel, with limits, and integrates their results. Partly available today.', icon: 'tree-structure' },
+  { name: 'Level 1: one agent', text: 'A single agent a developer can use every day and trust with their codebase. The current focus.', icon: 'robot' },
+]} />
+
+**Level 1** is what you can install and use now: the agent loop with tools, recovery, compaction and streaming, many providers, a permission engine, saved sessions, skills and MCP.
+
+**Level 2** starts to exist: an agent can delegate with the `agent` tool and the `spawn_agent` family, under depth and concurrency limits. What is still ahead is hardening: per-agent budgets, richer typed delegation and clearer progress from sub-agents. See [Agents and delegation](/en/docs/concepts/agents-and-delegation).
+
+**Level 3** is a direction. The building blocks for named agents with a mailbox exist in the repository, but they are internal and not exposed, so you cannot use them yet.
+
+<Callout type="note" title="What success looks like">
+At Level 1, you ask for tests on a module and review the result like a colleague's pull request. At Level 2, you ask for a comparison of five competitors and the agent researches them in parallel. At Level 3, a small team of agents carries a feature from idea to pull request while you do something else. Each of these is a goal, not a promise of a date.
+</Callout>
