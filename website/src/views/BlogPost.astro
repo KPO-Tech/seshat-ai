@@ -27,7 +27,7 @@ const image = d.cover ?? `/og/og-${lang}.png`;
 const isPme = d.category === 'pme';
 ---
 <Base
-  title={`${d.title} | Seshat AI`}
+  title={d.title.length > 52 ? d.title : `${d.title} | Seshat AI`}
   description={d.description}
   lang={lang}
   page="blog"

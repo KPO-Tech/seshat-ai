@@ -62,7 +62,7 @@ for (const [path, html] of pages) {
   // liens internes
   for (const m of html.matchAll(/href="(\/[^"#?]*)(#[^"]*)?"/g)) {
     const p = m[1].replace(/(.)\/$/, '$1');
-    if (/^\/(_astro|pagefind|brand|captures|videos|og|favicon|apple-touch|sitemap|robots|llms)/.test(p)) continue;
+    if (/^\/(_astro|pagefind|brand|captures|videos|img|og|favicon|apple-touch|sitemap|robots|llms)/.test(p)) continue;
     if (/\.xml$/.test(p)) continue;
     const target = pages.get(p);
     if (!target) add('error', path, `lien cassé : ${m[1]}`);
