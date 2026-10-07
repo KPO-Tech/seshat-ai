@@ -21,7 +21,7 @@ const nav = [
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
-    <meta name="color-scheme" content="light dark" />
+    <meta name="color-scheme" content="light" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="canonical" href={new URL(Astro.url.pathname, Astro.site)} />
     <meta property="og:title" content={title} />
@@ -84,7 +84,7 @@ const nav = [
         var btn = document.querySelector('.theme-toggle');
         if (btn) btn.addEventListener('click', function () {
           var root = document.documentElement;
-          var cur = root.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+          var cur = root.getAttribute('data-theme') || 'light';
           var next = cur === 'dark' ? 'light' : 'dark';
           root.setAttribute('data-theme', next);
           try { localStorage.setItem('theme', next); } catch (e) {}
