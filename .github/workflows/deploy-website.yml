@@ -39,3 +39,18 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy website/dist --project-name=seshat-ai --branch=main --commit-dirty=true
+
+      # Prévient Bing, Yandex et les autres moteurs IndexNow des pages à relire (la clé est publique, voir website/public/).
+      - name: Notify IndexNow
+        continue-on-error: true
+        run: |
+          python3 - <<'PY'
+          import json, re, urllib.request
+          key = "5ab7207b6a5c07ebc0a1db137f43fb84"
+          xml = open("website/dist/sitemap-0.xml", encoding="utf-8").read()
+          urls = re.findall(r"<loc>([^<]+)</loc>", xml)
+          body = json.dumps({"host": "seshat-ai.com", "key": key, "keyLocation": f"https://seshat-ai.com/{key}.txt", "urlList": urls}).encode()
+          req = urllib.request.Request("https://api.indexnow.org/IndexNow", data=body, headers={"Content-Type": "application/json; charset=utf-8"})
+          with urllib.request.urlopen(req, timeout=30) as r:
+              print("IndexNow:", r.status, len(urls), "URLs")
+          PY

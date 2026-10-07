@@ -1,6 +1,9 @@
 # Redirections de l'ancien site (Cloudflare Pages). Les premières règles gagnent : les adresses précises
 # passent avant le joker final. Les anciennes pages anglaises à la racine (/, /services, /open-source) ne
 # peuvent pas être redirigées : ces adresses sont maintenant celles des pages françaises.
+# Ancien plan du site (déjà soumis à Google) : il pointe vers le nouveau.
+/sitemap.xml /sitemap-index.xml 301
+
 # Ancienne documentation anglaise (/docs/...) et française (/fr/docs/...) : la doc n'existe plus qu'en anglais, sous /en/docs.
 
 /docs/getting-started/installation /en/docs/getting-started/installation 301
