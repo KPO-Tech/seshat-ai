@@ -16,7 +16,9 @@ const end = source.indexOf('## Client hierarchy');
 if (start < 0 || end < 0) throw new Error('providers.md: sections introuvables');
 const block = source.slice(start, end);
 
-const rows = (table) => table.split('\n').filter((l) => l.startsWith('|')).slice(2).map((l) => l.split('|').slice(1, -1).map((c) => c.trim()));
+// Les cases oui/non du générateur deviennent des mots (pas de tiret cadratin dans le site).
+const flag = (c) => (c === '✓' ? 'Yes' : c === '—' ? 'No' : c);
+const rows = (table) => table.split('\n').filter((l) => l.startsWith('|')).slice(2).map((l) => l.split('|').slice(1, -1).map((c) => flag(c.trim())));
 
 // Tableau des providers
 const provTable = block.slice(block.indexOf('| Provider ID'), block.indexOf('## Model reference'));
