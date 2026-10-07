@@ -92,6 +92,7 @@ Formulaire court : nom, entreprise, taille, message (« Que voulez-vous amélior
 ### 5.7 Pages légales
 - **Mentions légales** : nom légal, SIRET, adresse ou domiciliation, contact, directeur de publication, hébergeur. Bloquées par la décision #1.
 - **Confidentialité** : formulaire, outil de statistiques (si présent), durée de conservation.
+- **Crédits** (dans les mentions légales, pas sur les pages) : musique du film d'accueil, « Running Out of Time » d'Ahjay Stelino (Mixkit, licence gratuite pour la musique) ; polices Space Grotesk et Inter (licence OFL) ; icônes Phosphor (licence MIT).
 - **CGV** : à rédiger avant la première vente, pas avant la mise en ligne.
 
 ## 6. Design
