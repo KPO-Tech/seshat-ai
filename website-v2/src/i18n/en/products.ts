@@ -70,7 +70,8 @@ const en: typeof fr = {
     codeLink: 'See the code and the documentation',
   },
   kta: {
-    title: 'Knowledge-to-Action: a type of pilot, not a finished product.',
+    name: 'Knowledge-to-Action',
+    title: 'a pilot, not a finished product.',
     intro: 'This first use case is built with you, on your documents. The Knowledge interface does not exist yet: sourced search is used today from the Chat.',
     verbs: [
       { t: 'Ask a question', d: "Get a sourced answer on your documents, with everyone's access rights." },

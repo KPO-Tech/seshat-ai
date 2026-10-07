@@ -116,8 +116,23 @@ const verbMeta = [
 
   <section class="block band">
     <div class="wrap">
-      <h2 class="reveal">{t.kta.title}</h2>
-      <p class="intro reveal">{t.kta.intro}</p>
+      <div class="kta-top">
+        <div>
+          <h2 class="reveal"><span class="kta-name">{t.kta.name}</span>{t.kta.title}</h2>
+          <p class="intro reveal">{t.kta.intro}</p>
+        </div>
+        <div class="kta-art reveal" aria-hidden="true">
+          <svg viewBox="0 0 400 320" fill="none">
+            <g stroke="currentColor" stroke-width="2.5" stroke-dasharray="6 8" stroke-linecap="round" class="kta-lines">
+              <line x1="200" y1="160" x2="80" y2="60" /><line x1="200" y1="160" x2="320" y2="60" /><line x1="200" y1="160" x2="200" y2="282" />
+            </g>
+          </svg>
+          <span class="kta-core"><img src="/brand/knowledge.svg" alt="" width="132" height="132" /></span>
+          {t.kta.verbs.map((v, i) => (
+            <span class={`kta-node k${i + 1}`}><Icon name={verbMeta[i].icon} /><em>{v.t}</em></span>
+          ))}
+        </div>
+      </div>
       <div class="kta">
         {t.kta.verbs.map((v, i) => (
           <article class={`pilot ${verbMeta[i].tone} reveal`} style={`--d:${i * 80}ms`}>

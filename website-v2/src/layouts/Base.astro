@@ -2,11 +2,13 @@
 import '../styles/global.css';
 import sunRaw from '@phosphor-icons/core/assets/bold/sun-bold.svg?raw';
 import moonRaw from '@phosphor-icons/core/assets/bold/moon-bold.svg?raw';
+import globeRaw from '@phosphor-icons/core/assets/bold/globe-bold.svg?raw';
 import { dict, locales, langNames, ogLocales, url, defaultLang } from '../i18n';
 import type { Lang, PageKey } from '../i18n';
 
 const sun = sunRaw.replace('<svg ', '<svg class="ico i-sun" aria-hidden="true" focusable="false" ');
 const moon = moonRaw.replace('<svg ', '<svg class="ico i-moon" aria-hidden="true" focusable="false" ');
+const globe = globeRaw.replace('<svg ', '<svg class="ico" aria-hidden="true" focusable="false" ');
 
 // `page` : la page traduite affichée (sert au menu, au sélecteur de langue et à hreflang).
 // Sans `page`, la page n'existe que dans une langue (pages légales) : pas de sélecteur.
@@ -15,6 +17,7 @@ const { title, description, lang = defaultLang, page } = Astro.props;
 const c = dict(lang).common;
 const home = page ? url(lang, 'home') : url(defaultLang, 'home');
 const alternates = page ? locales.map((l) => ({ lang: l, href: url(l, page) })) : [];
+const others = alternates.filter((a) => a.lang !== lang);
 const canonical = new URL(Astro.url.pathname, Astro.site);
 ---
 <!doctype html>
@@ -48,16 +51,26 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
         </a>
         <nav class="nav" aria-label={c.navAria}>
           {c.nav.map((n) => <a href={url(lang, n.page as PageKey)} aria-current={page === n.page ? 'page' : undefined}>{n.label}</a>)}
+        </nav>
+        <div class="actions">
           <a class="btn btn-primary btn-sm" href={url(lang, 'contact')}><span class="cta-long">{c.cta}</span><span class="cta-short">{c.ctaShort}</span></a>
-          {alternates.length > 1 && (
-            <div class="lang" role="group" aria-label={c.langSwitch}>
-              {alternates.map((a) => (
-                <a href={a.href} hreflang={a.lang} lang={a.lang} aria-current={a.lang === lang ? 'true' : undefined} title={langNames[a.lang]}>{a.lang.toUpperCase()}</a>
-              ))}
-            </div>
+          {others.length === 1 && (
+            <a class="lang-btn" href={others[0].href} hreflang={others[0].lang} lang={others[0].lang} title={langNames[others[0].lang]} aria-label={`${c.langSwitch} : ${langNames[others[0].lang]}`}>
+              <Fragment set:html={globe} />{others[0].lang.toUpperCase()}
+            </a>
+          )}
+          {others.length > 1 && (
+            <details class="lang-menu">
+              <summary aria-label={c.langSwitch}><Fragment set:html={globe} />{lang.toUpperCase()}</summary>
+              <ul>
+                {alternates.map((a) => (
+                  <li><a href={a.href} hreflang={a.lang} lang={a.lang} aria-current={a.lang === lang ? 'true' : undefined}>{langNames[a.lang]}</a></li>
+                ))}
+              </ul>
+            </details>
           )}
           <button class="theme-toggle" type="button" aria-label={c.themeToggle}><Fragment set:html={sun} /><Fragment set:html={moon} /></button>
-        </nav>
+        </div>
       </div>
     </header>
     <main id="contenu"><slot /></main>
@@ -101,6 +114,14 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
           root.setAttribute('data-theme', next);
           try { localStorage.setItem('theme', next); } catch (e) {}
         });
+      })();
+    </script>
+    <script is:inline>
+      (function () {
+        var menu = document.querySelector('.lang-menu');
+        if (!menu) return;
+        document.addEventListener('click', function (e) { if (!menu.contains(e.target)) menu.removeAttribute('open'); });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') menu.removeAttribute('open'); });
       })();
     </script>
     <script is:inline>

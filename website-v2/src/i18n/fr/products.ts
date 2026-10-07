@@ -68,7 +68,8 @@ export default {
     codeLink: 'Voir le code et la documentation',
   },
   kta: {
-    title: 'Knowledge-to-Action : un type de pilote, pas un produit fini.',
+    name: 'Knowledge-to-Action',
+    title: 'un pilote, pas un produit fini.',
     intro: "Ce premier cas d'usage se construit avec vous, sur vos documents. L'interface Knowledge n'existe pas encore : la recherche sourcée s'utilise aujourd'hui depuis le Chat.",
     verbs: [
       { t: 'Poser une question', d: "Obtenir une réponse sourcée sur vos documents, avec les droits d'accès de chacun." },
