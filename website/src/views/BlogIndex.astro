@@ -1,6 +1,8 @@
 ---
 import Base from '../layouts/Base.astro';
 import Arrow from '../components/Arrow.astro';
+import Icon from '../components/Icon.astro';
+import PostCover from '../components/PostCover.astro';
 import { dict, url } from '../i18n';
 import type { Lang } from '../i18n';
 import { postsFor, allPosts, formatDate } from '../lib/blog';
@@ -9,6 +11,7 @@ interface Props { lang: Lang }
 const { lang } = Astro.props;
 const t = dict(lang).blog;
 const posts = await postsFor(lang);
+const [featured, ...rest] = posts;
 const other: Lang = lang === 'fr' ? 'en' : 'fr';
 const otherCount = (await allPosts()).filter((p) => p.lang === other).length;
 const feed = `${url(lang, 'blog')}/rss.xml`;
@@ -25,25 +28,44 @@ const feed = `${url(lang, 'blog')}/rss.xml`;
     <div class="wrap">
       {posts.length === 0 ? (
         <div class="blog-empty">
+          <span class="blog-empty-ic"><Icon name="pencil-simple-line" /></span>
           <p>{t.labels.empty}</p>
-          {otherCount > 0 && <p><a class="link" href={url(other, 'blog')} hreflang={other}>{t.labels.english} <Arrow /></a></p>}
+          {otherCount > 0 && <a class="link" href={url(other, 'blog')} hreflang={other}>{t.labels.english} <Arrow /></a>}
         </div>
       ) : (
-        <ul class="blog-grid">
-          {posts.map((p) => (
-            <li>
-              <a class="post-card" href={`${url(lang, 'blog')}/${p.slug}`}>
-                <span class="post-card-tags">
-                  <span class={`pill pill-${p.entry.data.category}`}>{t.categories[p.entry.data.category]}</span>
-                  {p.entry.data.draft && <span class="pill pill-draft">{t.labels.draft}</span>}
-                </span>
-                <h2>{p.entry.data.title}</h2>
-                <p>{p.entry.data.description}</p>
-                <span class="post-meta"><time datetime={p.entry.data.date}>{formatDate(p.entry.data.date, lang)}</time> · {p.minutes} {t.labels.minutes}</span>
-              </a>
-            </li>
-          ))}
-        </ul>
+        <>
+          <a class="post-feature" href={`${url(lang, 'blog')}/${featured.slug}`}>
+            <div class="post-feature-body">
+              <span class="post-card-tags">
+                <span class={`pill pill-${featured.entry.data.category}`}>{t.categories[featured.entry.data.category]}</span>
+                {featured.entry.data.draft && <span class="pill pill-draft">{t.labels.draft}</span>}
+              </span>
+              <h2>{featured.entry.data.title}</h2>
+              <p>{featured.entry.data.description}</p>
+              <span class="post-meta"><time datetime={featured.entry.data.date}>{formatDate(featured.entry.data.date, lang)}</time> · {featured.minutes} {t.labels.minutes}</span>
+              <span class="link">{t.labels.read} <Arrow /></span>
+            </div>
+            <PostCover category={featured.entry.data.category} cover={featured.entry.data.cover} />
+          </a>
+          {rest.length > 0 && (
+            <ul class="blog-grid">
+              {rest.map((p) => (
+                <li>
+                  <a class="post-card" href={`${url(lang, 'blog')}/${p.slug}`}>
+                    <PostCover category={p.entry.data.category} cover={p.entry.data.cover} compact />
+                    <span class="post-card-tags">
+                      <span class={`pill pill-${p.entry.data.category}`}>{t.categories[p.entry.data.category]}</span>
+                      {p.entry.data.draft && <span class="pill pill-draft">{t.labels.draft}</span>}
+                    </span>
+                    <h2>{p.entry.data.title}</h2>
+                    <p>{p.entry.data.description}</p>
+                    <span class="post-meta"><time datetime={p.entry.data.date}>{formatDate(p.entry.data.date, lang)}</time> · {p.minutes} {t.labels.minutes}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
       )}
       <p class="blog-foot"><a class="link" href={feed}>{t.labels.rss}</a>{otherCount > 0 && posts.length > 0 && <> · <a class="link" href={url(other, 'blog')} hreflang={other}>{t.labels.english}</a></>}</p>
     </div>

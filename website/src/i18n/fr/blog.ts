@@ -17,6 +17,7 @@ export default {
     related: 'À lire aussi',
     back: 'Tous les articles',
     rss: 'Flux RSS',
+    read: 'Lire l’article',
     draft: 'Brouillon : visible seulement en développement',
     empty: 'Les premiers articles arrivent bientôt.',
     english: 'English',

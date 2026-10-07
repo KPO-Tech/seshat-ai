@@ -19,6 +19,7 @@ const en: typeof fr = {
     related: 'Keep reading',
     back: 'All articles',
     rss: 'RSS feed',
+    read: 'Read the article',
     draft: 'Draft: only visible in development',
     empty: 'The first articles are coming soon.',
     english: 'Français',

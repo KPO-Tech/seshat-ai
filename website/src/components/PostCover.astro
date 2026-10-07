@@ -1,0 +1,10 @@
+---
+// Visuel d'un article : l'image de couverture si elle existe, sinon un motif de la marque avec l'icône de la catégorie.
+import Icon from './Icon.astro';
+interface Props { category: 'pme' | 'dev' | 'proof'; cover?: string; compact?: boolean }
+const { category, cover, compact = false } = Astro.props;
+const icons = { pme: 'buildings', dev: 'terminal-window', proof: 'seal-check' } as const;
+---
+<div class={`pcover pcover-${category}${compact ? ' compact' : ''}`} aria-hidden="true">
+  {cover ? <img src={cover} alt="" loading="lazy" decoding="async" /> : <span class="pcover-ic"><Icon name={icons[category]} /></span>}
+</div>
