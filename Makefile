@@ -1,7 +1,7 @@
 # Seshat AI website workspace
 
-WEBSITE_DIR := website-v2
-OLD_WEBSITE_DIR := website
+WEBSITE_DIR := website
+OLD_WEBSITE_DIR := website-old
 CV_DIR := private/cvs-specialises
 PDFLATEX ?= pdflatex
 POWERSHELL ?= powershell.exe

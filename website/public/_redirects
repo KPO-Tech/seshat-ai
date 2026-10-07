@@ -1,1 +1,90 @@
-/* /index.html 200
+# Redirections de l'ancien site (Cloudflare Pages). Les premières règles gagnent : les adresses précises
+# passent avant le joker final. Les anciennes pages anglaises à la racine (/, /services, /open-source) ne
+# peuvent pas être redirigées : ces adresses sont maintenant celles des pages françaises.
+# Ancienne documentation anglaise (/docs/...) et française (/fr/docs/...) : la doc n'existe plus qu'en anglais, sous /en/docs.
+
+/docs/getting-started/installation /en/docs/getting-started/installation 301
+/docs/getting-started/quick-start /en/docs/getting-started/quick-start 301
+/docs/getting-started/configuration /en/docs/getting-started/configuration 301
+/docs/getting-started/first-agent /en/docs/getting-started/first-agent 301
+/docs/concepts/what-is-seshat /en/docs/concepts/what-is-seshat 301
+/docs/concepts/mono-run /en/docs/concepts/mono-run 301
+/docs/concepts/runtime-modes /en/docs/concepts/runtime-modes 301
+/docs/concepts/agent-teams /en/docs/concepts/agents-and-delegation 301
+/docs/concepts/memory-rag /en/docs/concepts/memory 301
+/docs/concepts/skills-mcp /en/docs/concepts/skills-and-mcp 301
+/docs/concepts/tools /en/docs/concepts/tools-and-providers 301
+/docs/sdk/go /en/docs/sdk/go-sdk 301
+/docs/sdk/providers /en/docs/sdk/providers-and-auth 301
+/docs/sdk/agent /en/docs/concepts/agents-and-delegation 301
+/docs/sdk/prompt /en/docs/sdk/prompt 301
+/docs/sdk/go-tools /en/docs/sdk/tools 301
+/docs/sdk/workflows /en/docs/sdk/workflows 301
+/docs/sdk/multi-agent /en/docs/concepts/agents-and-delegation 301
+/docs/sdk/dev-integration /en/docs/sdk/integration 301
+/docs/sdk/grpc-api /en/docs/sdk/grpc-api 301
+/docs/sdk/rest-api /en/docs/sdk/http-api 301
+/docs/sdk/python /en/docs/sdk/go-sdk 301
+/docs/sdk/js /en/docs/sdk/go-sdk 301
+/docs/guides/cli /en/docs/guides/cli 301
+/docs/guides/desktop /en/docs 301
+/docs/learn/vision /en/docs/learn/vision 301
+/docs/learn/agent-runtime /en/docs/learn/agent-runtime 301
+/docs/learn/why-go /en/docs/learn/why-go 301
+/docs/learn/mono-run-explained /en/docs/concepts/mono-run 301
+/docs/learn/technical-hypotheses /en/docs/learn/technical-hypotheses 301
+/docs/getting-started /en/docs/getting-started/installation 301
+/docs/concepts /en/docs/concepts/what-is-seshat 301
+/docs/sdk /en/docs/sdk/go-sdk 301
+/docs/guides /en/docs/guides/cli 301
+/docs/learn /en/docs/learn/agent-runtime 301
+/docs/comparisons /en/docs 301
+/docs/contribution /en/open-source 301
+/docs /en/docs 301
+/docs/* /en/docs 301
+
+/fr/docs/getting-started/installation /en/docs/getting-started/installation 301
+/fr/docs/getting-started/quick-start /en/docs/getting-started/quick-start 301
+/fr/docs/getting-started/configuration /en/docs/getting-started/configuration 301
+/fr/docs/getting-started/first-agent /en/docs/getting-started/first-agent 301
+/fr/docs/concepts/what-is-seshat /en/docs/concepts/what-is-seshat 301
+/fr/docs/concepts/mono-run /en/docs/concepts/mono-run 301
+/fr/docs/concepts/runtime-modes /en/docs/concepts/runtime-modes 301
+/fr/docs/concepts/agent-teams /en/docs/concepts/agents-and-delegation 301
+/fr/docs/concepts/memory-rag /en/docs/concepts/memory 301
+/fr/docs/concepts/skills-mcp /en/docs/concepts/skills-and-mcp 301
+/fr/docs/concepts/tools /en/docs/concepts/tools-and-providers 301
+/fr/docs/sdk/go /en/docs/sdk/go-sdk 301
+/fr/docs/sdk/providers /en/docs/sdk/providers-and-auth 301
+/fr/docs/sdk/agent /en/docs/concepts/agents-and-delegation 301
+/fr/docs/sdk/prompt /en/docs/sdk/prompt 301
+/fr/docs/sdk/go-tools /en/docs/sdk/tools 301
+/fr/docs/sdk/workflows /en/docs/sdk/workflows 301
+/fr/docs/sdk/multi-agent /en/docs/concepts/agents-and-delegation 301
+/fr/docs/sdk/dev-integration /en/docs/sdk/integration 301
+/fr/docs/sdk/grpc-api /en/docs/sdk/grpc-api 301
+/fr/docs/sdk/rest-api /en/docs/sdk/http-api 301
+/fr/docs/sdk/python /en/docs/sdk/go-sdk 301
+/fr/docs/sdk/js /en/docs/sdk/go-sdk 301
+/fr/docs/guides/cli /en/docs/guides/cli 301
+/fr/docs/guides/desktop /en/docs 301
+/fr/docs/learn/vision /en/docs/learn/vision 301
+/fr/docs/learn/agent-runtime /en/docs/learn/agent-runtime 301
+/fr/docs/learn/why-go /en/docs/learn/why-go 301
+/fr/docs/learn/mono-run-explained /en/docs/concepts/mono-run 301
+/fr/docs/learn/technical-hypotheses /en/docs/learn/technical-hypotheses 301
+/fr/docs/getting-started /en/docs/getting-started/installation 301
+/fr/docs/concepts /en/docs/concepts/what-is-seshat 301
+/fr/docs/sdk /en/docs/sdk/go-sdk 301
+/fr/docs/guides /en/docs/guides/cli 301
+/fr/docs/learn /en/docs/learn/agent-runtime 301
+/fr/docs/comparisons /en/docs 301
+/fr/docs/contribution /en/open-source 301
+/fr/docs /en/docs 301
+/fr/docs/* /en/docs 301
+
+# Ancien site français (/fr/...) : le français est maintenant la langue par défaut, à la racine.
+/fr / 301
+/fr/services /services 301
+/fr/open-source /open-source 301
+/fr/* / 301
