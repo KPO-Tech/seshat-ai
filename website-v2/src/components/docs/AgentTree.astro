@@ -1,0 +1,16 @@
+---
+// Arbre d'agents : qui peut en lancer d'autres. Récursif.
+// Usage MDX : <AgentTree node={{ name: 'Main agent', note: '...', icon: 'robot', children: [{ name: 'explore', ... }] }} />
+import Icon from '../Icon.astro';
+interface Node { name: string; note?: string; icon?: string; children?: Node[] }
+interface Props { node: Node; root?: boolean }
+const { node, root = true } = Astro.props;
+const Self = Astro.self;
+---
+{root ? <figure class="atree"><ul><li>
+  <div class="atree-node"><span class="atree-ic"><Icon name={node.icon ?? 'robot'} /></span><span><strong>{node.name}</strong>{node.note && <small>{node.note}</small>}</span></div>
+  {node.children && node.children.length > 0 && <ul>{node.children.map((c) => <Self node={c} root={false} />)}</ul>}
+</li></ul></figure> : <li>
+  <div class="atree-node"><span class="atree-ic"><Icon name={node.icon ?? 'robot'} /></span><span><strong>{node.name}</strong>{node.note && <small>{node.note}</small>}</span></div>
+  {node.children && node.children.length > 0 && <ul>{node.children.map((c) => <Self node={c} root={false} />)}</ul>}
+</li>}

@@ -1,0 +1,155 @@
+---
+title: Retrieval and knowledge (RAG)
+description: "Let an agent search a large body of documents: how ingestion, hybrid search and reranking work, and how to use them from Go."
+section: concepts
+order: 9
+updated: "2026-10-07"
+---
+import Callout from '@/components/docs/Callout.astro';
+import Flow from '@/components/docs/Flow.astro';
+
+An agent cannot read a thousand pages in one go. Retrieval-augmented generation (RAG) fixes that: documents are cut into pieces and indexed once, and at question time only the pieces that matter are given to the model.
+
+## The two paths
+
+**Ingestion**, once per document:
+
+<Flow items={[
+  { icon: 'file-text', label: 'Document' },
+  { icon: 'scissors', label: 'Chunks' },
+  { icon: 'vector-three', label: 'Embeddings' },
+  { icon: 'database', label: 'Index' },
+]} />
+
+**Search**, at each question:
+
+<Flow items={[
+  { icon: 'chat-circle-text', label: 'Question' },
+  { icon: 'magnifying-glass', label: 'Keyword + vector' },
+  { icon: 'sort-descending', label: 'Rerank (optional)' },
+  { icon: 'quotes', label: 'Passages to the model' },
+]} />
+
+## What works with nothing configured
+
+Seshat does not need an embedding model to search. Without one, search is by keywords. With one, it blends keywords and meaning, which is better for questions that do not use the document's words. The terminal agent starts with its own embedded knowledge service: an HNSW index on disk, with a SQLite fallback, no server and no CGO.
+
+The agent reaches it through three tools, active whenever a RAG service is attached to the client:
+
+| Tool | Purpose |
+|---|---|
+| `rag_ingest` | Add a text document to a named corpus. Re-ingesting the same `file_id` replaces the old chunks |
+| `rag_search` | Search a corpus: `query`, `top_k` (default 5), `hybrid_weight`, an optional metadata `filter` |
+| `rag_delete` | Delete a corpus, or one file's chunks |
+
+<Callout type="note" title="Documents become text first">
+`rag_ingest` takes text. Reading a PDF, DOCX, PPTX or XLSX into text is the job of the document reader (the `read_file` tool reads these natively; scans and audio need an external converter such as Docling). See [Configuration](/en/docs/getting-started/configuration).
+</Callout>
+
+## From Go
+
+Create a service from a store for the chunks, a vector store, an optional embedder, and a chunker (or `nil` for the default paragraph chunker):
+
+```go
+import (
+    "github.com/KPO-Tech/seshat/pkg/rag"
+    "github.com/KPO-Tech/seshat/pkg/storage"
+    "github.com/KPO-Tech/seshat/pkg/vector"
+)
+
+artifacts, _ := storage.NewArtifactStoreFromConfig(storage.Config{
+    Provider:  storage.ProviderLocal,
+    LocalPath: "./artifacts",
+})
+svc := rag.NewService(artifacts, vector.NewMemoryStore(), nil, nil)
+
+res, _ := svc.Ingest(ctx, rag.IngestRequest{
+    CorpusID: "handbook",
+    FileID:   "leave-policy.md",
+    Filename: "leave-policy.md",
+    Text:     "# Leave policy\n\nEmployees get 25 days of paid leave per year.\n\n# Remote work\n\nUp to three days a week from home.",
+})
+fmt.Println(res.Chunks) // 4
+
+out, _ := svc.Search(ctx, rag.SearchRequest{
+    CorpusID:     "handbook",
+    Query:        "how many days of paid leave",
+    TopK:         3,
+    HybridWeight: 0.5,
+})
+for _, r := range out.Results {
+    fmt.Printf("%.2f %s\n", r.Score, r.Text)
+}
+// 0.67 Employees get 25 days of paid leave per year.
+```
+
+Then hand it to the agent so it gets the three tools:
+
+```go
+cfg.RAGService = svc
+```
+
+### Embeddings
+
+Create an embedder and pass it instead of the first `nil`. From the environment:
+
+```bash
+export RAG_EMBEDDING_URL=http://localhost:11434      # Ollama, or an OpenAI-compatible base URL
+export RAG_EMBEDDING_MODEL=nomic-embed-text
+export RAG_EMBEDDING_API_KEY=...                     # not needed for Ollama
+export RAG_EMBEDDING_PROVIDER=ollama                 # "openai" or "ollama", detected if empty
+```
+
+```go
+import "github.com/KPO-Tech/seshat/pkg/rag/embedder"
+
+svc := rag.NewService(artifacts, store, embedder.NewFromEnv(), nil)
+```
+
+`embedder.NewFromEnv()` returns `nil` when the variables are not set, which gives you keyword-only search.
+
+## Cutting documents
+
+| Chunker | Use |
+|---|---|
+| Paragraph (default) | Simple text |
+| `NewSemanticChunker` | Cuts where the meaning changes. Needs an embedder and one embedding call per sentence during ingestion |
+| `NewHeadingChunker` | Markdown: follows headings, lists, tables and code, and keeps the heading path in each chunk's metadata |
+| `NewTableChunker` | Same, with each table kept apart |
+| `NewHybridDocumentChunker` | Uses the document reader for PDFs, Office files and other structured documents, and keeps page numbers and headings |
+
+Chunk sizes follow profiles (`rag.RecommendedChunkProfile`). `NewCachedDocumentChunker` avoids redoing the work when the same document is ingested again.
+
+## Hybrid search
+
+Each search runs two rankings, **keywords (BM25)** and **vectors**, and blends them: both lists are read deep (at least 100 candidates), divided by their best score, and weighted by `HybridWeight` (0 is all vectors, 1 is all keywords). A passage that only the keywords find, because it contains a rare name or an identifier, is still returned. Every vector store blends the same way, so changing store does not change the ranking logic.
+
+## Reranking
+
+A reranker is a second model that reads the question and each candidate together. It is optional and off until you set it:
+
+```bash
+export RAG_RERANK_URL=http://localhost:8080          # a TEI, vLLM or Cohere-compatible /rerank endpoint
+export RAG_RERANK_MODEL=BAAI/bge-reranker-v2-m3
+export RAG_RERANK_WEIGHT=0.7                          # how much to trust it (default 0.7)
+export RAG_RERANK_MARGIN=0.2                          # skip it when the first stage is already sure (default 0.2)
+```
+
+When it fails, the retrieval order stands and a warning is logged. The defaults come from a measured benchmark on 192 questions over 19 documents. A reranker mostly improves the order of the first results rather than whether the answer is among the first five, and a large cross-encoder is best run as a service next to your server, not on a laptop.
+
+## Where the index lives
+
+| Store | `vector.StoreKind` | Good for |
+|---|---|---|
+| Embedded HNSW | `StoreHNSW` | Local use, no service to run |
+| SQLite | `StoreSQLite` | Small local corpora, fallback |
+| In memory | `StoreMemory` | Tests and development |
+| pgvector | `StorePgVector` | You already run PostgreSQL |
+| OpenSearch | `StoreOpenSearch` | Large corpora, real BM25 |
+| Qdrant, Chroma | `StoreQdrant`, `StoreChroma` | If you already use them |
+
+Pick one with `vector.NewStore(ctx, vector.Config{StoreKind: ...})`, or with `SESHAT_VECTOR_STORE` for the terminal agent. OpenSearch is configured with `OPENSEARCH_ADDRESSES`, `OPENSEARCH_INDEX_PREFIX`, `OPENSEARCH_KNN` and credentials.
+
+<Callout type="tip" title="Starting out">
+Begin with the default chunker, the embedded store and no reranker. Measure on your own questions before adding parts: each one costs time or money, and only some of them help on your documents.
+</Callout>
