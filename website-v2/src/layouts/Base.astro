@@ -12,8 +12,9 @@ const globe = globeRaw.replace('<svg ', '<svg class="ico" aria-hidden="true" foc
 
 // `page` : la page traduite affichée (sert au menu, au sélecteur de langue et à hreflang).
 // Sans `page`, la page n'existe que dans une langue (pages légales) : pas de sélecteur.
-interface Props { title: string; description: string; lang?: Lang; page?: PageKey; altHrefs?: Record<Lang, string> }
-const { title, description, lang = defaultLang, page, altHrefs } = Astro.props;
+interface Props { title: string; description: string; lang?: Lang; page?: PageKey; altHrefs?: Record<Lang, string>; shell?: boolean }
+// `shell` : pages sans en-tête ni pied de page du site (la documentation fournit sa propre barre).
+const { title, description, lang = defaultLang, page, altHrefs, shell = false } = Astro.props;
 const c = dict(lang).common;
 const home = page ? url(lang, 'home') : url(defaultLang, 'home');
 const alternates = altHrefs
@@ -42,9 +43,9 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
       try { var th = localStorage.getItem('theme'); if (th === 'light' || th === 'dark') document.documentElement.setAttribute('data-theme', th); } catch (e) {}
     </script>
   </head>
-  <body>
+  <body class={shell ? 'shell' : undefined}>
     <a class="skip" href="#contenu">{c.skip}</a>
-    <header class="site-header">
+    {!shell && (<header class="site-header">
       <div class="wrap">
         <a class="brand" href={home} aria-label={c.brandAria}>
           <img class="logo-light" src="/brand/mark-on-light.svg" alt="" width="34" height="34" />
@@ -74,9 +75,9 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
           <button class="theme-toggle" type="button" aria-label={c.themeToggle}><Fragment set:html={sun} /><Fragment set:html={moon} /></button>
         </div>
       </div>
-    </header>
+    </header>)}
     <main id="contenu"><slot /></main>
-    <footer class="site-footer">
+    {!shell && (<footer class="site-footer">
       <img class="foot-mark logo-light" src="/brand/mark-on-light.svg" alt="" width="260" height="260" />
       <img class="foot-mark logo-dark" src="/brand/mark-on-dark.svg" alt="" width="260" height="260" />
       <div class="wrap">
@@ -105,7 +106,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
           </ul>
         </div>
       </div>
-    </footer>
+    </footer>)}
     <script is:inline>
       (function () {
         var btn = document.querySelector('.theme-toggle');

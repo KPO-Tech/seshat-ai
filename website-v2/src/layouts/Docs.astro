@@ -1,8 +1,13 @@
 ---
 // Mise en page des pages de documentation : menu à gauche, contenu au centre, sommaire à droite.
 import Base from './Base.astro';
+import githubRaw from '@phosphor-icons/core/assets/bold/github-logo-bold.svg?raw';
+import listRaw from '@phosphor-icons/core/assets/bold/list-bold.svg?raw';
+import globeRaw from '@phosphor-icons/core/assets/bold/globe-bold.svg?raw';
+import sunRaw from '@phosphor-icons/core/assets/bold/sun-bold.svg?raw';
+import moonRaw from '@phosphor-icons/core/assets/bold/moon-bold.svg?raw';
 import Search from 'astro-pagefind/components/Search.astro';
-import { dict, docUrl, locales } from '../i18n';
+import { dict, docUrl, locales, langNames, url } from '../i18n';
 import type { Lang } from '../i18n';
 import type { DocGroup, DocItem } from '../lib/docs';
 
@@ -23,14 +28,30 @@ interface Props {
 const { lang, title, description, slug, groups, headings, prev, next, updated, translated, sectionTitle } = Astro.props;
 const d = dict(lang).docs;
 const altHrefs = Object.fromEntries(locales.map((l) => [l, docUrl(l, slug)])) as Record<Lang, string>;
+const c = dict(lang).common;
+const ic = (raw: string, cls = 'ico') => raw.replace('<svg ', `<svg class="${cls}" aria-hidden="true" focusable="false" `);
+const other = locales.find((l) => l !== lang)!;
 const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 ---
-<Base title={`${title} | Seshat AI`} description={description} lang={lang} page="docs" altHrefs={altHrefs}>
+<Base title={`${title} | Seshat AI`} description={description} lang={lang} page="docs" altHrefs={altHrefs} shell>
+  <header class="dtop" data-pagefind-ignore>
+    <button class="dtop-burger" type="button" aria-label={d.ui.menu} aria-controls="docs-side"><Fragment set:html={ic(listRaw)} /></button>
+    <a class="dtop-brand" href={url(lang, 'home')} aria-label={c.brandAria}>
+      <img class="logo-light" src="/brand/mark-on-light.svg" alt="" width="30" height="30" />
+      <img class="logo-dark" src="/brand/mark-on-dark.svg" alt="" width="30" height="30" />
+      <span>Seshat AI</span>
+    </a>
+    <a class="dtop-section" href={docUrl(lang)}>{d.ui.docsHome}</a>
+    <div class="dtop-search"><Search id="docs-search" className="pagefind-ui" uiOptions={{ showImages: false, translations: { placeholder: d.ui.search } }} /></div>
+    <div class="dtop-actions">
+      <a class="dtop-btn" href="https://github.com/KPO-Tech/seshat" rel="noopener" aria-label="GitHub"><Fragment set:html={ic(githubRaw)} /><span>GitHub</span></a>
+      <a class="dtop-btn" href={altHrefs[other]} hreflang={other} lang={other} title={langNames[other]} aria-label={`${c.langSwitch} : ${langNames[other]}`}><Fragment set:html={ic(globeRaw)} /><span>{other.toUpperCase()}</span></a>
+      <button class="theme-toggle" type="button" aria-label={c.themeToggle}><Fragment set:html={ic(sunRaw, 'ico i-sun')} /><Fragment set:html={ic(moonRaw, 'ico i-moon')} /></button>
+    </div>
+  </header>
   <div class="docs">
-    <aside class="docs-side" data-pagefind-ignore>
-      <details class="docs-menu" open>
-        <summary>{d.ui.menu}</summary>
-        <div class="docs-search"><Search id="docs-search" className="pagefind-ui" uiOptions={{ showImages: false, translations: { placeholder: d.ui.search } }} /></div>
+    <aside class="docs-side" id="docs-side" data-pagefind-ignore>
+      <div class="docs-menu">
         <nav aria-label={d.ui.menu}>
           <a class="docs-home-link" href={docUrl(lang)}>{d.ui.docsHome}</a>
           {groups.map((g) => (
@@ -44,7 +65,7 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
             </div>
           ))}
         </nav>
-      </details>
+      </div>
     </aside>
 
     <article class="docs-main" data-pagefind-body>
@@ -91,9 +112,10 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
         });
         pre.appendChild(btn);
       });
-      // Menu replié sur les petits écrans
-      var menu = document.querySelector('.docs-menu');
-      if (menu && matchMedia('(max-width: 960px)').matches) menu.removeAttribute('open');
+      // Menu latéral ouvert/fermé sur les petits écrans
+      var burger = document.querySelector('.dtop-burger');
+      if (burger) burger.addEventListener('click', function () { document.body.classList.toggle('docs-nav-open'); });
+      document.querySelectorAll('.docs-side a').forEach(function (a) { a.addEventListener('click', function () { document.body.classList.remove('docs-nav-open'); }); });
       // Lien actif du sommaire pendant la lecture
       var links = [].slice.call(document.querySelectorAll('.docs-toc a'));
       if (links.length && 'IntersectionObserver' in window) {

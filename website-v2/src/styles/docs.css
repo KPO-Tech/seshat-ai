@@ -3,9 +3,25 @@
 :root { --code-bg: #f1ebe2; }
 :root[data-theme='dark'] { --code-bg: #17161a; }
 
-/* Mise en page à trois colonnes */
-.docs { max-width: 1320px; margin: 0 auto; padding: 40px 20px 96px; display: grid; grid-template-columns: 260px minmax(0, 1fr) 220px; gap: 48px; align-items: start; }
-.docs-side, .docs-toc { position: sticky; top: 92px; max-height: calc(100vh - 112px); overflow: auto; }
+/* Coque de la documentation : barre fine en haut, menu pleine hauteur à gauche, contenu qui occupe la place */
+body.shell { --dtop: 60px; --side: 290px; }
+.dtop { position: sticky; top: 0; z-index: 30; height: var(--dtop); display: flex; align-items: center; gap: 16px; padding: 0 20px; background: color-mix(in srgb, var(--bg) 94%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.dtop-brand { display: flex; align-items: center; gap: 10px; width: calc(var(--side) - 40px); flex: none; font-family: var(--font-display); font-weight: 700; text-decoration: none; color: var(--text); }
+.dtop-brand img { width: 30px; height: 30px; }
+.dtop-section { padding: 4px 12px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent-text); font-size: 0.85rem; font-weight: 600; text-decoration: none; flex: none; }
+.dtop-search { flex: 1; max-width: 520px; margin-left: 12px; }
+.dtop-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.dtop-btn { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font-size: 0.9rem; font-weight: 600; text-decoration: none; }
+.dtop-btn:hover { border-color: var(--accent); }
+.dtop-btn .ico { width: 18px; height: 18px; fill: currentColor; }
+.dtop-burger { display: none; width: 40px; height: 40px; place-items: center; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--text); cursor: pointer; }
+.dtop-burger .ico { width: 20px; height: 20px; fill: currentColor; }
+
+.docs { display: grid; grid-template-columns: var(--side) minmax(0, 1fr) 250px; align-items: start; min-height: calc(100vh - var(--dtop)); }
+.docs-side { position: sticky; top: var(--dtop); height: calc(100vh - var(--dtop)); overflow: auto; padding: 28px 16px 40px 20px; background: var(--band); border-right: 1px solid var(--line); }
+.docs-toc { position: sticky; top: var(--dtop); max-height: calc(100vh - var(--dtop)); overflow: auto; padding: 40px 28px 40px 0; }
+.docs-main { padding: 44px clamp(24px, 4vw, 64px) 96px; }
+.docs-main > * { max-width: 920px; }
 .docs-menu summary { display: none; }
 .docs-search { margin-bottom: 20px; }
 .docs-home-link { display: block; margin-bottom: 18px; font-weight: 600; text-decoration: none; color: var(--text); }
@@ -167,17 +183,20 @@
 /* Recherche (Pagefind) aux couleurs du site */
 .pagefind-ui { --pagefind-ui-scale: 0.92; --pagefind-ui-primary: var(--accent); --pagefind-ui-text: var(--text); --pagefind-ui-background: var(--surface); --pagefind-ui-border: var(--line); --pagefind-ui-tag: var(--band); --pagefind-ui-border-width: 1.5px; --pagefind-ui-border-radius: 12px; --pagefind-ui-font: var(--font-body); }
 
-@media (max-width: 1100px) {
-  .docs { grid-template-columns: 240px minmax(0, 1fr); }
+@media (max-width: 1180px) {
+  .docs { grid-template-columns: var(--side) minmax(0, 1fr); }
   .docs-toc { display: none; }
 }
 @media (max-width: 960px) {
-  .docs { grid-template-columns: 1fr; gap: 24px; padding-top: 24px; }
-  .docs-side { position: static; max-height: none; }
-  .docs-menu { border: 1px solid var(--line); border-radius: var(--radius); padding: 0 16px; background: var(--surface); }
-  .docs-menu summary { display: block; padding: 14px 0; font-weight: 600; cursor: pointer; }
-  .docs-menu[open] summary { border-bottom: 1px solid var(--line); margin-bottom: 14px; }
-  .docs-menu nav { padding-bottom: 12px; }
+  .dtop { padding: 0 14px; gap: 10px; }
+  .dtop-burger { display: grid; }
+  .dtop-brand { width: auto; }
+  .dtop-brand span, .dtop-section, .dtop-btn span { display: none; }
+  .dtop-search { margin-left: 0; min-width: 0; }
+  .docs { grid-template-columns: 1fr; }
+  .docs-side { position: fixed; z-index: 25; top: var(--dtop); left: 0; bottom: 0; width: min(88vw, 340px); height: auto; transform: translateX(-102%); transition: transform 0.25s var(--ease); box-shadow: 0 0 40px rgba(0, 0, 0, 0.2); }
+  body.docs-nav-open .docs-side { transform: none; }
+  .docs-main { padding: 28px 20px 72px; }
   .docs-hero .wrap { grid-template-columns: 1fr; }
   .lstack { grid-template-columns: 1fr; }
   .lstack-scene { height: 340px; }
@@ -187,3 +206,8 @@
 /* Accueil : la commande d'installation passe à la ligne au lieu de défiler. */
 .docs-install .cmd { white-space: pre-wrap; overflow-wrap: anywhere; overflow-x: visible; }
 .docs-install .cmd code { white-space: inherit; }
+
+/* Parcours en icônes : le style de liste de .prose ne doit pas le casser. */
+.prose .docflow { display: flex; padding: 0; gap: 0; margin-top: 1.6em; margin-bottom: 1.6em; }
+.prose .docflow li { margin: 0; }
+.prose .docflow li::marker { content: none; }
