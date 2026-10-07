@@ -1,0 +1,63 @@
+---
+import Base from '../layouts/Base.astro';
+import { legal as l } from '../data/legal';
+---
+<Base
+  title="Confidentialité | Seshat AI"
+  description="Quelles données le site collecte, pourquoi, combien de temps, et comment exercer vos droits."
+>
+  <header class="page-head contact-head">
+    <div class="wrap">
+      <h1>Politique de confidentialité</h1>
+      <p class="lead">Ce que nous faisons de vos données, en clair : peu, et seulement pour vous répondre.</p>
+    </div>
+  </header>
+
+  <section class="block legal-block">
+    <div class="wrap legal">
+      <article>
+        <h2>Qui est responsable</h2>
+        <p>Le responsable du traitement est {l.name} ({l.usageName}), {l.form}, nom commercial {l.tradeName}, {l.address}. Contact : <a href={`mailto:${l.email}`}>{l.email}</a>.</p>
+      </article>
+
+      <article>
+        <h2>Ce que nous collectons</h2>
+        <p><strong>Le formulaire de contact.</strong> Si vous nous écrivez, nous recevons les informations que vous saisissez : votre nom, votre adresse e-mail, le nom de votre entreprise et sa taille (facultatifs) et votre message.</p>
+        <p><strong>Le fonctionnement du site.</strong> Comme tout site, le serveur traite des données techniques (adresse IP, navigateur, pages demandées) pour acheminer les pages, assurer la sécurité et éviter les abus. Ces données sont traitées par l'hébergeur.</p>
+        <p><strong>Ce que nous ne collectons pas.</strong> Le site n'utilise ni cookie publicitaire, ni outil de suivi, ni mesure d'audience qui vous identifie. Le choix du thème clair ou sombre est mémorisé dans le stockage local de votre navigateur : il reste sur votre appareil et n'est envoyé à personne.</p>
+      </article>
+
+      <article>
+        <h2>Pourquoi, et sur quelle base</h2>
+        <ul>
+          <li><strong>Vous répondre</strong> et organiser un premier échange : sur la base de votre consentement, donné en cochant la case du formulaire, et de votre demande d'entrer en relation.</li>
+          <li><strong>Assurer le fonctionnement et la sécurité du site</strong> : sur la base de l'intérêt légitime de l'éditeur.</li>
+        </ul>
+        <p>Vos données ne servent pas à de la prospection automatisée et ne sont pas vendues.</p>
+      </article>
+
+      <article>
+        <h2>Combien de temps</h2>
+        <p>Les messages reçus par le formulaire sont conservés le temps de la discussion, puis au plus trois ans après le dernier échange si aucune relation commerciale ne s'engage. Si une prestation est réalisée, les pièces utiles (devis, factures) sont conservées pendant les durées légales.</p>
+      </article>
+
+      <article>
+        <h2>Qui y a accès</h2>
+        <p>L'éditeur seul. Pour faire fonctionner le site, nous faisons appel à {l.host.name} ({l.host.address}), qui héberge le site et le nom de domaine. {l.host.name} peut traiter des données hors de l'Union européenne, notamment aux États-Unis, dans le cadre de ses engagements contractuels de protection des données.</p>
+      </article>
+
+      <article>
+        <h2>Vos droits</h2>
+        <p>Vous pouvez demander l'accès à vos données, leur rectification, leur effacement, la limitation ou l'opposition à leur traitement, et, lorsque cela s'applique, leur portabilité. Vous pouvez aussi retirer votre consentement à tout moment. Pour cela, écrivez à <a href={`mailto:${l.email}`}>{l.email}</a>.</p>
+        <p>Si vous estimez que vos droits ne sont pas respectés, vous pouvez saisir la CNIL : <a href="https://www.cnil.fr/fr/plaintes" rel="noopener">cnil.fr/fr/plaintes</a>.</p>
+      </article>
+
+      <article>
+        <h2>Évolutions</h2>
+        <p>Cette politique peut évoluer, par exemple si un outil de mesure d'audience ou un nouveau service est ajouté. La date de mise à jour figure en bas de page.</p>
+      </article>
+
+      <p class="legal-date">Dernière mise à jour : {l.updated}.</p>
+    </div>
+  </section>
+</Base>
