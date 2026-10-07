@@ -4,14 +4,24 @@ description: "A cloned repository, a .env file, a web page: the inputs that can 
 date: "2026-10-07"
 category: dev
 draft: true
+cover: /img/blog/running-agents-safely/cover.jpg
 tags: ["security", "AI agents", "Go", "Seshat"]
 ---
 import Callout from '@/components/docs/Callout.astro';
 import Flow from '@/components/docs/Flow.astro';
+import Figure from '@/components/docs/Figure.astro';
 
 An AI agent reads files and runs commands. That makes the question "what can an attacker make it read?" more important than "what can a user ask it?". Before releasing Seshat 1.3.0, we audited our own runtime with that question in mind. We found problems that a prompt filter would never have caught, because none of them came from the prompt.
 
 This is what we found, how we fixed it, and what you can check in your own agent. Everything below is in the [1.3.0 changelog](https://github.com/KPO-Tech/seshat/blob/main/CHANGELOG.md), and most of the fixes come with a test that reproduces the problem.
+
+<Figure
+  src="/img/blog/running-agents-safely/before-after.webp"
+  alt="Before and after Seshat 1.3.0. On the left, hidden inputs reach the agent: a cloned repository, a .env file, a web page, the local network, a gRPC server, a git path, the tool environment. On the right, each one is contained: project configuration ignored until trusted, .env sanitised, local addresses blocked, gRPC closed by default, git references checked, secrets removed from commands, a scanner that verifies."
+  caption="Before and after Seshat 1.3.0, in one picture (AI-generated illustration). The sections below give the details."
+  width={1536}
+  height={1024}
+/>
 
 ## The files an agent reads are the attack surface
 
