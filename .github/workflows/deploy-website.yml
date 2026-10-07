@@ -32,13 +32,10 @@ jobs:
         working-directory: website
         run: npm run build
 
+      # cloudflare/pages-action no longer exists (repository removed): deploy with Wrangler instead.
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/pages-action@v1
+        uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: seshat-ai
-          directory: website/dist
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-          branch: main
-          wranglerVersion: '3'
+          command: pages deploy website/dist --project-name=seshat-ai --branch=main --commit-dirty=true
