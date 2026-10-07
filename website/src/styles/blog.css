@@ -83,3 +83,9 @@
   .post-feature .pcover { order: -1; min-height: 160px; }
   .post-feature-body { padding: 26px; }
 }
+
+/* Image d'article */
+.fig { margin: 0; }
+.fig a { display: block; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); }
+.fig img { display: block; width: 100%; height: auto; }
+.fig figcaption { margin-top: 10px; color: var(--text2); font-size: 0.92rem; }
