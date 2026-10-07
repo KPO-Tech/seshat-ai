@@ -3,6 +3,7 @@ import type { APIRoute } from 'astro';
 import { docsFor, sortItems } from '../lib/docs';
 import { docUrl, dict, url } from '../i18n';
 import { SITE } from '../lib/seo';
+import { legal } from '../data/legal';
 
 export const GET: APIRoute = async () => {
   const fr = dict('fr');
@@ -39,6 +40,7 @@ export const GET: APIRoute = async () => {
     lines.push('', `### ${title}`, '');
     for (const it of items) lines.push(`- [${it.entry.data.title}](${abs(docUrl(it.slug))}): ${it.entry.data.description}`);
   }
+  lines.push('', '## Contact', '', `- Sales and assessments: ${legal.email}`, `- Support (runtime, documentation, installed products): ${legal.supportEmail}`);
   lines.push('', '## Source code', '', '- [Seshat runtime on GitHub](https://github.com/KPO-Tech/seshat): the open source runtime, with its architecture notes.', '');
   return new Response(lines.join('\n'), { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
 };

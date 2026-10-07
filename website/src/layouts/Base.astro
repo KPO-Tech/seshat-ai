@@ -7,6 +7,7 @@ import { dict, locales, langNames, ogLocales, url, defaultLang } from '../i18n';
 import type { Lang, PageKey } from '../i18n';
 import interLatin from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
 import groteskLatin from '@fontsource-variable/space-grotesk/files/space-grotesk-latin-wght-normal.woff2?url';
+import { legal } from '../data/legal';
 import { SITE, graph, organizationNode, founderNode, websiteNode, breadcrumbNode, webPageNode } from '../lib/seo';
 
 const sun = sunRaw.replace('<svg ', '<svg class="ico i-sun" aria-hidden="true" focusable="false" ');
@@ -133,6 +134,7 @@ const nodes: object[] = [
             <ul class="foot-links">
               {c.nav.map((n) => <li><a href={url(lang, n.page as PageKey)}>{n.label}</a></li>)}
               <li><a href={url(lang, 'contact')}>{c.footer.contact}</a></li>
+              <li><a href={`mailto:${legal.supportEmail}`}>{c.footer.support}</a></li>
               <li><a href="https://github.com/KPO-Tech" rel="noopener">{c.footer.github}</a></li>
             </ul>
           </nav>

@@ -763,3 +763,13 @@ section.legal-block { padding: 16px 0 96px; }
   .site-header .brand-text { display: none; }
   .actions .btn { padding: 9px 14px; }
 }
+
+/* Contact : adresses e-mail directes sous le formulaire */
+.direct { margin-top: 28px; padding-top: 24px; border-top: 1px solid rgba(255, 255, 255, 0.16); }
+.direct h3 { font-size: 1.05rem; }
+.direct ul { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 16px; }
+.direct li { display: grid; gap: 2px; }
+.direct li > span { font-size: 0.78rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--on-panel2); }
+.direct a { color: #f6c9a4; font-weight: 600; text-underline-offset: 3px; overflow-wrap: anywhere; }
+.direct small { color: var(--on-panel2); font-size: 0.9rem; line-height: 1.45; }
+.next .direct li { grid-template-columns: 1fr; gap: 2px; }

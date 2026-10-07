@@ -26,6 +26,7 @@ import { legal as l } from '../data/legal';
           <div><dt>Immatriculation</dt><dd>Au registre national des entreprises (RNE) depuis le {l.registered}</dd></div>
           <div><dt>Adresse</dt><dd>{l.address}</dd></div>
           <div><dt>Courrier électronique</dt><dd><a href={`mailto:${l.email}`}>{l.email}</a></dd></div>
+          <div><dt>Support</dt><dd><a href={`mailto:${l.supportEmail}`}>{l.supportEmail}</a></dd></div>
           {l.phone && <div><dt>Téléphone</dt><dd>{l.phone}</dd></div>}
         </dl>
       </article>
