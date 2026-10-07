@@ -46,7 +46,8 @@ body.shell { --dtop: 60px; --side: 290px; }
 .docs-main h1 { font-size: clamp(2rem, 3.4vw, 2.8rem); }
 .docs-lead { margin-top: 14px; font-size: 1.2rem; color: var(--text2); }
 .docs-untranslated { margin-top: 20px; padding: 12px 16px; border-radius: var(--radius); background: color-mix(in srgb, var(--accent) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line)); font-size: 0.95rem; }
-.docs-updated { margin-top: 40px; font-size: 0.88rem; color: var(--text2); }
+.docs-updated { margin-top: 40px; display: flex; flex-wrap: wrap; gap: 8px 24px; font-size: 0.88rem; color: var(--text2); }
+.docs-updated a { color: var(--accent-text); }
 .docs-pager { margin-top: 48px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .docs-pager a { display: grid; gap: 4px; padding: 16px 20px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); text-decoration: none; color: var(--text); transition: border-color 0.2s, transform 0.2s var(--ease); }
 .docs-pager a:hover { border-color: var(--accent); transform: translateY(-2px); }
@@ -245,3 +246,31 @@ body.shell { --dtop: 60px; --side: 290px; }
 .atree-node strong { display: block; font-family: var(--font-display); }
 .atree-node small { display: block; color: var(--text2); font-size: 0.85rem; line-height: 1.4; }
 .prose .atree > ul { padding-left: 0; }
+
+/* Schéma Pipeline : deux voies autour d'un élément central, étapes en colonne avec leur explication */
+.pipe { margin: 0; padding: 24px; border-radius: calc(var(--radius) + 6px); background: var(--surface); border: 1px solid var(--line); display: grid; gap: 18px; }
+.pipe-lane { display: grid; gap: 14px; }
+.prose .pipe-label { margin: 0; font-size: 0.82rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text2); }
+.pipe-steps, .prose .pipe-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.pipe-steps li { position: relative; display: grid; grid-template-columns: auto 1fr; column-gap: 16px; align-items: start; margin: 0; padding: 0 0 18px; }
+.pipe-steps li:last-child { padding-bottom: 0; }
+.pipe-steps li:not(:last-child)::after { content: ''; position: absolute; left: 18px; top: 44px; bottom: 6px; border-left: 2px dashed var(--accent); opacity: 0.6; }
+.pipe-ic { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 10px; background: color-mix(in srgb, var(--accent) 16%, var(--surface)); color: var(--accent-text); grid-row: 1 / span 2; }
+.pipe-ic .pi { width: 21px; height: 21px; fill: currentColor; }
+.pipe-num { display: none; }
+.pipe-steps strong { font-family: var(--font-display); align-self: end; }
+.pipe-steps strong::before { content: counter(pipe) '. '; color: var(--accent-text); }
+.pipe-steps { counter-reset: pipe; }
+.pipe-steps li { counter-increment: pipe; }
+.pipe-steps small { grid-column: 2; color: var(--text2); font-size: 0.92rem; line-height: 1.5; }
+.pipe-store small { display: block; color: var(--text2); font-size: 0.86rem; line-height: 1.45; }
+.pipe-store strong { font-family: var(--font-display); }
+.pipe-mid { display: flex; align-items: center; justify-content: center; gap: 18px; }
+.pipe-store { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-radius: var(--radius); border: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+.pipe-store .pipe-ic { grid-row: auto; }
+.pipe-arrow { width: 0; height: 30px; border-left: 2px dashed var(--accent); position: relative; }
+.pipe-arrow::after { content: ''; position: absolute; left: -6px; bottom: -2px; border: 5px solid transparent; border-top: 8px solid var(--accent); border-bottom: 0; }
+.pipe-arrow.up::after { bottom: auto; top: -2px; border-top: 0; border-bottom: 8px solid var(--accent); }
+
+/* Recherche : variables du composant Pagefind (--pf-*) aux couleurs du site, clair et sombre */
+.pagefind-ui { --pf-background: var(--surface); --pf-text: var(--text); --pf-text-secondary: var(--text2); --pf-text-muted: var(--text2); --pf-border: var(--line); --pf-border-focus: var(--accent); --pf-hover: var(--band); --pf-border-radius: 12px; --pf-font: var(--font-body); --pf-mark: color-mix(in srgb, var(--accent) 30%, transparent); --pf-skeleton: var(--band); }

@@ -12,6 +12,7 @@ const en: typeof fr = {
     previous: 'Previous',
     next: 'Next',
     updated: 'Updated on',
+    edit: 'Edit this page on GitHub',
     untranslated: 'This page is not translated yet: it is shown in English.',
     docsHome: 'Documentation',
     copy: 'Copy',

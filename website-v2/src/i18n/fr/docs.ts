@@ -10,6 +10,7 @@ export default {
     previous: 'Précédent',
     next: 'Suivant',
     updated: 'Mis à jour le',
+    edit: 'Modifier cette page sur GitHub',
     untranslated: "Cette page n'est pas encore traduite : elle s'affiche en anglais.",
     docsHome: 'Documentation',
     copy: 'Copier',

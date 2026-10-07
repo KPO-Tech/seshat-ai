@@ -24,6 +24,7 @@ const d = dict(lang).docs;
   prev={index > 0 ? items[index - 1] : undefined}
   next={index < items.length - 1 ? items[index + 1] : undefined}
   updated={item.entry.data.updated}
+  editPath={item.entry.filePath}
   translated={item.translated}
   sectionTitle={d.sections[item.entry.data.section].title}
 >

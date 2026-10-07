@@ -6,29 +6,38 @@ order: 9
 updated: "2026-10-07"
 ---
 import Callout from '@/components/docs/Callout.astro';
-import Flow from '@/components/docs/Flow.astro';
+import Pipeline from '@/components/docs/Pipeline.astro';
 
 An agent cannot read a thousand pages in one go. Retrieval-augmented generation (RAG) fixes that: documents are cut into pieces and indexed once, and at question time only the pieces that matter are given to the model.
 
-## The two paths
+## The whole flow
 
-**Ingestion**, once per document:
+Everything happens in two phases that share one index. Ingestion fills it once per document. Search reads it at every question.
 
-<Flow items={[
-  { icon: 'file-text', label: 'Document' },
-  { icon: 'scissors', label: 'Chunks' },
-  { icon: 'vector-three', label: 'Embeddings' },
-  { icon: 'database', label: 'Index' },
-]} />
+<Pipeline
+  lanes={[
+    { label: 'Ingestion, once per document', steps: [
+      { icon: 'file-text', title: 'Read', text: 'The document becomes text. PDFs, Office files and scans go through the document reader first.' },
+      { icon: 'scissors', title: 'Cut', text: 'The text is split into chunks that keep their meaning, with their headings and page numbers.' },
+      { icon: 'vector-three', title: 'Embed', text: 'An embedding model turns each chunk into a vector. Optional: without it, search is by keywords.' },
+      { icon: 'database', title: 'Store', text: 'Chunks, vectors and metadata are saved in the index of a named corpus.' },
+    ] },
+    { label: 'Search, at every question', steps: [
+      { icon: 'chat-circle-text', title: 'Ask', text: 'The agent calls rag_search with a question, or your code calls Search.' },
+      { icon: 'magnifying-glass', title: 'Retrieve', text: 'Keywords (BM25) and vectors each give a ranked list of candidates.' },
+      { icon: 'git-merge', title: 'Blend', text: 'The two lists are normalised and merged with your HybridWeight.' },
+      { icon: 'sort-descending', title: 'Rerank', text: 'Optional. A second model reorders the best candidates, unless the first stage was already sure.' },
+      { icon: 'quotes', title: 'Answer', text: 'The top passages, with their source, go to the model, which writes the answer from them.' },
+    ] },
+  ]}
+  middle={{ icon: 'database', name: 'The index of a corpus', note: 'Chunks, vectors and metadata' }}
+/>
 
-**Search**, at each question:
+**Why two lists.** Keywords find exact things: a name, an identifier, a figure. Vectors find the same idea said in other words. A good question needs both, and the blend keeps a passage that only one of them found.
 
-<Flow items={[
-  { icon: 'chat-circle-text', label: 'Question' },
-  { icon: 'magnifying-glass', label: 'Keyword + vector' },
-  { icon: 'sort-descending', label: 'Rerank (optional)' },
-  { icon: 'quotes', label: 'Passages to the model' },
-]} />
+**Why the index is separate.** Reading, cutting and embedding are slow and done once. Search must be fast, so it only reads the index. Changing a document means re-ingesting it with the same `file_id`, which replaces its old chunks.
+
+**What the model sees.** Never the whole corpus: only the few passages that came out on top. If the right passage is not among them, the answer will be wrong however good the model is, which is why cutting well and retrieving well matter more than the choice of model.
 
 ## What works with nothing configured
 
