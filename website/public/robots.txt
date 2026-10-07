@@ -1,0 +1,5 @@
+# Seshat AI. Everything public is open to crawlers, search engines and AI assistants alike.
+User-agent: *
+Allow: /
+
+Sitemap: https://seshat-ai.com/sitemap-index.xml

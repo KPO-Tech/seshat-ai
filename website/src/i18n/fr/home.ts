@@ -1,6 +1,6 @@
 export default {
   meta: {
-    title: "Seshat AI | Conseil et intégration d'IA souveraine pour PME et ETI",
+    title: "Conseil en IA souveraine pour PME et ETI | Seshat AI",
     description: "Diagnostic chiffré, pilote en 30 à 90 jours, solutions d'IA auto-hébergées sous votre contrôle. Éditeur du runtime open source Seshat.",
   },
   hero: {

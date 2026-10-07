@@ -2,7 +2,7 @@ import type fr from '../fr/about';
 
 const en: typeof fr = {
   meta: {
-    title: 'About | Seshat AI',
+    title: 'About: Stéphane Kpoviessi, data and AI engineer | Seshat AI',
     description: 'Stéphane Kpoviessi, data and AI engineer, founder of Seshat AI. Career, achievements, education and way of working.',
   },
   head: {

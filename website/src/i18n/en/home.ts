@@ -2,7 +2,7 @@ import type fr from '../fr/home';
 
 const en: typeof fr = {
   meta: {
-    title: 'Seshat AI | Sovereign AI consulting and integration for SMEs and mid-sized companies',
+    title: 'Sovereign AI consulting and integration | Seshat AI',
     description: 'A costed assessment, a 30 to 90 day pilot, self-hosted AI solutions under your control. Publisher of the open source Seshat runtime.',
   },
   hero: {

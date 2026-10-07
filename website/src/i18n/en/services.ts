@@ -2,7 +2,7 @@ import type fr from '../fr/services';
 
 const en: typeof fr = {
   meta: {
-    title: 'Services | Seshat AI',
+    title: 'AI services: assessment, pilot, operation | Seshat AI',
     description: 'An AI and automation assessment, a 30 to 90 day pilot, then operation. Self-hosted solutions for SMEs and mid-sized companies.',
   },
   head: {

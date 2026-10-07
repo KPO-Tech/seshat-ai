@@ -5,6 +5,9 @@ import moonRaw from '@phosphor-icons/core/assets/bold/moon-bold.svg?raw';
 import globeRaw from '@phosphor-icons/core/assets/bold/globe-bold.svg?raw';
 import { dict, locales, langNames, ogLocales, url, defaultLang } from '../i18n';
 import type { Lang, PageKey } from '../i18n';
+import interLatin from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
+import groteskLatin from '@fontsource-variable/space-grotesk/files/space-grotesk-latin-wght-normal.woff2?url';
+import { SITE, graph, organizationNode, founderNode, websiteNode, breadcrumbNode, webPageNode } from '../lib/seo';
 
 const sun = sunRaw.replace('<svg ', '<svg class="ico i-sun" aria-hidden="true" focusable="false" ');
 const moon = moonRaw.replace('<svg ', '<svg class="ico i-moon" aria-hidden="true" focusable="false" ');
@@ -12,9 +15,9 @@ const globe = globeRaw.replace('<svg ', '<svg class="ico" aria-hidden="true" foc
 
 // `page` : la page traduite affichée (sert au menu, au sélecteur de langue et à hreflang).
 // Sans `page`, la page n'existe que dans une langue (pages légales) : pas de sélecteur.
-interface Props { title: string; description: string; lang?: Lang; page?: PageKey; altHrefs?: Record<Lang, string>; shell?: boolean; monolingual?: boolean }
+interface Props { title: string; description: string; lang?: Lang; page?: PageKey; altHrefs?: Record<Lang, string>; shell?: boolean; monolingual?: boolean; ogImage?: string; ogType?: 'website' | 'article'; noindex?: boolean; schema?: object[]; crumbs?: { name: string; path: string }[] }
 // `shell` : pages sans en-tête ni pied de page du site (la documentation fournit sa propre barre).
-const { title, description, lang = defaultLang, page, altHrefs, shell = false, monolingual = false } = Astro.props;
+const { title, description, lang = defaultLang, page, altHrefs, shell = false, monolingual = false, ogImage, ogType = 'website', noindex = false, schema = [], crumbs } = Astro.props;
 const c = dict(lang).common;
 const home = page ? url(lang, 'home') : url(defaultLang, 'home');
 // `monolingual` : page qui n'existe que dans une langue (documentation) : ni sélecteur ni hreflang.
@@ -24,6 +27,19 @@ const alternates = monolingual ? []
   : page ? locales.map((l) => ({ lang: l, href: url(l, page) })) : [];
 const others = alternates.filter((a) => a.lang !== lang);
 const canonical = new URL(Astro.url.pathname, Astro.site);
+const image = new URL(ogImage ?? `/og/og-${lang}.png`, Astro.site).href;
+const ogAlt = lang === 'fr' ? 'Seshat AI, conseil et intégration d’IA souveraine' : 'Seshat AI, sovereign AI consulting and integration';
+const navLabel = c.nav.find((n) => n.page === page)?.label;
+const shortName = navLabel ?? title.split(' | ')[0];
+const isHome = page === 'home';
+// Fil d'Ariane : accueil > page (les pages de documentation fournissent le leur).
+const trail = crumbs ?? (page && !isHome && !shell ? [{ name: 'Seshat AI', path: home }, { name: shortName, path: Astro.url.pathname }] : []);
+const nodes: object[] = [
+  ...(isHome ? [organizationNode(lang), founderNode(), websiteNode(lang)] : []),
+  ...(!isHome && !shell ? [webPageNode({ url: canonical.href, name: shortName, description, lang })] : []),
+  ...(trail.length > 1 ? [breadcrumbNode(trail)] : []),
+  ...schema,
+];
 ---
 <!doctype html>
 <html lang={lang}>
@@ -33,13 +49,32 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <title>{title}</title>
     <meta name="description" content={description} />
     <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#f5f1ea" />
+    <meta name="robots" content={noindex ? 'noindex, nofollow' : 'index, follow, max-image-preview:large, max-snippet:-1'} />
+    <link rel="preload" href={groteskLatin} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={interLatin} as="font" type="font/woff2" crossorigin />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="sitemap" type="application/xml" href="/sitemap-index.xml" />
     <link rel="canonical" href={canonical} />
     {alternates.map((a) => <link rel="alternate" hreflang={a.lang} href={new URL(a.href, Astro.site)} />)}
     {alternates.length > 0 && <link rel="alternate" hreflang="x-default" href={new URL(alternates.find((a) => a.lang === defaultLang)!.href, Astro.site)} />}
+    <meta property="og:site_name" content="Seshat AI" />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:url" content={canonical} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:locale" content={ogLocales[lang]} />
+    {alternates.filter((a) => a.lang !== lang).map((a) => <meta property="og:locale:alternate" content={ogLocales[a.lang]} />)}
+    <meta property="og:image" content={image} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={ogAlt} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={image} />
+    {nodes.length > 0 && <script type="application/ld+json" set:html={graph(nodes)} />}
     <script is:inline>
       document.documentElement.classList.add('js');
       try { var th = localStorage.getItem('theme'); if (th === 'light' || th === 'dark') document.documentElement.setAttribute('data-theme', th); } catch (e) {}

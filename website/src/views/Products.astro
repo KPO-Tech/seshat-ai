@@ -18,12 +18,12 @@ const meta = [
 ];
 const stages = t.stages.map((name, i) => ({ name, items: meta.filter((m) => m.stage === i) }));
 const shotImgs = [
-  '/captures/tui-home.png',
-  '/captures/tui-working1.png',
-  '/captures/tui-working2.png',
-  '/captures/tui-model_selction.png',
-  '/captures/tui-provider_config.png',
-  '/captures/tui-commands_pannel.png',
+  '/captures/tui-home.webp',
+  '/captures/tui-working1.webp',
+  '/captures/tui-working2.webp',
+  '/captures/tui-model_selction.webp',
+  '/captures/tui-provider_config.webp',
+  '/captures/tui-commands_pannel.webp',
 ];
 const shots = t.tui.shots.map((s, i) => ({ ...s, img: shotImgs[i] }));
 const verbMeta = [
@@ -97,13 +97,13 @@ const verbMeta = [
       </div>
       <div class="gallery reveal" data-gallery>
         <figure class="shot">
-          <div class="shot-frame"><img src={shots[0].img} alt={shots[0].t} width="1917" height="986" loading="lazy" data-main /></div>
+          <div class="shot-frame"><img src={shots[0].img} alt={shots[0].t} width="1600" height="823" loading="lazy" decoding="async" data-main /></div>
           <figcaption data-cap><strong>{shots[0].t}</strong> <span>{shots[0].d}</span></figcaption>
         </figure>
         <div class="thumbs" role="tablist" aria-label={t.tui.galleryAria}>
           {shots.map((s, i) => (
             <button class="thumb" type="button" role="tab" aria-selected={i === 0 ? 'true' : 'false'} data-img={s.img} data-t={s.t} data-d={s.d}>
-              <img src={s.img} alt="" width="240" height="124" loading="lazy" />
+              <img src={s.img.replace('.webp', '-thumb.webp')} alt="" width="240" height="124" loading="lazy" decoding="async" />
               <span>{s.t}</span>
             </button>
           ))}

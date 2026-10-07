@@ -1,6 +1,6 @@
 export default {
   meta: {
-    title: 'Services | Seshat AI',
+    title: 'Services IA : diagnostic, pilote, exploitation | Seshat AI',
     description: "Un diagnostic IA et automatisation, un pilote de 30 à 90 jours, puis l'exploitation. Des solutions auto-hébergées pour PME et ETI.",
   },
   head: {

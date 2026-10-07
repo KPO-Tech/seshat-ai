@@ -7,6 +7,7 @@ import sunRaw from '@phosphor-icons/core/assets/bold/sun-bold.svg?raw';
 import moonRaw from '@phosphor-icons/core/assets/bold/moon-bold.svg?raw';
 import Search from 'astro-pagefind/components/Search.astro';
 import { dict, docUrl, url } from '../i18n';
+import { techArticleNode } from '../lib/seo';
 import type { DocGroup, DocItem } from '../lib/docs';
 
 interface Heading { depth: number; slug: string; text: string }
@@ -28,7 +29,17 @@ const c = dict(lang).common;
 const ic = (raw: string, cls = 'ico') => raw.replace('<svg ', `<svg class="${cls}" aria-hidden="true" focusable="false" `);
 const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 ---
-<Base title={`${title} | Seshat AI`} description={description} lang="en" monolingual shell>
+<Base
+  title={`${title} | Seshat AI`}
+  description={description}
+  lang="en"
+  monolingual
+  shell
+  ogImage="/og/og-docs.png"
+  ogType="article"
+  crumbs={[{ name: 'Seshat AI', path: '/en' }, { name: d.ui.docsHome, path: docUrl() }, { name: title, path: docUrl(slug) }]}
+  schema={[techArticleNode({ url: new URL(docUrl(slug), 'https://seshat-ai.com').href, headline: title, description, dateModified: updated, section: sectionTitle })]}
+>
   <header class="dtop" data-pagefind-ignore>
     <button class="dtop-burger" type="button" aria-label={d.ui.menu} aria-controls="docs-side"><Fragment set:html={ic(listRaw)} /></button>
     <a class="dtop-brand" href={url(lang, 'home')} aria-label={c.brandAria}>

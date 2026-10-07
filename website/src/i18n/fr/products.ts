@@ -1,6 +1,6 @@
 export default {
   meta: {
-    title: 'Produits | Seshat AI',
+    title: 'Produits : Seshat, SeshatOS, SeshatCloud | Seshat AI',
     description: 'Seshat, SeshatOS et SeshatCloud : ce qui est disponible, ce qui est en construction, et sous quelle licence.',
   },
   head: {

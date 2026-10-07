@@ -1,6 +1,6 @@
 export default {
   meta: {
-    title: 'À propos | Seshat AI',
+    title: 'À propos : Stéphane Kpoviessi, ingénieur data et IA | Seshat AI',
     description: 'Stéphane Kpoviessi, ingénieur data et IA, fondateur de Seshat AI. Parcours, réalisations, formation et façon de travailler.',
   },
   head: {

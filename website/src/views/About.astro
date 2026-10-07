@@ -1,4 +1,5 @@
 ---
+import { founderNode } from '../lib/seo';
 import Base from '../layouts/Base.astro';
 import Arrow from '../components/Arrow.astro';
 import Check from '../components/Check.astro';
@@ -57,7 +58,7 @@ const reach = [
   { icon: 'globe', t: 'Portfolio', d: 'kpoviessi-stephane.vercel.app', href: 'https://kpoviessi-stephane.vercel.app/' },
 ];
 ---
-<Base title={t.meta.title} description={t.meta.description} lang={lang} page="about">
+<Base title={t.meta.title} description={t.meta.description} lang={lang} page="about" schema={[founderNode()]}>
   <header class="page-head contact-head about-top">
     <div class="wrap">
       <div>

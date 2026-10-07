@@ -2,7 +2,7 @@ import type fr from '../fr/products';
 
 const en: typeof fr = {
   meta: {
-    title: 'Products | Seshat AI',
+    title: 'Products: Seshat, SeshatOS, SeshatCloud | Seshat AI',
     description: 'Seshat, SeshatOS and SeshatCloud: what is available, what is under construction, and under which license.',
   },
   head: {

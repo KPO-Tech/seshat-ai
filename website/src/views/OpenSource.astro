@@ -1,4 +1,5 @@
 ---
+import { runtimeSourceNode } from '../lib/seo';
 import Base from '../layouts/Base.astro';
 import Arrow from '../components/Arrow.astro';
 import Icon from '../components/Icon.astro';
@@ -19,7 +20,7 @@ const repoMeta = [
   { logo: '', tone: 'ok', href: 'https://github.com/KPO-Tech/seshat-skills', slug: 'KPO-Tech/seshat-skills', dark: false },
 ];
 ---
-<Base title={t.meta.title} description={t.meta.description} lang={lang} page="openSource">
+<Base title={t.meta.title} description={t.meta.description} lang={lang} page="openSource" schema={[runtimeSourceNode()]}>
   <header class="page-head contact-head">
     <div class="wrap">
       <h1>{t.head.title}</h1>
