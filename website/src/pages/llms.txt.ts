@@ -1,6 +1,7 @@
 // /llms.txt : résumé du site pour les assistants IA (format llmstxt.org). Généré à la compilation.
 import type { APIRoute } from 'astro';
 import { docsFor, sortItems } from '../lib/docs';
+import { allPosts } from '../lib/blog';
 import { docUrl, dict, url } from '../i18n';
 import { SITE } from '../lib/seo';
 import { legal } from '../data/legal';
@@ -39,6 +40,11 @@ export const GET: APIRoute = async () => {
     const title = d.sections[section as keyof typeof d.sections].title;
     lines.push('', `### ${title}`, '');
     for (const it of items) lines.push(`- [${it.entry.data.title}](${abs(docUrl(it.slug))}): ${it.entry.data.description}`);
+  }
+  const posts = (await allPosts()).filter((p) => !p.entry.data.draft);
+  if (posts.length) {
+    lines.push('', '## Blog', '');
+    for (const p of posts) lines.push(`- [${p.entry.data.title}](${abs(`${url(p.lang, 'blog')}/${p.slug}`)}): ${p.entry.data.description}`);
   }
   lines.push('', '## Contact', '', `- Sales and assessments: ${legal.email}`, `- Support (runtime, documentation, installed products): ${legal.supportEmail}`);
   lines.push('', '## Source code', '', '- [Seshat runtime on GitHub](https://github.com/KPO-Tech/seshat): the open source runtime, with its architecture notes.', '');

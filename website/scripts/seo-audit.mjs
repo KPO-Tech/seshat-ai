@@ -63,6 +63,7 @@ for (const [path, html] of pages) {
   for (const m of html.matchAll(/href="(\/[^"#?]*)(#[^"]*)?"/g)) {
     const p = m[1].replace(/(.)\/$/, '$1');
     if (/^\/(_astro|pagefind|brand|captures|videos|og|favicon|apple-touch|sitemap|robots|llms)/.test(p)) continue;
+    if (/\.xml$/.test(p)) continue;
     const target = pages.get(p);
     if (!target) add('error', path, `lien cassé : ${m[1]}`);
     else if (m[2] && !target.includes(`id="${m[2].slice(1)}"`)) add('warn', path, `ancre absente : ${m[1]}${m[2]}`);

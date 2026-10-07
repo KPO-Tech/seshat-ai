@@ -30,7 +30,7 @@ export function dict(lang: Lang) {
 
 // Pages traduites et leur adresse dans chaque langue. Ajouter une langue : ajouter sa colonne.
 // L'adresse de la page d'accueil de la langue par défaut est vide (`/`).
-export type PageKey = 'home' | 'services' | 'products' | 'openSource' | 'about' | 'contact' | 'docs';
+export type PageKey = 'home' | 'services' | 'products' | 'openSource' | 'about' | 'contact' | 'docs' | 'blog';
 
 export const slugs: Record<PageKey, Record<Lang, string>> = {
   home: { fr: '', en: 'en' },
@@ -41,6 +41,7 @@ export const slugs: Record<PageKey, Record<Lang, string>> = {
   contact: { fr: 'contact', en: 'en/contact' },
   // La documentation n'existe qu'en anglais : le menu français y renvoie aussi.
   docs: { fr: 'en/docs', en: 'en/docs' },
+  blog: { fr: 'blog', en: 'en/blog' },
 };
 
 // Adresse d'une page dans une langue, par exemple url('en', 'products') donne '/en/products'.

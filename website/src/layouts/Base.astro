@@ -8,6 +8,7 @@ import type { Lang, PageKey } from '../i18n';
 import interLatin from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
 import groteskLatin from '@fontsource-variable/space-grotesk/files/space-grotesk-latin-wght-normal.woff2?url';
 import { legal } from '../data/legal';
+import { hasPosts } from '../lib/blog';
 import { SITE, graph, organizationNode, founderNode, websiteNode, breadcrumbNode, webPageNode } from '../lib/seo';
 
 const sun = sunRaw.replace('<svg ', '<svg class="ico i-sun" aria-hidden="true" focusable="false" ');
@@ -16,10 +17,13 @@ const globe = globeRaw.replace('<svg ', '<svg class="ico" aria-hidden="true" foc
 
 // `page` : la page traduite affichée (sert au menu, au sélecteur de langue et à hreflang).
 // Sans `page`, la page n'existe que dans une langue (pages légales) : pas de sélecteur.
-interface Props { title: string; description: string; lang?: Lang; page?: PageKey; altHrefs?: Record<Lang, string>; shell?: boolean; monolingual?: boolean; ogImage?: string; ogType?: 'website' | 'article'; noindex?: boolean; schema?: object[]; crumbs?: { name: string; path: string }[] }
+interface Props { title: string; description: string; lang?: Lang; page?: PageKey; altHrefs?: Record<Lang, string>; shell?: boolean; monolingual?: boolean; ogImage?: string; ogType?: 'website' | 'article'; noindex?: boolean; schema?: object[]; crumbs?: { name: string; path: string }[]; feed?: string }
 // `shell` : pages sans en-tête ni pied de page du site (la documentation fournit sa propre barre).
-const { title, description, lang = defaultLang, page, altHrefs, shell = false, monolingual = false, ogImage, ogType = 'website', noindex = false, schema = [], crumbs } = Astro.props;
+const { title, description, lang = defaultLang, page, altHrefs, shell = false, monolingual = false, ogImage, ogType = 'website', noindex = false, schema = [], crumbs, feed } = Astro.props;
 const c = dict(lang).common;
+// Le lien « Blog » n'apparaît que lorsqu'il existe au moins un article publié.
+const blogOn = await hasPosts();
+const navItems = c.nav.filter((n) => n.page !== 'blog' || blogOn);
 const home = page ? url(lang, 'home') : url(defaultLang, 'home');
 // `monolingual` : page qui n'existe que dans une langue (documentation) : ni sélecteur ni hreflang.
 const alternates = monolingual ? []
@@ -58,6 +62,7 @@ const nodes: object[] = [
     <link rel="preload" href={interLatin} as="font" type="font/woff2" crossorigin />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    {feed && <link rel="alternate" type="application/rss+xml" title="Seshat AI" href={feed} />}
     <link rel="sitemap" type="application/xml" href="/sitemap-index.xml" />
     <link rel="canonical" href={canonical} />
     {alternates.map((a) => <link rel="alternate" hreflang={a.lang} href={new URL(a.href, Astro.site)} />)}
@@ -93,7 +98,7 @@ const nodes: object[] = [
           <span class="brand-text">Seshat AI</span>
         </a>
         <nav class="nav" aria-label={c.navAria}>
-          {c.nav.map((n) => <a href={url(lang, n.page as PageKey)} aria-current={page === n.page ? 'page' : undefined}>{n.label}</a>)}
+          {navItems.map((n) => <a href={url(lang, n.page as PageKey)} aria-current={page === n.page ? 'page' : undefined}>{n.label}</a>)}
         </nav>
         <div class="actions">
           <a class="btn btn-primary btn-sm" href={url(lang, 'contact')}><span class="cta-long">{c.cta}</span><span class="cta-short">{c.ctaShort}</span></a>
@@ -132,7 +137,7 @@ const nodes: object[] = [
           </div>
           <nav aria-label={c.footer.navAria}>
             <ul class="foot-links">
-              {c.nav.map((n) => <li><a href={url(lang, n.page as PageKey)}>{n.label}</a></li>)}
+              {navItems.map((n) => <li><a href={url(lang, n.page as PageKey)}>{n.label}</a></li>)}
               <li><a href={url(lang, 'contact')}>{c.footer.contact}</a></li>
               <li><a href={`mailto:${legal.supportEmail}`}>{c.footer.support}</a></li>
               <li><a href="https://github.com/KPO-Tech" rel="noopener">{c.footer.github}</a></li>

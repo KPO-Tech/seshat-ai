@@ -1,0 +1,12 @@
+---
+// Vidéo d'article ou de documentation : lecture à la demande, miniature, légende.
+// Usage MDX : <Video src="/videos/x.mp4" poster="/videos/x.jpg" caption="..." label="Film : ..." />
+interface Props { src: string; poster: string; caption?: string; label: string }
+const { src, poster, caption, label } = Astro.props;
+---
+<figure class="vid">
+  <video controls playsinline preload="none" poster={poster} aria-label={label}>
+    <source src={src} type="video/mp4" />
+  </video>
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
