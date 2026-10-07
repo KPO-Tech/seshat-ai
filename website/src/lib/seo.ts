@@ -106,6 +106,21 @@ export function runtimeSourceNode() {
   };
 }
 
+// Le film de la page d'accueil : permet à Google de le reconnaître comme une vidéo (durée, miniature, fichier).
+export function videoNode(opts: { name: string; description: string; contentPath: string; thumbnailPath: string; seconds: number; uploadDate: string; lang: Lang }) {
+  return {
+    '@type': 'VideoObject',
+    name: opts.name,
+    description: opts.description,
+    thumbnailUrl: new URL(opts.thumbnailPath, SITE).href,
+    contentUrl: new URL(opts.contentPath, SITE).href,
+    uploadDate: opts.uploadDate,
+    duration: `PT${opts.seconds}S`,
+    inLanguage: opts.lang === 'fr' ? 'fr-FR' : 'en-US',
+    publisher: orgRef,
+  };
+}
+
 export function graph(nodes: object[]) {
   return JSON.stringify({ '@context': 'https://schema.org', '@graph': nodes });
 }

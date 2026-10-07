@@ -72,6 +72,22 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
         </nav>
       </div>
     </aside>
+    <script is:inline>
+      // Le menu garde sa position d'une page à l'autre, et la page ouverte reste visible dedans.
+      (function () {
+        var side = document.getElementById('docs-side');
+        if (!side) return;
+        try { var y = sessionStorage.getItem('docs-side-y'); if (y !== null) side.scrollTop = parseInt(y, 10) || 0; } catch (e) {}
+        var cur = side.querySelector('[aria-current="page"]');
+        if (cur) {
+          var s = side.getBoundingClientRect(), c = cur.getBoundingClientRect();
+          if (c.top < s.top + 48 || c.bottom > s.bottom - 48) side.scrollTop += c.top - s.top - s.height / 3;
+        }
+        function save() { try { sessionStorage.setItem('docs-side-y', String(side.scrollTop)); } catch (e) {} }
+        side.addEventListener('scroll', save, { passive: true });
+        window.addEventListener('pagehide', save);
+      })();
+    </script>
 
     <article class="docs-main" data-pagefind-body>
       <p class="docs-crumb" data-pagefind-ignore><a href={docUrl()}>{d.ui.docsHome}</a> / {sectionTitle}</p>

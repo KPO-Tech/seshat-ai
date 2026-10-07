@@ -6,18 +6,18 @@ interface Item { icon: string; name: string; note?: string }
 interface Props { title: string; caption?: string; items: Item[] }
 const { title, caption, items } = Astro.props;
 ---
-<figure class="hub">
-  <div class="hub-core">
-    <span class="hub-hex"><img src="/brand/seshat.svg" alt="" width="56" height="56" /></span>
+<figure class="dhub">
+  <div class="dhub-core">
+    <span class="dhub-hex"><img src="/brand/seshat.svg" alt="" width="56" height="56" /></span>
     <div>
       <strong>{title}</strong>
       {caption && <small>{caption}</small>}
     </div>
   </div>
-  <ul class="hub-items">
+  <ul class="dhub-items">
     {items.map((it, i) => (
       <li style={`--k:${i}`}>
-        <span class="hub-ic"><Icon name={it.icon} /></span>
+        <span class="dhub-ic"><Icon name={it.icon} /></span>
         <span><strong>{it.name}</strong>{it.note && <small>{it.note}</small>}</span>
       </li>
     ))}
