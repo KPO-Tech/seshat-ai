@@ -26,14 +26,16 @@ const alternates = monolingual ? []
   ? locales.map((l) => ({ lang: l, href: altHrefs[l] }))
   : page ? locales.map((l) => ({ lang: l, href: url(l, page) })) : [];
 const others = alternates.filter((a) => a.lang !== lang);
-const canonical = new URL(Astro.url.pathname, Astro.site);
+// build.format 'file' : les pages compilées s'appellent services.html mais sont servies sur /services.
+const cleanPath = Astro.url.pathname.replace(/\.html$/, '').replace(/\/index$/, '') || '/';
+const canonical = new URL(cleanPath, Astro.site);
 const image = new URL(ogImage ?? `/og/og-${lang}.png`, Astro.site).href;
 const ogAlt = lang === 'fr' ? 'Seshat AI, conseil et intégration d’IA souveraine' : 'Seshat AI, sovereign AI consulting and integration';
 const navLabel = c.nav.find((n) => n.page === page)?.label;
 const shortName = navLabel ?? title.split(' | ')[0];
 const isHome = page === 'home';
 // Fil d'Ariane : accueil > page (les pages de documentation fournissent le leur).
-const trail = crumbs ?? (page && !isHome && !shell ? [{ name: 'Seshat AI', path: home }, { name: shortName, path: Astro.url.pathname }] : []);
+const trail = crumbs ?? (page && !isHome && !shell ? [{ name: 'Seshat AI', path: home }, { name: shortName, path: cleanPath }] : []);
 const nodes: object[] = [
   ...(isHome ? [organizationNode(lang), founderNode(), websiteNode(lang)] : []),
   ...(!isHome && !shell ? [webPageNode({ url: canonical.href, name: shortName, description, lang })] : []),
