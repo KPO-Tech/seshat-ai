@@ -1,0 +1,12 @@
+---
+// Image d'article avec légende. Un clic ouvre l'image en grand (utile pour un schéma dense).
+// Usage MDX : <Figure src="/blog/x/schema.webp" alt="..." caption="..." width={1536} height={1024} />
+interface Props { src: string; alt: string; caption?: string; width: number; height: number }
+const { src, alt, caption, width, height } = Astro.props;
+---
+<figure class="fig">
+  <a href={src} target="_blank" rel="noopener" aria-label={`${alt} (open full size)`}>
+    <img src={src} alt={alt} width={width} height={height} loading="lazy" decoding="async" />
+  </a>
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
