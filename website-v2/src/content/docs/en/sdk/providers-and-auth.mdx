@@ -1,0 +1,123 @@
+---
+title: Providers and authentication
+description: "Choose a model provider, point it at your own endpoint, set fallbacks, and manage keys and sign-in from your application."
+section: sdk
+order: 7
+updated: "2026-10-07"
+---
+import Callout from '@/components/docs/Callout.astro';
+
+A provider is a company or server that runs a model. Seshat talks to all of them through one interface, so changing provider is a change of configuration.
+
+## Choose a model
+
+```go
+cfg := sdk.DefaultClientConfig()
+cfg.Model = sdk.ModelIdentifier{
+    Provider: sdk.APIProviderOpenAI,
+    Model:    "gpt-5",
+}
+```
+
+The provider constants are `APIProviderAnthropic`, `APIProviderOpenAI`, `APIProviderMistral`, `APIProviderGemini`, `APIProviderDeepSeek`, `APIProviderOllama`, `APIProviderBedrock`, `APIProviderFoundry`, `APIProviderCodex`, `APIProviderMiniMax`, `APIProviderOpenCode` and more. The full list of providers and models is in [Configuration](/en/docs/getting-started/configuration#supported-providers).
+
+To discover what is available at run time, use the `github.com/KPO-Tech/seshat/pkg/providers` package:
+
+```go
+info := providers.AllProvidersInfo()                 // every provider the runtime knows
+models, err := providers.FetchModels(ctx, "ollama", providers.DefaultBaseURL("ollama"), "")
+```
+
+## Keys
+
+Give the key in the config:
+
+```go
+cfg.APIKey = os.Getenv("ANTHROPIC_API_KEY")
+```
+
+For a server that serves many users, implement `CredentialResolver`. It is asked for the key of a provider when the client is created, and its answer wins over `APIKey`:
+
+```go
+type resolver struct{ db *DB }
+
+func (r resolver) ResolveAPIKey(ctx context.Context, provider string) (string, error) {
+    return r.db.KeyFor(ctx, currentUser(ctx), provider)
+}
+
+cfg.CredentialResolver = resolver{db}
+```
+
+For a desktop or command-line host, `sdk.NewStoredCredentialResolver` reads keys from the environment and from the local sign-in store:
+
+```go
+cfg.CredentialResolver = sdk.NewStoredCredentialResolver(sdk.StoredCredentialResolverConfig{
+    EnvFirst: true, // a variable in the environment wins over the stored key
+})
+```
+
+## Your own endpoint
+
+Use `ProviderConfig` to point a provider at another base URL, add headers, or map model aliases. This is how you reach a gateway, a self-hosted server or an OpenAI-compatible service.
+
+```go
+cfg.ProviderConfig = &providers.Config{
+    Provider: sdk.APIProviderOpenAI,
+    BaseURL:  "https://llm-gateway.internal.example/v1",
+    CustomHeaders: map[string]string{"X-Team": "platform"},
+}
+```
+
+`providers.GetProviderConfig(provider)` returns the defaults for a provider, a good starting point to copy.
+
+<Callout type="warning" title="Who receives the key">
+The base URL decides who receives your API key. Never take it from a file or a request you do not control. This is also why the terminal interface ignores `providers` from a project until it is trusted.
+</Callout>
+
+## Fallbacks
+
+A provider configuration can name other models and providers to try when the first one fails. The loop tries the fallback models first (same provider), then the fallback providers. A circuit breaker stops calling a provider that keeps failing and tries it again after a delay.
+
+Today only the Anthropic defaults come with a routing section. Start from them and change the lists:
+
+```go
+pc := providers.GetProviderConfig(sdk.APIProviderAnthropic)
+if pc.Routing != nil {
+    pc.Routing.FallbackModels = []sdk.ModelIdentifier{
+        {Provider: sdk.APIProviderAnthropic, Model: "claude-3-5-haiku-20241022"},
+    }
+    pc.Routing.FallbackProviders = []sdk.APIProvider{sdk.APIProviderBedrock}
+}
+cfg.ProviderConfig = pc
+```
+
+<Callout type="note" title="Limit of the public API">
+The routing types are not re-exported by `pkg/providers`, so you cannot build a routing section from scratch for another provider yet.
+</Callout>
+
+## Signing in with a ChatGPT subscription
+
+Codex and OpenAI can use a ChatGPT subscription instead of an API key, through a device flow. The CLI does it with `seshat login`. From Go:
+
+```go
+flow, err := sdk.NewOAuthDeviceFlow(sdk.OAuthDeviceFlowConfig{Provider: "codex", Persist: true})
+if err != nil {
+    log.Fatal(err)
+}
+
+challenge, err := flow.Start(ctx)          // show challenge.UserCode and challenge.VerificationURL
+if err != nil {
+    log.Fatal(err)
+}
+token, err := flow.Wait(ctx, challenge)    // blocks until the user has approved
+if err != nil {
+    log.Fatal(err)
+}
+if err := flow.SaveToken(ctx, token); err != nil {
+    log.Fatal(err)
+}
+
+cfg.CredentialResolver = flow.CredentialResolver()
+```
+
+The resolver refreshes the access token when it expires.

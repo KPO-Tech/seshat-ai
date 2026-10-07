@@ -1,0 +1,96 @@
+---
+title: Integrating in your product
+description: "What to decide when you embed Seshat in a backend, a desktop app or an internal platform: clients, sessions, credentials, sandboxing and storage."
+section: sdk
+order: 8
+updated: "2026-10-07"
+---
+import Callout from '@/components/docs/Callout.astro';
+
+Embedding Seshat in a script is a few lines. Embedding it in a product that serves several people is a set of decisions. This page lists them.
+
+## Clients and sessions
+
+A `Client` holds the provider connection, the tool registry and shared services. A `Session` holds one conversation.
+
+| You are building | Use |
+|---|---|
+| A desktop or CLI app for one user | One client for the life of the app, one session per conversation |
+| A server for many users | A client per set of credentials and settings (cached if creation is costly), a session per conversation, never shared between users |
+| A batch or automation job | `client.Ask` for a single prompt, or a workflow |
+
+Always call `Close()` on a session when the conversation ends, and on the client when you are done with it.
+
+## Per-request state
+
+Several settings change from one request to the next. Do not store them on a shared client.
+
+- **Prompt bridge.** `client.SetPromptFn` changes state shared by every turn on that client. If a client serves concurrent turns, attach the bridge to the request's context instead:
+
+```go
+import "github.com/KPO-Tech/seshat/pkg/types"
+
+ctx = types.WithPromptFn(ctx, func(ctx context.Context, req types.PromptRequest) (types.PromptResponse, error) {
+    return ask(req) // goes to this user's connection
+})
+resp, err := session.SubmitMessage(ctx, text)
+```
+
+- **Web search runner.** Same idea with `types.WithWebSearchRunner(ctx, fn)`.
+- **Working directory.** Set `WorkingDir` in the config, or `session.SetWorkingDirectory(path)`. Give each tenant their own folder.
+- **User identity.** Set `UserID` so plan documents are stored against the right person.
+
+## Credentials
+
+Do not put one global key in the config for a multi-user product. Implement a `CredentialResolver` that looks up the key of the current user and provider. See [Providers and authentication](/en/docs/sdk/providers-and-auth).
+
+## Run commands safely
+
+The `bash` tool is always available and can run anything the host user can. For a multi-user or server deployment, that must be contained:
+
+```go
+cfg.RequireSandbox = true            // refuse to run commands when no OS sandbox is available
+cfg.SandboxKind = sdk.SandboxKindDocker
+```
+
+| Setting | Effect |
+|---|---|
+| `SandboxKindLocal` (default) | Landlock on Linux. Unconfined elsewhere unless `RequireSandbox` is set |
+| `SandboxKindDocker` | Commands run in a persistent Docker container. If Docker is not reachable when the client starts, it falls back to local with a logged warning |
+| `RequireSandbox` | The bash tool refuses to run when no sandbox is available, instead of running unconfined |
+
+`sdk.SandboxAvailable()` tells you whether an OS-level sandbox exists on this host.
+
+<Callout type="warning" title="A desktop app and a server are not the same">
+On a desktop, refusing to run `bash` at all is often worse than a visible warning, so leave `RequireSandbox` off. On a shared server, an unconfined command runs with the server's rights and its environment: always set it.
+</Callout>
+
+Secrets are removed from the environment of the commands the model runs. See [Security and trust](/en/docs/concepts/security-and-trust).
+
+## Storage
+
+| Setting | Purpose |
+|---|---|
+| `PersistSessions`, `SessionStorageDir`, `SessionSQLitePath` | Where conversations are saved (local files and SQLite by default) |
+| `SessionStore` / `SessionBackend` | Your own storage for sessions, to keep them in your database. Implement the `SessionStore` interface |
+| `ArtifactStore`, `StorageConfig` | Where files produced by the agent are kept |
+| `StorageGCEnabled`, `StorageGCInterval` | Cleanup of expired artifacts |
+
+`client.GetSessionStore()` and `client.GetArtifactStore()` give you the stores in use.
+
+## Observe and control
+
+- `SetProgressFn`, `SetResponseChunkFn` and `SetRuntimeEventFn` feed your interface. See [Streaming, events and hooks](/en/docs/sdk/events-and-hooks).
+- `AddToolHook`, `RegisterHook` and `PreToolHooks` let you audit or block actions.
+- `GetMonitoring()` returns the monitoring system when `EnableMonitoring` is on.
+- `MaxTurns`, `TurnTokenBudget` and `MaxConsecutiveDenials` bound what one request can spend.
+
+## Checklist before you ship
+
+1. Credentials come from a resolver, not a shared key.
+2. `RequireSandbox` is on, or commands are contained another way.
+3. Each tenant has its own working directory and sessions.
+4. The prompt bridge is attached per request, not stored on a shared client.
+5. Limits are set (`MaxTurns`, token budget).
+6. Hooks log or block what your policy forbids.
+7. Sessions and clients are closed.

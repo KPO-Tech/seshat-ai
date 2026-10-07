@@ -1,0 +1,102 @@
+---
+title: HTTP API (SeshatOS)
+description: "The local HTTP API of the SeshatOS backend: queries and streaming, sessions, and an Anthropic-compatible endpoint."
+section: sdk
+order: 9
+updated: "2026-10-07"
+---
+import Callout from '@/components/docs/Callout.astro';
+
+SeshatOS runs a backend on your machine that the desktop app talks to. The same HTTP API can be used by your own scripts and tools.
+
+<Callout type="warning" title="Not a stable public API yet">
+SeshatOS is published but not finished. This API is the one the app uses, so endpoints can change between versions. For something you want to depend on, use the [Go SDK](/en/docs/sdk/go-sdk) or the [gRPC API](/en/docs/sdk/grpc-api).
+</Callout>
+
+## Where it runs
+
+The backend listens on port `8090` by default (`SESHAT_API_PORT` changes it). If that port is taken, it picks a free one. Check it is up:
+
+```bash
+curl http://127.0.0.1:8090/health
+```
+
+Everything below `/api/v1/` needs authentication, except a few public routes such as `/health` and the login routes.
+
+## Authenticate
+
+Send a bearer token:
+
+```bash
+curl http://127.0.0.1:8090/api/v1/auth/me -H "Authorization: Bearer $TOKEN"
+```
+
+A token is either a login session or an API key (keys start with `sk-`).
+
+| Route | Use |
+|---|---|
+| `POST /api/v1/auth/login` | Email and password, returns a token |
+| `POST /api/v1/auth/local-session` | The "continue without an account" session of the desktop app. **Only works from the same machine** (loopback) |
+| `GET /api/v1/auth/me` | Who the token belongs to |
+| `POST /api/v1/auth/logout` | End the session |
+
+## Ask something
+
+```bash
+curl http://127.0.0.1:8090/api/v1/query \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "Summarise the open TODOs in this project"}'
+```
+
+Request fields (all optional except `prompt`):
+
+| Field | Meaning |
+|---|---|
+| `prompt` | What to ask |
+| `session_id` | Continue an existing conversation |
+| `provider_setting_id`, `model_id` | Which configured provider and model to use |
+| `permission_mode` | Same modes as the CLI |
+| `agent_slug` | Run as a saved agent profile |
+| `corpus_id` | Search a knowledge corpus while answering |
+| `file_ids` | Attach uploaded files |
+| `append_system_prompt` | Extra instructions for this request |
+
+The response holds `session_id`, `content`, `stop_reason`, `turn_number`, `is_complete`, token `usage`, and the tool calls and their results.
+
+## Stream the answer
+
+`POST /api/v1/query/stream` takes the same body and answers with Server-Sent Events. Check the `X-SSE-Version` response header (currently `1`) before parsing.
+
+| Frame | Content |
+|---|---|
+| `data: {...}` | A chunk of the model's output |
+| `event: runtime` | A runtime event: tool calls, permission requests, progress |
+| `event: done` | The final result, same shape as the non-streaming response |
+| `event: error` | `{"error": "message"}` |
+| `: keepalive` | A comment to keep proxies from closing the connection |
+
+When a tool needs approval, answer it with `POST /api/v1/permissions/{tool_use_id}` and a body like `{"approved": true, "session_id": "...", "remember": false}` (`remember` keeps the approval for the rest of the session). Questions from the agent are answered through `/api/v1/prompts/{id}`.
+
+## Sessions
+
+| Route | Use |
+|---|---|
+| `GET /api/v1/sessions` | List sessions |
+| `GET /api/v1/sessions/search` | Search their content |
+| `/api/v1/sessions/{id}` | Read or update one (and delete it) |
+
+## Other resources
+
+The API also covers files, knowledge corpora and search, memories, plans, agents, skills, MCP servers, web search settings, provider settings, automation jobs, and quotas. These routes follow the screens of the app and change the most, so look at the running backend or its source (`seshat-backend/internal/api/routes.go`) rather than relying on a list here.
+
+## Use it as an Anthropic endpoint
+
+The backend also speaks the Anthropic Messages protocol at `POST /v1/messages`. A tool that lets you set a base URL can talk to Seshat instead of Anthropic:
+
+```bash
+export ANTHROPIC_BASE_URL=http://127.0.0.1:8090/v1
+export ANTHROPIC_API_KEY=sk-...   # a Seshat API key
+```
+
+Authenticate with `x-api-key: <key>` or `Authorization: Bearer <token>`. The whole agent loop runs on the Seshat side (tools, permissions, memory) and the client receives the final assistant message in Anthropic format, so the client should not run tools itself. Two optional headers help: `x-seshat-session-id` to continue a conversation and `x-seshat-provider-setting-id` to pick the provider setting.
