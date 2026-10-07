@@ -1,0 +1,84 @@
+export default {
+  meta: {
+    title: 'Produits | Seshat AI',
+    description: 'Seshat, SeshatOS et SeshatCloud : ce qui est disponible, ce qui est en construction, et sous quelle licence.',
+  },
+  head: {
+    title: "Ce que nous déployons, vous pouvez l'inspecter.",
+    lead: "Trois briques, chacune avec son niveau de maturité réel. Nous ne présentons rien comme prêt s'il ne l'est pas.",
+  },
+  scaleAria: 'Niveau de maturité des produits',
+  stages: ['Feuille de route', 'En construction', 'Bêta', 'Disponible'],
+  codeLabel: 'Voir le code',
+  privateLabel: "Dépôt privé pour l'instant",
+  items: [
+    {
+      badge: 'Disponible',
+      what: "Le runtime d'agents en Go. C'est la fondation des deux autres briques, utilisable seul par des équipes techniques.",
+      points: [
+        'Outils, sessions, permissions et sandbox.',
+        'Une quinzaine de fournisseurs de modèles, MCP, skills et RAG.',
+        'Interface en terminal (seshat chat), ligne de commande, gRPC et SDK.',
+      ],
+      licence: "Runtime open source, Apache-2.0. L'interface terminal reprend du code de Crush (licence FSL-1.1-MIT).",
+      status: "Version 1.3, installable aujourd'hui, avec son interface en terminal.",
+    },
+    {
+      badge: 'En construction',
+      what: "Un environnement d'IA local, auto-hébergé, sur votre poste ou votre serveur : un backend en Go et une application de bureau.",
+      points: [
+        "Le Chat et les Projets, avec skills et outils, s'utilisent déjà en local.",
+        'Recherche dans vos documents depuis le Chat. Vos documents restent sur votre machine.',
+        'Écrans dédiés (connaissance, planification, administration) : ils arrivent ensuite.',
+      ],
+      licence: 'Source-available : gratuit à utiliser et à héberger, non revendable.',
+      status: 'Public sur GitHub. Le Chat et les Projets sont utilisables, le reste est en construction.',
+    },
+    {
+      badge: 'En construction',
+      what: "La couche multi-utilisateurs au-dessus du même runtime : celle qui sert quand l'IA doit être partagée par toute une entreprise.",
+      points: [
+        "Organisations, droits d'accès et provisionnement des comptes (SCIM).",
+        "Console d'administration et tâches planifiées.",
+        'Lecture de documents et évaluation de la qualité de la recherche.',
+      ],
+      licence: "Source-available. Accord commercial au-delà d'un seuil. Licence en cours de finalisation.",
+      status: 'Solide côté serveur, pas encore proposée seule.',
+    },
+  ],
+  tui: {
+    title: "Seshat dans votre terminal, installable aujourd'hui.",
+    introA: "Pas besoin d'attendre le reste : ",
+    introCode: 'seshat chat',
+    introB: " ouvre une interface complète pour des sessions d'agent longues, avec vos propres clés de modèles, sur votre machine.",
+    installLabel: 'Installation',
+    copy: 'Copier',
+    copied: 'Copié',
+    galleryAria: "Captures de l'interface en terminal",
+    shots: [
+      { t: 'Accueil', d: 'Prêt en quelques secondes, avec les raccourcis essentiels sous les yeux.' },
+      { t: "L'agent au travail", d: "La trace complète du raisonnement : réflexion, appels d'outils, sous-agents et liste de tâches." },
+      { t: 'Résultats en continu', d: "Réponses diffusées au fil de l'eau, en markdown, avec la durée de chaque outil." },
+      { t: 'Choix du modèle', d: 'Changer de modèle parmi plus de vingt, en deux touches.' },
+      { t: 'Fournisseurs', d: "Clés d'API chiffrées, rangées par fournisseur." },
+      { t: 'Réglages', d: 'Tous les raccourcis, à une touche de distance (ctrl+p).' },
+    ],
+    renameTitle: 'Pourquoi « NEXUS » ?',
+    renameText: "Le projet s'appelait Nexus avant de devenir Seshat. Captures d'avant le changement de nom, à refaire.",
+    codeLink: 'Voir le code et la documentation',
+  },
+  kta: {
+    title: 'Knowledge-to-Action : un type de pilote, pas un produit fini.',
+    intro: "Ce premier cas d'usage se construit avec vous, sur vos documents. L'interface Knowledge n'existe pas encore : la recherche sourcée s'utilise aujourd'hui depuis le Chat.",
+    verbs: [
+      { t: 'Poser une question', d: "Obtenir une réponse sourcée sur vos documents, avec les droits d'accès de chacun." },
+      { t: 'Repérer les écarts', d: 'Retrouver les contenus périmés, contradictoires, en double ou manquants.' },
+      { t: 'Agir avec validation', d: 'Proposer une mise à jour, une tâche ou une réponse, soumise à validation humaine.' },
+    ],
+  },
+  cta: {
+    title: 'Voir ce qui convient chez vous.',
+    text: 'Le diagnostic dit quelle brique, quel outil du marché ou quel développement répond le mieux à votre besoin.',
+    button: 'Demander un diagnostic',
+  },
+};

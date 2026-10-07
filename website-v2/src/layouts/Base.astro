@@ -2,20 +2,23 @@
 import '../styles/global.css';
 import sunRaw from '@phosphor-icons/core/assets/bold/sun-bold.svg?raw';
 import moonRaw from '@phosphor-icons/core/assets/bold/moon-bold.svg?raw';
+import { dict, locales, langNames, ogLocales, url, defaultLang } from '../i18n';
+import type { Lang, PageKey } from '../i18n';
+
 const sun = sunRaw.replace('<svg ', '<svg class="ico i-sun" aria-hidden="true" focusable="false" ');
 const moon = moonRaw.replace('<svg ', '<svg class="ico i-moon" aria-hidden="true" focusable="false" ');
 
-interface Props { title: string; description: string; current?: string }
-const { title, description, current } = Astro.props;
-const nav = [
-  { href: '/services', label: 'Services' },
-  { href: '/produits', label: 'Produits' },
-  { href: '/open-source', label: 'Open source' },
-  { href: '/a-propos', label: 'À propos' },
-];
+// `page` : la page traduite affichée (sert au menu, au sélecteur de langue et à hreflang).
+// Sans `page`, la page n'existe que dans une langue (pages légales) : pas de sélecteur.
+interface Props { title: string; description: string; lang?: Lang; page?: PageKey }
+const { title, description, lang = defaultLang, page } = Astro.props;
+const c = dict(lang).common;
+const home = page ? url(lang, 'home') : url(defaultLang, 'home');
+const alternates = page ? locales.map((l) => ({ lang: l, href: url(l, page) })) : [];
+const canonical = new URL(Astro.url.pathname, Astro.site);
 ---
 <!doctype html>
-<html lang="fr">
+<html lang={lang}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -23,28 +26,37 @@ const nav = [
     <meta name="description" content={description} />
     <meta name="color-scheme" content="light" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="canonical" href={new URL(Astro.url.pathname, Astro.site)} />
+    <link rel="canonical" href={canonical} />
+    {alternates.map((a) => <link rel="alternate" hreflang={a.lang} href={new URL(a.href, Astro.site)} />)}
+    {alternates.length > 0 && <link rel="alternate" hreflang="x-default" href={new URL(url(defaultLang, page as PageKey), Astro.site)} />}
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:locale" content={ogLocales[lang]} />
     <script is:inline>
       document.documentElement.classList.add('js');
       try { var th = localStorage.getItem('theme'); if (th === 'light' || th === 'dark') document.documentElement.setAttribute('data-theme', th); } catch (e) {}
     </script>
   </head>
   <body>
-    <a class="skip" href="#contenu">Aller au contenu</a>
+    <a class="skip" href="#contenu">{c.skip}</a>
     <header class="site-header">
       <div class="wrap">
-        <a class="brand" href="/" aria-label="Seshat AI, accueil">
+        <a class="brand" href={home} aria-label={c.brandAria}>
           <img class="logo-light" src="/brand/mark-on-light.svg" alt="" width="34" height="34" />
           <img class="logo-dark" src="/brand/mark-on-dark.svg" alt="" width="34" height="34" />
-          Seshat AI
+          <span class="brand-text">Seshat AI</span>
         </a>
-        <nav class="nav" aria-label="Navigation principale">
-          {nav.map((n) => <a href={n.href} aria-current={current === n.href ? 'page' : undefined}>{n.label}</a>)}
-          <a class="btn btn-primary btn-sm" href="/contact">Demander un diagnostic</a>
-          <button class="theme-toggle" type="button" aria-label="Changer de thème, clair ou sombre"><Fragment set:html={sun} /><Fragment set:html={moon} /></button>
+        <nav class="nav" aria-label={c.navAria}>
+          {c.nav.map((n) => <a href={url(lang, n.page as PageKey)} aria-current={page === n.page ? 'page' : undefined}>{n.label}</a>)}
+          <a class="btn btn-primary btn-sm" href={url(lang, 'contact')}><span class="cta-long">{c.cta}</span><span class="cta-short">{c.ctaShort}</span></a>
+          {alternates.length > 1 && (
+            <div class="lang" role="group" aria-label={c.langSwitch}>
+              {alternates.map((a) => (
+                <a href={a.href} hreflang={a.lang} lang={a.lang} aria-current={a.lang === lang ? 'true' : undefined} title={langNames[a.lang]}>{a.lang.toUpperCase()}</a>
+              ))}
+            </div>
+          )}
+          <button class="theme-toggle" type="button" aria-label={c.themeToggle}><Fragment set:html={sun} /><Fragment set:html={moon} /></button>
         </nav>
       </div>
     </header>
@@ -55,26 +67,26 @@ const nav = [
       <div class="wrap">
         <div class="foot-top">
           <div>
-            <a class="brand" href="/">
+            <a class="brand" href={home}>
               <img class="logo-light" src="/brand/mark-on-light.svg" alt="" width="34" height="34" />
               <img class="logo-dark" src="/brand/mark-on-dark.svg" alt="" width="34" height="34" />
               Seshat AI
             </a>
-            <p class="about">Conseil et intégration d'IA souveraine pour PME et ETI.</p>
+            <p class="about">{c.footer.tagline}</p>
           </div>
-          <nav aria-label="Pied de page">
+          <nav aria-label={c.footer.navAria}>
             <ul class="foot-links">
-              {nav.map((n) => <li><a href={n.href}>{n.label}</a></li>)}
-              <li><a href="/contact">Contact</a></li>
-              <li><a href="https://github.com/KPO-Tech" rel="noopener">Code sur GitHub</a></li>
+              {c.nav.map((n) => <li><a href={url(lang, n.page as PageKey)}>{n.label}</a></li>)}
+              <li><a href={url(lang, 'contact')}>{c.footer.contact}</a></li>
+              <li><a href="https://github.com/KPO-Tech" rel="noopener">{c.footer.github}</a></li>
             </ul>
           </nav>
         </div>
         <div class="foot-bottom">
-          <p>© 2026 Seshat AI</p>
+          <p>{c.footer.copyright}</p>
           <ul>
-            <li><a href="/mentions-legales">Mentions légales</a></li>
-            <li><a href="/confidentialite">Confidentialité</a></li>
+            <li><a href="/mentions-legales" hreflang="fr">{c.footer.legal}</a></li>
+            <li><a href="/confidentialite" hreflang="fr">{c.footer.privacy}</a></li>
           </ul>
         </div>
       </div>

@@ -3,6 +3,12 @@ import Base from '../layouts/Base.astro';
 import Arrow from '../components/Arrow.astro';
 import Check from '../components/Check.astro';
 import Icon from '../components/Icon.astro';
+import { dict, url } from '../i18n';
+import type { Lang } from '../i18n';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const t = dict(lang).services;
 
 // Cellules du nid d'abeille (colonne, ligne) et niveau à partir duquel elles s'allument.
 const cells = [
@@ -15,69 +21,20 @@ const cells = [
   { q: 0.5, r: -1, from: 3 },
 ];
 
-const levels = [
-  {
-    name: 'Diagnostic',
-    who: 'Pour le dirigeant qui veut savoir par où commencer.',
-    format: 'Court, à prix fixe, sur devis.',
-    items: [
-      'Entretiens et cartographie de vos processus.',
-      'Liste de cas d\'usage classés par valeur, rapidité, risque et faisabilité.',
-      'Recommandation d\'outils : Seshat, solution open source, SaaS ou développement spécifique.',
-      'Plan de pilote de 30 à 90 jours.',
-    ],
-  },
-  {
-    name: 'Pilote',
-    who: 'Pour valider un premier usage dans les conditions réelles.',
-    format: 'De 30 à 90 jours, sur devis.',
-    items: [
-      'Un seul cas d\'usage, mis en service.',
-      'Un indicateur de gain fixé à l\'avance : temps gagné, erreurs évitées ou délai de réponse.',
-      'Une validation humaine sur toute décision sensible.',
-      'Un bilan qui dit clairement si on continue, on ajuste ou on arrête.',
-    ],
-  },
-  {
-    name: 'Exploitation',
-    who: 'Pour faire durer ce qui fonctionne et l\'étendre.',
-    format: 'Récurrent, sur devis.',
-    items: [
-      'Hébergement, maintenance et évolution de la solution.',
-      'Extension à d\'autres cas d\'usage.',
-      'Multi-utilisateurs, administration centrale, journal d\'audit et tâches planifiées avec SeshatOS et SeshatCloud.',
-    ],
-    note: 'SeshatOS et SeshatCloud sont en construction : nous vous disons honnêtement ce qui est prêt et ce qui ne l\'est pas.',
-  },
-];
-
-const swaps = [
-  { no: 'Un chatbot présenté comme une solution.', title: 'Un assistant branché sur un vrai processus.', yes: 'Il a un gain mesurable, fixé à l\'avance.' },
-  { no: 'Des agents qui agissent sans contrôle.', title: 'Une personne qui relit et valide.', yes: 'Rien de sensible ne part sans son accord.' },
-  { no: 'Une solution imposée.', title: 'L\'outil qui convient, y compris open source.', yes: 'Intégré en préservant la souveraineté de vos données. Si une solution du marché répond mieux que la nôtre, le diagnostic le dit.' },
-];
-
-const pilots = [
-  { t: 'Documentation interne', d: 'Poser une question et obtenir une réponse sourcée, en respectant les droits d\'accès de chacun.', tone: 'dark',
-    flow: [['chat-circle-text', 'Question'], ['files', 'Vos documents'], ['quotes', 'Réponse et source']] },
-  { t: 'Documents métier', d: 'Lire, extraire et contrôler des documents, avec une validation humaine avant tout enregistrement.', tone: 'warm',
-    flow: [['file-text', 'Document'], ['table', 'Données extraites'], ['user-check', 'Validation humaine']] },
-  { t: 'Socle numérique souverain', d: 'Messagerie professionnelle, documents partagés et automatisation administrative, hébergés chez vous.', tone: 'plain',
-    flow: [['envelope-simple', 'Messagerie'], ['folder-simple', 'Documents'], ['lightning', 'Automatisation']] },
-  { t: 'Reporting récurrent', d: 'Produire à intervalles réguliers les mêmes tableaux de bord et rapports, sans ressaisie.', tone: 'plain',
-    flow: [['database', 'Vos données'], ['chart-bar', 'Rapport'], ['calendar-check', 'Envoi planifié']] },
+// Éléments qui ne dépendent pas de la langue : teinte et icônes de chaque pilote.
+const pilotMeta = [
+  { tone: 'dark', icons: ['chat-circle-text', 'files', 'quotes'] },
+  { tone: 'warm', icons: ['file-text', 'table', 'user-check'] },
+  { tone: 'plain', icons: ['envelope-simple', 'folder-simple', 'lightning'] },
+  { tone: 'plain', icons: ['database', 'chart-bar', 'calendar-check'] },
 ];
 ---
-<Base
-  current="/services"
-  title="Services | Seshat AI"
-  description="Un diagnostic IA et automatisation, un pilote de 30 à 90 jours, puis l'exploitation. Des solutions auto-hébergées pour PME et ETI."
->
+<Base title={t.meta.title} description={t.meta.description} lang={lang} page="services">
   <header class="page-head services-head">
     <div class="wrap">
       <div>
-        <h1>Trois niveaux d'engagement, <em>du plus petit au plus durable.</em></h1>
-        <p class="lead">Vous commencez par un diagnostic. La suite dépend de ce que nous y découvrons ensemble.</p>
+        <h1>{t.head.titleA}<em>{t.head.titleEm}</em></h1>
+        <p class="lead">{t.head.lead}</p>
       </div>
       <div class="hive" data-hive data-level="1" aria-hidden="true">
         <div class="sway">
@@ -96,8 +53,8 @@ const pilots = [
   <section class="block quest-block">
     <div class="wrap">
       <div class="quest" data-quest>
-        <div class="rail" role="tablist" aria-label="Les trois niveaux d'engagement">
-          {levels.map((l, i) => (
+        <div class="rail" role="tablist" aria-label={t.railAria}>
+          {t.levels.map((l, i) => (
             <button class="node" role="tab" id={`tab-${i}`} aria-controls={`panel-${i}`} aria-selected={i === 0 ? 'true' : 'false'} type="button">
               <span class="hex" aria-hidden="true"><span>{i + 1}</span></span>
               <span class="node-name">{l.name}</span>
@@ -105,10 +62,10 @@ const pilots = [
           ))}
         </div>
         <div class="stage">
-          {levels.map((l, i) => (
+          {t.levels.map((l, i) => (
             <article class="panel" role="tabpanel" id={`panel-${i}`} aria-labelledby={`tab-${i}`} hidden={i !== 0}>
               <div class="panel-head">
-                <p class="lvl">Niveau {i + 1} sur 3</p>
+                <p class="lvl">{t.levelLabel.replace('{n}', String(i + 1))}</p>
                 <h2>{l.name}</h2>
                 <p class="who">{l.who}</p>
                 <p class="fmt">{l.format}</p>
@@ -126,13 +83,13 @@ const pilots = [
 
   <section class="block band">
     <div class="wrap">
-      <h2 class="reveal">Des pilotes qui tiennent aujourd'hui.</h2>
+      <h2 class="reveal">{t.pilotsTitle}</h2>
       <div class="pilots">
-        {pilots.map((p, i) => (
-          <article class={`pilot ${p.tone} reveal`} style={`--d:${i * 80}ms`}>
+        {t.pilots.map((p, i) => (
+          <article class={`pilot ${pilotMeta[i].tone} reveal`} style={`--d:${i * 80}ms`}>
             <ol class="flow" aria-hidden="true">
-              {p.flow.map(([icon, label], k) => (
-                <li style={`--k:${k}`}><span class="chip"><Icon name={icon} /></span><span class="cap">{label}</span></li>
+              {p.flow.map((label, k) => (
+                <li style={`--k:${k}`}><span class="chip"><Icon name={pilotMeta[i].icons[k]} /></span><span class="cap">{label}</span></li>
               ))}
             </ol>
             <h3>{p.t}</h3>
@@ -145,9 +102,9 @@ const pilots = [
 
   <section class="block">
     <div class="wrap">
-      <h2 class="reveal">Ce que nous refusons, et ce que nous faisons.</h2>
+      <h2 class="reveal">{t.swapsTitle}</h2>
       <div class="swaps">
-        {swaps.map((s, i) => (
+        {t.swaps.map((s, i) => (
           <article class="swap reveal" style={`--d:${i * 90}ms`}>
             <p class="no"><Icon name="x-circle" /><s>{s.no}</s></p>
             <p class="yes"><Icon name="check-circle" /><span><strong>{s.title}</strong> {s.yes}</span></p>
@@ -160,10 +117,10 @@ const pilots = [
   <section class="cta">
     <div class="wrap">
       <div class="cta-box">
-        <h2 class="reveal">Commençons par un diagnostic.</h2>
+        <h2 class="reveal">{t.cta.title}</h2>
         <div class="reveal" style="--d:100ms">
-          <p>Un premier échange pour comprendre vos besoins et voir si l'IA peut vous aider.</p>
-          <a class="btn btn-primary" href="/contact">Demander un diagnostic <Arrow /></a>
+          <p>{t.cta.text}</p>
+          <a class="btn btn-primary" href={url(lang, 'contact')}>{t.cta.button} <Arrow /></a>
         </div>
       </div>
     </div>
