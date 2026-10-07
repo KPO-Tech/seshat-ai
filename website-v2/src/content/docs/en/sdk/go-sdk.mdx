@@ -1,0 +1,109 @@
+---
+title: Go SDK
+description: "Embed the Seshat runtime in a Go application: create a client, ask a question, hold a conversation."
+section: sdk
+order: 1
+updated: "2026-10-07"
+---
+import Callout from '@/components/docs/Callout.astro';
+import LinkCards from '@/components/docs/LinkCards.astro';
+
+The SDK is the `github.com/KPO-Tech/seshat/pkg/sdk` package. It gives you the same runtime as the terminal agent, as a library: sessions, tools, permissions, memory, MCP, hooks and providers.
+
+```bash
+go get github.com/KPO-Tech/seshat@latest
+```
+
+You need Go 1.26 or later.
+
+## One question
+
+`Ask` creates a session, sends the prompt, waits for the agent to finish (including any tools it calls) and returns the final answer.
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+    "os"
+
+    "github.com/KPO-Tech/seshat/pkg/sdk"
+)
+
+func main() {
+    cfg := sdk.DefaultClientConfig()
+    cfg.APIKey = os.Getenv("ANTHROPIC_API_KEY")
+    cfg.Model = sdk.ModelIdentifier{
+        Provider: sdk.APIProviderAnthropic,
+        Model:    "claude-sonnet-4-20250514",
+    }
+
+    client, err := sdk.NewClient(cfg)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer client.Close()
+
+    resp, err := client.Ask(context.Background(), "Write a Go function that reverses a string", nil)
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Println(resp.Content)
+}
+```
+
+`AskResponse` also carries the tool calls and their results (`ToolUses`, `ToolResults`), token `Usage` and `IsComplete`.
+
+<Callout type="note" title="Start from DefaultClientConfig">
+`DefaultClientConfig()` turns on what you usually want: `onRequest` permissions, up to 100 turns, automatic compaction, session persistence, memory, hooks and monitoring. Change the fields you need and leave the rest.
+</Callout>
+
+## A conversation
+
+A session keeps the history between messages. Create one, send as many messages as you like, then close it.
+
+```go
+session, err := client.CreateSession(ctx)
+if err != nil {
+    log.Fatal(err)
+}
+defer session.Close()
+
+first, _ := session.SubmitMessage(ctx, "List the Go files in this folder")
+second, _ := session.SubmitMessage(ctx, "Now explain the biggest one")
+
+fmt.Println(second.TotalTokens, second.IsComplete)
+```
+
+Come back to a saved session later with `client.LoadSession(ctx, id)`. `client.ListSessions()` and `client.DeleteSession(id)` manage what is stored.
+
+## The settings you will touch first
+
+| Field | Purpose |
+|---|---|
+| `APIKey` | The provider key. A `CredentialResolver` can supply keys per provider instead, for multi-tenant servers |
+| `Model` | A `ModelIdentifier{Provider, Model}` |
+| `PermissionMode` | Who approves actions. Default `PermissionModeOnRequest` |
+| `MaxTurns` | Limit on turns per request |
+| `AutoCompact` | Compact the context when it gets full |
+| `WorkingDir` | The folder the agent works in. Defaults to the current one |
+| `MCPServers` | MCP servers to connect (see [Skills and MCP](/en/docs/concepts/skills-and-mcp)) |
+| `PersistSessions`, `SessionStorageDir` | Where conversations are kept |
+| `EnableMemory` | Long-term notes across sessions |
+| `ProviderConfig` | Provider options such as a base URL |
+| `SandboxKind`, `RequireSandbox` | Run commands in a local or Docker sandbox |
+
+<Callout type="warning" title="Serving several users">
+A `Client` is cheap to keep and holds shared state. In a multi-tenant server, give each request its own working directory and credentials through the config, and never share a session between users.
+</Callout>
+
+## Where next
+
+<LinkCards cards={[
+  { title: 'Tools', text: 'Add your own tools to the agent.', href: '/en/docs/sdk/tools', icon: 'wrench' },
+  { title: 'Streaming and events', text: 'Show progress, answer permission prompts, add hooks.', href: '/en/docs/sdk/events-and-hooks', icon: 'broadcast' },
+  { title: 'Prompt', text: 'Shape the system prompt.', href: '/en/docs/sdk/prompt', icon: 'text-aa' },
+  { title: 'Workflows', text: 'Chain agents in a dependency graph.', href: '/en/docs/sdk/workflows', icon: 'graph' },
+]} />

@@ -1,0 +1,84 @@
+---
+title: Workflows
+description: "Describe a task as a graph of agent steps with dependencies, and run it from the CLI or from Go."
+section: sdk
+order: 5
+updated: "2026-10-07"
+---
+import Callout from '@/components/docs/Callout.astro';
+import Flow from '@/components/docs/Flow.astro';
+
+A workflow is a set of steps. Each step is an agent run with its own prompt. Steps can depend on other steps and receive their results, and steps that do not depend on each other run in parallel.
+
+<Flow items={[
+  { icon: 'magnifying-glass', label: 'research' },
+  { icon: 'pencil-simple', label: 'draft' },
+  { icon: 'seal-check', label: 'verify' },
+]} />
+
+## Define one
+
+In YAML or JSON:
+
+```yaml
+name: release-notes
+description: Write release notes from the last commits
+nodes:
+  - id: collect
+    prompt: List the commits since the last tag and group them by area.
+  - id: draft
+    needs: [collect]
+    prompt: Write release notes from the grouped commits.
+    output_format: Markdown with one section per area.
+  - id: check
+    kind: verifier
+    needs: [draft]
+    prompt: Check the notes against the commit list. Say PASS or FAIL.
+```
+
+| Field | Meaning |
+|---|---|
+| `id` | Unique name of the step |
+| `prompt` | What the step must do (required) |
+| `needs` | Steps whose results this step receives. They run first |
+| `kind` | `agent` (default), `verifier`, `critic` or `router` |
+| `routes` | For a `router`: the steps it may choose between (required for a router) |
+| `max_turns` | Turn limit for the step |
+| `output_format` | The shape you want the result in |
+
+The kinds change the role given to the step: a `verifier` checks the outputs it depends on and answers PASS or FAIL, a `critic` looks for weaknesses and risks, a `router` picks the next step among its `routes`.
+
+Seshat checks the file before running: duplicate ids, unknown dependencies, a router with no routes or one that routes to itself, and cycles are all refused.
+
+## Run it from the CLI
+
+```bash
+seshat workflow run release-notes.yaml
+seshat workflow run release-notes.yaml --json --max-parallel 2
+```
+
+By default up to 4 steps run at once. The usual `--model`, `--permission-mode` and `--cwd` options work here too.
+
+## Run it from Go
+
+```go
+def, err := sdk.LoadWorkflowFile("release-notes.yaml")
+if err != nil {
+    log.Fatal(err)
+}
+
+result, err := client.RunWorkflow(ctx, def, sdk.WorkflowOptions{MaxParallel: 2})
+if err != nil {
+    log.Fatal(err)
+}
+for _, id := range result.Order {
+    n := result.Results[id]
+    fmt.Println(id, n.Success, n.Output)
+}
+```
+
+`ValidateWorkflow(def)` checks a definition without running it. By default each step runs as a call to `client.Ask`, with the prompt built from the step and the results of its dependencies. To run steps your own way, pass an `Executor` in `WorkflowOptions`.
+
+<Callout type="note" title="A static graph">
+Workflows are fixed graphs, defined before the run. If you need an agent that decides its own next steps, use a normal session and let the agent plan.
+</Callout>

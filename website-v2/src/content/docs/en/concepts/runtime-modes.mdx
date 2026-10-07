@@ -23,7 +23,7 @@ All surfaces drive the same runtime, so the same sessions, tools and providers a
 
 - **Terminal**: `seshat chat` and `seshat run`, for your own work.
 - **Go SDK**: `sdk.NewClient`, to embed an agent in an application.
-- **gRPC server**: `cmd/grpc`, to run the agent as a service for other programs. The gRPC surface is partial and experimental: `Query`, `QueryStream`, `ConnectMCP`, `GetModels` and `HealthCheck`.
+- **gRPC server**: `cmd/grpc`, to run the agent as a service for other programs. The gRPC surface is experimental and partial: one service, `SeshatService`, with `Query`, `QueryStream`, skills, MCP, models and health methods. See the [gRPC API](/en/docs/sdk/grpc-api).
 
 ## Execution modes
 

@@ -62,18 +62,32 @@ The next session follows them. The official collection, [seshat-skills](https://
 
 ## Use it from your own code
 
-The same runtime can be embedded in a Go application:
+The same runtime can be embedded in a Go application. The [Go SDK](/en/docs/sdk/go-sdk) page goes further:
 
 ```go
-import "github.com/KPO-Tech/seshat/pkg/sdk"
+import (
+    "context"
+    "fmt"
+    "log"
+    "os"
 
-client, err := sdk.NewClient(sdk.DefaultClientConfig())
+    "github.com/KPO-Tech/seshat/pkg/sdk"
+)
+
+cfg := sdk.DefaultClientConfig()
+cfg.APIKey = os.Getenv("ANTHROPIC_API_KEY")
+
+client, err := sdk.NewClient(cfg)
 if err != nil {
-    // handle the error
+    log.Fatal(err)
 }
 defer client.Close()
 
-resp, err := client.Query(ctx, "Write a Go function that reverses a string", nil)
+resp, err := client.Ask(context.Background(), "Write a Go function that reverses a string", nil)
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println(resp.Content)
 ```
 
 ## Where to go next

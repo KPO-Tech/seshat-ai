@@ -1,0 +1,71 @@
+---
+title: Prompt
+description: "How the system prompt is assembled and how to add to it, replace parts of it, or guide individual tools."
+section: sdk
+order: 4
+updated: "2026-10-07"
+---
+import Callout from '@/components/docs/Callout.astro';
+
+The system prompt is built every turn from layers. You customise it with a `PromptConfig`, without touching the core sections.
+
+## How it is assembled
+
+1. **Core sections**: identity, runtime contract, working rules, tool use, output discipline.
+2. **Runtime context**: session, turn number, model, available tools.
+3. **Runtime guidance**.
+4. **Memory context**, when memory is enabled.
+5. **Stage overlay**, when you set a stage other than the default.
+6. **Your appended text**, always last.
+
+Tool definitions sent to the provider come from the tool registry. Your hints are added to their descriptions.
+
+## Configure it
+
+```go
+extra := "Always answer in French. Prefer small, reviewable changes."
+
+cfg := sdk.DefaultClientConfig()
+cfg.PromptConfig = &sdk.PromptConfig{
+    AppendSystemPrompt: &extra,
+    ToolHints: map[string]string{
+        "bash": "Prefer `rg` over `grep`. Never run commands that need a TTY.",
+    },
+}
+```
+
+| Field | Effect |
+|---|---|
+| `AppendSystemPrompt` | Text added after everything else, every turn. The safest way to add rules |
+| `SystemPrompt` | **Replaces** the whole default prompt. The core sections and stage overlay are then not used |
+| `ToolHints` | Per-tool guidance added to a tool's description, keyed by tool name |
+| `Stage` | An overlay for how the model should behave this turn (see below) |
+| `StageOverrides` | Replace the built-in overlay text of a stage |
+
+<Callout type="warning" title="Replacing the prompt">
+`SystemPrompt` removes the instructions that make the agent use tools safely and consistently. Prefer `AppendSystemPrompt` unless you are building something very different.
+</Callout>
+
+## Stages
+
+A stage adds a short instruction for a situation:
+
+| Stage | Meaning |
+|---|---|
+| `StageDefault` | Normal operation, nothing added |
+| `StageToolCall` | The model is expected to call tools |
+| `StageToolResult` | The model should work with the tool results it received |
+| `StageContinuation` | Resume from where it stopped |
+| `StagePlan` | Plan mode: tools are shown but not executed |
+
+For normal use you do not set a stage. `StagePlan` is the one most apps use, to let the user review a plan first.
+
+## On one session
+
+A session can change its prompt after creation:
+
+```go
+session.SetAppendSystemPrompt("This conversation is about the billing service.")
+session.SetSystemPromptTemplate(template)
+session.SetWorkingDirectory("/srv/projects/billing")
+```

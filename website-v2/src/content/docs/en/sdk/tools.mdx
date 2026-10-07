@@ -1,0 +1,95 @@
+---
+title: Tools
+description: "Add your own tools to the agent, and control what it can use."
+section: sdk
+order: 2
+updated: "2026-10-07"
+---
+import Callout from '@/components/docs/Callout.astro';
+
+A tool is a function the model can call. Seshat ships with many (files, shell, search, web, tasks, notebooks, memory…). You add yours by implementing the `Tool` interface from `github.com/KPO-Tech/seshat/pkg/tools`, then registering it.
+
+## A custom tool
+
+```go
+import "github.com/KPO-Tech/seshat/pkg/tools"
+
+type Clock struct{}
+
+func (Clock) Definition() tools.Definition {
+    return tools.Definition{
+        Name:        "current_time",
+        Description: "Return the current UTC time.",
+        InputSchema: tools.FromMap(map[string]any{
+            "type":       "object",
+            "properties": map[string]any{},
+        }),
+        IsReadOnly: true,
+    }
+}
+
+func (Clock) Call(ctx context.Context, in tools.CallInput, can tools.CanUseToolFn) (tools.CallResult, error) {
+    return tools.NewTextResult(time.Now().UTC().Format(time.RFC3339)), nil
+}
+
+func (Clock) Description(ctx context.Context) (string, error) {
+    return "Return the current UTC time.", nil
+}
+
+func (Clock) ValidateInput(ctx context.Context, in map[string]any) (map[string]any, error) {
+    return in, nil
+}
+
+func (Clock) CheckPermissions(ctx context.Context, in map[string]any, tc tools.ToolUseContext) tools.PermissionResult {
+    return tools.Passthrough(in) // let the global permission rules decide
+}
+
+func (Clock) IsConcurrencySafe(in map[string]any) bool { return true }
+func (Clock) IsReadOnly(in map[string]any) bool        { return true }
+func (Clock) IsEnabled() bool                          { return true }
+func (Clock) FormatResult(data any) string             { return fmt.Sprint(data) }
+
+func (Clock) BackfillInput(ctx context.Context, in map[string]any) map[string]any { return in }
+```
+
+Register it on the client, to make it available in every session, or on one session:
+
+```go
+client.RegisterTool(Clock{})     // all sessions
+session.RegisterTool(Clock{})    // this session only
+```
+
+You can also pass tools to a single `Ask` call: `client.Ask(ctx, prompt, []sdk.Tool{Clock{}})`.
+
+### Reporting errors
+
+Return an error from `Call` only for a failure the runtime cannot recover from, such as a cancelled context. A problem the model should know about (bad input, file not found) goes back as a result built with `tools.NewErrorResult(err)`, so the model sees it and can adapt.
+
+### Results
+
+| Helper | Use |
+|---|---|
+| `tools.NewTextResult(text)` | A plain text answer |
+| `tools.NewJSONResult(data)` | Structured data. Set `.Content` afterwards if you want a human-readable summary |
+| `tools.NewErrorResult(err)` | A failure the model should see |
+
+## Permissions
+
+Each tool call goes through the permission pipeline before it runs. A tool can add its own rule in `CheckPermissions`, and returns `tools.Passthrough` when it has nothing to add. `IsReadOnly` and `IsConcurrencySafe` let the runtime run safe calls in parallel and treat read-only calls more leniently.
+
+How approvals work, and the available modes, are described in [Streaming, events and hooks](/en/docs/sdk/events-and-hooks#answering-permission-questions).
+
+## Seeing what the agent has
+
+```go
+names := client.ToolNames()                    // every tool name
+surface, err := client.BuildToolSurface(ctx)   // the tools as the model sees them
+```
+
+## Tools from MCP servers
+
+MCP servers add tools without any Go code. See [Skills and MCP](/en/docs/concepts/skills-and-mcp). You can change them while the client runs with `client.ReloadMCPServers(ctx, servers)`.
+
+<Callout type="tip" title="Keep tools small">
+A tool that does one thing with a clear description is easier for the model to use correctly than a large tool with many modes.
+</Callout>
