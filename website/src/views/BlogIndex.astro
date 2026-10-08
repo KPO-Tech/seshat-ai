@@ -11,16 +11,26 @@ interface Props { lang: Lang }
 const { lang } = Astro.props;
 const t = dict(lang).blog;
 const posts = await postsFor(lang);
-const [featured, ...rest] = posts;
 const other: Lang = lang === 'fr' ? 'en' : 'fr';
 const otherCount = (await allPosts()).filter((p) => p.lang === other).length;
+const cats = (['pme', 'dev', 'proof'] as const).filter((c) => posts.some((p) => p.entry.data.category === c));
+const count = (c: string) => posts.filter((p) => p.entry.data.category === c).length;
+const catIcon = { pme: 'buildings', dev: 'terminal-window', proof: 'seal-check' } as const;
 const feed = `${url(lang, 'blog')}/rss.xml`;
 ---
 <Base title={t.meta.title} description={t.meta.description} lang={lang} page="blog" feed={feed} noindex={posts.length === 0}>
-  <header class="page-head blog-head">
-    <div class="wrap">
-      <h1>{t.head.title}</h1>
-      <p class="lead">{t.head.lead}</p>
+  <header class="bhero">
+    <div class="wrap bhero-in">
+      <p class="bhero-eyebrow">{t.head.eyebrow}</p>
+      <h1>{t.head.pre}<em>{t.head.em}</em>{t.head.post}</h1>
+      <p class="bhero-lead">{t.head.lead}</p>
+      {posts.length > 0 && (
+        <label class="blog-search">
+          <Icon name="magnifying-glass" />
+          <input type="search" id="blog-q" placeholder={t.labels.search} aria-label={t.labels.search} autocomplete="off" />
+          <kbd aria-hidden="true">Ctrl K</kbd>
+        </label>
+      )}
     </div>
   </header>
 
@@ -34,40 +44,108 @@ const feed = `${url(lang, 'blog')}/rss.xml`;
         </div>
       ) : (
         <>
-          <a class="post-feature" href={`${url(lang, 'blog')}/${featured.slug}`}>
-            <div class="post-feature-body">
-              <span class="post-card-tags">
-                <span class={`pill pill-${featured.entry.data.category}`}>{t.categories[featured.entry.data.category]}</span>
-                {featured.entry.data.draft && <span class="pill pill-draft">{t.labels.draft}</span>}
-              </span>
-              <h2>{featured.entry.data.title}</h2>
-              <p>{featured.entry.data.description}</p>
-              <span class="post-meta"><time datetime={featured.entry.data.date}>{formatDate(featured.entry.data.date, lang)}</time> · {featured.minutes} {t.labels.minutes}</span>
-              <span class="link">{t.labels.read} <Arrow /></span>
+          <div class="blog-bar">
+            <div class="blog-chips" role="group" aria-label={t.labels.filters}>
+              <button type="button" class="bchip" data-cat="all" aria-pressed="true">{t.labels.all}</button>
+              {cats.map((c) => <button type="button" class="bchip" data-cat={c} aria-pressed="false">{t.categories[c]}</button>)}
             </div>
-            <PostCover category={featured.entry.data.category} cover={featured.entry.data.cover} />
-          </a>
-          {rest.length > 0 && (
-            <ul class="blog-grid">
-              {rest.map((p) => (
-                <li>
-                  <a class="post-card" href={`${url(lang, 'blog')}/${p.slug}`}>
-                    <PostCover category={p.entry.data.category} cover={p.entry.data.cover} compact />
-                    <span class="post-card-tags">
-                      <span class={`pill pill-${p.entry.data.category}`}>{t.categories[p.entry.data.category]}</span>
-                      {p.entry.data.draft && <span class="pill pill-draft">{t.labels.draft}</span>}
-                    </span>
-                    <h2>{p.entry.data.title}</h2>
-                    <p>{p.entry.data.description}</p>
-                    <span class="post-meta"><time datetime={p.entry.data.date}>{formatDate(p.entry.data.date, lang)}</time> · {p.minutes} {t.labels.minutes}</span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          )}
+            <label class="blog-sort">{t.labels.sort}
+              <select id="blog-sort">
+                <option value="new">{t.labels.newest}</option>
+                <option value="old">{t.labels.oldest}</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="blog-layout">
+            <div class="blog-main">
+              <ul class="blog-grid" id="blog-grid">
+                {posts.map((p) => (
+                  <li data-cat={p.entry.data.category} data-date={p.entry.data.date} data-text={`${p.entry.data.title} ${p.entry.data.description} ${(p.entry.data.tags ?? []).join(' ')}`.toLowerCase()}>
+                    <a class="post-card" href={`${url(lang, 'blog')}/${p.slug}`}>
+                      <PostCover category={p.entry.data.category} cover={p.entry.data.cover} compact />
+                      <span class="post-card-tags">
+                        <span class={`pill pill-${p.entry.data.category}`}>{t.categories[p.entry.data.category]}</span>
+                        {p.entry.data.draft && <span class="pill pill-draft">{t.labels.draft}</span>}
+                      </span>
+                      <h2>{p.entry.data.title}</h2>
+                      <span class="post-meta">
+                        <span><Icon name="calendar-blank" /><time datetime={p.entry.data.date}>{formatDate(p.entry.data.date, lang)}</time></span>
+                        <span><Icon name="clock" />{p.minutes} min</span>
+                        {p.entry.data.tags?.[0] && <span><Icon name="tag" />{p.entry.data.tags[0]}</span>}
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+              <p class="blog-none" id="blog-none" hidden>{t.labels.noResults} <button type="button" class="link" id="blog-reset">{t.labels.reset}</button></p>
+            </div>
+
+            <aside class="blog-side">
+              <section class="bside">
+                <h2>{t.labels.categoriesTitle}</h2>
+                <ul class="bcats">
+                  {cats.map((c) => (
+                    <li><button type="button" data-cat={c} aria-pressed="false"><span class="bcat-ic"><Icon name={catIcon[c]} /></span>{t.categories[c]}<span class="bcat-n">{count(c)}</span></button></li>
+                  ))}
+                </ul>
+              </section>
+              <section class="bside">
+                <h2><Icon name="rss" /> {t.labels.follow}</h2>
+                <p>{t.labels.followText}</p>
+                <a class="link" href={feed}>{t.labels.rss} <Arrow /></a>
+                {otherCount > 0 && <p class="bside-lang"><a class="link" href={url(other, 'blog')} hreflang={other}>{t.labels.english} <Arrow /></a></p>}
+              </section>
+              <section class="bside bside-cta">
+                <h2>{t.labels.helpTitle}</h2>
+                <p>{t.labels.helpText}</p>
+                <a class="btn btn-primary btn-sm" href={url(lang, 'contact')}>{t.labels.helpButton} <Arrow /></a>
+              </section>
+            </aside>
+          </div>
         </>
       )}
-      <p class="blog-foot"><a class="link" href={feed}>{t.labels.rss}</a>{otherCount > 0 && posts.length > 0 && <> · <a class="link" href={url(other, 'blog')} hreflang={other}>{t.labels.english}</a></>}</p>
     </div>
   </section>
 </Base>
+
+<script>
+  const q = document.getElementById('blog-q') as HTMLInputElement | null;
+  const grid = document.getElementById('blog-grid');
+  const items = Array.from(document.querySelectorAll<HTMLElement>('#blog-grid > li'));
+  const chips = Array.from(document.querySelectorAll<HTMLButtonElement>('.bchip'));
+  const sideCats = Array.from(document.querySelectorAll<HTMLButtonElement>('.bcats button'));
+  const sort = document.getElementById('blog-sort') as HTMLSelectElement | null;
+  const none = document.getElementById('blog-none');
+  let cat = 'all';
+  const apply = () => {
+    const term = (q?.value ?? '').trim().toLowerCase();
+    const dir = sort?.value === 'old' ? 1 : -1;
+    const order = [...items].sort((a, b) => (a.dataset.date ?? '').localeCompare(b.dataset.date ?? '') * dir);
+    let shown = 0;
+    for (const li of order) {
+      grid?.appendChild(li);
+      const ok = (cat === 'all' || li.dataset.cat === cat) && (!term || (li.dataset.text ?? '').includes(term));
+      li.hidden = !ok;
+      if (ok) shown++;
+    }
+    if (none) none.hidden = shown > 0;
+  };
+  const pick = (next: string) => {
+    cat = next === 'all' || cat === next ? 'all' : next;
+    for (const c of chips) c.setAttribute('aria-pressed', String(c.dataset.cat === cat));
+    for (const c of sideCats) c.setAttribute('aria-pressed', String(c.dataset.cat === cat));
+    apply();
+  };
+  q?.addEventListener('input', apply);
+  sort?.addEventListener('change', apply);
+  for (const b of chips) b.addEventListener('click', () => pick(b.dataset.cat ?? 'all'));
+  for (const b of sideCats) b.addEventListener('click', () => pick(b.dataset.cat ?? 'all'));
+  document.getElementById('blog-reset')?.addEventListener('click', () => {
+    if (q) q.value = '';
+    pick('all');
+  });
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k' && q) { e.preventDefault(); q.focus(); }
+  });
+</script>
