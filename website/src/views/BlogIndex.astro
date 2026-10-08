@@ -13,18 +13,13 @@ const t = dict(lang).blog;
 const posts = await postsFor(lang);
 const other: Lang = lang === 'fr' ? 'en' : 'fr';
 const otherCount = (await allPosts()).filter((p) => p.lang === other).length;
+const cats = (['pme', 'dev', 'proof'] as const).filter((c) => posts.some((p) => p.entry.data.category === c));
 const feed = `${url(lang, 'blog')}/rss.xml`;
 ---
 <Base title={t.meta.title} description={t.meta.description} lang={lang} page="blog" feed={feed} noindex={posts.length === 0}>
-  <header class="page-head blog-head">
-    <div class="wrap">
-      <h1>{t.head.title}</h1>
-      <p class="lead">{t.head.lead}</p>
-    </div>
-  </header>
-
   <section class="block blog-block">
     <div class="wrap">
+      <h1 class="sr-only">{t.head.title}</h1>
       {posts.length === 0 ? (
         <div class="blog-empty">
           <span class="blog-empty-ic"><Icon name="pencil-simple-line" /></span>
@@ -33,9 +28,19 @@ const feed = `${url(lang, 'blog')}/rss.xml`;
         </div>
       ) : (
         <>
+          <div class="blog-tools">
+            <label class="blog-search">
+              <Icon name="magnifying-glass" />
+              <input type="search" id="blog-q" placeholder={t.labels.search} aria-label={t.labels.search} autocomplete="off" />
+            </label>
+            <div class="blog-chips" role="group" aria-label={t.labels.filters}>
+              <button type="button" class="chip" data-cat="all" aria-pressed="true">{t.labels.all} <span>{posts.length}</span></button>
+              {cats.map((c) => <button type="button" class="chip" data-cat={c} aria-pressed="false">{t.categories[c]} <span>{posts.filter((p) => p.entry.data.category === c).length}</span></button>)}
+            </div>
+          </div>
             <ul class="blog-grid">
               {posts.map((p) => (
-                <li>
+                <li data-cat={p.entry.data.category} data-text={`${p.entry.data.title} ${p.entry.data.description} ${(p.entry.data.tags ?? []).join(" ")}`.toLowerCase()}>
                   <a class="post-card" href={`${url(lang, 'blog')}/${p.slug}`}>
                     <PostCover category={p.entry.data.category} cover={p.entry.data.cover} compact />
                     <span class="post-card-tags">
@@ -49,9 +54,38 @@ const feed = `${url(lang, 'blog')}/rss.xml`;
                 </li>
               ))}
             </ul>
+          <p class="blog-none" id="blog-none" hidden>{t.labels.noResults} <button type="button" class="link" id="blog-reset">{t.labels.reset}</button></p>
         </>
       )}
       <p class="blog-foot"><a class="link" href={feed}>{t.labels.rss}</a>{otherCount > 0 && posts.length > 0 && <> · <a class="link" href={url(other, 'blog')} hreflang={other}>{t.labels.english}</a></>}</p>
     </div>
   </section>
 </Base>
+
+<script>
+  const q = document.getElementById('blog-q') as HTMLInputElement | null;
+  const items = Array.from(document.querySelectorAll<HTMLElement>('.blog-grid > li'));
+  const chips = Array.from(document.querySelectorAll<HTMLButtonElement>('.blog-chips .chip'));
+  const none = document.getElementById('blog-none');
+  let cat = 'all';
+  const apply = () => {
+    const term = (q?.value ?? '').trim().toLowerCase();
+    let shown = 0;
+    for (const li of items) {
+      const ok = (cat === 'all' || li.dataset.cat === cat) && (!term || (li.dataset.text ?? '').includes(term));
+      li.hidden = !ok;
+      if (ok) shown++;
+    }
+    if (none) none.hidden = shown > 0;
+  };
+  q?.addEventListener('input', apply);
+  for (const b of chips) b.addEventListener('click', () => {
+    cat = b.dataset.cat ?? 'all';
+    for (const c of chips) c.setAttribute('aria-pressed', String(c === b));
+    apply();
+  });
+  document.getElementById('blog-reset')?.addEventListener('click', () => {
+    if (q) q.value = '';
+    chips[0]?.click();
+  });
+</script>

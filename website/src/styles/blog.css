@@ -89,3 +89,21 @@
 .fig a { display: block; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); }
 .fig img { display: block; width: 100%; height: auto; }
 .fig figcaption { margin-top: 10px; color: var(--text2); font-size: 0.92rem; }
+
+/* Barre d'outils de la liste : recherche et filtres */
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.block.blog-block { padding-top: 56px; }
+.blog-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 20px; }
+.blog-search { position: relative; display: flex; align-items: center; flex: 1 1 280px; max-width: 420px; }
+.blog-search .pi { position: absolute; left: 14px; width: 18px; height: 18px; fill: var(--text2); pointer-events: none; }
+.blog-search input { width: 100%; padding: 12px 16px 12px 42px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font: inherit; font-size: 0.98rem; }
+.blog-search input:focus { outline: 2px solid var(--accent); outline-offset: 2px; border-color: var(--accent); }
+.blog-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.blog-chips .chip { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--text2); font: inherit; font-size: 0.92rem; font-weight: 600; cursor: pointer; transition: border-color 0.2s, color 0.2s, background 0.2s; }
+.blog-chips .chip span { font-size: 0.78rem; opacity: 0.7; }
+.blog-chips .chip:hover { border-color: var(--accent); color: var(--text); }
+.blog-chips .chip[aria-pressed='true'] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.blog-chips .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.blog-grid > li[hidden] { display: none; }
+.blog-none { margin-top: 32px; color: var(--text2); }
+.blog-none .link { background: none; border: 0; padding: 0; font: inherit; cursor: pointer; }

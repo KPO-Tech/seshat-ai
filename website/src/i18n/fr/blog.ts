@@ -21,6 +21,10 @@ export default {
     draft: 'Brouillon : visible seulement en développement',
     empty: 'Les premiers articles arrivent bientôt.',
     english: 'English',
+    search: 'Rechercher un article',
+    filters: 'Filtrer par catégorie',
+    noResults: 'Aucun article ne correspond à cette recherche.',
+    reset: 'Réinitialiser',
   },
   cta: {
     pme: {

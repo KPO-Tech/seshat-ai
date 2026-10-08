@@ -23,6 +23,10 @@ const en: typeof fr = {
     draft: 'Draft: only visible in development',
     empty: 'The first articles are coming soon.',
     english: 'Français',
+    search: 'Search articles',
+    filters: 'Filter by category',
+    noResults: 'No article matches this search.',
+    reset: 'Reset',
   },
   cta: {
     pme: {
