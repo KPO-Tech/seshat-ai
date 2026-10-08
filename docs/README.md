@@ -6,8 +6,10 @@ Ce dossier sert à **définir le projet Seshat AI, réfléchir à sa stratégie 
 
 | Dossier | Contenu | Statut |
 |---|---|---|
-| [`strategie/`](./strategie/) | Positionnement commercial, idées futures, archive de la stratégie d'août 2026. | Vivant |
+| [`strategie/`](./strategie/) | Positionnement commercial, idées futures, archives d'août et de septembre 2026. | Vivant |
 | [`produits/`](./produits/) | Cadrage produit : portefeuille SeshatOS, Chat, Knowledge, Automation (pages, PRD, maquettes Stitch). | Vivant, à réviser au fil du MVP |
+| [`mvp/`](./mvp/) | Stratégie MVP : ordre des surfaces, règles de gouvernance du desktop, frontières entre les quatre dépôts, critères de fin. Rapatrié le 2026-10-08 (il vivait hors dépôt). | Vivant |
+| [`reflexions/`](./reflexions/) | Réflexions et historique d'ingénierie : audits, anciennes feuilles de route. Figé, avec un bandeau par fichier. | Archive |
 
 Point de départ : [`strategie/positionnement-commercial.md`](./strategie/positionnement-commercial.md), source de vérité actuelle de l'offre.
 
@@ -18,8 +20,8 @@ Point de départ : [`strategie/positionnement-commercial.md`](./strategie/positi
 | Runtime d'agents (Go, SDK, CLI/TUI) | [`seshat`](https://github.com/KPO-Tech/seshat) |
 | Application desktop et backend local | [`SeshatOS`](https://github.com/KPO-Tech/SeshatOS) |
 | Serveur multi-tenant, console, service d'intelligence documentaire | [`SeshatCloud`](https://github.com/KPO-Tech/SeshatCloud) |
-| Stratégie MVP active (ordre des surfaces, règles de gouvernance du desktop) | `D:\Documents\PROJECTS\ai\Discussions\mvp\` (hors dépôt, à rapatrier ou non : décision ouverte) |
-| Journal d'ingénierie historique, audits n8n et OpenWork, guides de la console | `SeshatCloud/docs/journal-legacy/` et `SeshatCloud/docs/console-guides/` |
+| Journal d'ingénierie historique, audits n8n et OpenWork | [`reflexions/journal-engineering-2026/`](./reflexions/journal-engineering-2026/) (rapatrié le 2026-10-08) |
+| Guides de la console | `SeshatCloud/docs/console-guides/` |
 | Ancien monorepo complet | branche `dev-old` de ce dépôt |
 
 ## Règles
