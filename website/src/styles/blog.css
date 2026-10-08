@@ -47,7 +47,7 @@
 /* Mise en page de la liste : un article à la une, puis une grille */
 .page-head.blog-head { padding-bottom: 0; }
 .block.blog-block { padding-top: 32px; padding-bottom: 80px; }
-.blog-grid { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); margin-top: 24px; }
+.blog-grid { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); margin-top: 24px; }
 .post-card h2, .post-card h3 { font-size: 1.28rem; line-height: 1.2; }
 .post-card { padding: 22px; align-content: start; }
 
@@ -67,7 +67,7 @@
 .pcover-ic { position: relative; width: 84px; height: 84px; display: grid; place-items: center; border-radius: 22px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.16); }
 .pcover-ic .pi { width: 44px; height: 44px; fill: currentColor; }
 .pcover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.pcover.compact { min-height: 112px; border-radius: var(--radius); margin-bottom: 4px; }
+.pcover.compact { aspect-ratio: 1200 / 630; min-height: 0; border-radius: var(--radius); margin-bottom: 4px; }
 .pcover.compact .pcover-ic { width: 56px; height: 56px; border-radius: 16px; }
 .pcover.compact .pcover-ic .pi { width: 30px; height: 30px; }
 
