@@ -12,6 +12,7 @@ export default {
   ],
   cta: 'Demander un diagnostic',
   ctaShort: 'Diagnostic',
+  menu: 'Menu',
   themeToggle: 'Changer de thème, clair ou sombre',
   langSwitch: 'Changer de langue',
   footer: {
