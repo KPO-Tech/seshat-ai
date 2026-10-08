@@ -170,3 +170,17 @@
 .bcat-ic { width: 26px; height: 26px; border-radius: 7px; }
 .bcat-ic .pi { width: 15px; height: 15px; }
 .bcat-n { font-size: 0.78rem; }
+
+/* Mobile et tablette : une seule colonne (placé en fin de fichier pour l'emporter sur les réglages ci-dessus) */
+@media (max-width: 980px) {
+  .blog-layout { grid-template-columns: minmax(0, 1fr); }
+  .blog-side { position: static; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .blog-main .blog-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+}
+@media (max-width: 600px) {
+  .bhero .bhero-in { padding-top: 36px; padding-bottom: 36px; }
+  .blog-search { width: 100%; }
+  .blog-search kbd { display: none; }
+  .blog-bar { gap: 10px; }
+  .blog-main .blog-grid { grid-template-columns: minmax(0, 1fr); }
+}
