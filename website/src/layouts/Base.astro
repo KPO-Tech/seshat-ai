@@ -103,11 +103,9 @@ const nodes: object[] = [
         <div class="actions">
           <a class="btn btn-primary btn-sm" href={url(lang, 'contact')}><span class="cta-long">{c.cta}</span><span class="cta-short">{c.ctaShort}</span></a>
           {others.length === 1 && (
-            <div class="lang-seg" role="group" aria-label={c.langSwitch}>
-              {alternates.map((a) => a.lang === lang
-                ? <span lang={a.lang} aria-current="true">{a.lang.toUpperCase()}</span>
-                : <a href={a.href} hreflang={a.lang} lang={a.lang} title={langNames[a.lang]}>{a.lang.toUpperCase()}</a>)}
-            </div>
+            <a class="lang-btn" href={others[0].href} hreflang={others[0].lang} lang={others[0].lang} title={langNames[others[0].lang]} aria-label={`${c.langSwitch} : ${langNames[others[0].lang]}`}>
+              <Fragment set:html={globe} />{others[0].lang.toUpperCase()}
+            </a>
           )}
           {others.length > 1 && (
             <details class="lang-menu">

@@ -47,7 +47,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
-  font-size: 1.0625rem;
+  font-size: 1rem;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
@@ -73,14 +73,10 @@ p { margin: 0; }
 .brand img { width: 34px; height: 34px; }
 .nav { display: flex; align-items: center; justify-content: center; gap: 4px; }
 .actions { justify-self: end; display: flex; align-items: center; gap: 8px; }
-.nav a:not(.btn) { text-decoration: none; font-size: 0.95rem; font-weight: 500; color: var(--text2); padding: 8px 12px; border-radius: 10px; transition: color 0.2s, background 0.2s; }
+.nav a:not(.btn) { text-decoration: none; font-size: 0.9rem; font-weight: 500; color: var(--text2); padding: 8px 12px; border-radius: 10px; transition: color 0.2s, background 0.2s; }
 .nav a:not(.btn):hover { color: var(--text); background: color-mix(in srgb, var(--text) 7%, transparent); }
 .nav a[aria-current='page'] { color: var(--text); position: relative; }
 .nav a[aria-current='page']::after { content: ''; position: absolute; left: 12px; right: 12px; bottom: -2px; height: 2px; border-radius: 2px; background: var(--accent); }
-.lang-seg { display: inline-flex; height: 40px; padding: 3px; gap: 2px; border-radius: 10px; border: 1px solid var(--line); font-size: 0.85rem; font-weight: 700; }
-.lang-seg a, .lang-seg span { display: inline-flex; align-items: center; padding: 0 10px; border-radius: 7px; text-decoration: none; color: var(--text2); }
-.lang-seg a:hover { color: var(--text); background: color-mix(in srgb, var(--text) 7%, transparent); }
-.lang-seg span[aria-current='true'] { background: color-mix(in srgb, var(--text) 9%, transparent); color: var(--text); }
 .theme-toggle { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--text); cursor: pointer; }
 .theme-toggle:hover { border-color: var(--text2); }
 .theme-toggle .ico { width: 20px; height: 20px; }
@@ -108,7 +104,7 @@ p { margin: 0; }
 .btn-primary:hover { background: color-mix(in srgb, var(--accent) 88%, #fff); }
 .btn-ghost { border-color: var(--line); color: var(--text); background: transparent; }
 .btn-ghost:hover { border-color: var(--text2); }
-.btn-sm { padding: 10px 16px; font-size: 0.95rem; }
+.btn-sm { padding: 9px 15px; font-size: 0.9rem; }
 .ico { width: 18px; height: 18px; fill: currentColor; transition: transform 0.25s var(--ease); }
 .btn:hover .ico, .link:hover .ico { transform: translateX(3px); }
 .link { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: var(--accent-text); text-decoration: none; }
