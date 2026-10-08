@@ -14,6 +14,7 @@ const en: typeof fr = {
   ],
   cta: 'Request an assessment',
   ctaShort: 'Assessment',
+  menu: 'Menu',
   themeToggle: 'Switch theme, light or dark',
   langSwitch: 'Change language',
   footer: {
