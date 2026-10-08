@@ -1,0 +1,94 @@
+---
+title: "Par où commencer avec l'IA dans une PME : cinq questions"
+description: "Cinq questions simples à se poser avant de choisir un outil, un prestataire ou un budget : le problème, les données, la validation, la mesure, le pilote."
+date: "2026-10-08"
+category: pme
+draft: true
+tags: ["PME", "IA souveraine", "diagnostic", "pilote"]
+---
+import Callout from '@/components/docs/Callout.astro';
+import Flow from '@/components/docs/Flow.astro';
+
+Dans une PME, le sujet de l'IA arrive rarement par un besoin précis. Il arrive par une pression : un concurrent qui en parle, un outil qu'un salarié a déjà essayé de son côté, un commercial qui promet des gains. La tentation est alors de commencer par l'outil. C'est presque toujours la mauvaise porte d'entrée.
+
+Voici cinq questions à poser avant de signer quoi que ce soit, ou avant de nous contacter. Elles servent à quiconque doit décider : dirigeant, responsable d'équipe, directeur des opérations. Aucune ne demande de comprendre la technique.
+
+<Flow items={[
+  { icon: 'target', label: 'Un problème précis' },
+  { icon: 'database', label: 'Des données identifiées' },
+  { icon: 'user-check', label: 'Un humain qui valide' },
+  { icon: 'chart-line-up', label: 'Une mesure' },
+  { icon: 'flag-checkered', label: 'Un pilote court' },
+]} />
+
+## 1. Quel est le problème, en une phrase, sans le mot « IA » ?
+
+« Nous voulons utiliser l'IA » n'est pas un problème. « Nos commerciaux passent des heures à retrouver la bonne version d'un contrat » en est un. « Chaque réponse à un appel d'offres repart de zéro » aussi.
+
+Si votre phrase fonctionne sans le mot « IA », c'est bon signe : vous avez un problème que l'on peut mesurer, et peut-être que l'IA n'est qu'une des façons de le traiter. Un logiciel de classement, une règle de nommage des fichiers ou une procédure mieux écrite règlent parfois le sujet sans modèle de langage.
+
+Les situations que nous voyons le plus souvent se ramènent à trois :
+- **Le savoir est partout et introuvable** : procédures, contrats, notes. L'information existe, mais personne ne sait où.
+- **Les mêmes tâches, faites à la main** : saisies, relances, rapports.
+- **L'IA oui, mais chez soi** : les documents ne doivent pas partir chez un tiers.
+
+## 2. Qui vit ce problème chaque semaine, et combien de temps cela lui prend ?
+
+Le gain d'un projet se mesure sur des personnes réelles. Nommez-les. Demandez-leur, sans chiffre imposé, combien de temps elles y passent et ce qui les agace le plus.
+
+Notez la réponse **avant** de lancer quoi que ce soit : c'est votre point de départ. Sans lui, vous ne saurez jamais si le projet a servi à quelque chose, et vous risquez de juger un résultat à l'impression.
+
+<Callout type="note" title="Ne comptez pas ce que vous n'avez pas mesuré">
+Nous n'annonçons aucun gain de temps standard : il dépend entièrement de votre situation. Un bon diagnostic vous donne une estimation chiffrée à partir de **vos** processus, avec ses hypothèses écrites.
+</Callout>
+
+## 3. Quelles données faut-il, et peuvent-elles quitter l'entreprise ?
+
+Un assistant utile travaille sur vos documents : contrats, devis, fiches clients, procédures. Avant de choisir un outil, classez ces documents en trois groupes :
+
+1. **Libres** : sans risque s'ils sortent (catalogues, documentation publique).
+2. **Sensibles** : leur fuite gênerait (offres, grilles de prix, échanges clients).
+3. **Réservés** : ils ne doivent pas sortir (données personnelles, secrets industriels, dossiers soumis à une obligation de confidentialité).
+
+La réponse change le choix de la solution. Pour les groupes 2 et 3, une solution **auto-hébergée**, qui tourne sur votre infrastructure ou sur un hébergement que vous contrôlez, évite d'envoyer vos documents à un service tiers. C'est ce qu'on appelle ici l'IA souveraine : pas un label, une décision sur l'endroit où vivent vos données et qui y a accès.
+
+Ce n'est pas toujours nécessaire. Pour des données du groupe 1, un service en ligne peut suffire, et un diagnostic honnête vous le dit.
+
+## 4. Qui valide quand l'IA se trompe ?
+
+Elle se trompera. Le sujet n'est pas « combien », mais « que se passe-t-il ensuite ». Pour chaque usage, décidez d'avance :
+
+- ce que l'outil a le droit de faire seul (chercher, résumer, proposer) ;
+- ce qu'un humain doit toujours valider (envoyer un courriel à un client, modifier un document de référence, engager une dépense) ;
+- comment on remonte une erreur.
+
+Une réponse **sourcée**, qui montre le passage du document dont elle vient, change la donne : l'équipe vérifie en dix secondes au lieu de faire confiance à l'aveugle. C'est le critère le plus utile pour juger une démonstration.
+
+Méfiez-vous des promesses d'agents « entièrement autonomes ». Dans une PME, ce qui crée de la valeur aujourd'hui, c'est un outil qui prépare et un humain qui décide.
+
+## 5. À quoi verrez-vous que ça a marché, en 30 à 90 jours ?
+
+Un pilote utile est **court** et ne traite **qu'un cas d'usage**. Il se définit avant de commencer par trois choses :
+
+- l'indicateur de départ (question 2) ;
+- l'indicateur visé : du temps, des erreurs, un délai de réponse ;
+- la règle de validation humaine (question 4).
+
+Au bout de la période, vous avez trois issues honnêtes : on étend, on corrige, ou on s'arrête. Dire « on s'arrête » est un bon résultat : vous avez dépensé un pilote, pas un projet d'un an.
+
+## Ce que doit vous rendre un diagnostic
+
+Si vous faites appel à quelqu'un pour répondre à ces questions, vous devez ressortir avec des éléments que vous pouvez relire, discuter et refuser :
+
+- une cartographie des processus concernés ;
+- une liste de cas d'usage classés par valeur, rapidité, risque et faisabilité ;
+- une recommandation d'outils, y compris quand la meilleure réponse n'est pas la nôtre (une solution open source, un outil du marché, un développement sur mesure) ;
+- un plan de pilote de 30 à 90 jours, avec son indicateur.
+
+## Où nous en sommes, honnêtement
+
+Seshat AI propose ce parcours : un diagnostic chiffré, un pilote, puis l'exploitation si le pilote le justifie. Le runtime Seshat, qui sert de socle technique, est open source (Apache-2.0) et son code est public. SeshatOS et SeshatCloud sont en construction : nous ne les présentons pas comme des produits finis, et un pilote documentaire se construit avec vous sur mesure. Les étiquettes de maturité sont sur la page [Produits](/produits).
+
+<Callout type="tip" title="Une première étape qui ne coûte rien">
+Répondez par écrit aux cinq questions, en une demi-page. Même incomplètes, vos réponses font gagner la moitié de la première réunion, avec nous comme avec n'importe quel autre prestataire.
+</Callout>
