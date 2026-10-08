@@ -85,7 +85,10 @@ const nodes: object[] = [
     {nodes.length > 0 && <script type="application/ld+json" set:html={graph(nodes)} />}
     <script is:inline>
       document.documentElement.classList.add('js');
-      try { var th = localStorage.getItem('theme'); if (th === 'light' || th === 'dark') document.documentElement.setAttribute('data-theme', th); } catch (e) {}
+      var th = null;
+      try { th = localStorage.getItem('theme'); } catch (e) {}
+      if (th !== 'light' && th !== 'dark') th = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', th);
     </script>
   </head>
   <body class={shell ? 'shell' : undefined}>
@@ -118,9 +121,13 @@ const nodes: object[] = [
             </details>
           )}
           <button class="theme-toggle" type="button" aria-label={c.themeToggle}><Fragment set:html={sun} /><Fragment set:html={moon} /></button>
+          <button class="menu-toggle" type="button" aria-label={c.menu} aria-expanded="false" aria-controls="mnav"><span></span><span></span><span></span></button>
         </div>
       </div>
     </header>)}
+    {!shell && (<nav class="mnav" id="mnav" aria-label={c.navAria} hidden>
+      {navItems.map((n) => <a href={url(lang, n.page as PageKey)} aria-current={page === n.page ? 'page' : undefined}>{n.label}</a>)}
+    </nav>)}
     <main id="contenu"><slot /></main>
     {!shell && (<footer class="site-footer">
       <img class="foot-mark logo-light" src="/brand/mark-on-light.svg" alt="" width="260" height="260" />
@@ -163,6 +170,26 @@ const nodes: object[] = [
           root.setAttribute('data-theme', next);
           try { localStorage.setItem('theme', next); } catch (e) {}
         });
+      })();
+    </script>
+    <script is:inline>
+      (function () {
+        var mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+        if (mq && mq.addEventListener) mq.addEventListener('change', function (e) {
+          var saved = null;
+          try { saved = localStorage.getItem('theme'); } catch (x) {}
+          if (saved !== 'light' && saved !== 'dark') document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+        });
+      })();
+      (function () {
+        var btn = document.querySelector('.menu-toggle');
+        var panel = document.getElementById('mnav');
+        if (!btn || !panel) return;
+        function set(open) { panel.hidden = !open; btn.setAttribute('aria-expanded', String(open)); document.documentElement.classList.toggle('menu-open', open); }
+        btn.addEventListener('click', function () { set(panel.hidden); });
+        panel.addEventListener('click', function (e) { if (e.target.closest('a')) set(false); });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') set(false); });
+        window.addEventListener('resize', function () { if (window.innerWidth > 900) set(false); });
       })();
     </script>
     <script is:inline>
