@@ -139,3 +139,34 @@
   .bhero { background-size: cover; background-position: 70% center; }
   .bhero::before { background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 92%, transparent), color-mix(in srgb, var(--bg) 80%, transparent)); }
 }
+
+/* Échelle réduite de la page blog */
+.bhero .bhero-in { padding-top: 56px; padding-bottom: 56px; gap: 12px; }
+.bhero-eyebrow { font-size: 0.72rem; }
+.bhero h1 { font-size: clamp(1.5rem, 2.3vw, 2rem); max-width: 30ch; }
+.bhero-lead { font-size: 0.98rem; max-width: 60ch; }
+.blog-search { width: min(100%, 440px); margin-top: 6px; }
+.blog-search input { padding: 10px 64px 10px 40px; font-size: 0.9rem; }
+.blog-search .pi { left: 14px; width: 16px; height: 16px; }
+.blog-search kbd { font-size: 0.68rem; padding: 2px 7px; right: 12px; }
+.blog-bar { margin-bottom: 22px; }
+.bchip { padding: 7px 14px; font-size: 0.82rem; }
+.blog-sort { font-size: 0.82rem; }
+.blog-sort select { padding: 7px 12px; font-size: 0.82rem; }
+.blog-layout { grid-template-columns: minmax(0, 1fr) 270px; gap: 24px; }
+.blog-main .blog-grid { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+.blog-block .post-card { padding: 14px; gap: 10px; border-radius: 16px; }
+.blog-block .post-card .pcover.compact { border-radius: 10px; }
+.blog-block .post-card .pill { padding: 3px 10px; font-size: 0.7rem; }
+.blog-block .post-card h2 { font-size: 1.02rem; line-height: 1.3; }
+.blog-block .post-card .post-meta { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 2px; font-size: 0.78rem; color: var(--text2); }
+.blog-block .post-card .post-meta span { display: inline-flex; align-items: center; gap: 5px; }
+.blog-block .post-card .post-meta .pi { width: 14px; height: 14px; fill: currentColor; }
+.blog-block .bside { padding: 16px; gap: 10px; border-radius: 16px; }
+.blog-block .bside h2 { font-size: 0.92rem; }
+.bside p { font-size: 0.84rem; }
+.blog-block .bside .link, .blog-block .bside .btn { font-size: 0.85rem; }
+.bcats button { padding: 7px 8px; font-size: 0.85rem; }
+.bcat-ic { width: 26px; height: 26px; border-radius: 7px; }
+.bcat-ic .pi { width: 15px; height: 15px; }
+.bcat-n { font-size: 0.78rem; }
