@@ -6,8 +6,11 @@ const en: typeof fr = {
     description: 'Field notes, measurements and guides on sovereign AI for SMEs and on AI agents for developers.',
   },
   head: {
-    title: 'The blog.',
-    lead: 'Checkable field notes: what we built, measured and fixed. For SME leaders and for developers.',
+    eyebrow: 'Blog',
+    pre: 'Ideas and field notes for AI that is ',
+    em: 'actually useful',
+    post: ' in business',
+    lead: 'Field notes, engineering and guides to adopt sovereign AI that fits your company and can be checked.',
   },
   categories: { pme: 'For SMEs', dev: 'For developers', proof: 'Evidence' },
   labels: {
@@ -27,6 +30,16 @@ const en: typeof fr = {
     filters: 'Filter by category',
     noResults: 'No article matches this search.',
     reset: 'Reset',
+    sort: 'Sort by',
+    newest: 'Newest',
+    oldest: 'Oldest',
+    categoriesTitle: 'Categories',
+    follow: 'Follow the blog',
+    followText: 'Every new article lands in your feed reader, no sign-up needed.',
+    helpTitle: 'Have a project in mind?',
+    helpText: 'Describe your situation: we reply with a costed assessment.',
+    helpButton: 'Request an assessment',
+    count: 'articles',
   },
   cta: {
     pme: {
