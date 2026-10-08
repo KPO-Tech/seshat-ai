@@ -48,7 +48,7 @@
 .page-head.blog-head { padding-bottom: 0; }
 .block.blog-block { padding-top: 32px; padding-bottom: 80px; }
 .blog-grid { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); margin-top: 24px; }
-.post-card h2, .post-card h3 { font-size: 1.28rem; line-height: 1.2; }
+.blog-block .post-card h2, .post-card h3 { font-size: 1.3rem; line-height: 1.2; text-wrap: balance; }
 .post-card { padding: 22px; align-content: start; }
 
 .post-feature { display: grid; grid-template-columns: 1.25fr 1fr; align-items: stretch; border-radius: calc(var(--radius) + 8px); background: var(--surface); border: 1px solid var(--line); overflow: hidden; text-decoration: none; color: inherit; transition: transform 0.25s var(--ease), border-color 0.2s; }
