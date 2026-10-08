@@ -35,8 +35,10 @@ Settled consequences:
 
 - **Automation** (jobs, schedules, triggers, runs) is SeshatCloud only. SeshatOS has no scheduler and
   no automation screen.
-- **Memory** is personal and local. The Cloud has none; what an organization wants to impose on every
-  agent (rules, forbidden actions) is governance, a separate capability still to design.
+- **Memory** is personal: local when SeshatOS is standalone, in the Cloud when it is connected, so that
+  what a person taught their agents follows them to another computer. What an organization wants to
+  impose on every agent (rules, forbidden actions) is something else, governance, a separate
+  capability still to design.
 - **Usage counters** are not kept locally: the quota of a person's own provider is their own account's.
 - **Knowledge** exists in both: a person's own files locally, an organization's sources in the Cloud.
   The five local connectors are frozen and give way to the Cloud's when a desktop is connected.
