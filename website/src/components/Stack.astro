@@ -276,11 +276,21 @@ const pct = (v: number, total: number) => `${((v / total) * 100).toFixed(3)}%`;
     window.addEventListener('resize', layoutRoutes);
     layoutRoutes();
 
+    // Quitte le parcours : retire le bandeau flottant et les routes animées.
+    const exitFlow = () => {
+      stop();
+      clearRoutes();
+      stepIdx = -1;
+      root.classList.remove('flow');
+      scn.classList.remove('run');
+      count.textContent = '';
+      btn.textContent = scn.dataset.play || '';
+    };
     labs.forEach((l) => {
       const i = Number(l.dataset.i);
-      l.addEventListener('mouseenter', () => { if (timer === undefined) setActive(i); });
-      l.addEventListener('focus', () => { if (timer === undefined) setActive(i); });
-      l.addEventListener('click', () => { stop(); clearRoutes(); stepIdx = -1; setActive(i); });
+      l.addEventListener('mouseenter', () => { if (timer === undefined) { if (stepIdx >= 0) exitFlow(); setActive(i); } });
+      l.addEventListener('focus', () => { if (timer === undefined) { if (stepIdx >= 0) exitFlow(); setActive(i); } });
+      l.addEventListener('click', () => { exitFlow(); setActive(i); });
     });
     items.forEach((it) => {
       const i = Number(it.dataset.i);
@@ -289,8 +299,8 @@ const pct = (v: number, total: number) => `${((v / total) * 100).toFixed(3)}%`;
     });
     slabs.forEach((s) => {
       const i = Number(s.dataset.i);
-      s.addEventListener('mouseenter', () => { if (timer === undefined) setActive(i); });
-      s.addEventListener('click', () => { stop(); clearRoutes(); stepIdx = -1; setActive(i); });
+      s.addEventListener('mouseenter', () => { if (timer === undefined) { if (stepIdx >= 0) exitFlow(); setActive(i); } });
+      s.addEventListener('click', () => { exitFlow(); setActive(i); });
     });
     root.querySelector('.stk-diagram')!.addEventListener('mouseleave', () => { if (timer === undefined && stepIdx < 0) setActive(-1); });
 
@@ -343,6 +353,11 @@ const pct = (v: number, total: number) => `${((v / total) * 100).toFixed(3)}%`;
     btn.addEventListener('click', () => {
       root.classList.add('open');
       layoutRoutes();
+      // Amène le dessin en haut de l'écran pour que tout le parcours reste visible.
+      if (canvas.offsetParent) {
+        const top = canvas.getBoundingClientRect().top + window.scrollY - 76;
+        window.scrollTo({ top: Math.max(0, top), behavior: reduce ? 'auto' : 'smooth' });
+      }
       if (reduce) {
         const k = stepIdx + 1 >= steps.length ? 0 : stepIdx + 1;
         show(k);
