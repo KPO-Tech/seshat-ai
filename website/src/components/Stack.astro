@@ -23,16 +23,17 @@ const { t } = Astro.props;
 
 // Géométrie du dessin (unités du viewBox 1100 x 720).
 const W = 1100;
-const H = 720;
+const H = 800;
 const CX = 520;
-const HW = 165;
-const HH = 58;
-const TH = 12;
-const Y0 = 100;
-const GAP = 52;
+const HW = 150;
+const HH = 46;
+const TH = 11;
+const Y0 = 70;
+const GAP = 72;
 const LABX = 748; // x où s'arrêtent les lignes de repère (début des étiquettes)
-const LABY0 = 56;
-const LABGAP = 64;
+const LABY0 = Y0 - 18;
+const LABGAP = GAP;
+const ICS = 112; // côté de l'icône posée à plat sur la dalle
 const n = t.layers.length;
 const icons = ['terminal-window', 'robot', 'wrench', 'plugs-connected', 'magnifying-glass', 'file-text', 'shield-check', 'users-three', 'brain', 'hard-drives'];
 const statusIcon = { available: 'check-circle', partial: 'circle-half', building: 'hammer' } as const;
@@ -42,16 +43,16 @@ const slabs = t.layers.map((l, i) => ({
   y: Y0 + i * GAP,
   ly: LABY0 + i * LABGAP,
   top: `${CX},${-HH} ${CX + HW},0 ${CX},${HH} ${CX - HW},0`,
-  inner: `${CX},${-HH + 13} ${CX + HW - 34},0 ${CX},${HH - 13} ${CX - HW + 34},0`,
+  inner: `${CX},${-HH + 9} ${CX + HW - 26},0 ${CX},${HH - 9} ${CX - HW + 26},0`,
   left: `${CX - HW},0 ${CX},${HH} ${CX},${HH + TH} ${CX - HW},${TH}`,
   right: `${CX + HW},0 ${CX},${HH} ${CX},${HH + TH} ${CX + HW},${TH}`,
 }));
 // Pastilles (sources et sorties) à gauche : position du centre du bord droit du chemin, en unités du dessin.
 const chips = [
-  { key: 'chat', icon: 'chat-circle-text', y: 128 },
-  { key: 'docs', icon: 'files', y: 372 },
-  { key: 'local', icon: 'cpu', y: 548 },
-  { key: 'cloud', icon: 'cloud', y: 640 },
+  { key: 'chat', icon: 'chat-circle-text', y: 130 },
+  { key: 'docs', icon: 'files', y: 420 },
+  { key: 'local', icon: 'cpu', y: 590 },
+  { key: 'cloud', icon: 'cloud', y: 700 },
 ] as const;
 const pct = (v: number, total: number) => `${((v / total) * 100).toFixed(3)}%`;
 ---
@@ -83,7 +84,9 @@ const pct = (v: number, total: number) => `${((v / total) * 100).toFixed(3)}%`;
                 </g>
               ))}
             </g>
-            <path class="stk-route stk-cloudroute" d="" />
+            <g class="stk-links">
+              {chips.map((c) => <path class={`stk-link stk-link-${c.key}`} data-link={c.key} d="" />)}
+            </g>
             <g class="stk-cross"><circle r="13" /><path d="M-5 -5 L5 5 M5 -5 L-5 5" /></g>
             {[...slabs].reverse().map((s) => (
               <g class={`stk-slab stk-${s.status}`} data-i={s.i} style={`--i:${s.i}`}>
@@ -92,8 +95,8 @@ const pct = (v: number, total: number) => `${((v / total) * 100).toFixed(3)}%`;
                 <polygon class="stk-top" points={s.top} />
                 <polygon class="stk-hatch" points={s.top} />
                 <polygon class="stk-inner" points={s.inner} />
-                <g class="stk-ic">
-                  <svg x={CX - 12} y="32" width="24" height="24" viewBox="0 0 256 256"><Icon name={icons[s.i] ?? 'cpu'} /></svg>
+                <g class="stk-ic" transform={`translate(${CX} 0) scale(1 ${HH / HW}) rotate(45)`}>
+                  <svg x={-ICS / 2} y={-ICS / 2} width={ICS} height={ICS} viewBox="0 0 256 256"><Icon name={icons[s.i] ?? 'cpu'} /></svg>
                 </g>
                 <text class="stk-num" x={CX - HW + 38} y="4" text-anchor="middle">{String(s.i + 1).padStart(2, '0')}</text>
               </g>
@@ -190,7 +193,7 @@ const pct = (v: number, total: number) => `${((v / total) * 100).toFixed(3)}%`;
     const modeBtns = Array.from(scn.querySelectorAll<HTMLButtonElement>('.stk-mode'));
     const p1 = root.querySelector<SVGPathElement>('.stk-p1')!;
     const p2 = root.querySelector<SVGPathElement>('.stk-p2')!;
-    const cloudRoute = root.querySelector<SVGPathElement>('.stk-cloudroute')!;
+    const links = Array.from(root.querySelectorAll<SVGPathElement>('.stk-link'));
     const cross = root.querySelector<SVGGElement>('.stk-cross')!;
     const bubble = root.querySelector<HTMLElement>('[data-bubble]')!;
     const steps: { layer: number; text: string; remote?: string }[] = JSON.parse(document.getElementById('stk-steps')!.textContent || '[]');
@@ -258,14 +261,18 @@ const pct = (v: number, total: number) => `${((v / total) * 100).toFixed(3)}%`;
       io.observe(root.querySelector('.stk-canvas') || root);
     }
 
-    const drawCloudRoute = () => {
+    const linkTarget: Record<string, number> = { chat: 0, docs: 4, local: 8, cloud: 8 };
+    const layoutRoutes = () => {
+      if (!canvas.offsetParent) return;
+      links.forEach((l) => {
+        const key = l.dataset.link || '';
+        l.setAttribute('d', curve(leftVertex(linkTarget[key] ?? 0), chipEdge(key)));
+      });
       const a = leftVertex(8);
       const b = chipEdge('cloud');
-      cloudRoute.setAttribute('d', curve(a, b));
-      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2 + 8;
+      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2 + 6;
       cross.setAttribute('transform', `translate(${mx.toFixed(1)} ${my.toFixed(1)})`);
     };
-    const layoutRoutes = () => { drawCloudRoute(); };
     window.addEventListener('resize', layoutRoutes);
     layoutRoutes();
 

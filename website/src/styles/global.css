@@ -807,8 +807,8 @@ section.legal-block { padding: 16px 0 96px; }
 /* Dessin */
 .stk-canvas { position: relative; width: 100%; max-width: 1180px; margin: 0 auto; }
 .stk-canvas > svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-.stk-slab { --gap: 22px; transform: translateY(calc(100px + var(--i) * var(--gap))); transition: transform 0.9s var(--ease), opacity 0.3s; cursor: pointer; }
-.stk.open .stk-slab { --gap: 52px; }
+.stk-slab { --gap: 22px; transform: translateY(calc(70px + var(--i) * var(--gap))); transition: transform 0.9s var(--ease), opacity 0.3s; cursor: pointer; }
+.stk.open .stk-slab { --gap: 72px; }
 .stk-top { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; transition: fill 0.25s, stroke 0.25s; }
 .stk-side { stroke: var(--line); stroke-width: 1.2; }
 .stk-left { fill: color-mix(in srgb, var(--text) 8%, var(--surface)); }
@@ -830,6 +830,10 @@ section.legal-block { padding: 16px 0 96px; }
 .stk-ic { pointer-events: none; color: var(--accent-text); opacity: 0.95; }
 .stk-ic .pi { width: 100%; height: 100%; fill: currentColor; }
 .stk-slab.stk-building .stk-ic { opacity: 0.6; }
+.stk-links { opacity: 0; transition: opacity 0.5s 0.8s; }
+.stk.open .stk-links { opacity: 1; }
+.stk-link { fill: none; stroke: var(--text2); stroke-width: 1.2; opacity: 0.55; }
+.stk-link-cloud { stroke-dasharray: 4 7; }
 
 /* Lignes de repère et étiquettes */
 .stk-leaders { opacity: 0; transition: opacity 0.5s 0.8s; }
@@ -858,8 +862,6 @@ section.legal-block { padding: 16px 0 96px; }
 .stk-p1, .stk-p2 { stroke-dasharray: 1; stroke-dashoffset: 1; }
 .stk-p1.draw, .stk-p2.draw { animation: stk-draw 1.2s var(--ease) forwards; }
 @keyframes stk-draw { to { stroke-dashoffset: 0; } }
-.stk-cloudroute { stroke: var(--text2); stroke-width: 1.6; stroke-dasharray: 4 7; opacity: 0; transition: opacity 0.4s; }
-.stk.flow:not(.mode-remote) .stk-cloudroute { opacity: 0.6; }
 .stk-cross { opacity: 0; transition: opacity 0.4s; }
 .stk-cross circle { fill: var(--bg); stroke: var(--text2); stroke-width: 1.6; }
 .stk-cross path { stroke: var(--text); stroke-width: 2; stroke-linecap: round; fill: none; }
