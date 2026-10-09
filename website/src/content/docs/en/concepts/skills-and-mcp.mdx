@@ -3,9 +3,11 @@ title: Skills and MCP
 description: "Two ways to extend the agent: skills teach it your rules, MCP servers give it new tools."
 section: concepts
 order: 4
-updated: "2026-10-07"
+updated: "2026-10-09"
 ---
 import Callout from '@/components/docs/Callout.astro';
+import Diagram from '@/components/docs/Diagram.astro';
+import { skillFlow, mcpFlow } from '@/components/docs/diagrams/skillsMcp';
 
 |  | Skills | MCP servers |
 |---|---|---|
@@ -15,53 +17,64 @@ import Callout from '@/components/docs/Callout.astro';
 
 ## Skills
 
-A skill is a Markdown file with an optional YAML header. The body is added to the agent's instructions.
+A skill is a Markdown file with an optional YAML header. The agent has a `skill` tool whose description lists every skill by name and description. When a request matches one, the model calls the tool, receives the skill's text as the tool result, and follows it.
+
+<Diagram {...skillFlow} />
 
 ```markdown
 ---
 name: "summarise-pr"
-description: "Summarise a GitHub pull request for the team."
-when_to_use: "When asked to summarise a PR or code review."
-allowed-tools:
-  - bash
-  - read
+description: "Summarise a GitHub pull request for the team. Use it when asked to summarise a PR or code review."
+arguments: ["pr"]
 ---
 
-Read the diff from the bash tool and write a short Markdown summary:
+Read the diff of ${pr} with the bash tool and write a short Markdown summary:
 - what changed and why
 - possible risks
 - a checklist for the reviewer
 ```
 
+The model decides from the `description`, so write it for the model: say what the skill does and when to use it.
+
 ### Where skills live
+
+The agent's `skill` tool reads these folders. The runtime root is the runtime folder described in [Configuration](/en/docs/getting-started/configuration): `~/.config/seshat-cli` for the `seshat` binary, `~/.config/seshat` for a Go program using the SDK, unless you set `SESHAT_RUNTIME_ROOT`.
 
 | Folder | Scope |
 |---|---|
-| `.seshat/skills/` in the project | Shared with your team when committed |
-| `.claude/skills/` in the project | Same, using the folder other agent tools already use |
-| `~/.seshat/skills/user/` | Your personal skills |
-| `~/.seshat/skills/managed/` | Skills set by an administrator |
+| `.claude/skills/` in the project | Shared with your team when committed |
+| `.seshat/commands/` in the project | Older command files, still read |
+| `<runtime root>/skills/user/` | Your personal skills |
+| `<runtime root>/skills/managed/` | Skills set by an administrator |
+| `<runtime root>/skills/builtin/` | A folder for built-in skills |
+| `<runtime root>/skills/repos/<name>/` | A cloned collection: each subfolder with a `SKILL.md` is a skill |
 
-A project skill overrides a personal skill with the same name.
+When two skills have the same name, the first one found wins, in this order: project, managed, user, builtin, older command files, collections, bundled skills. So a project skill overrides a personal one, and also an administrator's.
+
+<Callout type="warning" title="Other folders in the terminal interface">
+The terminal interface also lists skills it finds in `.agents/skills`, `.seshat/skills` and `.cursor/skills` of the project and in `~/.claude/skills`. The agent's `skill` tool does not read those folders today, so a skill placed only there is shown in the list but the agent cannot call it. Put project skills in `.claude/skills/`.
+</Callout>
 
 ### Header fields
 
-| Field | Purpose |
+Not every field of the header does something yet. This table says what each one does today.
+
+| Field | Effect today |
 |---|---|
-| `name`, `description` | How the skill is named and listed |
-| `when_to_use` | Tells the agent when to use it by itself |
-| `arguments`, `argument-hint` | Arguments the skill accepts |
-| `allowed-tools` | Restrict the tools it may use. Leave it out to allow all |
-| `model` | Run the skill on another model, for example a faster one |
-| `context` | `inline` (default) shares the session; `fork` runs in an isolated sub-session |
-| `user-invocable` | Set to `false` for a background skill the user cannot call |
-| `shell` | Commands to run before and after (`before`, `after`, `on_error`, `on_complete`) |
+| `name`, `description` | The name and description listed in the `skill` tool. The model chooses from them |
+| `arguments`, `argument-hint` | `arguments` is a list of names (`["pr"]`) or a comma-separated string. `${name}` or `${argument:name}` in the body is replaced by the whole arguments text the model passes. Only names are read: a structured form with descriptions or defaults is ignored |
+| `triggers` | Phrases shown next to the skill in the list, as a hint to the model |
+| `agent` | Also registers the skill as a sub-agent type: the body becomes its system prompt |
+| `allowed-tools`, `model`, `effort` | Applied only to that sub-agent type. Ignored when the skill is called through the `skill` tool |
+| `user-invocable` | Used by the terminal interface to decide whether the skill appears as a command |
+| `when_to_use` | Not shown in the list today. Put that guidance in `description` |
+| `context`, `shell`, `hooks` | Read from the header but not applied today |
 
 <Callout type="note" title="Project skills and trust">
-A project can add skill folders through `options.skills_paths`. That setting is ignored until you run `seshat trust`. See [Security and trust](/en/docs/concepts/security-and-trust).
+In the terminal interface, a project can add skill folders through `options.skills_paths`. That setting is ignored until you run `seshat trust`. See [Security and trust](/en/docs/concepts/security-and-trust).
 </Callout>
 
-The official collection is [seshat-skills](https://github.com/KPO-Tech/seshat-skills). The complete field reference is in the [skills guide](https://github.com/KPO-Tech/seshat/blob/main/docs/skills.md).
+The official collection is [seshat-skills](https://github.com/KPO-Tech/seshat-skills).
 
 ## MCP servers
 
@@ -70,32 +83,49 @@ The official collection is [seshat-skills](https://github.com/KPO-Tech/seshat-sk
 | Transport | For | Configure with |
 |---|---|---|
 | `stdio` | A local program (`npx`, Python, a binary) | `Command`, `Args`, `Env` |
-| `SSE` | A remote server | `URL` |
-| `HTTP` (streamable) | A remote server | `URL` |
+| `sse` | A remote server | `URL`, `Headers` |
+| `http` (streamable) | A remote server | `URL`, `Headers` |
 
 ### In Go
+
+The `Transport` field is required. Without it, the server is skipped.
 
 ```go
 client, _ := sdk.NewClient(&sdk.ClientConfig{
     MCPServers: []sdk.MCPServerConfig{
         {
-            Name:    "github",
-            Command: "npx",
-            Args:    []string{"-y", "@modelcontextprotocol/server-github"},
-            Env:     map[string]string{"GITHUB_PERSONAL_ACCESS_TOKEN": os.Getenv("GITHUB_TOKEN")},
+            Name:      "github",
+            Transport: sdk.MCPTransportStdio,
+            Command:   "npx",
+            Args:      []string{"-y", "@modelcontextprotocol/server-github"},
+            Env:       map[string]string{"GITHUB_PERSONAL_ACCESS_TOKEN": os.Getenv("GITHUB_TOKEN")},
         },
-        {Name: "remote", URL: "https://my-mcp-server.example.com/sse"},
+        {
+            Name:      "remote",
+            Transport: sdk.MCPTransportSSE,
+            URL:       "https://my-mcp-server.example.com/sse",
+            Headers:   map[string]string{"Authorization": "Bearer " + os.Getenv("MCP_TOKEN")},
+        },
     },
 })
 ```
 
 ### What happens at runtime
 
-1. Seshat starts each `stdio` server as a subprocess, or connects to the remote URL.
-2. It fetches the server's tools and merges them with the built-in ones.
-3. The agent sees one list of tools. Calls are routed to the right server.
-4. When the session ends, the subprocesses are stopped.
+<Diagram {...mcpFlow} />
+
+1. For each configured server, in order, Seshat creates a client and starts it: a subprocess for `stdio`, a connection to the URL for the others.
+2. It runs the MCP handshake, then fetches the server's tools, resources and prompts.
+3. The tools join the registry under the name `mcp__<server>__<tool>`. Resources and prompts are exposed as tools too.
+4. The agent sees one list of tools. Calls are routed to the server that owns the tool.
+5. When the client is closed, the subprocesses are stopped.
+
+A server that cannot be created, started or initialised is skipped, and a line is written to the log. The client still starts, with the servers that worked, so check the log if a tool you expect is missing. You can change the servers while the client runs with `client.ReloadMCPServers`.
 
 <Callout type="warning" title="A stdio server is a command">
 A stdio server runs on your machine with your rights. Only connect servers you trust, and note that a project's own MCP configuration is ignored until the project is trusted.
+</Callout>
+
+<Callout type="note" title="Not supported yet">
+Servers that need an interactive OAuth sign-in cannot be connected yet. If the server accepts a token, pass it in `Headers`. The `websocket` transport name is accepted but uses the same HTTP connection as the others.
 </Callout>
