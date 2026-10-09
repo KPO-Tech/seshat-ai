@@ -59,6 +59,7 @@ const endpoint = import.meta.env.PUBLIC_FORM_ENDPOINT ?? '/api/contact';
           <input id="consent" name="consent" type="checkbox" required />
           <label for="consent">{t.labels.consentA}<a href="/confidentialite" hreflang="fr">{t.labels.consentLink}</a></label>
         </div>
+        <p class="help form-note">{t.next.note}</p>
         <div class="field hp" aria-hidden="true">
           <label for="site">{t.labels.honeypot}</label>
           <input id="site" name="site" type="text" tabindex="-1" autocomplete="off" />
@@ -74,7 +75,6 @@ const endpoint = import.meta.env.PUBLIC_FORM_ENDPOINT ?? '/api/contact';
             <li><span class="hexnum" aria-hidden="true"><span>{i + 1}</span></span><p><strong>{s.b}</strong>{s.r}</p></li>
           ))}
         </ol>
-        <p class="aside-note">{t.next.note}</p>
         <div class="direct">
           <h3>{t.direct.title}</h3>
           <ul>
