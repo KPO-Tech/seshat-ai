@@ -35,13 +35,12 @@ A model can only read so much at once. Seshat tracks how much of the window a se
 
 ### When it starts
 
-The window Seshat works with is the model's window minus a reserve for the summary (2,000 tokens). Three marks matter:
+The window Seshat works with is the model's window minus a reserve for the summary (2,000 tokens). Two marks matter:
 
 <Diagram {...gauge} />
 
 - **The threshold**: 85% of that window, but never closer than 13,000 tokens to its end. Above it, auto-compaction runs before the next model call.
 - **The target**: about 50% of the window. Compaction aims to land there.
-- **The blocking limit**: 3,000 tokens before the end. Beyond it the request cannot fit.
 
 In the Go SDK, turn automatic compaction on with `AutoCompact` in `ClientConfig`.
 

@@ -6,26 +6,23 @@ export const gauge = {
   width: 960,
   height: 240,
   minWidth: 640,
-  label: 'The effective context window with its three marks: the target after compaction, the threshold that triggers it and the blocking limit.',
+  label: 'The effective context window with its two marks: the target after compaction and the threshold that triggers it.',
   caption: 'Percentages are of the effective window. The threshold is 85% but never closer than 13,000 tokens to the end of the window.',
   nodes: [
     { id: 'a', x: 40, y: 90, w: 748, h: 52, title: 'Below the threshold: the session runs as it is' },
-    { id: 'b', x: 788, y: 90, w: 119, h: 52, kind: 'warn', title: 'Compaction' },
-    { id: 'c', x: 907, y: 90, w: 13, h: 52, kind: 'bad', title: '' },
+    { id: 'b', x: 788, y: 90, w: 132, h: 52, kind: 'warn', title: 'Compaction' },
   ],
   edges: [
     { from: [480, 142], to: [480, 176], noArrow: true, dashed: true },
     { from: [788, 142], to: [788, 176], noArrow: true, dashed: true, kind: 'warn' },
-    { from: [907, 90], to: [907, 56], noArrow: true, dashed: true, kind: 'bad' },
   ],
   notes: [
     { x: 40, y: 78, text: '0' },
-    { x: 893, y: 80, text: '100% = the effective window', anchor: 'end' },
+    { x: 920, y: 78, text: '100% = the effective window', anchor: 'end' },
     { x: 480, y: 196, text: 'Target after compaction', anchor: 'middle' },
     { x: 480, y: 214, text: 'about 50%', anchor: 'middle' },
     { x: 788, y: 196, text: 'Threshold', anchor: 'middle' },
     { x: 788, y: 214, text: '85%, auto-compaction starts', anchor: 'middle' },
-    { x: 920, y: 44, text: 'Blocking limit: 3,000 tokens before the end', anchor: 'end' },
   ],
 };
 
