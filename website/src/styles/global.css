@@ -795,7 +795,7 @@ section.legal-block { padding: 16px 0 96px; }
 /* Vue éclatée de la pile (page Produits) */
 .stk-block { padding-top: 24px; }
 .stk-head h2 { font-size: clamp(1.6rem, 2.6vw, 2.2rem); }
-.stk-head .lead { margin-top: 10px; max-width: 62ch; font-size: 1.02rem; color: var(--text2); }
+.stk-head .lead { margin-top: 10px; max-width: none; font-size: 1.02rem; color: var(--text2); }
 .stk-legend { display: flex; flex-wrap: wrap; gap: 8px 18px; list-style: none; margin: 18px 0 0; padding: 0; font-size: 0.85rem; color: var(--text2); }
 .stk-key { display: inline-flex; align-items: center; gap: 8px; }
 .stk-dot { width: 11px; height: 11px; border-radius: 3px; border: 1.5px solid var(--accent); background: var(--accent); flex: none; }
@@ -852,3 +852,9 @@ section.legal-block { padding: 16px 0 96px; }
   .stk-detail { padding-left: 14px; }
   .stk-tag { font-size: 0.7rem; }
 }
+
+.stk-ic { pointer-events: none; color: var(--accent-text); opacity: 0.9; }
+.stk-ic .pi { width: 100%; height: 100%; fill: currentColor; }
+.stk-slab.stk-building .stk-ic { opacity: 0.55; }
+.stk-ico { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent-text); flex: none; }
+.stk-ico .pi { width: 17px; height: 17px; fill: currentColor; }

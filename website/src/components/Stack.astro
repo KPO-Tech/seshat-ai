@@ -28,6 +28,7 @@ const slabs = t.layers.map((l, i) => ({
   left: `${CX - HW},0 ${CX},${HH} ${CX},${HH + TH} ${CX - HW},${TH}`,
   right: `${CX + HW},0 ${CX},${HH} ${CX},${HH + TH} ${CX + HW},${TH}`,
 }));
+const icons = ['terminal-window', 'robot', 'wrench', 'plugs-connected', 'magnifying-glass', 'file-text', 'shield-check', 'users-three', 'brain', 'hard-drives'];
 const statusIcon = { available: 'check-circle', partial: 'circle-half', building: 'hammer' } as const;
 ---
 <section class="block stk-block" aria-labelledby="stk-title">
@@ -55,6 +56,9 @@ const statusIcon = { available: 'check-circle', partial: 'circle-half', building
               <polygon class="stk-top" points={s.top} />
               <polygon class="stk-hatch" points={s.top} />
               <polygon class="stk-inner" points={s.inner} />
+              <g class="stk-ic">
+                <svg x={CX - 12} y="34" width="24" height="24" viewBox="0 0 256 256"><Icon name={icons[s.i] ?? 'cpu'} /></svg>
+              </g>
               <text class="stk-num" x={CX - HW + 40} y="4" text-anchor="middle">{String(s.i + 1).padStart(2, '0')}</text>
             </g>
           ))}
@@ -67,6 +71,7 @@ const statusIcon = { available: 'check-circle', partial: 'circle-half', building
             <li class={`stk-item stk-${l.status}`} data-i={i}>
               <button type="button" class="stk-row" aria-expanded="false" aria-controls={`stk-d${i}`}>
                 <span class="stk-n">{String(i + 1).padStart(2, '0')}</span>
+                <span class="stk-ico"><Icon name={icons[i] ?? 'cpu'} /></span>
                 <span class="stk-name">{l.name}</span>
                 <span class="stk-tag"><span class="stk-dot"></span>{t.status[l.status]}</span>
               </button>
