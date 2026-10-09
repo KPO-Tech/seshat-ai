@@ -3,16 +3,18 @@ title: Runtime modes
 description: "Three separate ideas that are easy to mix up: how you reach Seshat, how it executes, and who approves its actions."
 section: concepts
 order: 2
-updated: "2026-10-07"
+updated: "2026-10-09"
 ---
 import Callout from '@/components/docs/Callout.astro';
+import Diagram from '@/components/docs/Diagram.astro';
+import { planMode } from '@/components/docs/diagrams/integration';
 
 When people talk about "modes" they usually mean one of three different things. Seshat keeps them separate.
 
 | Question | Setting | Values |
 |---|---|---|
 | **How do I reach the runtime?** | Entry surface | Terminal (CLI), Go SDK, gRPC server |
-| **How does it behave?** | Execution mode | `execute`, `plan`, `pair_programming` |
+| **How does it behave?** | Execution mode | `execute`, `plan` (`pair_programming` exists but does nothing yet) |
 | **Who approves what it does?** | Permission mode | `onRequest`, `acceptEdits`, `auto`, `never`, `granular`, `bypass` |
 
 You can combine them freely: for example, `plan` mode with `onRequest` approvals through the SDK.
@@ -27,11 +29,21 @@ All surfaces drive the same runtime, so the same sessions, tools and providers a
 
 ## Execution modes
 
-| Mode | What it does |
+| Mode | What it does today |
 |---|---|
 | `execute` | The default. Tools run normally |
-| `plan` | Tools are described but not run. Use it to review what the agent intends to do before it does it |
-| `pair_programming` | Collaborative: the agent works alongside you with more feedback and suggestions than autonomous execution |
+| `plan` | The agent explores, asks you questions and writes a plan, then asks you to approve it before it starts changing things |
+| `pair_programming` | Defined, but nothing in the runtime changes its behaviour yet: it only shows as a label in the terminal interface |
+
+### Plan mode
+
+<Diagram {...planMode} />
+
+The agent enters plan mode by calling the `enter_plan_mode` tool, or a Go host can do it with `session.ForcePlanMode()`. It then receives instructions: explore with read-only tools, ask about unclear requirements, design the steps, and call `exit_plan_mode` with the full plan. You are asked to approve the plan. On approval the plan is saved to a file, the earlier permission mode comes back, and the agent starts implementing, usually with the task tools.
+
+<Callout type="warning" title="Plan mode is a protocol, not a lock">
+In plan mode the tools are **not** disabled. The agent is told not to edit source files, and a well-behaved model follows that, but the runtime does not enforce it. File writes and edits inside the working directory are even allowed without a question while plan mode is on, so that the agent can save its output. If you need a read-only agent, restrict its tools: the `explore` sub-agent only has read tools.
+</Callout>
 
 ## Permission modes
 
