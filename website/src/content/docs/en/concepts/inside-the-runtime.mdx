@@ -6,8 +6,8 @@ order: 2
 updated: "2026-10-09"
 ---
 import Callout from '@/components/docs/Callout.astro';
-import LayerStack from '@/components/docs/LayerStack.astro';
-import Flow from '@/components/docs/Flow.astro';
+import Diagram from '@/components/docs/Diagram.astro';
+import { layers, turn, tool, routing } from '@/components/docs/diagrams/runtime';
 import Steps from '@/components/docs/Steps.astro';
 import LinkCards from '@/components/docs/LinkCards.astro';
 
@@ -15,12 +15,7 @@ import LinkCards from '@/components/docs/LinkCards.astro';
 
 ## The layers, and which way dependencies point
 
-<LayerStack layers={[
-  { name: 'Entry points', text: 'The seshat binary (terminal chat, run, sessions, memory, doctor, login) and seshat-grpc (query, streaming query, MCP, skills, health). A Go host that embeds the SDK is an entry point too.', icon: 'terminal-window' },
-  { name: 'The SDK, pkg/sdk', text: 'The one place where everything is assembled: a Client and its Sessions, configured with tools, MCP servers, RAG, memory, vector storage, sandbox, hooks and monitoring.', icon: 'plugs-connected' },
-  { name: 'The engine, internal/engine', text: 'An Engine owns Sessions, and a session runs a Loop: the state machine of one turn.', icon: 'arrows-clockwise' },
-  { name: 'Subsystems, internal/*', text: 'Execution, state and data, and platform services, described below.', icon: 'cube' },
-]} />
+<Diagram {...layers} />
 
 The direction is one-way: `cmd/*` calls `pkg/sdk`, which calls `internal/*`. A test, `internal/archtest/boundary_test.go`, fails when an `internal/` package imports `pkg/` outside a short, explicit allow-list. The public surface has 39 packages under `pkg/` (types, the tool contract, providers, config, storage, vector, RAG, web, skills, MCP, workflow, connectors and more), and the implementation has 43 under `internal/`.
 
@@ -38,14 +33,7 @@ The terminal interface (`internal/seshattui`) is a fork of the Charm Crush inter
 
 A user message starts a **turn**. A turn is a loop of up to **100 iterations** by default (one model call, then its tools, then the next model call), inside a session that allows up to 200 turns. Every transition is recorded as one of `Continue`, `ContinueWithRecovery` or `Terminate`, so a turn can always be explained afterwards.
 
-<Flow items={[
-  { icon: 'play', label: 'Start hook' },
-  { icon: 'file-text', label: 'Prompt and tools' },
-  { icon: 'robot', label: 'Model call' },
-  { icon: 'wrench', label: 'Tools' },
-  { icon: 'arrows-clockwise', label: 'Next iteration' },
-  { icon: 'flag-checkered', label: 'End hook' },
-]} />
+<Diagram {...turn} />
 
 <Steps>
 
@@ -65,15 +53,7 @@ A recoverable error during the model call goes through `tryRecovery` with an exp
 
 Every tool call goes through the same stages, and each one reports its progress so interfaces can show it. An OpenTelemetry span named `tool <name>` wraps the call.
 
-<Flow items={[
-  { icon: 'check-square', label: 'Validate' },
-  { icon: 'link', label: 'Pre-hooks' },
-  { icon: 'shield-warning', label: 'Safety check' },
-  { icon: 'shield-check', label: 'Permissions' },
-  { icon: 'wrench', label: 'Call' },
-  { icon: 'link', label: 'Post-hooks' },
-  { icon: 'file-text', label: 'Format result' },
-]} />
+<Diagram {...tool} />
 
 1. **Validate the input, then fill in** what hooks and permissions need to see.
 2. **Pre-hooks** can stop the call or rewrite its input.
@@ -92,13 +72,7 @@ The default built-in registry registers **116 tools** at the time of counting. T
 
 Seshat reaches **16 providers** through one interface: Anthropic, OpenAI, Codex, Mistral, Gemini, MiniMax, OpenRouter, DeepSeek, OpenCode, Z-AI, Ollama, Bedrock, Vertex, Foundry, Kimi and Workers AI. Failures are handled in layers, from the cheapest to the most drastic:
 
-<Flow items={[
-  { icon: 'robot', label: 'Model call' },
-  { icon: 'arrows-clockwise', label: 'Retry' },
-  { icon: 'swap', label: 'Fallback model' },
-  { icon: 'cloud', label: 'Fallback provider' },
-  { icon: 'warning', label: 'Terminal error' },
-]} />
+<Diagram {...routing} />
 
 | Layer | What it does |
 |---|---|
