@@ -38,7 +38,8 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy website/dist --project-name=seshat-ai --branch=main --commit-dirty=true
+          workingDirectory: website
+          command: pages deploy dist --project-name=seshat-ai --branch=main --commit-dirty=true
 
       # Prévient Bing, Yandex et les autres moteurs IndexNow des pages à relire (la clé est publique, voir website/public/).
       - name: Notify IndexNow

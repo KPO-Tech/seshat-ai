@@ -8,7 +8,7 @@ import { legal } from '../data/legal';
 interface Props { lang: Lang }
 const { lang } = Astro.props;
 const t = dict(lang).contact;
-const endpoint = import.meta.env.PUBLIC_FORM_ENDPOINT ?? '';
+const endpoint = import.meta.env.PUBLIC_FORM_ENDPOINT ?? '/api/contact';
 ---
 <Base title={t.meta.title} description={t.meta.description} lang={lang} page="contact">
   <header class="page-head contact-head">
