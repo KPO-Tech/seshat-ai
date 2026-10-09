@@ -3,10 +3,12 @@ title: Agents and delegation
 description: "How an agent hands work to sub-agents, runs them in the background, keeps them under control, and what is not available yet."
 section: concepts
 order: 8
-updated: "2026-10-07"
+updated: "2026-10-09"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import AgentTree from '@/components/docs/AgentTree.astro';
+import Diagram from '@/components/docs/Diagram.astro';
+import { delegation, background } from '@/components/docs/diagrams/agents';
 import LinkCards from '@/components/docs/LinkCards.astro';
 
 A single agent working through a large task fills its context quickly. Seshat lets an agent **delegate**: it starts a sub-agent with a self-contained task, the sub-agent works on its own with a limited set of tools, and only its result comes back.
@@ -16,11 +18,11 @@ A single agent working through a large task fills its context quickly. Seshat le
   note: 'Talks to you, plans, decides what to delegate',
   icon: 'robot',
   children: [
-    { name: 'explore', note: 'Read-only: read, glob, grep', icon: 'magnifying-glass' },
-    { name: 'plan', note: 'Designs an approach before anything changes', icon: 'list-checks' },
+    { name: 'explore', note: 'Read-only: read_file, glob, grep', icon: 'magnifying-glass' },
+    { name: 'plan', note: 'Designs an approach, can write and edit files', icon: 'list-checks' },
     { name: 'general-purpose', note: 'Does a self-contained piece of work', icon: 'wrench',
       children: [{ name: 'helper', note: 'A sub-agent of a sub-agent, within the depth limit', icon: 'robot' }] },
-    { name: 'verify', note: 'Checks the result', icon: 'seal-check' },
+    { name: 'browse', note: 'Read-only research on the web and in documents', icon: 'globe' },
   ],
 }} />
 
@@ -33,10 +35,12 @@ A single agent working through a large task fills its context quickly. Seshat le
 | `type` | `general-purpose`, `explore`, `plan`, `browse` or `verify` |
 | `task` | A self-contained description: paths, goal, constraints, what to return |
 | `max_turns` | Turn limit for the sub-agent |
-| `run_in_background` | Return immediately with a task id and let it run |
+| `run_in_background` | Return immediately with a task id and let it run. Read its state with the task tools (`task_get`) |
 | `fork` | Give the sub-agent the parent's message history |
 | `isolation` | `worktree` runs it in its own git worktree, so its changes stay apart until merged |
 | `tools` | Restrict its tools to a list of patterns |
+
+<Diagram {...delegation} />
 
 **The background family** starts an agent that keeps running while the main agent continues:
 
@@ -44,22 +48,26 @@ A single agent working through a large task fills its context quickly. Seshat le
 |---|---|
 | `spawn_agent` | Start a background sub-agent |
 | `send_agent_message` | Steer it between turns |
-| `wait_agent` | Block until it finishes and read its result |
+| `wait_agent` | Block until it finishes and read its result (it gives up waiting after 300 seconds by default and reports it is still running) |
 | `list_agents` | See what is running |
-| `resume_agent` | Continue one that stopped |
+| `resume_agent` | Continue a completed one with a new task. It sees its full earlier history |
 | `close_agent` | Stop it |
+
+<Diagram {...background} />
 
 ## Built-in agent types
 
-| Type | For |
-|---|---|
-| `general-purpose` | A self-contained piece of work with the full toolset |
-| `explore` | Understanding a codebase, read-only |
-| `plan` | Designing an approach |
-| `browse` | Deep read-only research across the web, documents and code |
-| `verify` | Checking work that was done |
+| Type | For | Tools | Turns by default |
+|---|---|---|---|
+| `general-purpose` | A self-contained piece of work | All of them | 20 |
+| `explore` | Understanding a codebase | `read_file`, `glob`, `grep` | 12 |
+| `plan` | Designing an approach | `read_file`, `glob`, `grep`, `write_file`, `edit_file` | 20 |
+| `browse` | Deep read-only research across the web, documents and code | Reading, search, web and browser tools | 35 |
+| `verify` | Checking an agent setup: that definitions are valid, that security constraints and tool permissions are correctly scoped. It does not review your code changes | `read_file`, `glob`, `grep` | 20 |
 
-A skill whose `context` is `fork` also runs as an isolated sub-agent. See [Skills and MCP](/en/docs/concepts/skills-and-mcp).
+`max_turns` overrides the default for one call. An agent defined by a skill gets its turns from its `effort` field: 10, 20, 50 (the default), 100 or 150.
+
+A skill that has an `agent` field in its header also becomes a sub-agent type of that name, with the skill's text as its instructions. See [Skills and MCP](/en/docs/concepts/skills-and-mcp).
 
 ## Keeping it under control
 
@@ -69,12 +77,14 @@ Delegation can run away if nothing stops it, so the runtime sets limits:
 |---|---|
 | Delegation depth (A starts B starts C) | 3, adjustable up to 5 |
 | Background agents running at once, across the process | 8 |
-| Turns for a sub-agent | Lower than the top-level default, unless the agent type says otherwise |
+| Turns for a sub-agent | Set by its type (12 to 35), or by `max_turns` |
 | Wall-clock time of one sub-agent | 30 minutes, as a safety net for an agent that is stuck |
 
 ### Permissions of a sub-agent
 
-Starting an agent is itself an action that asks for approval, like any other tool. Once you approve it, the sub-agent runs **without asking again for each tool**, within the tools it was given. That is why the tool list matters: `explore` can only read, and you can narrow any agent further with the `tools` parameter.
+Starting an agent is itself an action that asks for approval, like any other tool. Once you approve it, the sub-agent runs in `bypass` mode: it **does not ask again for each tool**, within the tools it was given. Deny rules and the safety check still apply, as in any `bypass` run (see [Security and trust](/en/docs/concepts/security-and-trust#permissions)).
+
+That is why the tool list matters. `explore`, `browse` and `verify` can only read. `plan` can also write and edit files. `general-purpose` has every tool, including the shell. You can narrow any agent further with the `tools` parameter.
 
 <Callout type="warning" title="Sub-agents cost tokens">
 Every sub-agent is a full model loop with its own calls. Delegating a one-line question costs more than answering it. Delegate work that is large, parallel, or that would flood the main context.
