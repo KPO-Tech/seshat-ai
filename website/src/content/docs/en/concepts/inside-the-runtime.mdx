@@ -31,18 +31,18 @@ The terminal interface (`internal/seshattui`) is a fork of the Charm Crush inter
 
 ## One turn: what the loop does
 
-A user message starts a **turn**. A turn is a loop of up to **100 iterations** by default (one model call, then its tools, then the next model call), inside a session that allows up to 200 turns. Every transition is recorded as one of `Continue`, `ContinueWithRecovery` or `Terminate`, so a turn can always be explained afterwards.
+A user message starts a **turn**. A turn is a loop of up to **100 iterations** by default (one model call, then its tools, then the next model call), inside a session limited to 100 turns by default in the SDK. Every transition is recorded as one of `Continue`, `ContinueWithRecovery` or `Terminate`, so a turn can always be explained afterwards.
 
 <Diagram {...turn} />
 
 <Steps>
 
-1. **Start.** The `query_start` hook runs with the session, the turn, the permission mode and the model.
+1. **Start.** The `query_start` hook runs with the session, the turn, the permission mode and the model. It only observes.
 2. **Iteration begins.** The iteration counter goes up and the `iteration_start` hook can stop the turn. If stage detection is on, the system prompt is refreshed when the stage of the conversation changed (for example after a tool result).
 3. **Preparation.** Messages are prepared, the toolsets are resolved, and **auto-compaction** runs when the context is getting full. A failed compaction ends the turn instead of sending a broken request.
 4. **Model call**, streamed. Retries and fallbacks happen here (see the last section).
 5. **Does the answer contain tool requests?** If yes, the orchestrator runs them (in parallel when they are safe to run together, in series otherwise), appends the results, and the `tool_uses_complete` hook fires. If a `tool_search` call discovered deferred tools, the loop continues with a recovery transition so the new tools are available.
-6. **No tool requests.** If the model stopped for a terminal reason, the stop hooks run and may ask the loop to continue. If the model only announced a next step ("I will now..."), the loop nudges it to continue, at most three times.
+6. **No tool requests.** Before the turn can end, the loop looks for a reason to go on. If the model hit its output limit, it is told to resume. If it only announced a next step ("I will now..."), it is nudged to continue, at most three times. If a token budget remains, the loop can continue for it. Last, the stop hooks run and may ask for one more cycle.
 7. **End.** The `query_complete` hook receives the result and a recovery context.
 
 </Steps>

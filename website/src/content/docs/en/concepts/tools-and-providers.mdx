@@ -3,7 +3,7 @@ title: Tools and providers
 description: "How a tool call is checked and executed, and how Seshat talks to many model providers through one interface."
 section: concepts
 order: 7
-updated: "2026-10-07"
+updated: "2026-10-09"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import Flow from '@/components/docs/Flow.astro';
@@ -20,6 +20,7 @@ Tools cover the work an agent needs to do on a machine and on the web: files (re
   { icon: 'magnifying-glass', label: 'Find the tool' },
   { icon: 'check-circle', label: 'Validate input' },
   { icon: 'plug', label: 'Pre hooks' },
+  { icon: 'shield-warning', label: 'Safety check' },
   { icon: 'shield-check', label: 'Permissions' },
   { icon: 'play', label: 'Run' },
   { icon: 'plug', label: 'Post hooks' },
@@ -28,9 +29,10 @@ Tools cover the work an agent needs to do on a machine and on the web: files (re
 1. The tool is looked up in the registry and must be enabled.
 2. Its input is validated and completed.
 3. Pre-tool hooks run and can change the call or block it.
-4. The permission pipeline decides: allow, deny or ask.
-5. The tool runs.
-6. Post-tool hooks run, the result is formatted for the model and cut to its size limit.
+4. A safety check looks for dangerous patterns and can refuse. No permission mode turns it off.
+5. The permission pipeline decides: allow, deny or ask.
+6. The tool runs.
+7. Post-tool hooks run, the result is formatted for the model and cut to its size limit.
 
 Calls that declare themselves concurrency-safe run together; the others run one after another, in order.
 
@@ -38,12 +40,12 @@ Calls that declare themselves concurrency-safe run together; the others run one 
 
 | Step | What it checks |
 |---|---|
-| 1. Deny rules | Path patterns for file tools, command patterns for the shell, explicit denials |
-| 2. The tool's own check | For example the safety scanner of the shell tool |
-| 3. Always-allow rules | Read-only tools and patterns known to be safe |
-| 4. The permission mode | `bypass` allows, `never` refuses, `auto` asks a classifier, `onRequest` asks the user |
+| 1. Deny and ask rules for the tool | Explicit rules on the whole tool |
+| 2. The tool's own check | Path patterns for file tools, command patterns for the shell |
+| 3. The permission engine | Deny rules first, then allow rules, then ask rules. Read-only tools are allowed. Then the mode decides |
+| 4. The mode | `bypass` allows unless a rule objects, `never` turns every question into a refusal, `auto` asks a classifier (and allows everything if none is configured), `onRequest` asks the user |
 
-If a classifier refuses too often in `auto` mode, Seshat steps back to asking you, and in a headless run it refuses instead of waiting for someone who is not there. The modes are listed in [Using the CLI](/en/docs/guides/cli#permission-modes).
+If a classifier refuses too often in `auto` mode, Seshat steps back to asking you, and in a headless run it refuses instead of waiting for someone who is not there. The exact order of the questions is drawn in [Security and trust](/en/docs/concepts/security-and-trust#permissions), and the modes are listed in [Using the CLI](/en/docs/guides/cli#permission-modes).
 
 ### Add your own
 
