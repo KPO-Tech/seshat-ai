@@ -3,11 +3,13 @@ title: Configuration
 description: "Choose a provider and a model, set API keys, and enable the optional tools."
 section: start
 order: 3
-updated: "2026-10-07"
+updated: "2026-10-09"
 ---
 import Callout from '@/components/docs/Callout.astro';
+import Diagram from '@/components/docs/Diagram.astro';
+import { keyLookup, settingsLadder } from '@/components/docs/diagrams/config';
 
-Seshat needs at least one model provider. You can configure it from the command line, or with environment variables.
+Seshat needs at least one model provider. You can set it up from the command line, from the terminal interface, or with environment variables.
 
 ## From the command line
 
@@ -17,7 +19,13 @@ seshat config --model anthropic:claude-sonnet-4-20250514  # choose the model (pr
 seshat config --print                                     # show the current configuration
 ```
 
-In the terminal interface, press `ctrl+,` for providers and `ctrl+m` for models. API keys entered there are stored encrypted, per provider.
+`seshat config` also takes `--region`, `--project-id`, `--base-url` and `--resource` for the cloud providers, `--cwd` for the default working directory, `--db` for the database path, and `--search` to set only the web search keys. The keys you save this way are stored **encrypted**, per provider, in the local database.
+
+In the terminal interface, press `ctrl+,` for providers and `ctrl+m` for models.
+
+<Callout type="warning" title="Keys entered in the terminal interface">
+A key entered in the providers screen is saved in `seshat.json`, in the runtime folder (described below). The file is readable only by you, but the key is **not encrypted**. To keep a key out of a file, leave the field empty and use an environment variable instead.
+</Callout>
 
 ## With environment variables
 
@@ -27,10 +35,16 @@ Set the variable of the provider you want. This is the simplest way for servers 
 export ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-Seshat reads its settings from environment variables, from a `.env` file, and from a `.seshat.yaml` file.
+<Diagram {...keyLookup} />
+
+Other settings follow a simple ladder:
+
+<Diagram {...settingsLadder} />
+
+The main variables are `SESHAT_MODEL` (`provider:model`), `SESHAT_API_KEY`, `SESHAT_RUNTIME_ROOT`, `SESHAT_DB_PATH`, `SESHAT_CWD`, `SESHAT_DEBUG`, and for the cloud providers `SESHAT_PROVIDER_BASE_URL`, `SESHAT_PROVIDER_REGION`, `SESHAT_PROVIDER_PROJECT_ID` and `SESHAT_PROVIDER_RESOURCE`.
 
 <Callout type="note" title="Where things are stored">
-The runtime folder is `~/.config/seshat-cli/` (or `$XDG_CONFIG_HOME/seshat-cli/`). Your sessions are saved there, in a local SQLite database.
+The runtime folder holds the configuration file, the local SQLite database with your sessions, the logs and the documents. For the `seshat` binary it is `~/.config/seshat-cli/` (or `$XDG_CONFIG_HOME/seshat-cli/`, and `%APPDATA%\seshat-cli\` on Windows). A Go program that embeds the SDK uses `~/.config/seshat/` by default. `SESHAT_RUNTIME_ROOT` moves it.
 </Callout>
 
 ## Supported providers
@@ -40,33 +54,33 @@ The runtime folder is `~/.config/seshat-cli/` (or `$XDG_CONFIG_HOME/seshat-cli/`
 | Anthropic | `anthropic` | API key | `ANTHROPIC_API_KEY` |
 | OpenAI | `openai` | API key | `OPENAI_API_KEY` |
 | Mistral AI | `mistral` | API key | `MISTRAL_API_KEY` |
-| Google Gemini | `gemini` | API key | `GOOGLE_API_KEY` |
+| Google Gemini | `gemini` | API key | `GOOGLE_API_KEY` or `GOOGLE_GEMINI_API_KEY` |
 | DeepSeek | `deepseek` | API key | `DEEPSEEK_API_KEY` |
 | Ollama | `ollama` | None | Local, `localhost:11434` |
 | OpenRouter | `openrouter` | API key | `OPENROUTER_API_KEY` |
-| Codex | `codex` | OAuth | `seshat login`, or `CODEX_API_KEY` |
-| Z.ai | `z-ai` | API key | `Z_AI_API_KEY` |
+| Codex | `codex` | OAuth | `seshat login`, or `CODEX_API_KEY` or `CODEX_ACCESS_TOKEN` |
+| Z.ai | `z-ai` | API key | `Z_AI_API_KEY` or `ZHIPUAI_API_KEY` |
 | MiniMax | `minimax` | API key | `MINIMAX_API_KEY` |
-| AWS Bedrock | `bedrock` | AWS credentials | `AWS_ACCESS_KEY_ID` and `AWS_REGION` |
-| Google Cloud Vertex AI | `vertex` | Google Cloud | `ANTHROPIC_VERTEX_PROJECT_ID` and `CLOUD_ML_REGION` |
-| Azure AI Foundry | `foundry` | API key | `ANTHROPIC_FOUNDRY_API_KEY` |
-| Cloudflare Workers AI | `workers-ai` | API key | `CLOUDFLARE_API_KEY` |
+| AWS Bedrock | `bedrock` | AWS credentials | `AWS_ACCESS_KEY_ID`, `AWS_REGION` (default `us-east-1`) |
+| Google Cloud Vertex AI | `vertex` | Google Cloud | `ANTHROPIC_VERTEX_PROJECT_ID`, `CLOUD_ML_REGION` (default `us-east5`) |
+| Azure AI Foundry | `foundry` | API key | `ANTHROPIC_FOUNDRY_API_KEY`, and `ANTHROPIC_FOUNDRY_BASE_URL` or `ANTHROPIC_FOUNDRY_RESOURCE` |
+| Cloudflare Workers AI | `workers-ai` | API key | `CLOUDFLARE_API_KEY` and `CLOUDFLARE_ACCOUNT_ID` |
 | OpenCode Zen | `opencode` | API key | `OPENCODE_API_KEY` |
-| Kimi (Moonshot AI) | `kimi` | API key | `KIMI_API_KEY` |
+| Kimi (Moonshot AI) | `kimi` | API key | `MOONSHOT_API_KEY` or `KIMI_API_KEY` |
 
 The models each provider offers, with their context sizes and capabilities, are in [Providers and models](/en/docs/reference/models).
 
 ## Optional tools
 
-Some tools are registered automatically but only become active when their key is set.
+Some tools exist in every installation but do nothing until you give them what they need.
 
-| Tool | What it does | Setting |
+| Tool | What it does | What it needs |
 |---|---|---|
-| `generate_image` | Image generation | `OPENAI_API_KEY` |
-| `text_to_speech` | Speech synthesis | `OPENAI_API_KEY` |
-| `speech_to_text` | Transcription | `OPENAI_API_KEY` |
+| `generate_image` | Image generation | An `image_generation` provider (`openai` or `gemini`) in the configuration, and a key. It reuses the key of your model provider when they are the same |
+| `text_to_speech`, `speech_to_text` | Speech synthesis and transcription | A `text_to_speech` or `speech_to_text` provider in the configuration, and a key |
+| `web_search` | Search the web | A key for one search service: `TAVILY_API_KEY`, `EXA_API_KEY`, `JINA_API_KEY` or `LANGSEARCH_API_KEY`, or `SEARXNG_BASE_URL`. `seshat config --search` sets them. `WEB_SEARCH_PROVIDER` picks the service |
 | `devto_publish` | Publish to DEV | `DEV_TO_API_KEY` |
-| `notebook_*` | Work in a live Jupyter kernel | `JUPYTER_SERVER_URL` and `JUPYTER_TOKEN` |
+| `notebook_*` | Work in a live Jupyter kernel | `JUPYTER_SERVER_URL` (default `http://localhost:8888`) and `JUPYTER_TOKEN` |
 
 <Callout type="tip" title="Search tools need ripgrep">
 The `glob` and `grep` tools use [ripgrep](https://github.com/BurntSushi/ripgrep). Install it with your package manager if you do not have it.
