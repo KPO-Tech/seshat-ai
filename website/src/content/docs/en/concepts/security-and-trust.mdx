@@ -3,9 +3,11 @@ title: Security and trust
 description: "What Seshat refuses to do by default: untrusted project files, secrets in commands, the local network and the gRPC server."
 section: concepts
 order: 3
-updated: "2026-10-07"
+updated: "2026-10-09"
 ---
 import Callout from '@/components/docs/Callout.astro';
+import Diagram from '@/components/docs/Diagram.astro';
+import { permissions } from '@/components/docs/diagrams/permissions';
 
 An agent reads files and runs commands, so what it reads can be hostile: a repository you just cloned, a web page, a tool result. Seshat is built so that the safe behaviour is the default and loosening it is a decision you take.
 
@@ -79,4 +81,16 @@ If a client reached the gRPC server from outside its host or container, set `SES
 
 ## Permissions
 
-On top of all this, every sensitive action goes through the permission system. See the [permission modes](/en/docs/guides/cli#permission-modes).
+On top of all this, every sensitive action goes through the permission system. For each tool call, Seshat asks a fixed series of questions, in order. The first one that matches decides.
+
+<Diagram {...permissions} />
+
+What to remember from it:
+
+- **Deny always wins.** A deny rule beats any allow rule, in every mode.
+- **Bypass is not "no checks".** In `bypass` mode the questions disappear, but deny and ask rules still apply, and the safety check of the tool pipeline (see [Inside the runtime](/en/docs/concepts/inside-the-runtime)) still runs.
+- **Read-only tools never interrupt you.** Search, reading and similar tools are allowed in every mode except `never`.
+- **Auto mode needs a classifier to be selective.** The classifier decides for each call. If none is configured, auto mode allows everything, so check your setup before relying on it.
+- **Background runs cannot ask.** In `never` mode, or whenever no one can answer, an "ask" becomes a denial and the model sees a failure it can work around.
+
+The modes themselves are described in [Using the CLI](/en/docs/guides/cli#permission-modes).

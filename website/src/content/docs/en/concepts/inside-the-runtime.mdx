@@ -1,0 +1,114 @@
+---
+title: Inside the runtime
+description: "A detailed tour of how the Seshat runtime is built: its layers, one turn of the loop, one tool call, and what happens when a model provider fails. With counts you can reproduce."
+section: concepts
+order: 2
+updated: "2026-10-09"
+---
+import Callout from '@/components/docs/Callout.astro';
+import Diagram from '@/components/docs/Diagram.astro';
+import { layers, turn, tool, routing } from '@/components/docs/diagrams/runtime';
+import Steps from '@/components/docs/Steps.astro';
+import LinkCards from '@/components/docs/LinkCards.astro';
+
+[Architecture](/en/docs/concepts/architecture) gives the short version. This page goes one level down, for people who want to extend the runtime, embed it, or simply judge how it is made. Everything below was checked against the source on **9 October 2026, `dev` branch, commit `a1eee2f`**. Counts change with the code: the last section shows how to recompute them.
+
+## The layers, and which way dependencies point
+
+<Diagram {...layers} />
+
+The direction is one-way: `cmd/*` calls `pkg/sdk`, which calls `internal/*`. A test, `internal/archtest/boundary_test.go`, fails when an `internal/` package imports `pkg/` outside a short, explicit allow-list. The public surface has 39 packages under `pkg/` (types, the tool contract, providers, config, storage, vector, RAG, web, skills, MCP, workflow, connectors and more), and the implementation has 43 under `internal/`.
+
+The terminal interface (`internal/seshattui`) is a fork of the Charm Crush interface, under the FSL-1.1-MIT license. It drives the SDK through a bridge in its `workspace/` package, like any other host.
+
+### What lives in `internal/`
+
+| Group | Packages | Role |
+|---|---|---|
+| **Execution** | `prompt`, `providers`, `execution`, `tools`, `permissions` | Builds the system prompt in cached sections, talks to the models, runs tool calls, and decides what is allowed. |
+| **State and data** | `db`, `runtime`, `memory`, `vector`, `storage` | SQLite for sessions, checkpoints, goals, vectors and tasks. Compaction and state backends (SQLite, files, memory). A long-term memory graph. |
+| **Platform services** | `web` and the browser, `sandbox`, `agent`, `mailbox`, `team`, `automation`, `auth`, `monitoring`, `hooks`, `modes` | Web access, Docker or Landlock isolation, sub-agents and teams, scheduled work, OAuth, OpenTelemetry and Prometheus, shell hooks, and the plan, execute, browse and pair modes. |
+
+## One turn: what the loop does
+
+A user message starts a **turn**. A turn is a loop of up to **100 iterations** by default (one model call, then its tools, then the next model call), inside a session limited to 100 turns by default in the SDK. Every transition is recorded as one of `Continue`, `ContinueWithRecovery` or `Terminate`, so a turn can always be explained afterwards.
+
+<Diagram {...turn} />
+
+<Steps>
+
+1. **Start.** The `query_start` hook runs with the session, the turn, the permission mode and the model. It only observes.
+2. **Iteration begins.** The iteration counter goes up and the `iteration_start` hook can stop the turn. If stage detection is on, the system prompt is refreshed when the stage of the conversation changed (for example after a tool result).
+3. **Preparation.** Messages are prepared, the toolsets are resolved, and **auto-compaction** runs when the context is getting full. A failed compaction ends the turn instead of sending a broken request.
+4. **Model call**, streamed. Retries and fallbacks happen here (see the last section).
+5. **Does the answer contain tool requests?** If yes, the orchestrator runs them (in parallel when they are safe to run together, in series otherwise), appends the results, and the `tool_uses_complete` hook fires. If a `tool_search` call discovered deferred tools, the loop continues with a recovery transition so the new tools are available.
+6. **No tool requests.** Before the turn can end, the loop looks for a reason to go on. If the model hit its output limit, it is told to resume. If it only announced a next step ("I will now..."), it is nudged to continue, at most three times. If a token budget remains, the loop can continue for it. Last, the stop hooks run and may ask for one more cycle.
+7. **End.** The `query_complete` hook receives the result and a recovery context.
+
+</Steps>
+
+A recoverable error during the model call goes through `tryRecovery` with an exponential backoff, then the loop starts the iteration again. The turn ends when the model has nothing left to do, a hook stops it, the iteration cap is reached (`max_iterations_reached`), or the context is cancelled.
+
+## One tool call: the pipeline
+
+Every tool call goes through the same stages, and each one reports its progress so interfaces can show it. An OpenTelemetry span named `tool <name>` wraps the call.
+
+<Diagram {...tool} />
+
+1. **Validate the input, then fill in** what hooks and permissions need to see.
+2. **Pre-hooks** can stop the call or rewrite its input.
+3. **Safety check.** A checker looks for dangerous patterns and can refuse with a stated reason. It is **not** disabled by the most permissive permission mode.
+4. **Permissions**, local then global. There are six modes: `onRequest` (the default), `auto` (a model-based classifier decides), `acceptEdits`, `bypass`, `never` and `granular`.
+5. **The call itself.**
+6. **Post-hooks**, then the tool formats its own result, truncated on a character boundary so it never cuts a UTF-8 sequence.
+
+Before the pipeline, calls are partitioned: tools declared safe for concurrency run in one parallel batch, the others run one after the other.
+
+<Callout type="note" title="How many tools?">
+The default built-in registry registers **116 tools** at the time of counting. The exact list depends on your configuration, on the platform and on the MCP servers you connect, so ask the runtime: `client.ToolNames()` in the SDK.
+</Callout>
+
+## When a provider fails
+
+Seshat reaches **16 providers** through one interface: Anthropic, OpenAI, Codex, Mistral, Gemini, MiniMax, OpenRouter, DeepSeek, OpenCode, Z-AI, Ollama, Bedrock, Vertex, Foundry, Kimi and Workers AI. Failures are handled in layers, from the cheapest to the most drastic:
+
+<Diagram {...routing} />
+
+| Layer | What it does |
+|---|---|
+| **Retry** | Exponential backoff with jitter. Errors are classified (client, authentication, rate limit, network, overload) so only the retryable ones are retried. |
+| **Fallback model** | If retries fail, the next model in `Routing.FallbackModels` is tried. |
+| **Fallback provider** | If the models are exhausted, another provider is tried through its own client. |
+| **Circuit breaker** | One per provider. After **5 consecutive failures** the circuit opens and calls fail immediately without touching the provider. After **60 seconds** it half-opens and lets **3 trial calls** through; if they succeed, it closes. |
+
+A non-recoverable error is terminal at once: the loop does not retry what cannot succeed.
+
+## By the numbers
+
+Counted on 9 October 2026, `dev` branch, commit `a1eee2f`.
+
+| What | Count |
+|---|---|
+| Go version | 1.26.6 |
+| Go files | 1,193 (943 without tests) |
+| Lines of Go, without tests | 213,035 |
+| Lines of Go, tests only | 60,692 |
+| Packages under `internal/` | 43 |
+| Packages under `pkg/` | 39 |
+| Providers | 16 |
+| Built-in tools in the default registry | 116 |
+
+The terminal interface, a fork, and the tools make up the largest share of the code. The agent core itself (engine, execution, prompt and permissions) is much smaller.
+
+<Callout type="tip" title="Recompute it yourself">
+Lines of Go without tests: `git ls-files '*.go' | grep -v '_test.go' | xargs cat | wc -l`. Tests: `git ls-files '*_test.go' | xargs cat | wc -l`. Providers: the entries of the registry in `internal/providers/registry.go`. Tools: the length of the list returned by `builtin.NewBuiltinRegistry()`.
+</Callout>
+
+## Where to go next
+
+<LinkCards cards={[
+  { title: 'Tools and providers', text: 'The pipeline of a call and the provider interface, in short.', href: '/en/docs/concepts/tools-and-providers', icon: 'wrench' },
+  { title: 'Security and trust', text: 'What the runtime refuses by default.', href: '/en/docs/concepts/security-and-trust', icon: 'shield-check' },
+  { title: 'Agents and delegation', text: 'Sub-agents and teams.', href: '/en/docs/concepts/agents-and-delegation', icon: 'users-three' },
+  { title: 'Source code', text: 'The repository on GitHub.', href: 'https://github.com/KPO-Tech/seshat', icon: 'github-logo' },
+]} />

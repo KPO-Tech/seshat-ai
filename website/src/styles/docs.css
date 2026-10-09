@@ -275,3 +275,49 @@ body.shell { --dtop: 60px; --side: 290px; }
 
 .docs-help { margin-top: 28px; color: var(--text2); }
 .docs-help a { color: var(--accent-text); font-weight: 600; }
+
+/* Diagrammes d'architecture (composant Diagram) */
+.dg { margin: 28px 0; --dg-ok: #2f7d5b; --dg-bad: #c0392b; --dg-warn: #b7791f; }
+:root[data-theme='dark'] .dg { --dg-ok: #6fcf9f; --dg-bad: #ff8a80; --dg-warn: #f0c36b; }
+.dg-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); padding: 12px; }
+.dg svg { display: block; width: 100%; height: auto; font-family: var(--font-body); }
+.dg figcaption { margin-top: 10px; color: var(--text2); font-size: 0.88rem; }
+
+.dg-group rect { fill: color-mix(in srgb, var(--text) 3%, transparent); stroke: var(--line); stroke-width: 1.5; stroke-dasharray: 6 6; }
+.dg-group text { fill: var(--text2); font-size: 12.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+
+.dg-node rect, .dg-node polygon { fill: var(--bg); stroke: var(--line); stroke-width: 1.5; }
+.dg-node .dg-title { fill: var(--text); font-family: var(--font-display); font-size: 16px; font-weight: 600; }
+.dg-node .dg-title.dg-stack { font-size: 14.5px; }
+.dg-node .dg-sub { fill: var(--text2); font-size: 13px; }
+.dg-node .dg-sub.dg-stack { font-size: 12.5px; }
+.dg-node .dg-ic { color: var(--accent-text); }
+.dg-node .dg-ic .pi { width: 100%; height: 100%; fill: currentColor; }
+.dg-entry rect { fill: color-mix(in srgb, var(--accent) 9%, var(--bg)); stroke: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+.dg-core rect, .dg-core polygon { fill: color-mix(in srgb, var(--accent) 20%, var(--bg)); stroke: var(--accent); stroke-width: 2; }
+.dg-gate rect { fill: color-mix(in srgb, var(--accent) 12%, var(--bg)); stroke: var(--accent); stroke-width: 2; stroke-dasharray: 7 5; }
+.dg-ok rect { fill: color-mix(in srgb, var(--dg-ok) 14%, var(--bg)); stroke: var(--dg-ok); }
+.dg-ok .dg-ic { color: var(--dg-ok); }
+.dg-bad rect { fill: color-mix(in srgb, var(--dg-bad) 11%, var(--bg)); stroke: var(--dg-bad); }
+.dg-bad .dg-ic { color: var(--dg-bad); }
+.dg-warn rect { fill: color-mix(in srgb, var(--dg-warn) 14%, var(--bg)); stroke: var(--dg-warn); }
+.dg-warn .dg-ic { color: var(--dg-warn); }
+
+.dg-edge { stroke: var(--text2); stroke-width: 1.8; stroke-linecap: round; opacity: 0.9; }
+.dg-edge.dashed { stroke-dasharray: 5 6; }
+.dg-edge-core { stroke: var(--accent); }
+.dg-edge-ok { stroke: var(--dg-ok); }
+.dg-edge-bad { stroke: var(--dg-bad); }
+.dg-edge-warn { stroke: var(--dg-warn); }
+.dg-arrow { fill: var(--text2); }
+.dg-arrow-core { fill: var(--accent); }
+.dg-arrow-ok { fill: var(--dg-ok); }
+.dg-arrow-bad { fill: var(--dg-bad); }
+.dg-arrow-warn { fill: var(--dg-warn); }
+.dg-dot { fill: var(--text2); }
+.dg-elabel { fill: var(--text2); font-size: 13px; font-weight: 600; paint-order: stroke; stroke: var(--surface); stroke-width: 5px; stroke-linejoin: round; }
+.dg-note { fill: var(--text2); font-size: 13px; }
+@media (prefers-reduced-motion: no-preference) {
+  .dg-edge.dashed { animation: dg-march 1.6s linear infinite; }
+}
+@keyframes dg-march { to { stroke-dashoffset: -22; } }

@@ -3,10 +3,12 @@ title: Memory and compaction
 description: "How Seshat keeps your sessions, stays inside the model's context window, and remembers things across sessions."
 section: concepts
 order: 5
-updated: "2026-10-07"
+updated: "2026-10-09"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import Flow from '@/components/docs/Flow.astro';
+import Diagram from '@/components/docs/Diagram.astro';
+import { gauge, compaction, history } from '@/components/docs/diagrams/memory';
 
 <Flow items={[
   { icon: 'database', label: 'Session history' },
@@ -31,7 +33,34 @@ seshat sessions list
 
 A model can only read so much at once. Seshat tracks how much of the window a session uses. When it passes a threshold, it **compacts**: older messages are summarised into a shorter form so the session can go on.
 
-By default, automatic compaction starts at **85%** of the usable window and aims for about 50% afterwards. In the Go SDK, turn it on with `AutoCompact` in `ClientConfig`.
+### When it starts
+
+The window Seshat works with is the model's window minus a reserve for the summary (2,000 tokens). Two marks matter:
+
+<Diagram {...gauge} />
+
+- **The threshold**: 85% of that window, but never closer than 13,000 tokens to its end. Above it, auto-compaction runs before the next model call.
+- **The target**: about 50% of the window. Compaction aims to land there.
+
+In the Go SDK, turn automatic compaction on with `AutoCompact` in `ClientConfig`.
+
+### What it does
+
+Compaction is checked before every model call, with two ways of freeing room: first a cheap one that needs no model, then a summary.
+
+<Diagram {...compaction} />
+
+1. **Threshold.** Below it, nothing happens.
+2. **Micro-compaction.** Large tool results are trimmed. If that brings the session under the target, there is no model call at all.
+3. **Summary.** Otherwise a model writes a summary of the conversation, told to preserve the active requests, the decisions made, the tool outcomes that still matter and the unresolved work.
+4. **Recent messages are kept.** Starting from the newest message, Seshat keeps messages until it reaches the target. The cut is then moved back if needed, so a tool result is never kept without the tool call it answers.
+5. **Rebuild.** The new history is the summary, a marker saying the context was compacted, and the kept messages.
+
+If the summary call fails, that turn ends with an error.
+
+### What the history looks like afterwards
+
+<Diagram {...history} />
 
 <Callout type="note" title="A summary is a summary">
 After compaction the model works from the summary, not from the original words. For details that must not be lost, store them as a note (below) or in a file of your project.
