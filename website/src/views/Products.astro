@@ -3,6 +3,7 @@ import Base from '../layouts/Base.astro';
 import Arrow from '../components/Arrow.astro';
 import Check from '../components/Check.astro';
 import Icon from '../components/Icon.astro';
+import Stack from '../components/Stack.astro';
 import { dict, url } from '../i18n';
 import type { Lang } from '../i18n';
 
@@ -55,6 +56,8 @@ const verbMeta = [
       </ol>
     </div>
   </section>
+
+  <Stack t={t.stack} />
 
   <section class="block" style="padding-top:24px">
     <div class="wrap">
