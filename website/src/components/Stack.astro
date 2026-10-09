@@ -1,35 +1,59 @@
 ---
-// Vue éclatée des couches de la pile Seshat : dessin isométrique à gauche, liste des couches à droite,
-// et un parcours animé « une question traverse la pile ». Les textes viennent du dictionnaire (products.stack).
+// Vue éclatée des couches de la pile Seshat.
+// Grand écran : dalles isométriques au centre, étiquettes reliées à droite, et un parcours animé qui fait
+// traverser la pile à une question (interrupteur modèle local / distant). Petit écran : liste dépliable.
+// Les textes viennent du dictionnaire (products.stack).
 import Icon from './Icon.astro';
 
-interface Layer { name: string; text: string; where: string; status: 'available' | 'partial' | 'building' }
-interface Step { layer: number; text: string }
+type Status = 'available' | 'partial' | 'building';
+interface Layer { name: string; short: string; text: string; where: string; status: Status }
+interface Step { layer: number; text: string; remote?: string }
 interface T {
-  title: string; lead: string; legendAria: string; listAria: string;
-  status: Record<'available' | 'partial' | 'building', string>;
+  title: string; lead: string; legendAria: string; listAria: string; idle: string;
+  status: Record<Status, string>;
   play: string; replay: string; next: string; stepOf: string; scenarioTitle: string; scenarioNote: string;
+  chips: { chat: string; docs: string; local: string; cloud: string };
+  bubbles: { q: string; a: string };
+  modeLabel: string;
+  modes: { local: { label: string; note: string }; remote: { label: string; note: string } };
   layers: Layer[]; steps: Step[];
 }
 interface Props { t: T }
 const { t } = Astro.props;
 
-// Géométrie d'une dalle (losange vu en perspective isométrique), en unités du dessin.
-const CX = 250;
-const HW = 190; // demi-largeur
-const HH = 66; // demi-hauteur
-const TH = 14; // épaisseur
+// Géométrie du dessin (unités du viewBox 1100 x 720).
+const W = 1100;
+const H = 720;
+const CX = 520;
+const HW = 165;
+const HH = 58;
+const TH = 12;
+const Y0 = 100;
+const GAP = 52;
+const LABX = 748; // x où s'arrêtent les lignes de repère (début des étiquettes)
+const LABY0 = 56;
+const LABGAP = 64;
 const n = t.layers.length;
+const icons = ['terminal-window', 'robot', 'wrench', 'plugs-connected', 'magnifying-glass', 'file-text', 'shield-check', 'users-three', 'brain', 'hard-drives'];
+const statusIcon = { available: 'check-circle', partial: 'circle-half', building: 'hammer' } as const;
 const slabs = t.layers.map((l, i) => ({
   i,
   status: l.status,
+  y: Y0 + i * GAP,
+  ly: LABY0 + i * LABGAP,
   top: `${CX},${-HH} ${CX + HW},0 ${CX},${HH} ${CX - HW},0`,
-  inner: `${CX},${-HH + 14} ${CX + HW - 36},0 ${CX},${HH - 14} ${CX - HW + 36},0`,
+  inner: `${CX},${-HH + 13} ${CX + HW - 34},0 ${CX},${HH - 13} ${CX - HW + 34},0`,
   left: `${CX - HW},0 ${CX},${HH} ${CX},${HH + TH} ${CX - HW},${TH}`,
   right: `${CX + HW},0 ${CX},${HH} ${CX},${HH + TH} ${CX + HW},${TH}`,
 }));
-const icons = ['terminal-window', 'robot', 'wrench', 'plugs-connected', 'magnifying-glass', 'file-text', 'shield-check', 'users-three', 'brain', 'hard-drives'];
-const statusIcon = { available: 'check-circle', partial: 'circle-half', building: 'hammer' } as const;
+// Pastilles (sources et sorties) à gauche : position du centre du bord droit du chemin, en unités du dessin.
+const chips = [
+  { key: 'chat', icon: 'chat-circle-text', y: 128 },
+  { key: 'docs', icon: 'files', y: 372 },
+  { key: 'local', icon: 'cpu', y: 548 },
+  { key: 'cloud', icon: 'cloud', y: 640 },
+] as const;
+const pct = (v: number, total: number) => `${((v / total) * 100).toFixed(3)}%`;
 ---
 <section class="block stk-block" aria-labelledby="stk-title">
   <div class="wrap">
@@ -41,59 +65,105 @@ const statusIcon = { available: 'check-circle', partial: 'circle-half', building
       </ul>
     </div>
 
-    <div class="stk" data-stack data-count={n}>
-      <div class="stk-art" aria-hidden="true">
-        <svg viewBox="0 0 500 640" role="presentation" focusable="false">
-          <defs>
-            <pattern id="stk-hatch" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-              <line x1="0" y1="0" x2="0" y2="9" style="stroke: var(--accent); stroke-width: 1.2; opacity: 0.3" />
-            </pattern>
-          </defs>
-          {[...slabs].reverse().map((s) => (
-            <g class={`stk-slab stk-${s.status}`} data-i={s.i} style={`--i:${s.i}`}>
-              <polygon class="stk-side stk-left" points={s.left} />
-              <polygon class="stk-side stk-right" points={s.right} />
-              <polygon class="stk-top" points={s.top} />
-              <polygon class="stk-hatch" points={s.top} />
-              <polygon class="stk-inner" points={s.inner} />
-              <g class="stk-ic">
-                <svg x={CX - 12} y="34" width="24" height="24" viewBox="0 0 256 256"><Icon name={icons[s.i] ?? 'cpu'} /></svg>
-              </g>
-              <text class="stk-num" x={CX - HW + 40} y="4" text-anchor="middle">{String(s.i + 1).padStart(2, '0')}</text>
+    <div class="stk" data-stack data-cx={CX} data-hw={HW} data-y0={Y0} data-gap={GAP} data-w={W} data-h={H}>
+      <!-- Grand écran -->
+      <div class="stk-diagram">
+        <div class="stk-canvas" style={`aspect-ratio:${W}/${H}`}>
+          <svg viewBox={`0 0 ${W} ${H}`} role="presentation" focusable="false" aria-hidden="true">
+            <defs>
+              <pattern id="stk-hatch" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                <line x1="0" y1="0" x2="0" y2="9" style="stroke: var(--accent); stroke-width: 1.2; opacity: 0.3" />
+              </pattern>
+            </defs>
+            <g class="stk-leaders">
+              {slabs.map((s) => (
+                <g class="stk-leader" data-i={s.i}>
+                  <line x1={CX + HW} y1={s.y} x2={LABX - 8} y2={s.ly} />
+                  <circle cx={CX + HW} cy={s.y} r="3" />
+                </g>
+              ))}
             </g>
-          ))}
-        </svg>
-      </div>
+            <path class="stk-route stk-cloudroute" d="" />
+            <g class="stk-cross"><circle r="13" /><path d="M-5 -5 L5 5 M5 -5 L-5 5" /></g>
+            {[...slabs].reverse().map((s) => (
+              <g class={`stk-slab stk-${s.status}`} data-i={s.i} style={`--i:${s.i}`}>
+                <polygon class="stk-side stk-left" points={s.left} />
+                <polygon class="stk-side stk-right" points={s.right} />
+                <polygon class="stk-top" points={s.top} />
+                <polygon class="stk-hatch" points={s.top} />
+                <polygon class="stk-inner" points={s.inner} />
+                <g class="stk-ic">
+                  <svg x={CX - 12} y="32" width="24" height="24" viewBox="0 0 256 256"><Icon name={icons[s.i] ?? 'cpu'} /></svg>
+                </g>
+                <text class="stk-num" x={CX - HW + 38} y="4" text-anchor="middle">{String(s.i + 1).padStart(2, '0')}</text>
+              </g>
+            ))}
+            <path class="stk-route stk-p1" d="" pathLength="1" />
+            <path class="stk-route stk-p2" d="" pathLength="1" />
+          </svg>
 
-      <div class="stk-side-col">
-        <ol class="stk-list" aria-label={t.listAria}>
-          {t.layers.map((l, i) => (
-            <li class={`stk-item stk-${l.status}`} data-i={i}>
-              <button type="button" class="stk-row" aria-expanded="false" aria-controls={`stk-d${i}`}>
-                <span class="stk-n">{String(i + 1).padStart(2, '0')}</span>
-                <span class="stk-ico"><Icon name={icons[i] ?? 'cpu'} /></span>
-                <span class="stk-name">{l.name}</span>
-                <span class="stk-tag"><span class="stk-dot"></span>{t.status[l.status]}</span>
-              </button>
-              <div class="stk-detail" id={`stk-d${i}`} hidden>
-                <p>{l.text}</p>
-                <p class="stk-where"><Icon name={statusIcon[l.status]} />{l.where}</p>
-              </div>
-            </li>
+          {chips.map((c) => (
+            <div class={`stk-chip stk-chip-${c.key}`} data-chip={c.key} style={`top:${pct(c.y, H)}`}>
+              <Icon name={c.icon} /><span>{t.chips[c.key]}</span>
+            </div>
           ))}
-        </ol>
+          <p class="stk-bubble" data-bubble style={`top:${pct(chips[0].y - 58, H)}`}></p>
 
-        <div class="stk-scn" data-scn data-play={t.play} data-replay={t.replay} data-next={t.next}>
-          <p class="stk-scn-title">{t.scenarioTitle}</p>
-          <p class="stk-scn-text" aria-live="polite">&nbsp;</p>
-          <div class="stk-scn-bar">
-            <span class="stk-scn-count" data-step-of={t.stepOf}></span>
-            <button type="button" class="btn btn-primary btn-sm stk-play">{t.play}</button>
-          </div>
-          <p class="stk-scn-note">{t.scenarioNote}</p>
-          <script type="application/json" id="stk-steps" set:html={JSON.stringify(t.steps)} />
+          {slabs.map((s) => (
+            <button type="button" class="stk-lab" data-i={s.i} style={`left:${pct(LABX, W)};top:${pct(s.ly - 24, H)};width:${pct(W - LABX - 6, W)}`}>
+              <span class="stk-lab-top">
+                <span class="stk-n">{String(s.i + 1).padStart(2, '0')}</span>
+                <span class="stk-name">{t.layers[s.i].name}</span>
+                <span class={`stk-st stk-${s.status}`} title={t.status[s.status]}><span class="stk-dot"></span></span>
+              </span>
+              <span class="stk-short">{t.layers[s.i].short}</span>
+            </button>
+          ))}
+        </div>
+        <div class="stk-info" aria-live="polite" data-idle={t.idle}>
+          <p class="stk-info-text">{t.idle}</p>
+          <p class="stk-info-where"></p>
         </div>
       </div>
+
+      <!-- Petit écran : liste dépliable -->
+      <ol class="stk-list" aria-label={t.listAria}>
+        {t.layers.map((l, i) => (
+          <li class={`stk-item stk-${l.status}`} data-i={i}>
+            <button type="button" class="stk-row" aria-expanded="false" aria-controls={`stk-d${i}`}>
+              <span class="stk-n">{String(i + 1).padStart(2, '0')}</span>
+              <span class="stk-ico"><Icon name={icons[i] ?? 'cpu'} /></span>
+              <span class="stk-name">{l.name}</span>
+              <span class="stk-tag"><span class="stk-dot"></span>{t.status[l.status]}</span>
+            </button>
+            <div class="stk-detail" id={`stk-d${i}`} hidden>
+              <p>{l.text}</p>
+              <p class="stk-where"><Icon name={statusIcon[l.status]} />{l.where}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+
+      <div class="stk-scn" data-scn data-replay={t.replay} data-next={t.next} data-play={t.play}>
+        <div class="stk-scn-head">
+          <p class="stk-scn-title">{t.scenarioTitle}</p>
+          <div class="stk-modes" role="group" aria-label={t.modeLabel}>
+            <span class="stk-modes-l">{t.modeLabel}</span>
+            <button type="button" class="stk-mode" data-mode="local" aria-pressed="true">{t.modes.local.label}</button>
+            <button type="button" class="stk-mode" data-mode="remote" aria-pressed="false">{t.modes.remote.label}</button>
+          </div>
+        </div>
+        <p class="stk-scn-text" aria-live="polite">&nbsp;</p>
+        <p class="stk-scn-mode" data-note-local={t.modes.local.note} data-note-remote={t.modes.remote.note}>{t.modes.local.note}</p>
+        <div class="stk-scn-bar">
+          <span class="stk-scn-count" data-step-of={t.stepOf}></span>
+          <button type="button" class="btn btn-primary btn-sm stk-play">{t.play}</button>
+        </div>
+        <p class="stk-scn-note">{t.scenarioNote}</p>
+      </div>
+      <script type="application/json" id="stk-steps" set:html={JSON.stringify(t.steps)} />
+      <script type="application/json" id="stk-layers" set:html={JSON.stringify(t.layers.map((l) => ({ text: l.text, where: l.where })))} />
+      <script type="application/json" id="stk-bubbles" set:html={JSON.stringify(t.bubbles)} />
     </div>
   </div>
 </section>
@@ -101,23 +171,69 @@ const statusIcon = { available: 'check-circle', partial: 'circle-half', building
 <script>
   const root = document.querySelector<HTMLElement>('[data-stack]');
   if (root) {
-    const items = Array.from(root.querySelectorAll<HTMLElement>('.stk-item'));
+    const num = (k: string) => Number(root.dataset[k]);
+    const CX = num('cx'), HW = num('hw'), Y0 = num('y0'), GAP = num('gap');
+    const W = num('w'), H = num('h');
     const slabs = Array.from(root.querySelectorAll<SVGGElement>('.stk-slab'));
+    const leaders = Array.from(root.querySelectorAll<SVGGElement>('.stk-leader'));
+    const labs = Array.from(root.querySelectorAll<HTMLElement>('.stk-lab'));
+    const items = Array.from(root.querySelectorAll<HTMLElement>('.stk-item'));
+    const canvas = root.querySelector<HTMLElement>('.stk-canvas')!;
+    const info = root.querySelector<HTMLElement>('.stk-info')!;
+    const infoText = info.querySelector<HTMLElement>('.stk-info-text')!;
+    const infoWhere = info.querySelector<HTMLElement>('.stk-info-where')!;
     const scn = root.querySelector<HTMLElement>('[data-scn]')!;
     const text = scn.querySelector<HTMLElement>('.stk-scn-text')!;
     const count = scn.querySelector<HTMLElement>('.stk-scn-count')!;
+    const modeNote = scn.querySelector<HTMLElement>('.stk-scn-mode')!;
     const btn = scn.querySelector<HTMLButtonElement>('.stk-play')!;
-    const steps: { layer: number; text: string }[] = JSON.parse(document.getElementById('stk-steps')!.textContent || '[]');
+    const modeBtns = Array.from(scn.querySelectorAll<HTMLButtonElement>('.stk-mode'));
+    const p1 = root.querySelector<SVGPathElement>('.stk-p1')!;
+    const p2 = root.querySelector<SVGPathElement>('.stk-p2')!;
+    const cloudRoute = root.querySelector<SVGPathElement>('.stk-cloudroute')!;
+    const cross = root.querySelector<SVGGElement>('.stk-cross')!;
+    const bubble = root.querySelector<HTMLElement>('[data-bubble]')!;
+    const steps: { layer: number; text: string; remote?: string }[] = JSON.parse(document.getElementById('stk-steps')!.textContent || '[]');
+    const layerInfo: { text: string; where: string }[] = JSON.parse(document.getElementById('stk-layers')!.textContent || '[]');
+    const bubbles: { q: string; a: string } = JSON.parse(document.getElementById('stk-bubbles')!.textContent || '{}');
     const stepWord = count.dataset.stepOf || '';
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let active = -1;
     let timer: number | undefined;
     let stepIdx = -1;
+    let mode: 'local' | 'remote' = 'local';
+
+    // Points du dessin : bord gauche d'une dalle, et bord droit de la pastille d'une source (toutes en unités du viewBox).
+    const leftVertex = (i: number) => ({ x: CX - HW, y: Y0 + i * GAP });
+    const chipEdge = (key: string) => {
+      const el = root.querySelector<HTMLElement>(`[data-chip="${key}"]`)!;
+      const c = canvas.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      const k = W / c.width;
+      return { x: (r.right - c.left) * k + 6, y: (r.top + r.height / 2 - c.top) * k };
+    };
+    const curve = (a: { x: number; y: number }, b: { x: number; y: number }) => {
+      const dx = Math.max(60, (b.x - a.x) * 0.6);
+      return `M${a.x.toFixed(1)} ${a.y.toFixed(1)} C${(a.x + dx).toFixed(1)} ${a.y.toFixed(1)} ${(b.x - dx).toFixed(1)} ${b.y.toFixed(1)} ${b.x.toFixed(1)} ${b.y.toFixed(1)}`;
+    };
+    const restart = (el: SVGPathElement) => {
+      el.classList.remove('draw');
+      void el.getBoundingClientRect();
+      el.classList.add('draw');
+    };
+    const clearRoutes = () => {
+      [p1, p2].forEach((p) => { p.setAttribute('d', ''); p.classList.remove('draw'); });
+      bubble.textContent = '';
+      bubble.classList.remove('on');
+      root.querySelectorAll('.stk-chip').forEach((c) => c.classList.remove('on'));
+    };
 
     const setActive = (i: number, open = true) => {
       active = i;
       root.classList.toggle('has-active', i >= 0);
       slabs.forEach((s) => s.classList.toggle('on', Number(s.dataset.i) === i));
+      leaders.forEach((l) => l.classList.toggle('on', Number(l.dataset.i) === i));
+      labs.forEach((l) => l.classList.toggle('on', Number(l.dataset.i) === i));
       items.forEach((it) => {
         const on = Number(it.dataset.i) === i;
         it.classList.toggle('on', on);
@@ -126,47 +242,104 @@ const statusIcon = { available: 'check-circle', partial: 'circle-half', building
         row.setAttribute('aria-expanded', String(on && open));
         det.hidden = !(on && open);
       });
+      if (i >= 0 && layerInfo[i]) {
+        infoText.textContent = layerInfo[i].text;
+        infoWhere.textContent = layerInfo[i].where;
+      } else if (timer === undefined && stepIdx < 0) {
+        infoText.textContent = info.dataset.idle || '';
+        infoWhere.textContent = '';
+      }
     };
 
     // Éclater la pile quand elle entre à l'écran.
-    const art = root.querySelector('.stk-art')!;
     if (reduce || !('IntersectionObserver' in window)) root.classList.add('open');
     else {
       const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { root.classList.add('open'); io.disconnect(); } }), { threshold: 0.1 });
-      io.observe(art);
+      io.observe(root.querySelector('.stk-canvas') || root);
     }
 
+    const drawCloudRoute = () => {
+      const a = leftVertex(8);
+      const b = chipEdge('cloud');
+      cloudRoute.setAttribute('d', curve(a, b));
+      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2 + 8;
+      cross.setAttribute('transform', `translate(${mx.toFixed(1)} ${my.toFixed(1)})`);
+    };
+    const layoutRoutes = () => { drawCloudRoute(); };
+    window.addEventListener('resize', layoutRoutes);
+    layoutRoutes();
+
+    labs.forEach((l) => {
+      const i = Number(l.dataset.i);
+      l.addEventListener('mouseenter', () => { if (timer === undefined) setActive(i); });
+      l.addEventListener('focus', () => { if (timer === undefined) setActive(i); });
+      l.addEventListener('click', () => { stop(); clearRoutes(); stepIdx = -1; setActive(i); });
+    });
     items.forEach((it) => {
       const i = Number(it.dataset.i);
       const row = it.querySelector<HTMLButtonElement>('.stk-row')!;
-      row.addEventListener('click', () => { stop(); setActive(active === i ? -1 : i); });
-      row.addEventListener('mouseenter', () => { if (timer === undefined) setActive(i, false); });
-      row.addEventListener('focus', () => { if (timer === undefined) setActive(i, false); });
+      row.addEventListener('click', () => { stop(); stepIdx = -1; setActive(active === i ? -1 : i); });
     });
     slabs.forEach((s) => {
       const i = Number(s.dataset.i);
-      s.addEventListener('mouseenter', () => { if (timer === undefined) setActive(i, true); });
-      s.addEventListener('click', () => { stop(); setActive(i, true); });
+      s.addEventListener('mouseenter', () => { if (timer === undefined) setActive(i); });
+      s.addEventListener('click', () => { stop(); clearRoutes(); stepIdx = -1; setActive(i); });
     });
-    root.addEventListener('mouseleave', () => { if (timer === undefined && stepIdx < 0) setActive(-1); });
+    root.querySelector('.stk-diagram')!.addEventListener('mouseleave', () => { if (timer === undefined && stepIdx < 0) setActive(-1); });
 
     const show = (k: number) => {
       stepIdx = k;
       const s = steps[k];
       setActive(s.layer, false);
-      text.textContent = s.text;
+      const msg = mode === 'remote' && s.remote ? s.remote : s.text;
+      text.textContent = msg;
+      infoText.textContent = msg;
+      infoWhere.textContent = layerInfo[s.layer]?.where || '';
       count.textContent = `${stepWord} ${k + 1} / ${steps.length}`;
       scn.classList.add('run');
+      root.classList.add('flow');
+
+      // Routes animées (grand écran seulement : la liste n'a pas de dessin).
+      clearRoutes();
+      if (!canvas.offsetParent) return;
+      const chat = chipEdge('chat');
+      const docs = chipEdge('docs');
+      const lv = leftVertex(s.layer);
+      root.querySelector('[data-chip="chat"]')!.classList.add('on');
+      if (k === 0) { p1.setAttribute('d', curve(chat, lv)); restart(p1); bubble.textContent = bubbles.q; bubble.classList.add('on'); }
+      if (k === 1) { p1.setAttribute('d', curve(chat, lv)); restart(p1); }
+      if (k === 2) {
+        p1.setAttribute('d', curve(chat, lv)); restart(p1);
+        p2.setAttribute('d', curve(docs, lv)); restart(p2);
+        root.querySelector('[data-chip="docs"]')!.classList.add('on');
+      }
+      if (k === 3) {
+        const key = mode === 'local' ? 'local' : 'cloud';
+        p1.setAttribute('d', curve(lv, chipEdge(key)));
+        restart(p1);
+        root.querySelector(`[data-chip="${key}"]`)!.classList.add('on');
+      }
+      if (k === 4) { p1.setAttribute('d', curve(lv, chat)); restart(p1); bubble.textContent = bubbles.a; bubble.classList.add('on'); }
     };
     function stop() {
       if (timer !== undefined) { window.clearInterval(timer); timer = undefined; }
     }
+
+    modeBtns.forEach((b) => b.addEventListener('click', () => {
+      mode = (b.dataset.mode as 'local' | 'remote') || 'local';
+      modeBtns.forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      modeNote.textContent = (mode === 'local' ? modeNote.dataset.noteLocal : modeNote.dataset.noteRemote) || '';
+      root.classList.toggle('mode-remote', mode === 'remote');
+      if (stepIdx >= 0 && stepIdx < steps.length) show(stepIdx);
+    }));
+
     btn.addEventListener('click', () => {
       root.classList.add('open');
+      layoutRoutes();
       if (reduce) {
         const k = stepIdx + 1 >= steps.length ? 0 : stepIdx + 1;
         show(k);
-        btn.textContent = k + 1 >= steps.length ? (scn.dataset.replay || '') : (scn.dataset.next || '');
+        btn.textContent = (k + 1 >= steps.length ? scn.dataset.replay : scn.dataset.next) || '';
         return;
       }
       stop();
@@ -177,7 +350,7 @@ const statusIcon = { available: 'check-circle', partial: 'circle-half', building
         k += 1;
         if (k >= steps.length) { stop(); return; }
         show(k);
-      }, 2600);
+      }, 3000);
     });
   }
 </script>
