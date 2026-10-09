@@ -43,7 +43,7 @@ const en: typeof fr = {
     unavailable: 'The form is not available yet. Write to us directly at contact@seshat-ai.com.',
     sending: 'Sending...',
     ok: 'Thank you, your message has been sent. We will get back to you.',
-    error: 'The message could not be sent. Please try again in a moment.',
+    error: 'The message could not be sent. Please try again in a moment, or write to contact@seshat-ai.com.',
   },
 };
 
