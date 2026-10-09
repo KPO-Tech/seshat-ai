@@ -3,15 +3,19 @@ title: Integrating in your product
 description: "What to decide when you embed Seshat in a backend, a desktop app or an internal platform: clients, sessions, credentials, sandboxing and storage."
 section: sdk
 order: 8
-updated: "2026-10-07"
+updated: "2026-10-09"
 ---
 import Callout from '@/components/docs/Callout.astro';
+import Diagram from '@/components/docs/Diagram.astro';
+import { ownership } from '@/components/docs/diagrams/integration';
 
 Embedding Seshat in a script is a few lines. Embedding it in a product that serves several people is a set of decisions. This page lists them.
 
 ## Clients and sessions
 
 A `Client` holds the provider connection, the tool registry and shared services. A `Session` holds one conversation.
+
+<Diagram {...ownership} />
 
 | You are building | Use |
 |---|---|
@@ -59,7 +63,7 @@ cfg.SandboxKind = sdk.SandboxKindDocker
 | `SandboxKindDocker` | Commands run in a persistent Docker container. If Docker is not reachable when the client starts, it falls back to local with a logged warning |
 | `RequireSandbox` | The bash tool refuses to run when no sandbox is available, instead of running unconfined |
 
-`sdk.SandboxAvailable()` tells you whether an OS-level sandbox exists on this host.
+`sdk.SandboxAvailable()` reports whether Landlock, the OS-level sandbox, exists on this host (Linux). It does not look at Docker: a host with a Docker sandbox configured still gets `false` on macOS or Windows.
 
 <Callout type="warning" title="A desktop app and a server are not the same">
 On a desktop, refusing to run `bash` at all is often worse than a visible warning, so leave `RequireSandbox` off. On a shared server, an unconfined command runs with the server's rights and its environment: always set it.
@@ -81,7 +85,7 @@ Secrets are removed from the environment of the commands the model runs. See [Se
 ## Observe and control
 
 - `SetProgressFn`, `SetResponseChunkFn` and `SetRuntimeEventFn` feed your interface. See [Streaming, events and hooks](/en/docs/sdk/events-and-hooks).
-- `AddToolHook`, `RegisterHook` and `PreToolHooks` let you audit or block actions.
+- `RegisterHook` (on the loop events), `PreToolHooks` (shell commands before a tool call) and the stop hooks let you audit or block actions. See [Streaming, events and hooks](/en/docs/sdk/events-and-hooks) for what each can do. `AddToolHook` exists but cannot be used from outside the module yet, because the type it returns is not exported.
 - `GetMonitoring()` returns the monitoring system when `EnableMonitoring` is on.
 - `MaxTurns`, `TurnTokenBudget` and `MaxConsecutiveDenials` bound what one request can spend.
 

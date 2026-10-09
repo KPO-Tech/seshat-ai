@@ -3,10 +3,12 @@ title: Workflows
 description: "Describe a task as a graph of agent steps with dependencies, and run it from the CLI or from Go."
 section: sdk
 order: 5
-updated: "2026-10-07"
+updated: "2026-10-09"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import Flow from '@/components/docs/Flow.astro';
+import Diagram from '@/components/docs/Diagram.astro';
+import { workflowRun } from '@/components/docs/diagrams/integration';
 
 A workflow is a set of steps. Each step is an agent run with its own prompt. Steps can depend on other steps and receive their results, and steps that do not depend on each other run in parallel.
 
@@ -43,12 +45,20 @@ nodes:
 | `needs` | Steps whose results this step receives. They run first |
 | `kind` | `agent` (default), `verifier`, `critic` or `router` |
 | `routes` | For a `router`: the steps it may choose between (required for a router) |
-| `max_turns` | Turn limit for the step |
-| `output_format` | The shape you want the result in |
+| `output_format` | The shape you want the result in, added to the prompt |
+| `agent`, `max_turns` | Read and kept in the results, but the default executor does not apply them. Use your own `Executor` to honour them |
 
-The kinds change the role given to the step: a `verifier` checks the outputs it depends on and answers PASS or FAIL, a `critic` looks for weaknesses and risks, a `router` picks the next step among its `routes`.
+The kind only changes the role written into the step's prompt: a `verifier` is asked to check the outputs it depends on and answer PASS or FAIL, a `critic` to look for weaknesses and risks, a `router` to choose among its `routes`. **Nothing acts on the answer.** A verifier that answers FAIL still counts as a success, and a router does not stop the other steps from running: every step runs once its dependencies have succeeded. Use these kinds to produce a judgement for a person or for your own code to read, not as control flow.
 
 Seshat checks the file before running: duplicate ids, unknown dependencies, a router with no routes or one that routes to itself, and cycles are all refused.
+
+## How a run goes
+
+Seshat sorts the steps into **levels** by their dependencies. The levels run one after the other, and the steps of a level run in parallel, up to `MaxParallel`. A level starts only when the whole previous level is finished, even if a step of the next level needs only one fast step.
+
+<Diagram {...workflowRun} />
+
+If a step fails, the steps that need it are not run: they are recorded as failed with the error `dependency "x" failed`. Independent steps carry on. The result lists the failed steps and `Success` is false. `Order` lists only the steps that actually ran.
 
 ## Run it from the CLI
 
@@ -57,7 +67,7 @@ seshat workflow run release-notes.yaml
 seshat workflow run release-notes.yaml --json --max-parallel 2
 ```
 
-By default up to 4 steps run at once. The usual `--model`, `--permission-mode` and `--cwd` options work here too.
+By default up to 4 steps of the same level run at once. The usual `--model`, `--permission-mode` and `--cwd` options work here too.
 
 ## Run it from Go
 
