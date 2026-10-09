@@ -8,7 +8,7 @@ interface Env {
   CONTACT_TO?: string;
 }
 
-const FROM = 'Seshat AI <contact@seshat-ai.com>';
+const FROM = 'Formulaire Seshat AI <formulaire@seshat-ai.com>';
 const DEFAULT_TO = 'contact@seshat-ai.com';
 
 const json = (body: unknown, status = 200) =>
