@@ -78,10 +78,10 @@ seshat sessions prune --older-than 30 --closed
 |---|---|
 | `onRequest` | The default. Seshat asks before actions that need approval |
 | `acceptEdits` | Safe file operations in the working directory are allowed without asking |
-| `auto` | A classifier approves the actions |
+| `auto` | A classifier decides each action. Without a classifier configured, every action is allowed |
 | `never` | Nothing is ever asked: a refused action goes back to the model as a failure. For headless and background runs |
 | `granular` | Fine-grained control of each approval flow |
-| `bypass` | No permission check at all |
+| `bypass` | No questions. Deny and ask rules, and the safety check, still apply |
 
 <Callout type="warning" title="bypass and yolo">
 `bypass` and the yolo toggle (`ctrl+y`) remove the questions. Use them only in a project you trust and, if possible, in a disposable environment.

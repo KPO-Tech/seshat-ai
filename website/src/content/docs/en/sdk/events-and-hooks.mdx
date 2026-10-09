@@ -3,11 +3,21 @@ title: Streaming, events and hooks
 description: "Show progress while the agent works, answer permission questions from your own interface, and plug code into the lifecycle."
 section: sdk
 order: 3
-updated: "2026-10-07"
+updated: "2026-10-09"
 ---
 import Callout from '@/components/docs/Callout.astro';
+import Diagram from '@/components/docs/Diagram.astro';
+import { turnSignals } from '@/components/docs/diagrams/events';
 
 `SubmitMessage` waits for the whole turn. To build an interface, you listen while it runs. The SDK gives you three hooks into a running agent: callbacks, a prompt bridge and lifecycle hooks.
+
+## Where each signal falls
+
+During one turn, the loop and the session emit hooks and events at fixed points:
+
+<Diagram {...turnSignals} />
+
+Hooks run your code and can stop the action. Events are for observing and are sent to your callbacks. Streaming text, tool progress and runtime events are described below, then lifecycle hooks.
 
 ## Streaming text
 
