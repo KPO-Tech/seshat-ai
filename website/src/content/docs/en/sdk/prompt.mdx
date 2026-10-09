@@ -3,22 +3,41 @@ title: Prompt
 description: "How the system prompt is assembled and how to add to it, replace parts of it, or guide individual tools."
 section: sdk
 order: 4
-updated: "2026-10-07"
+updated: "2026-10-09"
 ---
 import Callout from '@/components/docs/Callout.astro';
+import Diagram from '@/components/docs/Diagram.astro';
+import { promptStack } from '@/components/docs/diagrams/prompt';
 
 The system prompt is built every turn from layers. You customise it with a `PromptConfig`, without touching the core sections.
 
 ## How it is assembled
 
-1. **Core sections**: identity, runtime contract, working rules, tool use, output discipline.
-2. **Runtime context**: session, turn number, model, available tools.
+<Diagram {...promptStack} />
+
+1. **Core sections**: identity, runtime contract, working rules, tool use, output discipline and more. They never change, which is why they can be cached by the provider.
+2. **Runtime context**: session, turn number, working directory, model, available tools.
 3. **Runtime guidance**.
-4. **Memory context**, when memory is enabled.
-5. **Stage overlay**, when you set a stage other than the default.
-6. **Your appended text**, always last.
+4. **Project instructions**, when the working directory has them (see below).
+5. **Memory context**, when memory is enabled.
+6. **Stage overlay**, when you set a stage other than the default.
+7. **Your appended text**, always last.
 
 Tool definitions sent to the provider come from the tool registry. Your hints are added to their descriptions.
+
+### Project instructions
+
+If the working directory contains an instructions file, its content is added to the prompt every turn, before the memory context. Seshat looks for these files in order and uses **the first one that is not empty**:
+
+1. `SESHAT.md`
+2. `AGENTS.md`
+3. `.seshat/instructions.md`
+
+The content is cut at 32 KB. Use it for rules that belong to a project: how to build and test, conventions, things to avoid.
+
+<Callout type="warning" title="Instructions come from the project">
+A project you just cloned can carry an instructions file, and its text reaches the model as instructions. Read an unfamiliar `AGENTS.md` before you run an agent in that folder.
+</Callout>
 
 ## Configure it
 
