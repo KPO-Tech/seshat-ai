@@ -1,0 +1,178 @@
+---
+// Vue éclatée des couches de la pile Seshat : dessin isométrique à gauche, liste des couches à droite,
+// et un parcours animé « une question traverse la pile ». Les textes viennent du dictionnaire (products.stack).
+import Icon from './Icon.astro';
+
+interface Layer { name: string; text: string; where: string; status: 'available' | 'partial' | 'building' }
+interface Step { layer: number; text: string }
+interface T {
+  title: string; lead: string; legendAria: string; listAria: string;
+  status: Record<'available' | 'partial' | 'building', string>;
+  play: string; replay: string; next: string; stepOf: string; scenarioTitle: string; scenarioNote: string;
+  layers: Layer[]; steps: Step[];
+}
+interface Props { t: T }
+const { t } = Astro.props;
+
+// Géométrie d'une dalle (losange vu en perspective isométrique), en unités du dessin.
+const CX = 250;
+const HW = 190; // demi-largeur
+const HH = 66; // demi-hauteur
+const TH = 14; // épaisseur
+const n = t.layers.length;
+const slabs = t.layers.map((l, i) => ({
+  i,
+  status: l.status,
+  top: `${CX},${-HH} ${CX + HW},0 ${CX},${HH} ${CX - HW},0`,
+  inner: `${CX},${-HH + 14} ${CX + HW - 36},0 ${CX},${HH - 14} ${CX - HW + 36},0`,
+  left: `${CX - HW},0 ${CX},${HH} ${CX},${HH + TH} ${CX - HW},${TH}`,
+  right: `${CX + HW},0 ${CX},${HH} ${CX},${HH + TH} ${CX + HW},${TH}`,
+}));
+const statusIcon = { available: 'check-circle', partial: 'circle-half', building: 'hammer' } as const;
+---
+<section class="block stk-block" aria-labelledby="stk-title">
+  <div class="wrap">
+    <div class="stk-head">
+      <h2 id="stk-title">{t.title}</h2>
+      <p class="lead">{t.lead}</p>
+      <ul class="stk-legend" aria-label={t.legendAria}>
+        {(['available', 'partial', 'building'] as const).map((s) => <li class={`stk-key stk-${s}`}><span class="stk-dot"></span>{t.status[s]}</li>)}
+      </ul>
+    </div>
+
+    <div class="stk" data-stack data-count={n}>
+      <div class="stk-art" aria-hidden="true">
+        <svg viewBox="0 0 500 640" role="presentation" focusable="false">
+          <defs>
+            <pattern id="stk-hatch" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+              <line x1="0" y1="0" x2="0" y2="9" style="stroke: var(--accent); stroke-width: 1.2; opacity: 0.3" />
+            </pattern>
+          </defs>
+          {[...slabs].reverse().map((s) => (
+            <g class={`stk-slab stk-${s.status}`} data-i={s.i} style={`--i:${s.i}`}>
+              <polygon class="stk-side stk-left" points={s.left} />
+              <polygon class="stk-side stk-right" points={s.right} />
+              <polygon class="stk-top" points={s.top} />
+              <polygon class="stk-hatch" points={s.top} />
+              <polygon class="stk-inner" points={s.inner} />
+              <text class="stk-num" x={CX - HW + 40} y="4" text-anchor="middle">{String(s.i + 1).padStart(2, '0')}</text>
+            </g>
+          ))}
+        </svg>
+      </div>
+
+      <div class="stk-side-col">
+        <ol class="stk-list" aria-label={t.listAria}>
+          {t.layers.map((l, i) => (
+            <li class={`stk-item stk-${l.status}`} data-i={i}>
+              <button type="button" class="stk-row" aria-expanded="false" aria-controls={`stk-d${i}`}>
+                <span class="stk-n">{String(i + 1).padStart(2, '0')}</span>
+                <span class="stk-name">{l.name}</span>
+                <span class="stk-tag"><span class="stk-dot"></span>{t.status[l.status]}</span>
+              </button>
+              <div class="stk-detail" id={`stk-d${i}`} hidden>
+                <p>{l.text}</p>
+                <p class="stk-where"><Icon name={statusIcon[l.status]} />{l.where}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+
+        <div class="stk-scn" data-scn data-play={t.play} data-replay={t.replay} data-next={t.next}>
+          <p class="stk-scn-title">{t.scenarioTitle}</p>
+          <p class="stk-scn-text" aria-live="polite">&nbsp;</p>
+          <div class="stk-scn-bar">
+            <span class="stk-scn-count" data-step-of={t.stepOf}></span>
+            <button type="button" class="btn btn-primary btn-sm stk-play">{t.play}</button>
+          </div>
+          <p class="stk-scn-note">{t.scenarioNote}</p>
+          <script type="application/json" id="stk-steps" set:html={JSON.stringify(t.steps)} />
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  const root = document.querySelector<HTMLElement>('[data-stack]');
+  if (root) {
+    const items = Array.from(root.querySelectorAll<HTMLElement>('.stk-item'));
+    const slabs = Array.from(root.querySelectorAll<SVGGElement>('.stk-slab'));
+    const scn = root.querySelector<HTMLElement>('[data-scn]')!;
+    const text = scn.querySelector<HTMLElement>('.stk-scn-text')!;
+    const count = scn.querySelector<HTMLElement>('.stk-scn-count')!;
+    const btn = scn.querySelector<HTMLButtonElement>('.stk-play')!;
+    const steps: { layer: number; text: string }[] = JSON.parse(document.getElementById('stk-steps')!.textContent || '[]');
+    const stepWord = count.dataset.stepOf || '';
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let active = -1;
+    let timer: number | undefined;
+    let stepIdx = -1;
+
+    const setActive = (i: number, open = true) => {
+      active = i;
+      root.classList.toggle('has-active', i >= 0);
+      slabs.forEach((s) => s.classList.toggle('on', Number(s.dataset.i) === i));
+      items.forEach((it) => {
+        const on = Number(it.dataset.i) === i;
+        it.classList.toggle('on', on);
+        const row = it.querySelector<HTMLButtonElement>('.stk-row')!;
+        const det = it.querySelector<HTMLElement>('.stk-detail')!;
+        row.setAttribute('aria-expanded', String(on && open));
+        det.hidden = !(on && open);
+      });
+    };
+
+    // Éclater la pile quand elle entre à l'écran.
+    const art = root.querySelector('.stk-art')!;
+    if (reduce || !('IntersectionObserver' in window)) root.classList.add('open');
+    else {
+      const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { root.classList.add('open'); io.disconnect(); } }), { threshold: 0.1 });
+      io.observe(art);
+    }
+
+    items.forEach((it) => {
+      const i = Number(it.dataset.i);
+      const row = it.querySelector<HTMLButtonElement>('.stk-row')!;
+      row.addEventListener('click', () => { stop(); setActive(active === i ? -1 : i); });
+      row.addEventListener('mouseenter', () => { if (timer === undefined) setActive(i, false); });
+      row.addEventListener('focus', () => { if (timer === undefined) setActive(i, false); });
+    });
+    slabs.forEach((s) => {
+      const i = Number(s.dataset.i);
+      s.addEventListener('mouseenter', () => { if (timer === undefined) setActive(i, true); });
+      s.addEventListener('click', () => { stop(); setActive(i, true); });
+    });
+    root.addEventListener('mouseleave', () => { if (timer === undefined && stepIdx < 0) setActive(-1); });
+
+    const show = (k: number) => {
+      stepIdx = k;
+      const s = steps[k];
+      setActive(s.layer, false);
+      text.textContent = s.text;
+      count.textContent = `${stepWord} ${k + 1} / ${steps.length}`;
+      scn.classList.add('run');
+    };
+    function stop() {
+      if (timer !== undefined) { window.clearInterval(timer); timer = undefined; }
+    }
+    btn.addEventListener('click', () => {
+      root.classList.add('open');
+      if (reduce) {
+        const k = stepIdx + 1 >= steps.length ? 0 : stepIdx + 1;
+        show(k);
+        btn.textContent = k + 1 >= steps.length ? (scn.dataset.replay || '') : (scn.dataset.next || '');
+        return;
+      }
+      stop();
+      let k = 0;
+      show(k);
+      btn.textContent = scn.dataset.replay || '';
+      timer = window.setInterval(() => {
+        k += 1;
+        if (k >= steps.length) { stop(); return; }
+        show(k);
+      }, 2600);
+    });
+  }
+</script>
