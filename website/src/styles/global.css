@@ -373,7 +373,8 @@ section.quest-block { padding: 8px 0 96px; }
 section.contact-block { padding: 28px 0 88px; }
 .contact-grid { display: grid; grid-template-columns: 1.35fr 0.65fr; gap: 28px; align-items: start; }
 .form { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 20px; padding: 32px; border-radius: calc(var(--radius) + 6px); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
-.form .field, .form .btn, .form .status { grid-column: 1 / -1; }
+.form .field, .form .btn, .form .status, .form .form-note { grid-column: 1 / -1; }
+.form .form-note { margin: -6px 0 0; }
 .form .field.half { grid-column: auto; }
 .field { display: grid; gap: 8px; }
 .field label { font-weight: 600; font-size: 0.95rem; }
