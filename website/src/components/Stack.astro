@@ -24,13 +24,13 @@ const { t } = Astro.props;
 // Géométrie du dessin (unités du viewBox 1100 x 720).
 const W = 1100;
 const H = 800;
-const CX = 520;
+const CX = 440;
 const HW = 150;
 const HH = 46;
 const TH = 11;
 const Y0 = 70;
 const GAP = 72;
-const LABX = 748; // x où s'arrêtent les lignes de repère (début des étiquettes)
+const LABX = 650; // x où s'arrêtent les lignes de repère (début des étiquettes)
 const LABY0 = Y0 - 18;
 const LABGAP = GAP;
 const ICS = 112; // côté de l'icône posée à plat sur la dalle
@@ -61,9 +61,22 @@ const pct = (v: number, total: number) => `${((v / total) * 100).toFixed(3)}%`;
     <div class="stk-head">
       <h2 id="stk-title">{t.title}</h2>
       <p class="lead">{t.lead}</p>
-      <ul class="stk-legend" aria-label={t.legendAria}>
-        {(['available', 'partial', 'building'] as const).map((s) => <li class={`stk-key stk-${s}`}><span class="stk-dot"></span>{t.status[s]}</li>)}
-      </ul>
+      <div class="stk-bar">
+        <ul class="stk-legend" aria-label={t.legendAria}>
+          {(['available', 'partial', 'building'] as const).map((s) => <li class={`stk-key stk-${s}`}><span class="stk-dot"></span>{t.status[s]}</li>)}
+        </ul>
+        <div class="stk-ctl" data-ctl>
+          <div class="stk-modes" role="group" aria-label={t.modeLabel}>
+            <span class="stk-modes-l">{t.modeLabel}</span>
+            <button type="button" class="stk-mode" data-mode="local" aria-pressed="true" title={t.modes.local.note}>{t.modes.local.label}</button>
+            <button type="button" class="stk-mode" data-mode="remote" aria-pressed="false" title={t.modes.remote.note}>{t.modes.remote.label}</button>
+          </div>
+          <button type="button" class="stk-play" aria-label={t.play} title={t.play} data-play={t.play} data-replay={t.replay} data-next={t.next}>
+            <span class="stk-play-i stk-play-go"><Icon name="play" /></span>
+            <span class="stk-play-i stk-play-again"><Icon name="arrow-counter-clockwise" /></span>
+          </button>
+        </div>
+      </div>
     </div>
 
     <div class="stk" data-stack data-cx={CX} data-hw={HW} data-y0={Y0} data-gap={GAP} data-w={W} data-h={H}>
@@ -148,20 +161,8 @@ const pct = (v: number, total: number) => `${((v / total) * 100).toFixed(3)}%`;
       </ol>
 
       <div class="stk-scn" data-scn data-replay={t.replay} data-next={t.next} data-play={t.play}>
-        <div class="stk-scn-head">
-          <p class="stk-scn-title">{t.scenarioTitle}</p>
-          <div class="stk-modes" role="group" aria-label={t.modeLabel}>
-            <span class="stk-modes-l">{t.modeLabel}</span>
-            <button type="button" class="stk-mode" data-mode="local" aria-pressed="true">{t.modes.local.label}</button>
-            <button type="button" class="stk-mode" data-mode="remote" aria-pressed="false">{t.modes.remote.label}</button>
-          </div>
-        </div>
         <p class="stk-scn-text" aria-live="polite">&nbsp;</p>
-        <p class="stk-scn-mode" data-note-local={t.modes.local.note} data-note-remote={t.modes.remote.note}>{t.modes.local.note}</p>
-        <div class="stk-scn-bar">
-          <span class="stk-scn-count" data-step-of={t.stepOf}></span>
-          <button type="button" class="btn btn-primary btn-sm stk-play">{t.play}</button>
-        </div>
+        <span class="stk-scn-count" data-step-of={t.stepOf}></span>
         <p class="stk-scn-note">{t.scenarioNote}</p>
       </div>
       <script type="application/json" id="stk-steps" set:html={JSON.stringify(t.steps)} />
@@ -188,9 +189,16 @@ const pct = (v: number, total: number) => `${((v / total) * 100).toFixed(3)}%`;
     const scn = root.querySelector<HTMLElement>('[data-scn]')!;
     const text = scn.querySelector<HTMLElement>('.stk-scn-text')!;
     const count = scn.querySelector<HTMLElement>('.stk-scn-count')!;
-    const modeNote = scn.querySelector<HTMLElement>('.stk-scn-mode')!;
-    const btn = scn.querySelector<HTMLButtonElement>('.stk-play')!;
-    const modeBtns = Array.from(scn.querySelectorAll<HTMLButtonElement>('.stk-mode'));
+    const sec = root.closest('section')!;
+    const btn = sec.querySelector<HTMLButtonElement>('.stk-play')!;
+    const ctl = sec.querySelector<HTMLElement>('[data-ctl]')!;
+    const modeBtns = Array.from(sec.querySelectorAll<HTMLButtonElement>('.stk-mode'));
+    const setBtn = (state: 'play' | 'replay' | 'next') => {
+      const label = (state === 'play' ? btn.dataset.play : state === 'replay' ? btn.dataset.replay : btn.dataset.next) || '';
+      btn.setAttribute('aria-label', label);
+      btn.title = label;
+      ctl.classList.toggle('again', state !== 'play');
+    };
     const p1 = root.querySelector<SVGPathElement>('.stk-p1')!;
     const p2 = root.querySelector<SVGPathElement>('.stk-p2')!;
     const links = Array.from(root.querySelectorAll<SVGPathElement>('.stk-link'));
@@ -284,7 +292,7 @@ const pct = (v: number, total: number) => `${((v / total) * 100).toFixed(3)}%`;
       root.classList.remove('flow');
       scn.classList.remove('run');
       count.textContent = '';
-      btn.textContent = scn.dataset.play || '';
+      setBtn('play');
     };
     labs.forEach((l) => {
       const i = Number(l.dataset.i);
@@ -345,7 +353,6 @@ const pct = (v: number, total: number) => `${((v / total) * 100).toFixed(3)}%`;
     modeBtns.forEach((b) => b.addEventListener('click', () => {
       mode = (b.dataset.mode as 'local' | 'remote') || 'local';
       modeBtns.forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
-      modeNote.textContent = (mode === 'local' ? modeNote.dataset.noteLocal : modeNote.dataset.noteRemote) || '';
       root.classList.toggle('mode-remote', mode === 'remote');
       if (stepIdx >= 0 && stepIdx < steps.length) show(stepIdx);
     }));
@@ -361,13 +368,13 @@ const pct = (v: number, total: number) => `${((v / total) * 100).toFixed(3)}%`;
       if (reduce) {
         const k = stepIdx + 1 >= steps.length ? 0 : stepIdx + 1;
         show(k);
-        btn.textContent = (k + 1 >= steps.length ? scn.dataset.replay : scn.dataset.next) || '';
+        setBtn(k + 1 >= steps.length ? 'replay' : 'next');
         return;
       }
       stop();
       let k = 0;
       show(k);
-      btn.textContent = scn.dataset.replay || '';
+      setBtn('replay');
       timer = window.setInterval(() => {
         k += 1;
         if (k >= steps.length) { stop(); return; }
