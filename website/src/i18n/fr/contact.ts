@@ -41,6 +41,6 @@ export default {
     unavailable: "Le formulaire n'est pas encore disponible. Écrivez-nous directement à contact@seshat-ai.com.",
     sending: 'Envoi en cours...',
     ok: 'Merci, votre message est bien parti. Nous revenons vers vous.',
-    error: "Le message n'a pas pu partir. Merci de réessayer dans un instant.",
+    error: "Le message n'a pas pu partir. Réessayez dans un instant, ou écrivez-nous à contact@seshat-ai.com.",
   },
 };
