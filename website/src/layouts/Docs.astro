@@ -50,7 +50,7 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
     <a class="dtop-section" href={docUrl()}>{d.ui.docsHome}</a>
     <div class="dtop-search"><Search id="docs-search" className="pagefind-ui" uiOptions={{ showImages: false, translations: { placeholder: d.ui.search } }} /></div>
     <div class="dtop-actions">
-      <a class="dtop-btn" href="https://github.com/KPO-Tech/seshat" rel="noopener" aria-label="GitHub"><Fragment set:html={ic(githubRaw)} /><span>GitHub</span></a>
+      <a class="dtop-btn" href="https://github.com/KPO-Tech/seshat-runtime" rel="noopener" aria-label="GitHub"><Fragment set:html={ic(githubRaw)} /><span>GitHub</span></a>
       <button class="theme-toggle" type="button" aria-label={c.themeToggle}><Fragment set:html={ic(sunRaw, 'ico i-sun')} /><Fragment set:html={ic(moonRaw, 'ico i-moon')} /></button>
     </div>
   </header>

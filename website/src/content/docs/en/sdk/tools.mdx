@@ -7,12 +7,12 @@ updated: "2026-10-07"
 ---
 import Callout from '@/components/docs/Callout.astro';
 
-A tool is a function the model can call. Seshat ships with many (files, shell, search, web, tasks, notebooks, memory…). You add yours by implementing the `Tool` interface from `github.com/KPO-Tech/seshat/pkg/tools`, then registering it.
+A tool is a function the model can call. Seshat ships with many (files, shell, search, web, tasks, notebooks, memory…). You add yours by implementing the `Tool` interface from `github.com/KPO-Tech/seshat-runtime/pkg/tools`, then registering it.
 
 ## A custom tool
 
 ```go
-import "github.com/KPO-Tech/seshat/pkg/tools"
+import "github.com/KPO-Tech/seshat-runtime/pkg/tools"
 
 type Clock struct{}
 

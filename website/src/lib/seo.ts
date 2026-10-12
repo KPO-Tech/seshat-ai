@@ -4,7 +4,7 @@ import { legal } from '../data/legal';
 
 export const SITE = 'https://seshat-ai.com';
 export const GITHUB_ORG = 'https://github.com/KPO-Tech';
-export const GITHUB_RUNTIME = 'https://github.com/KPO-Tech/seshat';
+export const GITHUB_RUNTIME = 'https://github.com/KPO-Tech/seshat-runtime';
 
 // Références complètes (pas seulement des @id) : chaque page doit se comprendre seule.
 const orgRef = { '@type': 'Organization', name: legal.brand, url: `${SITE}/` };

@@ -21,7 +21,7 @@ cfg.Model = sdk.ModelIdentifier{
 
 The provider constants are `APIProviderAnthropic`, `APIProviderOpenAI`, `APIProviderMistral`, `APIProviderGemini`, `APIProviderDeepSeek`, `APIProviderOllama`, `APIProviderBedrock`, `APIProviderFoundry`, `APIProviderCodex`, `APIProviderMiniMax`, `APIProviderOpenCode` and more. The full list of providers and models is in [Configuration](/en/docs/getting-started/configuration#supported-providers).
 
-To discover what is available at run time, use the `github.com/KPO-Tech/seshat/pkg/providers` package:
+To discover what is available at run time, use the `github.com/KPO-Tech/seshat-runtime/pkg/providers` package:
 
 ```go
 info := providers.AllProvidersInfo()                 // every provider the runtime knows

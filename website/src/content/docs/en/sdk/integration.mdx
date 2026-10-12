@@ -32,7 +32,7 @@ Several settings change from one request to the next. Do not store them on a sha
 - **Prompt bridge.** `client.SetPromptFn` changes state shared by every turn on that client. If a client serves concurrent turns, attach the bridge to the request's context instead:
 
 ```go
-import "github.com/KPO-Tech/seshat/pkg/types"
+import "github.com/KPO-Tech/seshat-runtime/pkg/types"
 
 ctx = types.WithPromptFn(ctx, func(ctx context.Context, req types.PromptRequest) (types.PromptResponse, error) {
     return ask(req) // goes to this user's connection
