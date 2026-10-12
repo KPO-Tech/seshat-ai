@@ -5,7 +5,7 @@ CV_DIR := private/cvs-specialises
 PDFLATEX ?= pdflatex
 POWERSHELL ?= powershell.exe
 
-.PHONY: help install dev build preview clean cv-build cv-clean-logs identite identite-serve
+.PHONY: help install dev build preview clean cv-build cv-clean-logs identite identite-test identite-serve
 
 .DEFAULT_GOAL := help
 
@@ -24,8 +24,11 @@ build: ## Build the website
 preview: ## Preview the production build locally
 	cd $(WEBSITE_DIR) && npm run preview
 
-identite: ## Regenerate the visual identity kit (SVG logos and preview pages, checks links)
+identite: ## Regenerate the visual identity kit (SVG logos, preview page, mail signatures)
 	cd docs/strategie/identite && python build.py
+
+identite-test: ## Check the identity kit is up to date and matches the hand-drawn originals
+	cd docs/strategie/identite && python build.py --check && python -m unittest discover -s tests
 
 identite-serve: ## Serve the identity kit on http://127.0.0.1:8765/apercu/index.html
 	cd docs/strategie/identite && python -m http.server 8765 --bind 127.0.0.1
