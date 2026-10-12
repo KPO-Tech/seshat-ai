@@ -55,6 +55,7 @@ def page() -> str:
         if len(parts) == 3 and parts[2].endswith(".svg"):
             names.setdefault(parts[1], []).append(parts[2])
     nav = " ".join(f'<a href="#{k}">{escape(m.name)}</a>' for k, m in MARKS.items())
+    nav += ' <a href="signatures.html">Signatures mail</a>'
     swatches = "".join(f'<li><i style="background:{c}"></i><b>{n}</b><br>{c}</li>' for n, c in SWATCHES)
     products = "\n".join(_product(k, names[k]) for k in MARKS)
     template = Template((ROOT / "templates" / "page.html").read_text(encoding="utf-8"))

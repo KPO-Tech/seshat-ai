@@ -3,7 +3,7 @@
 Tous les logos sont **générés par du code** (Python, bibliothèque standard seulement). Une seule couleur de marque : **l'orange** (`#EA7828`). Le reste est de l'encre, du papier et des gris.
 
 ```bash
-python build.py            # écrit logo/, apercu/ et ../signatures-mail/
+python build.py            # écrit logo/ et apercu/ (aperçu et signatures mail)
 python build.py --check    # échoue si le disque diffère du kit (pour la CI)
 python build.py --png      # exporte les PNG dans export/ (nécessite Microsoft Edge)
 python publish.py          # montre où les logos seraient copiés (--apply pour écrire)
@@ -52,10 +52,10 @@ identite/
     variants.py     les fichiers dérivés de chaque marque
     outputs.py      écriture de logo/ + logo/README.md, mode --check
     preview.py      la page apercu/
-    signatures.py   les signatures mail
+    signatures.py   les signatures mail (une seule page)
     export.py       export PNG via Edge (optionnel)
     publish.py      copie des logos dans les autres dépôts (sites, apps, docs/brand)
-  templates/      page.html, style.css (aperçu), signature.html
+  templates/      page.html, style.css (aperçu), signatures.html
   tests/          parité avec reference/, cohérence des fichiers
   reference/      les logos dessinés à la main (voir reference/README.md)
   logo/  apercu/  SORTIES, régénérées : ne pas modifier à la main
@@ -88,4 +88,4 @@ Les fichiers en trop dans un dossier `docs/brand` (anciens noms) sont supprimés
 - **Le logo Automation est reconstruit** à partir de la planche de marque : il n'existe pas d'original SVG. À valider visuellement ; les autres marques sont identiques à leurs originaux (test de parité).
 - **Knowledge garde son orange plus saturé**, tel qu'il avait été dessiné (`ORANGE_VIVID_STOPS`). Pour l'aligner sur l'orange commun : le pointer vers `ORANGE_STOPS` dans `kit/surface.py`.
 - **Les images Open Graph du site** (`website/public/og/`) et les couleurs du thème du site et de l'application (`#EF7C2F`, `#2C2A31`...) ne sont pas régénérées : elles gardent l'ancien orange et l'ancien fond sombre.
-- `../signatures-mail/signature-personnelle.html` contient des données personnelles : il n'est pas généré et ne doit pas être commité.
+- **Les signatures mail** sont toutes dans `apercu/signatures.html` (contact et support, avec un bouton pour copier). Leur logo est une image du site : elle s'affiche une fois le site déployé. La signature personnelle (`../signatures-mail/signature-personnelle.html`, non suivie par git) contient des données personnelles : elle n'est pas générée et ne doit pas être commitée.

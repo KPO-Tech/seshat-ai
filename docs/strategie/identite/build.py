@@ -1,6 +1,6 @@
 """Build the identity kit.
 
-    python build.py            write logo/, apercu/ and ../signatures-mail/
+    python build.py            write logo/ and apercu/ (preview and mail signatures)
     python build.py --check    exit 1 if the tree on disk differs from the kit
     python build.py --png      also export PNGs to export/ (needs Microsoft Edge)
 """
