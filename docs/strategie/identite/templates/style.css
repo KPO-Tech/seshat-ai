@@ -1,0 +1,33 @@
+:root {
+  --bg: #fbf9f5; --fg: #172127; --muted: #58636a; --line: #e2dcd2; --card: #ffffff;
+  --accent: #c45a1f;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0f1619; --fg: #f4efe8; --muted: #adb7be; --line: #26343b; --card: #151e22; --accent: #ff9b50; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 Inter, system-ui, Arial, sans-serif; }
+header, main { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+header { padding-top: 32px; }
+h1 { font-size: 1.75rem; margin: 0 0 4px; }
+h2 { font-size: 1.25rem; margin: 40px 0 4px; }
+p { color: var(--muted); margin: 0 0 12px; }
+code { font-family: ui-monospace, Consolas, monospace; font-size: .9em; }
+a { color: var(--accent); }
+nav { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 12px; }
+.swatches { display: flex; flex-wrap: wrap; gap: 12px; list-style: none; padding: 0; margin: 12px 0 0; }
+.swatches li { width: 132px; font-size: .8rem; color: var(--muted); }
+.swatches i { display: block; height: 48px; border-radius: 8px; border: 1px solid var(--line); margin-bottom: 4px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-top: 12px; }
+.wide { grid-column: span 2; }
+@media (max-width: 520px) { .wide { grid-column: span 1; } }
+figure { margin: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--card); overflow: hidden; }
+figure .stage { height: 180px; display: flex; align-items: center; justify-content: center; padding: 16px; }
+figure img { max-width: 100%; max-height: 100%; }
+figure.on-dark .stage { background: #151e22; }
+figure.on-orange .stage { background: #ea7828; }
+figure.on-light .stage { background: #fbf9f5; }
+figcaption { padding: 8px 12px; font-size: .8rem; color: var(--muted); border-top: 1px solid var(--line); }
+figcaption b { color: var(--fg); display: block; font-weight: 600; }
+.sizes { display: flex; align-items: flex-end; gap: 16px; margin-top: 12px; }
+.sizes figure { padding: 12px; }

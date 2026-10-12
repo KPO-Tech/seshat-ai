@@ -1,207 +1,74 @@
-# Identité visuelle Seshat AI (v1, brouillon)
+# Identité visuelle Seshat
 
-**Point d'entrée : ouvrir [`apercu/index.html`](./apercu/index.html) dans un navigateur.** Il donne l'état des décisions, un aperçu d'ensemble et les liens vers les autres pages (logo, couleurs et thèmes, icônes des apps, SeshatCloud, runtime seshat, KPO-Tech). Chaque carte renvoie vers le fichier SVG correspondant.
-
-**Tout est généré par une seule commande**, depuis ce dossier (ou `make identite` à la racine du dépôt) :
+Tous les logos sont **générés par du code** (Python, bibliothèque standard seulement). Une seule couleur de marque : **l'orange** (`#EA7828`). Le reste est de l'encre, du papier et des gris.
 
 ```bash
-python build.py
+python build.py            # écrit logo/, apercu/ et ../signatures-mail/
+python build.py --check    # échoue si le disque diffère du kit (pour la CI)
+python build.py --png      # exporte les PNG dans export/ (nécessite Microsoft Edge)
+python -m unittest discover -s tests
 ```
 
-Elle écrit les SVG dans `logo/` (dont `logo/cloud/` et `logo/runtime/`), les pages dans `apercu/`, puis **vérifie que tous les liens locaux mènent à un fichier existant**.
+Aperçu : ouvrir [`apercu/index.html`](./apercu/index.html) dans un navigateur.
 
-Pour parcourir les pages avec un serveur local (plus fiable que certains serveurs d'éditeur) : `make identite-serve`, puis ouvrir `http://127.0.0.1:8765/apercu/index.html`.
+## Produits
 
-### Organisation : le code et le HTML sont séparés
+| Dossier `logo/` | Produit | Idée |
+| --- | --- | --- |
+| `seshatos/` | SeshatOS | La fleur sous un arc. C'est l'emblème de la famille. |
+| `seshat-cloud/` | SeshatCloud | La fleur sous un nuage. |
+| `seshat-runtime/` | Seshat Runtime | La fleur qui sort d'une dalle empilée. |
+| `seshatos-knowledge/` | SeshatOS Knowledge | Un livre ouvert portant un arbre de nœuds. |
+| `seshatos-automation/` | SeshatOS Automation | Un éventail de circuit. |
+| `kpo-tech/` | KPO-Tech | Un nid d'abeilles de sept cellules. |
+
+Chaque dossier contient les **mêmes noms de fichiers**. Ces noms sont le contrat avec les autres dépôts : les renommer casse les liens.
+
+| Fichier | Usage |
+| --- | --- |
+| `mark-on-light.svg` / `mark-on-dark.svg` | La marque sur fond clair / sombre. |
+| `mono-black.svg` / `mono-white.svg` | Une seule couleur : impression, tampons, photos. |
+| `icon-light.svg` / `icon-dark.svg` / `icon-orange.svg` | Icône carrée (tuile). |
+| `favicon.svg` | Icône du navigateur : traits renforcés, sans détail fin. |
+| `lockup-on-light.svg` / `lockup-on-dark.svg` | Marque et nom côte à côte. |
+| `lockup-vertical-on-*.svg` | KPO-Tech seulement : marque au-dessus du nom. |
+
+## Organisation
 
 ```text
 identite/
-  build.py         point d'entrée (génère, copie, vérifie les liens)
-  src/             le code, sans HTML
-    mark.py          logo : géométrie, styles (etoile, emblem, reseau), palettes
-    appicons.py      icônes des apps : K1 Knowledge, A2 Automation
-    cloudmark.py     logo de SeshatCloud : trois pistes dérivées du logo principal
-    runtimemark.py   logo officiel du runtime seshat (Sh2, terminal)
-    kpomark.py       logo officiel de KPO-Tech (sept cellules, marque mère)
-    export_png.py    export de SVG en PNG avec Edge (avatar GitHub 500 px) ; optionnel, hors build.py
-    themes.py        données des trois thèmes du desktop
-    pages.py         assemblage : choisit les données, remplit les modèles
-    render.py        mini moteur de modèles, SVG lisibles
-  templates/       le HTML : une brique par fichier (card, grid, lockup…), une page par fichier (page_*.html)
-  assets/          style.css, copié dans apercu/
-  logo/            SORTIE : tous les logos et icônes en SVG
-  apercu/          SORTIE : les sept pages HTML + assets/style.css
+  build.py        point d'entrée
+  kit/            le code
+    tokens.py       couleurs et polices : l'orange est défini ici
+    svg.py          mini écrivain SVG
+    surface.py      comment colorier : clair, sombre, monochrome, tuiles
+    drawing.py      ce qu'une marque collecte (dégradés, formes, étendue)
+    flower.py       la fleur commune aux marques Seshat
+    marks.py        une fonction par produit + le registre MARKS
+    lockups.py      marque + nom, texte et positions
+    variants.py     les fichiers dérivés de chaque marque
+    outputs.py      écriture de logo/ + logo/README.md, mode --check
+    preview.py      la page apercu/
+    signatures.py   les signatures mail
+    export.py       export PNG via Edge (optionnel)
+  templates/      page.html, style.css (aperçu), signature.html
+  tests/          parité avec reference/, cohérence des fichiers
+  reference/      les logos dessinés à la main (voir reference/README.md)
+  logo/  apercu/  SORTIES, régénérées : ne pas modifier à la main
+  export/         SORTIE PNG, ignorée par git
 ```
 
-- **Changer une forme ou une couleur** : modifier une constante dans `src/mark.py` ou `src/appicons.py`, relancer `python build.py`.
-- **Changer un texte ou la structure d'une page** : modifier le fichier de `templates/` (par exemple `page_index.html`), relancer.
-- **Changer le style** : modifier `assets/style.css`, relancer (copié dans `apercu/`).
-- Les dossiers `logo/` et `apercu/` sont entièrement régénérés : ne pas y modifier de fichier à la main.
+## Modifier quelque chose
 
+- **La couleur de marque** : `ORANGE`, `ORANGE_LIGHT`, `ORANGE_DEEP` dans `kit/tokens.py`, puis `python build.py`.
+- **Une forme** : la fleur est dans `kit/flower.py` (partagée par SeshatOS, Cloud et Runtime), le reste dans `kit/marks.py`. Les tests de parité échoueront : c'est voulu, ils signalent que le logo change. Mettre à jour `reference/` si le changement est validé.
+- **Un nom ou un slogan** : `kit/lockups.py`.
+- **Un nouveau produit** : une fonction dans `kit/marks.py`, une entrée dans `MARKS`, éventuellement un lockup, puis `python build.py`. Les dix fichiers standard sont produits.
 
-## Le concept
+## Points à connaître
 
-Seshat est la déesse égyptienne de l'écriture, des registres et de la mesure. Son nom signifie « la scribe ». Son emblème est **une étoile à sept branches surmontée d'un arc**, ce qui lui a valu le nom de « celle aux sept pointes » ([World History Encyclopedia](https://www.worldhistory.org/Seshat/)).
-
-Dans l'iconographie, la coiffe de la déesse est une rosette de sept pétales sur une tige, surmontée d'un arc dont les extrémités se redressent. Le style `etoile` (v1) simplifie cela en étoile à sept branches sous un arc. Les styles `emblem` et `reseau` (v2) restent plus proches du dessin (rosette de pétales enveloppée par l'arc) et ajoutent des **nœuds** pour évoquer un réseau, donc l'IA. La longue tige du dessin est supprimée : avec l'arc elle faisait un parapluie.
-
-Il remplace l'ancienne image `website/public/seshat.png` (icône générique « atome avec flèches » trouvée en ligne, de licence non vérifiée, donc à ne plus utiliser).
-
-## Fichiers
-
-Dossiers `logo/<style>/<palette>/` (3 styles × 2 palettes), mêmes six fichiers dans chacun, tous en SVG.
-
-**Styles** :
-
-| Style | Description |
-|---|---|
-| `etoile` (v1) | Étoile pleine à sept branches + arc. Le plus simple et le plus lisible en petit. |
-| `emblem` (v2) | D'après l'emblème réel (dessin de la déesse) : rosette de sept pétales pleins en éventail, enveloppée par l'arc, avec des nœuds aux pieds de l'arc et en bout de tige courte (clin d'œil IA). |
-| `reseau` (v2) | Même rosette, pétales en contour avec un **nœud à chaque pointe** et un nœud central : la rosette lue comme un réseau de neurones. Le plus « IA ». |
-
-Palettes : `ambre`, `orange`.
-
-| Fichier | Usage |
-|---|---|
-| `seshat-mark-on-light.svg` | Marque seule sur fond clair (ambre profond `#B86E10`, arc encre) |
-| `seshat-mark-on-dark.svg` | Marque seule sur fond sombre (ambre `#E8A33D`, arc blanc) |
-| `seshat-mark-mono-black.svg` | Monochrome noir : documents, tampons, impression, fax |
-| `seshat-mark-mono-white.svg` | Monochrome blanc : fonds photo ou colorés |
-| `seshat-app-icon.svg` | Icône carrée (tuile encre) : réseaux sociaux, application |
-| `favicon.svg` | Icône du navigateur, étoile renforcée pour 16 et 32 px |
-
-Le **logotype** « Seshat AI » s'écrit en **Space Grotesk 600**. Les fichiers ci-dessus ne contiennent que la marque : le texte reste du texte (police web) tant que les contours de la police n'ont pas été vectorisés (voir « Reste à faire »).
-
-## Couleurs
-
-**Alignées sur `seshat-desktop`** (décision du 2026-10-06) : une seule source dans [`src/mark.py`](./src/mark.py), réutilisée par le logo, les icônes d'apps et le logo Cloud. Deux palettes, même base.
-
-Communes :
-
-| Nom | Valeur | Usage |
-|---|---|---|
-| Charbon | `#2F2E34` | Fonds sombres, tuiles d'icônes, arc sur fond clair (12,0:1 sur Papier) |
-| Papier | `#F6F1EA` | Fond clair |
-| Crème | `#E7E2DA` | Texte et traits sur fond sombre |
-
-Palette **Orange** (celle du desktop, utilisée dans les aperçus) :
-
-| Nom | Valeur | Usage | Contraste |
-|---|---|---|---|
-| Orange | `#EF7C2F` | Accent sur fond sombre, boutons | 4,9:1 avec le Charbon |
-| Orange profond | `#C2570C` | Accent graphique sur fond clair | 4,0:1 sur Papier |
-| Orange texte | `#A94A0A` | Texte accentué sur fond clair | 5,1:1 sur Papier (AA) |
-
-Palette **Ambre** (variante plus sobre, conservée) :
-
-| Nom | Valeur | Usage | Contraste |
-|---|---|---|---|
-| Ambre | `#E8A33D` | Accent sur fond sombre | 6,2:1 avec le Charbon |
-| Ambre profond | `#B86E10` | Accent graphique sur fond clair | 3,5:1 sur Papier |
-| Ambre texte | `#9A5A0B` | Texte accentué sur fond clair | 4,9:1 sur Papier (AA) |
-
-Règles :
-- L'accent vif (orange ou ambre) ne se pose **jamais sur fond clair** : contraste insuffisant (2,5:1 pour l'orange, 1,9:1 pour l'ambre). Sur clair, on utilise la version « profond » (graphique) ou « texte ».
-- Pas de dégradé, pas d'effet d'ombre sur le logo.
-- Contrastes calculés selon la formule WCAG ; un logo n'est pas soumis à une exigence de contraste, mais la lisibilité reste le critère.
-
-## Thèmes du desktop (comparaison)
-
-La page [`apercu/themes.html`](./apercu/themes.html) (données dans [`src/themes.py`](./src/themes.py)) montre les trois thèmes côte à côte avec le logo `reseau`.
-
-| Thème | Fond / panneau / texte | Accent | Statut |
-|---|---|---|---|
-| Sombre actuel (`seshat-desktop`) | `#2F2E34` / `#3A3941` / `#E7E2DA` | `#EF7C2F` | Conservé |
-| Clair actuel (`seshat-desktop`) | `#F7F7F5` / `#FFFFFF` / `#171717` | `#EF7C2F` | Conservé pour l'instant (jugé froid ; texte blanc sur bouton orange à 2,8:1) |
-| Clair chaud (proposé) | `#F6F1EA` / `#FFFCF8` / `#1F1B16` | `#EF7C2F` (bouton à texte sombre `#1F1B16`, 6,2:1) ; liens `#A94A0A` ; logo `#C2570C` | Gardé comme option : les trois versions sont conservées |
-
-Décision du 2026-10-06 : on garde les **trois** versions et on ne tranche pas encore. Les couleurs de la marque sont désormais alignées sur le desktop (voir « Couleurs »).
-
-## Icônes des apps SeshatOS
-
-Chaque plateforme de SeshatOS a son icône, dans une **famille commune**. Aperçu : [`apercu/apps.html`](./apercu/apps.html), généré par `build.py` à partir de [`src/appicons.py`](./src/appicons.py).
-
-Règles de la famille :
-1. même tuile arrondie pour toutes les apps ;
-2. **un seul accent, l'orange** : la forme distingue les apps, pas la couleur ;
-3. glyphe simple en traits arrondis et nœuds, comme le logo.
-
-Icônes **retenues** (décision du 2026-10-06) :
-
-| App | Piste | Idée |
-|---|---|---|
-| Knowledge | **K1, livre-graphe** | Un livre ouvert dont les pages sont un graphe de connaissance (la Maison des Livres de Seshat). |
-| Automation | **A2, point de contrôle** | Une branche, un anneau orange (validation humaine), puis la fusion : l'agent gouverné. |
-
-Variantes officielles, dans `logo/apps/<app>/` : `icon-dark` (principal), `icon-light`, `icon-orange`, `glyph-on-dark`, `glyph-on-light`, `mono-black`, `mono-white`, `favicon` (traits renforcés, détails réduits).
-
-
-Les autres apps (Data, Inbox, Companion, Team, Scheduling) n'ont **pas** d'icône : on les dessine quand on commence réellement chacune. Idées d'attributs de la déesse pour plus tard : la branche de palmier entaillée (le temps, donc plutôt Scheduling) et la corde à mesurer (Data).
-
-Le logo Seshat AI et SeshatOS est le même (style `reseau` ou `emblem`). Pour SeshatCloud : même logo, ou une variante légère à décider.
-
-## Logo de SeshatCloud
-
-SeshatCloud est la couche multi-tenant (organisations, équipes, administration centrale) au-dessus du même runtime que SeshatOS. Son logo part du **logo principal** (`reseau`) avec une variation. Page : [`apercu/cloud.html`](./apercu/cloud.html), code : [`src/cloudmark.py`](./src/cloudmark.py).
-
-**Retenu le 2026-10-06 : `Cl3`, l'arc devient un bord de nuage à trois bosses** au-dessus de la rosette. Il est présenté en premier sur la page.
-
-Variantes officielles, dans `logo/cloud/seshatcloud/` : `on-light`, `on-dark`, `mono-black`, `mono-white`, `icon-dark`, `icon-light`, `favicon` (traits renforcés, agrandi dans la tuile).
-
-
-Point de vigilance : le bord de nuage remplace l'arc de Seshat, donc le lien direct avec l'emblème de la déesse est moins visible que sur le logo principal ; le nuage seul reste une forme courante, à vérifier lors de la recherche d'antériorité.
-
-## Logo du runtime `seshat`
-
-`seshat` est le runtime d'agents open source (Go, SDK, CLI, TUI, gRPC), la fondation de SeshatOS et de SeshatCloud. Son logo part du logo principal (`reseau`, sans la tige) avec une variation tournée vers les développeurs. Page : [`apercu/runtime.html`](./apercu/runtime.html), code : [`src/runtimemark.py`](./src/runtimemark.py). Il remplace `docs/images/seshat.png` du dépôt `seshat` (icône générique à ne plus utiliser).
-
-**Retenu le 2026-10-06 : `Sh2`, la rosette dans une fenêtre de terminal à trois points.** Version affinée : rosette agrandie pour remplir la fenêtre, et un favicon dédié (traits renforcés, un seul point, rosette réduite pour ne pas toucher le cadre).
-
-Variantes officielles, dans `logo/runtime/seshat/` : `on-light`, `on-dark`, `mono-black`, `mono-white`, `icon-dark`, `icon-light`, `favicon`.
-
-
-Limites connues : à 16 px, seule la fenêtre et l'orange de la rosette se distinguent ; le logo n'a pas été vérifié dans un vrai README GitHub ni dans un terminal. Le remplacement de `seshat.png` dans le dépôt `seshat` reste à faire.
-
-## Logo de KPO-Tech (marque mère)
-
-**KPO-Tech est l'ombrelle informelle de tous les projets tech** (aujourd'hui l'organisation GitHub `KPO-Tech`) ; ce n'est **pas une entreprise enregistrée**. L'activité immatriculée est **Seshat AI**. Conséquence : KPO-Tech sert de signature (« un projet KPO-Tech ») mais n'apparaît pas comme entité légale dans les mentions légales tant qu'elle n'existe pas officiellement. Page : [`apercu/kpo.html`](./apercu/kpo.html), code : [`src/kpomark.py`](./src/kpomark.py).
-
-**Retenu le 2026-10-06 : sept cellules en nid d'abeille, dont une orange.** Il dit **groupe** (un nid de cellules) et **tech** (l'hexagone) ; la cellule orange est le projet Seshat, et il y en a sept, comme le nombre de la déesse. Le nom s'écrit **dessous**, sous la forme du domaine **`kpo.tech`**, dont le point est le nœud orange. La marque mère reste neutre (pas la rosette) mais garde le charbon, l'orange et les traits arrondis du desktop.
-
-Variantes officielles du symbole, dans `logo/kpo-tech/kpotech/` : `on-light`, `on-dark`, `mono-black`, `mono-white`, `icon-dark`, `icon-light`, `favicon` (traits renforcés, agrandi dans la tuile). Le nom « kpo.tech » est écrit avec la police web et n'est pas dans les SVG : il sera vectorisé quand le fichier de la police Space Grotesk aura été téléchargé.
-
-Avatar de l'organisation GitHub : `avatar.svg` (carré plein), `avatar-500.png` et `avatar-name-500.png` avec « kpo.tech » en dessous (500 × 500 px), produit par `python src/export_png.py` (Microsoft Edge en mode headless avec un profil temporaire, rien à télécharger). Brouillon du profil GitHub : [`../github-profil-kpo-tech.md`](../github-profil-kpo-tech.md).
-
-**Point de vigilance (2026-10-06) : le domaine `kpo.tech` existe déjà et n'appartient pas à KPO-Tech.** Le nom écrit dans l'avatar et dans le logo (`kpo.tech`, avec le point en nœud orange) est donc **provisoire**. Décision reportée : la communication porte d'abord sur Seshat. Options le moment venu : écrire « KPO-Tech » sans point, ou choisir un autre nom (vérifier alors le domaine et faire une recherche d'antériorité). En attendant, la version de l'avatar sans nom (`avatar-500.png`) ne prétend à aucun domaine.
-
-Limites connues : à 16 px, le favicon garde la silhouette en nid d'abeille mais la cellule orange y est à peine visible ; le nid d'abeille est une forme courante, à vérifier lors de la recherche d'antériorité. Les pistes écartées (logotype, K en réseau, maison ; puis grille de points en K et K dans un hexagone) restent dans l'historique git.
-
-## Typographie
-
-- **Space Grotesk** (600 à 700) : logotype, titres, chiffres clés.
-- **Inter** (400 à 600) : texte courant, interface.
-
-Les deux sont sous licence **SIL Open Font License**, utilisables gratuitement pour un usage commercial, y compris sur le site.
-
-## Règles d'usage
-
-- **Zone de protection** : au moins la largeur de l'étoile autour de la marque.
-- **Taille minimale** : marque seule 16 px (favicon renforcé), marque + logotype 96 px de large.
-- **À ne pas faire** : étirer, faire pivoter, changer les proportions étoile et arc, ajouter un contour ou une ombre, utiliser l'ambre clair sur fond blanc, recolorer avec une teinte hors palette.
-- **Fond** : sur photo ou fond chargé, utiliser les versions monochromes.
-
-## Reste à faire
-
-0. **Choisir le style** (`etoile`, `emblem` ou `reseau`). À petite taille (16 px), les nœuds de `reseau` et `emblem` disparaissent : le favicon est renforcé mais reste moins net que celui de `etoile`.
-1. **Choisir la palette** (ambre ou orange) et **valider visuellement** la marque (forme de l'étoile, épaisseur de l'arc).
-2. **Vectoriser le logotype** (contours de Space Grotesk) pour avoir des fichiers « lockup » autonomes. Cela demande de télécharger le fichier de police (OFL), à faire avec ton accord.
-3. **Exports PNG** : icône Apple (180 px), icônes PWA (192 et 512), image de partage Open Graph (1200 × 630). Les SVG ne sont pas acceptés partout.
-4. **Dépôt de marque** : recherche d'antériorité INPI sur « Seshat » (nom courant) et sur la forme avant tout investissement de communication ; un symbole simple se protège mal seul.
-5. **Remplacer** `seshat.png` et les couleurs du site (`globals.css`) lors de la refonte.
-6. Une **identité plus complète** (illustrations, photographies, règles de mise en page) viendra avec la refonte du site.
-
-## Historique
-
-Les pistes explorées puis abandonnées (logo : A heptagramme, B registre, C constellation, D2 et D3 ; apps : K2 calame, K3 bibliothèque, A1 flux, A3 relecture ; SeshatCloud : Cl1 double arc, Cl2 halo ; runtime : Sh1 invite, Sh3 chevrons) ont été retirées du dossier le 2026-10-06. Elles restent dans l'historique git de la branche `docs/identite-visuelle` (commits antérieurs à « remove the explored tracks »).
-
-La piste D1 est devenue le style `etoile` (v1). Les styles `emblem` et `reseau` (v2) ont été ajoutés ensuite ; les trois sont conservés. Les versions suivantes se font en modifiant `src/mark.py` ; garder une copie datée de la sortie avant un changement de forme.
+- **Le texte n'est pas vectorisé.** Les logotypes nomment Sora et Inter (repli Arial) : le rendu dépend des polices installées. Les convertir en contours demande les fichiers de police (pas téléchargés).
+- **Le logo Automation est reconstruit** à partir de la planche de marque : il n'existe pas d'original SVG. À valider visuellement ; les autres marques sont identiques à leurs originaux (test de parité).
+- **Knowledge garde son orange plus saturé**, tel qu'il avait été dessiné (`ORANGE_VIVID_STOPS`). Pour l'aligner sur l'orange commun : le pointer vers `ORANGE_STOPS` dans `kit/surface.py`.
+- **Les copies déployées ne sont pas mises à jour automatiquement** : `website/public/brand/` (dont `signature-logo.png`, utilisé par les signatures) et les dossiers `docs/brand` de `seshat`, `SeshatOS` et `SeshatCloud`. Les copier depuis `logo/` ou `export/` quand on les adopte.
+- `../signatures-mail/signature-personnelle.html` contient des données personnelles : il n'est pas généré et ne doit pas être commité.

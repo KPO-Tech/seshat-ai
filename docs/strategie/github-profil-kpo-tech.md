@@ -6,14 +6,14 @@ Rien de ce qui suit n'est publié : c'est un brouillon. Publication après accor
 
 ## 1. Avatar (à téléverser à la main)
 
-Deux versions, 500 × 500 px, dans `docs/strategie/identite/logo/kpo-tech/kpotech/` :
+Deux versions, 500 × 500 px, produites par `python build.py --png` dans `docs/strategie/identite/export/kpo-tech/` (dossier ignoré par git, à régénérer) :
 
 | Fichier | Contenu | Quand le choisir |
 |---|---|---|
 | `avatar-500.png` | Les sept cellules seules. | **Recommandé par défaut** : GitHub affiche l'avatar très petit (24 à 48 px) à côté du nom de l'organisation, où un texte devient illisible, et le nom est déjà écrit à côté. |
-| `avatar-name-500.png` | Les sept cellules avec `kpo.tech` écrit en dessous, comme dans le logo officiel. | Si tu veux que le nom soit lu dans l'avatar lui-même (page de l'organisation, partage). À 40 px le texte est trop petit pour être lu. |
+| `avatar-name-500.png` | Les sept cellules avec « KPOTech » écrit en dessous, comme dans le logo vertical. | Si tu veux que le nom soit lu dans l'avatar lui-même (page de l'organisation, partage). À 40 px le texte est trop petit pour être lu. |
 
-**Attention (2026-10-06)** : le domaine `kpo.tech` n'appartient pas à KPO-Tech. L'avatar `avatar-name-500.png` affiche ce nom comme si c'était un domaine à toi ; tant que le nom n'est pas tranché, `avatar-500.png` (sans texte) est plus prudent. À remplacer à la main quand tu voudras.
+**Note (2026-10-12)** : le logo ne porte plus le nom de domaine `kpo.tech` (qui n'appartient pas à KPO-Tech), seulement « KPOTech ». Le texte est petit à 40 px : `avatar-500.png` reste le choix par défaut.
 
 Paramètres de l'organisation, Settings, Profile, Profile picture. GitHub ne permet pas de changer l'avatar par l'API.
 
