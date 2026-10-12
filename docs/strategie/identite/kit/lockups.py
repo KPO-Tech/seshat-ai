@@ -40,6 +40,11 @@ def _plain(text: str, role: str = "ink") -> tuple[tuple[str, str], ...]:
 
 
 LOCKUPS: dict[str, dict[str, Lockup]] = {
+    # The company name has no tagline, so the wordmark sits on the emblem's centre line.
+    "seshat-ai": {"horizontal": Lockup(
+        (1000, 302), "translate(10 -28) scale(0.73)", (
+            Line(390, 186, 103, 650, D, (("Seshat ", "ink"), ("AI", "accent")), -4),
+        ))},
     "seshat-runtime": {"horizontal": Lockup(
         (1050, 350), "translate(8 -50) scale(0.8203)", (
             Line(415, 168, 67, 700, D, _plain("Seshat"), -2),

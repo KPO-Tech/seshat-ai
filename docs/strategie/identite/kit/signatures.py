@@ -1,7 +1,7 @@
 """Mail signatures (Gmail): same table layout as before, colours from the tokens.
 
 Email clients ignore stylesheets, so every style is inline. The logo is a PNG
-hosted on the website (export.py makes it; copy it to website/public/brand/).
+hosted on the website (publish.py writes it to website/public/brand/).
 signature-personnelle.html holds personal details and is deliberately not built.
 """
 from __future__ import annotations
@@ -13,8 +13,9 @@ from . import tokens as t
 from .outputs import ROOT
 
 OUT_DIR = ROOT.parent / "signatures-mail"
-LOGO_URL = "https://seshat-ai.com/brand/signature-logo.png"
+LOGO_URL = "https://seshat-ai.com/brand/seshat-ai-logo.png"   # 660 x 200, shown at 2x density
 MUTED = "#6B6058"
+LOGO_RATIO = 200 / 660
 
 
 def _link(href: str, label: str, *, bold: bool = False) -> str:
@@ -36,22 +37,23 @@ def _div(content: str, *, top: int = 0, colour: str | None = None, size: int | N
     return f'      <div style="{";".join(style)}">{content}</div>'
 
 
-def _signature(title: str, logo_size: int, lines: list[str]) -> str:
+def _signature(title: str, logo_width: int, lines: list[str]) -> str:
     template = Template((ROOT / "templates" / "signature.html").read_text(encoding="utf-8"))
-    return template.substitute(title=title, logo_url=LOGO_URL, logo_size=logo_size, text=t.CHARCOAL,
+    return template.substitute(title=title, logo_url=LOGO_URL, logo_width=logo_width,
+                               logo_height=round(logo_width * LOGO_RATIO), text=t.CHARCOAL,
                                accent=t.ORANGE, lines="\n".join(lines))
 
 
 def files() -> dict[str, str]:
     dot = " &nbsp;·&nbsp; "
-    contact = _signature("Signature contact", 80, [
+    contact = _signature("Signature contact", 200, [
         _div("Stéphane Kpoviessi", size=16, bold=True, colour=t.CHARCOAL),
         _div("Fondateur, Seshat AI", colour=MUTED),
         _div("Conseil et intégration d'IA souveraine pour PME et ETI", top=6, colour=MUTED),
         _div(_link("https://seshat-ai.com", "seshat-ai.com", bold=True) + dot
              + _link("mailto:contact@seshat-ai.com", "contact@seshat-ai.com"), top=6),
     ])
-    support = _signature("Signature support", 64, [
+    support = _signature("Signature support", 160, [
         _div("Support Seshat AI", size=15, bold=True, colour=t.CHARCOAL),
         _div(_link("mailto:support@seshat-ai.com", "support@seshat-ai.com"), top=4),
         _div("Documentation : " + _link("https://seshat-ai.com/en/docs", "seshat-ai.com/en/docs"),

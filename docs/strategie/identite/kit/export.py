@@ -8,6 +8,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 
 from . import tokens as t
@@ -40,15 +41,26 @@ def render(svg: Path, out: Path, width: int, height: int | None = None, *, backg
            fit: int | None = None) -> None:
     """Render one SVG to a PNG of width x height. background=None keeps it transparent."""
     height = height or width
+    out = out.resolve()
     out.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory() as tmp:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
         page = Path(tmp) / "page.html"
         page.write_text(_page(svg, width, height, background, fit), encoding="utf-8")
+        # A private profile: with the user's Edge already open, a plain headless call
+        # hands over to that instance and exits without writing anything.
         subprocess.run(
             [edge(), "--headless=new", "--disable-gpu", "--hide-scrollbars", "--force-device-scale-factor=1",
+             f"--user-data-dir={Path(tmp) / 'profile'}",
              "--default-background-color=00000000", f"--window-size={width},{height}",
              f"--screenshot={out}", page.as_uri()],
             check=True, capture_output=True, timeout=120)
+        # The Edge launcher can return before the browser has written the file.
+        deadline = time.monotonic() + 60
+        while time.monotonic() < deadline and not (out.exists() and out.stat().st_size > 0):
+            time.sleep(0.2)
+        time.sleep(0.2)
+    if not out.exists():
+        raise RuntimeError(f"Edge produced no file for {svg}")
 
 
 def run(root: Path = ROOT) -> list[str]:
@@ -68,8 +80,9 @@ def run(root: Path = ROOT) -> list[str]:
         job(folder / "favicon.svg", f"{key}/favicon-180.png", 180)
         job(folder / "mark-on-light.svg", f"{key}/mark-on-light-1024.png", 1024, height=1024)
 
-    # Mail signature: the family mark on transparent, shown at 120 px (2x for screens).
-    job(logo / "seshatos" / "mark-on-light.svg", "signature-logo.png", 240)
+    # The official logo for the site and the mail signatures (transparent, 2x density).
+    job(logo / "seshat-ai" / "mark-on-light.svg", "signature-logo.png", 240)
+    job(logo / "seshat-ai" / "lockup-on-light.svg", "seshat-ai-logo.png", 660, height=200)
     # GitHub organisation avatar for KPO-Tech: the honeycomb alone, then with the name.
     job(logo / "kpo-tech" / "icon-light.svg", "kpo-tech/avatar-500.png", 500)
     job(logo / "kpo-tech" / "lockup-vertical-on-light.svg", "kpo-tech/avatar-name-500.png", 500,

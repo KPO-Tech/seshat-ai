@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from kit import outputs, preview, signatures, variants  # noqa: E402
+from kit import outputs, preview, publish, signatures, variants  # noqa: E402
 from kit.marks import MARKS  # noqa: E402
 from parity import diff  # noqa: E402
 
@@ -67,6 +67,15 @@ class Build(unittest.TestCase):
                 continue
             with self.subTest(target):
                 self.assertTrue((ROOT / "apercu" / target).resolve().exists())
+
+
+class Publish(unittest.TestCase):
+    def test_every_source_exists(self):
+        generated = set(outputs.generate())
+        for op in publish.plan():
+            if op.source:
+                with self.subTest(op.target.name):
+                    self.assertIn(f"logo/{op.source}", generated)
 
 
 class Files(unittest.TestCase):

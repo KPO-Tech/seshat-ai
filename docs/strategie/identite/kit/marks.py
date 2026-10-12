@@ -193,6 +193,8 @@ class Mark:
 
 
 MARKS: dict[str, Mark] = {m.key: m for m in (
+    Mark("seshat-ai", "Seshat AI", seshatos,
+         "The official logo: the family emblem with the company name. Website, mail, social, profiles."),
     Mark("seshatos", "SeshatOS", seshatos, "The desktop product and the family emblem: the flower under an arc."),
     Mark("seshat-cloud", "SeshatCloud", cloud, "The multi-tenant product: the flower under a cloud."),
     Mark("seshat-runtime", "Seshat Runtime", runtime, "The open-source agent runtime: the flower rising from a stacked slab."),

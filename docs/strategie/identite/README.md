@@ -6,6 +6,7 @@ Tous les logos sont **générés par du code** (Python, bibliothèque standard s
 python build.py            # écrit logo/, apercu/ et ../signatures-mail/
 python build.py --check    # échoue si le disque diffère du kit (pour la CI)
 python build.py --png      # exporte les PNG dans export/ (nécessite Microsoft Edge)
+python publish.py          # montre où les logos seraient copiés (--apply pour écrire)
 python -m unittest discover -s tests
 ```
 
@@ -15,6 +16,7 @@ Aperçu : ouvrir [`apercu/index.html`](./apercu/index.html) dans un navigateur.
 
 | Dossier `logo/` | Produit | Idée |
 | --- | --- | --- |
+| `seshat-ai/` | **Seshat AI** | **Le logo officiel** : l'emblème de la famille et le nom « Seshat AI ». Site web, signatures, réseaux, profils. |
 | `seshatos/` | SeshatOS | La fleur sous un arc. C'est l'emblème de la famille. |
 | `seshat-cloud/` | SeshatCloud | La fleur sous un nuage. |
 | `seshat-runtime/` | Seshat Runtime | La fleur qui sort d'une dalle empilée. |
@@ -37,7 +39,8 @@ Chaque dossier contient les **mêmes noms de fichiers**. Ces noms sont le contra
 
 ```text
 identite/
-  build.py        point d'entrée
+  build.py        point d'entrée : génère
+  publish.py      point d'entrée : copie dans les autres dépôts
   kit/            le code
     tokens.py       couleurs et polices : l'orange est défini ici
     svg.py          mini écrivain SVG
@@ -51,12 +54,26 @@ identite/
     preview.py      la page apercu/
     signatures.py   les signatures mail
     export.py       export PNG via Edge (optionnel)
+    publish.py      copie des logos dans les autres dépôts (sites, apps, docs/brand)
   templates/      page.html, style.css (aperçu), signature.html
   tests/          parité avec reference/, cohérence des fichiers
   reference/      les logos dessinés à la main (voir reference/README.md)
   logo/  apercu/  SORTIES, régénérées : ne pas modifier à la main
   export/         SORTIE PNG, ignorée par git
 ```
+
+## Publication dans les autres dépôts
+
+`python publish.py --apply` copie les fichiers là où ils sont utilisés. La liste est dans `kit/publish.py` :
+
+| Dépôt | Où | Quoi |
+| --- | --- | --- |
+| `seshat` | `docs/brand/`, icônes de notification du terminal | le runtime |
+| `SeshatCloud` | `docs/brand/`, `seshat-console/public/` | SeshatCloud, favicon et marque de la console |
+| `SeshatOS` | `docs/brand/` (+ `apps/knowledge`, `apps/automation`), `seshat-desktop/public/brand/`, `seshat-desktop/build/icon.*` | SeshatOS, icône de l'application |
+| `seshat-ai` | `website/public/` | logo officiel, favicon, icônes des produits, logo de signature |
+
+Les fichiers en trop dans un dossier `docs/brand` (anciens noms) sont supprimés. Les PNG et l'ICO sont rendus par Edge ; le reste est du texte. Chaque dépôt valide ensuite la modification par sa propre branche et sa propre PR.
 
 ## Modifier quelque chose
 
@@ -70,5 +87,5 @@ identite/
 - **Le texte n'est pas vectorisé.** Les logotypes nomment Sora et Inter (repli Arial) : le rendu dépend des polices installées. Les convertir en contours demande les fichiers de police (pas téléchargés).
 - **Le logo Automation est reconstruit** à partir de la planche de marque : il n'existe pas d'original SVG. À valider visuellement ; les autres marques sont identiques à leurs originaux (test de parité).
 - **Knowledge garde son orange plus saturé**, tel qu'il avait été dessiné (`ORANGE_VIVID_STOPS`). Pour l'aligner sur l'orange commun : le pointer vers `ORANGE_STOPS` dans `kit/surface.py`.
-- **Les copies déployées ne sont pas mises à jour automatiquement** : `website/public/brand/` (dont `signature-logo.png`, utilisé par les signatures) et les dossiers `docs/brand` de `seshat`, `SeshatOS` et `SeshatCloud`. Les copier depuis `logo/` ou `export/` quand on les adopte.
+- **Les images Open Graph du site** (`website/public/og/`) et les couleurs du thème du site et de l'application (`#EF7C2F`, `#2C2A31`...) ne sont pas régénérées : elles gardent l'ancien orange et l'ancien fond sombre.
 - `../signatures-mail/signature-personnelle.html` contient des données personnelles : il n'est pas généré et ne doit pas être commité.

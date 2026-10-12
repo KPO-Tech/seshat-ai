@@ -36,6 +36,16 @@ def tile_file(mark: Mark, s: Surface, *, bold: bool = False, padding: int = ICON
     return svg.document((0, 0, ICON_SIZE, ICON_SIZE), body, defs=drawing.defs, label=mark.name)
 
 
+def tight_file(mark: Mark, s: Surface, margin: float = 0.04) -> str:
+    """The mark alone in a square viewBox hugging its extent: for web headers and app UI,
+    where the 512 px box's padding would make it look small."""
+    drawing = mark.draw(s, False)
+    x0, y0, x1, y1 = drawing.bbox
+    side = max(x1 - x0, y1 - y0) * (1 + 2 * margin)
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    return svg.document((cx - side / 2, cy - side / 2, side, side), drawing.body, defs=drawing.defs, label=mark.name)
+
+
 def files(mark: Mark) -> dict[str, str]:
     """Every SVG of one product, keyed by file name."""
     out = {
