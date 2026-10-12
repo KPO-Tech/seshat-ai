@@ -2,8 +2,8 @@
 title: Runtime modes
 description: "Three separate ideas that are easy to mix up: how you reach Seshat, how it executes, and who approves its actions."
 section: concepts
-order: 2
-updated: "2026-10-09"
+order: 4
+updated: "2026-10-12"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import Diagram from '@/components/docs/Diagram.astro';
@@ -41,8 +41,8 @@ All surfaces drive the same runtime, so the same sessions, tools and providers a
 
 The agent enters plan mode by calling the `enter_plan_mode` tool, or a Go host can do it with `session.ForcePlanMode()`. It then receives instructions: explore with read-only tools, ask about unclear requirements, design the steps, and call `exit_plan_mode` with the full plan. You are asked to approve the plan. On approval the plan is saved to a file, the earlier permission mode comes back, and the agent starts implementing, usually with the task tools.
 
-<Callout type="warning" title="Plan mode is a protocol, not a lock">
-In plan mode the tools are **not** disabled. The agent is told not to edit source files, and a well-behaved model follows that, but the runtime does not enforce it. File writes and edits inside the working directory are even allowed without a question while plan mode is on, so that the agent can save its output. If you need a read-only agent, restrict its tools: the `explore` sub-agent only has read tools.
+<Callout type="warning" title="What plan mode refuses">
+In plan mode, writes and edits are **refused**: `write_file` and `edit_file` are denied outright, so the agent cannot change a file while it plans. The plan itself does not go through those tools: `exit_plan_mode` saves it. The other tools, the shell included, are still governed by the permission mode, so plan mode is not a full read-only sandbox. If you need a strictly read-only agent, restrict its tools: the `explore` sub-agent only has read tools.
 </Callout>
 
 ## Permission modes

@@ -3,7 +3,7 @@ title: Prompt
 description: "How the system prompt is assembled and how to add to it, replace parts of it, or guide individual tools."
 section: sdk
 order: 4
-updated: "2026-10-09"
+updated: "2026-10-12"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import Diagram from '@/components/docs/Diagram.astro';
@@ -75,7 +75,7 @@ A stage adds a short instruction for a situation:
 | `StageToolCall` | The model is expected to call tools |
 | `StageToolResult` | The model should work with the tool results it received |
 | `StageContinuation` | Resume from where it stopped |
-| `StagePlan` | Plan mode: tools are shown but not executed |
+| `StagePlan` | Plan mode overlay: the model is told to describe a plan instead of running tools |
 
 For normal use you do not set a stage. `StagePlan` is the one most apps use, to let the user review a plan first.
 
