@@ -2,8 +2,8 @@
 title: Tools and providers
 description: "How a tool call is checked and executed, and how Seshat talks to many model providers through one interface."
 section: concepts
-order: 7
-updated: "2026-10-09"
+order: 9
+updated: "2026-10-12"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import Flow from '@/components/docs/Flow.astro';
@@ -43,7 +43,7 @@ Calls that declare themselves concurrency-safe run together; the others run one 
 | 1. Deny and ask rules for the tool | Explicit rules on the whole tool |
 | 2. The tool's own check | Path patterns for file tools, command patterns for the shell |
 | 3. The permission engine | Deny rules first, then allow rules, then ask rules. Read-only tools are allowed. Then the mode decides |
-| 4. The mode | `bypass` allows unless a rule objects, `never` turns every question into a refusal, `auto` asks a classifier (and allows everything if none is configured), `onRequest` asks the user |
+| 4. The mode | `bypass` allows unless a rule objects, `never` turns every question into a refusal, `auto` asks a classifier (with no classifier configured, it asks you, or refuses when nobody can answer), `onRequest` asks the user |
 
 If a classifier refuses too often in `auto` mode, Seshat steps back to asking you, and in a headless run it refuses instead of waiting for someone who is not there. The exact order of the questions is drawn in [Security and trust](/en/docs/concepts/security-and-trust#permissions), and the modes are listed in [Using the CLI](/en/docs/guides/cli#permission-modes).
 
@@ -62,8 +62,8 @@ A provider runs a model. Seshat hides their differences behind one interface, so
 | Retry | Within one provider, rate limits, network errors and overloads are retried with exponential backoff and jitter. Authentication and client errors are not |
 | Circuit breaker | Optional. After repeated failures a provider is skipped for a while, then probed again |
 | Fallback models | Configured. Cheaper or alternative models of the same provider are tried first |
-| Fallback providers | Configured. Then other providers, before giving up |
+| Fallback providers | Opt-in. Another vendor is tried only if you list it, before giving up |
 
 <Callout type="note" title="Fallbacks need configuration">
-Retries are always on. The circuit breaker and the fallback lists belong to the provider's routing configuration, which today comes with the Anthropic defaults. You change them through the provider configuration. See [Providers and authentication](/en/docs/sdk/providers-and-auth).
+Retries are always on. The circuit breaker and the fallback lists belong to the provider's routing configuration, which today comes with the Anthropic defaults. The default lists stay within the provider you chose: a prompt goes to another vendor only if you put one in `FallbackProviders`. You change them through the provider configuration. See [Providers and authentication](/en/docs/sdk/providers-and-auth).
 </Callout>

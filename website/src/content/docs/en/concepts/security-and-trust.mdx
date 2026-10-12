@@ -2,8 +2,8 @@
 title: Security and trust
 description: "What Seshat refuses to do by default: untrusted project files, secrets in commands, the local network and the gRPC server."
 section: concepts
-order: 3
-updated: "2026-10-09"
+order: 5
+updated: "2026-10-12"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import Diagram from '@/components/docs/Diagram.astro';
@@ -90,7 +90,7 @@ What to remember from it:
 - **Deny always wins.** A deny rule beats any allow rule, in every mode.
 - **Bypass is not "no checks".** In `bypass` mode the questions disappear, but deny and ask rules still apply, and the safety check of the tool pipeline (see [Inside the runtime](/en/docs/concepts/inside-the-runtime)) still runs.
 - **Read-only tools never interrupt you.** Search, reading and similar tools are allowed in every mode except `never`.
-- **Auto mode needs a classifier to be selective.** The classifier decides for each call. If none is configured, auto mode allows everything, so check your setup before relying on it.
+- **Auto mode without a classifier is not permissive.** The classifier decides for each call when one is configured. With none configured, Seshat asks you in an interactive session and refuses in a headless one, so auto mode never turns into blanket approval.
 - **Background runs cannot ask.** In `never` mode, or whenever no one can answer, an "ask" becomes a denial and the model sees a failure it can work around.
 
 The modes themselves are described in [Using the CLI](/en/docs/guides/cli#permission-modes).

@@ -1,5 +1,6 @@
 // Diagramme de la décision de permission d'un appel d'outil. Ordre relu dans internal/execution/permissions.go
-// et internal/permissions/engine.go (commit a1eee2f).
+// et internal/permissions/engine.go, et dans internal/permissions/auto/mode.go pour le cas sans classifieur
+// (commit e151301, 2026-10-12).
 
 const ROW = 88;
 const Y0 = 100;
@@ -44,7 +45,7 @@ export const permissions = {
     decision('d8', 7, 'A read-only tool ?'),
     outcome('o8', 7, 'ok', 'Allowed', ['in every mode except never'], 'check-circle'),
     decision('d9', 8, 'Auto mode ?'),
-    outcome('o9', 8, 'core', 'The classifier decides', ['without a classifier, everything is allowed'], 'robot'),
+    outcome('o9', 8, 'core', 'The classifier decides', ['no classifier: ask, or deny when headless'], 'robot'),
     decision('d10', 9, 'onRequest and a workflow tool ?'),
     outcome('o10', 9, 'ok', 'Allowed', ['agents, tasks, plan mode'], 'check-circle'),
     { id: 'final', x: DX, y: y(10) + 4, w: DW, h: 56, kind: 'warn', icon: 'question', title: 'Ask', sub: ['nothing matched'] },

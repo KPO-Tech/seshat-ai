@@ -117,7 +117,7 @@ export const routing = {
     { id: 'term1', x: 800, y: 144, w: 140, h: 64, kind: 'bad', title: 'Terminal', sub: ['error'] },
     { id: 'retry', x: 20, y: 290, w: 170, h: 64, icon: 'arrows-clockwise', title: 'Retry', sub: ['jittered backoff'] },
     { id: 'fm', x: 300, y: 290, w: 190, h: 64, icon: 'swap', title: 'Fallback model', sub: ['FallbackModels list'] },
-    { id: 'fp', x: 570, y: 290, w: 190, h: 64, icon: 'cloud', title: 'Fallback provider', sub: ['another provider'] },
+    { id: 'fp', x: 570, y: 290, w: 190, h: 64, icon: 'cloud', title: 'Fallback provider', sub: ['only if configured'] },
     { id: 'term2', x: 830, y: 290, w: 120, h: 64, kind: 'bad', title: 'Terminal', sub: ['error'] },
   ],
   edges: [
