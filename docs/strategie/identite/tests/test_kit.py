@@ -97,7 +97,7 @@ class Files(unittest.TestCase):
             text = path.read_text(encoding="utf-8")
             with self.subTest(f"{path.parent.name}/{path.name}"):
                 self.assertNotIn("linearGradient", text)
-                expected = "#111111" if "black" in path.name else "#FFFFFF"
+                expected = "#111111" if "black" in path.name else "#F1DEC8"
                 colours = {c.upper() for c in HEX.findall(text)}
                 # The runtime mask that cuts the seams uses pure black and white.
                 self.assertLessEqual(colours, {expected, "#000000", "#FFFFFF"})

@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1250 420" role="img" aria-label="SeshatCloud">
 <defs>
 <linearGradient id="dark" x1="0" y1="0" x2="1" y2="1">
-  <stop offset="0" stop-color="#111D23"/>
-  <stop offset="1" stop-color="#303137"/>
+  <stop offset="0" stop-color="#231D19"/>
+  <stop offset="1" stop-color="#3B332D"/>
 </linearGradient>
 <linearGradient id="orange" x1="0" y1="0" x2="1" y2="1">
   <stop offset="0" stop-color="#FF9B50"/>
@@ -27,6 +27,6 @@
 <circle cx="256" cy="416" r="18" fill="#813915"/>
 <circle cx="250" cy="410" r="5" fill="#E59A66" opacity="0.7"/>
 </g>
-<text x="426" y="213" font-family="Sora, Inter, Arial, sans-serif" font-size="94" font-weight="700" letter-spacing="-4"><tspan fill="#172127">Seshat</tspan><tspan fill="#EA7828">Cloud</tspan></text>
-<text x="432" y="270" font-family="Sora, Inter, Arial, sans-serif" font-size="19" font-weight="400" letter-spacing="6.5" fill="#2F2E34">KNOWLEDGE · AGENTS · ANYWHERE</text>
+<text x="426" y="213" font-family="Sora, Inter, Arial, sans-serif" font-size="94" font-weight="700" letter-spacing="-4"><tspan fill="#2A2420">Seshat</tspan><tspan fill="#EA7828">Cloud</tspan></text>
+<text x="432" y="270" font-family="Sora, Inter, Arial, sans-serif" font-size="19" font-weight="400" letter-spacing="6.5" fill="#3A322C">KNOWLEDGE · AGENTS · ANYWHERE</text>
 </svg>

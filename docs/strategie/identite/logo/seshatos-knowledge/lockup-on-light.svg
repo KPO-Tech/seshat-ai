@@ -1,19 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 330" role="img" aria-label="SeshatOS Knowledge">
 <defs>
 <linearGradient id="charcoal" x1="0" y1="0" x2="1" y2="1">
-  <stop offset="0" stop-color="#111D23"/>
-  <stop offset="0.55" stop-color="#303137"/>
-  <stop offset="1" stop-color="#111D23"/>
+  <stop offset="0" stop-color="#231D19"/>
+  <stop offset="0.55" stop-color="#3B332D"/>
+  <stop offset="1" stop-color="#231D19"/>
 </linearGradient>
 <linearGradient id="arch-left" x1="0" y1="0" x2="1" y2="1">
-  <stop offset="0" stop-color="#111D23"/>
-  <stop offset="0.25" stop-color="#111D23"/>
+  <stop offset="0" stop-color="#231D19"/>
+  <stop offset="0.25" stop-color="#231D19"/>
   <stop offset="0.62" stop-color="#8A492B"/>
   <stop offset="0.94" stop-color="#FF7C18"/>
 </linearGradient>
 <linearGradient id="arch-right" x1="1" y1="0" x2="0" y2="1">
-  <stop offset="0" stop-color="#111D23"/>
-  <stop offset="0.25" stop-color="#111D23"/>
+  <stop offset="0" stop-color="#231D19"/>
+  <stop offset="0.25" stop-color="#231D19"/>
   <stop offset="0.62" stop-color="#8A492B"/>
   <stop offset="0.94" stop-color="#FF7C18"/>
 </linearGradient>
@@ -23,8 +23,8 @@
   <stop offset="1" stop-color="#E95B0A"/>
 </linearGradient>
 <linearGradient id="node" x1="0" y1="0" x2="1" y2="1">
-  <stop offset="0" stop-color="#111D23"/>
-  <stop offset="1" stop-color="#303137"/>
+  <stop offset="0" stop-color="#231D19"/>
+  <stop offset="1" stop-color="#3B332D"/>
 </linearGradient>
 </defs>
 <g transform="translate(10 35) scale(0.52)">
@@ -44,7 +44,7 @@
 <circle cx="510" cy="312" r="29" fill="url(#orange-vivid)"/>
 <circle cx="330" cy="448" r="34" fill="url(#node)"/>
 </g>
-<text x="400" y="150" font-family="Sora, Inter, Arial, sans-serif" font-size="96" font-weight="650" letter-spacing="-4"><tspan fill="#172127">Seshat</tspan><tspan fill="#EA7828">OS</tspan></text>
-<text x="404" y="225" font-family="Sora, Inter, Arial, sans-serif" font-size="66" font-weight="300" letter-spacing="-1" fill="#172127">Knowledge</text>
-<text x="408" y="278" font-family="Sora, Inter, Arial, sans-serif" font-size="18" font-weight="400" letter-spacing="5" fill="#2F2E34">EXPLORE  ·  ORGANISE  ·  CONNECT</text>
+<text x="400" y="150" font-family="Sora, Inter, Arial, sans-serif" font-size="96" font-weight="650" letter-spacing="-4"><tspan fill="#2A2420">Seshat</tspan><tspan fill="#EA7828">OS</tspan></text>
+<text x="404" y="225" font-family="Sora, Inter, Arial, sans-serif" font-size="66" font-weight="300" letter-spacing="-1" fill="#2A2420">Knowledge</text>
+<text x="408" y="278" font-family="Sora, Inter, Arial, sans-serif" font-size="18" font-weight="400" letter-spacing="5" fill="#3A322C">EXPLORE  ·  ORGANISE  ·  CONNECT</text>
 </svg>

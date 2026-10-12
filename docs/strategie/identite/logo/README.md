@@ -16,10 +16,10 @@ Folder: `logo/seshatos/`
 | `mark-on-light.svg` | The mark on a light background. |
 | `mark-on-dark.svg` | The mark on a dark background. |
 | `mono-black.svg` | One colour, black: documents, stamps, print. |
-| `mono-white.svg` | One colour, white: photos and coloured backgrounds. |
+| `mono-white.svg` | One colour, warm off-white: photos and coloured backgrounds. |
 | `icon-light.svg` | Square app icon, paper tile. |
 | `icon-dark.svg` | Square app icon, dark tile. |
-| `icon-orange.svg` | Square app icon, orange tile (#EA7828), white mark. |
+| `icon-orange.svg` | Square app icon, orange tile (#EA7828), off-white mark. |
 | `favicon.svg` | Browser icon: dark tile, heavier strokes, no fine detail, for 16 and 32 px. |
 | `lockup-on-light.svg` | Mark and name, horizontal, on a light background. |
 | `lockup-on-dark.svg` | Mark and name, horizontal, on a dark background. |
@@ -35,10 +35,10 @@ Folder: `logo/seshat-cloud/`
 | `mark-on-light.svg` | The mark on a light background. |
 | `mark-on-dark.svg` | The mark on a dark background. |
 | `mono-black.svg` | One colour, black: documents, stamps, print. |
-| `mono-white.svg` | One colour, white: photos and coloured backgrounds. |
+| `mono-white.svg` | One colour, warm off-white: photos and coloured backgrounds. |
 | `icon-light.svg` | Square app icon, paper tile. |
 | `icon-dark.svg` | Square app icon, dark tile. |
-| `icon-orange.svg` | Square app icon, orange tile (#EA7828), white mark. |
+| `icon-orange.svg` | Square app icon, orange tile (#EA7828), off-white mark. |
 | `favicon.svg` | Browser icon: dark tile, heavier strokes, no fine detail, for 16 and 32 px. |
 | `lockup-on-light.svg` | Mark and name, horizontal, on a light background. |
 | `lockup-on-dark.svg` | Mark and name, horizontal, on a dark background. |
@@ -54,10 +54,10 @@ Folder: `logo/seshat-runtime/`
 | `mark-on-light.svg` | The mark on a light background. |
 | `mark-on-dark.svg` | The mark on a dark background. |
 | `mono-black.svg` | One colour, black: documents, stamps, print. |
-| `mono-white.svg` | One colour, white: photos and coloured backgrounds. |
+| `mono-white.svg` | One colour, warm off-white: photos and coloured backgrounds. |
 | `icon-light.svg` | Square app icon, paper tile. |
 | `icon-dark.svg` | Square app icon, dark tile. |
-| `icon-orange.svg` | Square app icon, orange tile (#EA7828), white mark. |
+| `icon-orange.svg` | Square app icon, orange tile (#EA7828), off-white mark. |
 | `favicon.svg` | Browser icon: dark tile, heavier strokes, no fine detail, for 16 and 32 px. |
 | `lockup-on-light.svg` | Mark and name, horizontal, on a light background. |
 | `lockup-on-dark.svg` | Mark and name, horizontal, on a dark background. |
@@ -73,10 +73,10 @@ Folder: `logo/seshatos-knowledge/`
 | `mark-on-light.svg` | The mark on a light background. |
 | `mark-on-dark.svg` | The mark on a dark background. |
 | `mono-black.svg` | One colour, black: documents, stamps, print. |
-| `mono-white.svg` | One colour, white: photos and coloured backgrounds. |
+| `mono-white.svg` | One colour, warm off-white: photos and coloured backgrounds. |
 | `icon-light.svg` | Square app icon, paper tile. |
 | `icon-dark.svg` | Square app icon, dark tile. |
-| `icon-orange.svg` | Square app icon, orange tile (#EA7828), white mark. |
+| `icon-orange.svg` | Square app icon, orange tile (#EA7828), off-white mark. |
 | `favicon.svg` | Browser icon: dark tile, heavier strokes, no fine detail, for 16 and 32 px. |
 | `lockup-on-light.svg` | Mark and name, horizontal, on a light background. |
 | `lockup-on-dark.svg` | Mark and name, horizontal, on a dark background. |
@@ -92,10 +92,10 @@ Folder: `logo/seshatos-automation/`
 | `mark-on-light.svg` | The mark on a light background. |
 | `mark-on-dark.svg` | The mark on a dark background. |
 | `mono-black.svg` | One colour, black: documents, stamps, print. |
-| `mono-white.svg` | One colour, white: photos and coloured backgrounds. |
+| `mono-white.svg` | One colour, warm off-white: photos and coloured backgrounds. |
 | `icon-light.svg` | Square app icon, paper tile. |
 | `icon-dark.svg` | Square app icon, dark tile. |
-| `icon-orange.svg` | Square app icon, orange tile (#EA7828), white mark. |
+| `icon-orange.svg` | Square app icon, orange tile (#EA7828), off-white mark. |
 | `favicon.svg` | Browser icon: dark tile, heavier strokes, no fine detail, for 16 and 32 px. |
 | `lockup-on-light.svg` | Mark and name, horizontal, on a light background. |
 | `lockup-on-dark.svg` | Mark and name, horizontal, on a dark background. |
@@ -111,10 +111,10 @@ Folder: `logo/kpo-tech/`
 | `mark-on-light.svg` | The mark on a light background. |
 | `mark-on-dark.svg` | The mark on a dark background. |
 | `mono-black.svg` | One colour, black: documents, stamps, print. |
-| `mono-white.svg` | One colour, white: photos and coloured backgrounds. |
+| `mono-white.svg` | One colour, warm off-white: photos and coloured backgrounds. |
 | `icon-light.svg` | Square app icon, paper tile. |
 | `icon-dark.svg` | Square app icon, dark tile. |
-| `icon-orange.svg` | Square app icon, orange tile (#EA7828), white mark. |
+| `icon-orange.svg` | Square app icon, orange tile (#EA7828), off-white mark. |
 | `favicon.svg` | Browser icon: dark tile, heavier strokes, no fine detail, for 16 and 32 px. |
 | `lockup-on-light.svg` | Mark and name, horizontal, on a light background. |
 | `lockup-on-dark.svg` | Mark and name, horizontal, on a dark background. |

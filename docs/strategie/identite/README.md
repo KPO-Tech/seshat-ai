@@ -27,7 +27,7 @@ Chaque dossier contient les **mêmes noms de fichiers**. Ces noms sont le contra
 | Fichier | Usage |
 | --- | --- |
 | `mark-on-light.svg` / `mark-on-dark.svg` | La marque sur fond clair / sombre. |
-| `mono-black.svg` / `mono-white.svg` | Une seule couleur : impression, tampons, photos. |
+| `mono-black.svg` / `mono-white.svg` | Une seule couleur : noir (impression, tampons) ou blanc cassé (photos, fonds colorés). |
 | `icon-light.svg` / `icon-dark.svg` / `icon-orange.svg` | Icône carrée (tuile). |
 | `favicon.svg` | Icône du navigateur : traits renforcés, sans détail fin. |
 | `lockup-on-light.svg` / `lockup-on-dark.svg` | Marque et nom côte à côte. |

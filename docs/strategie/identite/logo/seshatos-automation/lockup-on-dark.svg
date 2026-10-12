@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 330" role="img" aria-label="SeshatOS Automation">
 <defs>
 <linearGradient id="dark" x1="0" y1="0" x2="1" y2="1">
-  <stop offset="0" stop-color="#F4EFE8"/>
-  <stop offset="1" stop-color="#CFC7BC"/>
+  <stop offset="0" stop-color="#F6E8D8"/>
+  <stop offset="1" stop-color="#E3CDB4"/>
 </linearGradient>
 <linearGradient id="orange" x1="0" y1="0" x2="1" y2="1">
   <stop offset="0" stop-color="#FF9B50"/>
@@ -28,7 +28,7 @@
 <circle cx="256" cy="424" r="22" fill="#813915"/>
 <circle cx="249" cy="417" r="6" fill="#E59A66" opacity="0.7"/>
 </g>
-<text x="350" y="150" font-family="Sora, Inter, Arial, sans-serif" font-size="96" font-weight="650" letter-spacing="-4"><tspan fill="#FFFFFF">Seshat</tspan><tspan fill="#EA7828">OS</tspan></text>
-<text x="354" y="225" font-family="Sora, Inter, Arial, sans-serif" font-size="66" font-weight="300" letter-spacing="-1" fill="#FFFFFF">Automation</text>
-<text x="358" y="278" font-family="Sora, Inter, Arial, sans-serif" font-size="18" font-weight="400" letter-spacing="5" fill="#C9C3BA">AUTOMATE  ·  ORCHESTRATE  ·  SCALE</text>
+<text x="350" y="150" font-family="Sora, Inter, Arial, sans-serif" font-size="96" font-weight="650" letter-spacing="-4"><tspan fill="#F1DEC8">Seshat</tspan><tspan fill="#EA7828">OS</tspan></text>
+<text x="354" y="225" font-family="Sora, Inter, Arial, sans-serif" font-size="66" font-weight="300" letter-spacing="-1" fill="#F1DEC8">Automation</text>
+<text x="358" y="278" font-family="Sora, Inter, Arial, sans-serif" font-size="18" font-weight="400" letter-spacing="5" fill="#D9C6B0">AUTOMATE  ·  ORCHESTRATE  ·  SCALE</text>
 </svg>

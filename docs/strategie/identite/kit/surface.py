@@ -38,19 +38,19 @@ class Surface:
 
 LIGHT = Surface(
     name="light", ink_stops=t.INK_STOPS, text=t.INK, text_soft=t.CHARCOAL, text_muted=t.GREY,
-    slab_side="#172329", slab_top=t.CHARCOAL, slab_line="#465159",
+    slab_side="#231D19", slab_top=t.CHARCOAL, slab_line="#5A4E45",
 )
 DARK = Surface(
-    name="dark", ink_stops=t.INK_STOPS_ON_DARK, text=t.WHITE, text_soft=t.CREAM_SOFT,
-    text_muted=t.GREY_ON_DARK, slab_side="#2B3A42", slab_top="#44525B", slab_line="#6A7882",
+    name="dark", ink_stops=t.INK_STOPS_ON_DARK, text=t.OFF_WHITE, text_soft=t.CREAM_SOFT,
+    text_muted=t.GREY_ON_DARK, slab_side="#4A3F37", slab_top="#6A5C51", slab_line="#8E7E70",
 )
 MONO_BLACK = Surface(
     name="mono-black", ink_stops=t.INK_STOPS, text=t.BLACK, text_soft=t.BLACK, text_muted=t.BLACK,
     slab_side=t.BLACK, slab_top=t.BLACK, slab_line=t.BLACK, mono=t.BLACK,
 )
 MONO_WHITE = Surface(
-    name="mono-white", ink_stops=t.INK_STOPS_ON_DARK, text=t.WHITE, text_soft=t.WHITE, text_muted=t.WHITE,
-    slab_side=t.WHITE, slab_top=t.WHITE, slab_line=t.WHITE, mono=t.WHITE,
+    name="mono-white", ink_stops=t.INK_STOPS_ON_DARK, text=t.OFF_WHITE, text_soft=t.OFF_WHITE, text_muted=t.OFF_WHITE,
+    slab_side=t.OFF_WHITE, slab_top=t.OFF_WHITE, slab_line=t.OFF_WHITE, mono=t.OFF_WHITE,
 )
 
 

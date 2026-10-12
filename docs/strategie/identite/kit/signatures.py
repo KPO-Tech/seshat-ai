@@ -14,7 +14,7 @@ from .outputs import ROOT
 
 OUT_DIR = ROOT.parent / "signatures-mail"
 LOGO_URL = "https://seshat-ai.com/brand/signature-logo.png"
-MUTED = "#5F5A52"
+MUTED = "#6B6058"
 
 
 def _link(href: str, label: str, *, bold: bool = False) -> str:
