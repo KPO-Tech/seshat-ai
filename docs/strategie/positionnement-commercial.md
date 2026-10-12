@@ -134,7 +134,7 @@ Sur le site : une phrase et éventuellement une courte liste, jamais des cartes 
 
 À afficher :
 
-- les dépôts publics et leur activité (`KPO-Tech/seshat`) ;
+- les dépôts publics et leur activité (`KPO-Tech/seshat-runtime`) ;
 - de vraies captures de SeshatOS et du TUI ;
 - les benchmarks réels (`chunk_bench`, `reading_bench`, évaluations de retrieval) avec méthode et limites ;
 - les réalisations de la fondation (voir §9) ;

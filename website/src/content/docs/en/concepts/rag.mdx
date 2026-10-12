@@ -61,9 +61,9 @@ Create a service from a store for the chunks, a vector store, an optional embedd
 
 ```go
 import (
-    "github.com/KPO-Tech/seshat/pkg/rag"
-    "github.com/KPO-Tech/seshat/pkg/storage"
-    "github.com/KPO-Tech/seshat/pkg/vector"
+    "github.com/KPO-Tech/seshat-runtime/pkg/rag"
+    "github.com/KPO-Tech/seshat-runtime/pkg/storage"
+    "github.com/KPO-Tech/seshat-runtime/pkg/vector"
 )
 
 artifacts, _ := storage.NewArtifactStoreFromConfig(storage.Config{
@@ -110,7 +110,7 @@ export RAG_EMBEDDING_PROVIDER=ollama                 # "openai" or "ollama", det
 ```
 
 ```go
-import "github.com/KPO-Tech/seshat/pkg/rag/embedder"
+import "github.com/KPO-Tech/seshat-runtime/pkg/rag/embedder"
 
 svc := rag.NewService(artifacts, store, embedder.NewFromEnv(), nil)
 ```

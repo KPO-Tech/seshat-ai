@@ -47,6 +47,6 @@ export const GET: APIRoute = async () => {
     for (const p of posts) lines.push(`- [${p.entry.data.title}](${abs(`${url(p.lang, 'blog')}/${p.slug}`)}): ${p.entry.data.description}`);
   }
   lines.push('', '## Contact', '', `- Sales and assessments: ${legal.email}`, `- Support (runtime, documentation, installed products): ${legal.supportEmail}`);
-  lines.push('', '## Source code', '', '- [Seshat runtime on GitHub](https://github.com/KPO-Tech/seshat): the open source runtime, with its architecture notes.', '');
+  lines.push('', '## Source code', '', '- [Seshat runtime on GitHub](https://github.com/KPO-Tech/seshat-runtime): the open source runtime, with its architecture notes.', '');
   return new Response(lines.join('\n'), { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
 };

@@ -6,7 +6,7 @@ Dernière mise à jour : 2026-10-06 (les quatre PR initiales et les trois suivan
 
 | Dépôt | Branche | PR | Contenu | Statut |
 |---|---|---|---|---|
-| `seshat` | `chore/new-logos` | [seshat#452](https://github.com/KPO-Tech/seshat/pull/452) vers `dev` | Logo du runtime (README), toutes ses formes dans `docs/brand`, ancien `seshat.png` supprimé | Fusionnée dans `dev` le 2026-10-06 |
+| `seshat` | `chore/new-logos` | [seshat#452](https://github.com/KPO-Tech/seshat-runtime/pull/452) vers `dev` | Logo du runtime (README), toutes ses formes dans `docs/brand`, ancien `seshat.png` supprimé | Fusionnée dans `dev` le 2026-10-06 |
 | `SeshatOS` | `chore/new-logos` | [SeshatOS#42](https://github.com/KPO-Tech/SeshatOS/pull/42) vers `dev` | Doc qui présente SeshatCloud, logos dans `docs/brand`, logo dans l'application, anciens logos supprimés | Fusionnée dans `dev` le 2026-10-06 |
 | `SeshatCloud` | `chore/new-logos` | [SeshatCloud#13](https://github.com/KPO-Tech/SeshatCloud/pull/13) vers `dev` | Logo, favicon de la console, tableau de statut, anciennes docs rapatriées | Fusionnée dans `dev` le 2026-10-06 |
 | `seshat-ai` | `docs/identite-visuelle` fusionnée dans `staging` | [seshat-ai#90](https://github.com/KPO-Tech/seshat-ai/pull/90) `staging` vers `main` | Restructuration de la stratégie, kit d'identité (logos, thèmes, icônes), positionnement v2, brouillon du profil GitHub | Fusionnée dans `main` le 2026-10-06 ; `staging` et `main` sont resynchronisés ; le site n'a pas été redéployé |
@@ -15,7 +15,7 @@ Dernière mise à jour : 2026-10-06 (les quatre PR initiales et les trois suivan
 
 - **Profil GitHub de KPO-Tech** : champs appliqués (nom, description, e-mail ; lieu et site vides), dépôt `KPO-Tech/.github` créé avec la page d'accueil du profil, avatar téléversé par toi. Détails dans [`github-profil-kpo-tech.md`](./github-profil-kpo-tech.md).
 - **`LocalIngest`** : licence MIT ajoutée (le README la déclarait déjà), PR [LocalIngest#1](https://github.com/KPO-Tech/LocalIngest/pull/1) fusionnée ; GitHub détecte MIT. Description corrigée aussi, ainsi que celle de `seshat-releases`.
-- **Icônes de notification du terminal de `seshat`** : PR [seshat#455](https://github.com/KPO-Tech/seshat/pull/455) fusionnée dans `dev` (PNG 512 px, mêmes noms de fichier ; le cœur en pixels violet est remplacé par le logo du runtime).
+- **Icônes de notification du terminal de `seshat`** : PR [seshat#455](https://github.com/KPO-Tech/seshat-runtime/pull/455) fusionnée dans `dev` (PNG 512 px, mêmes noms de fichier ; le cœur en pixels violet est remplacé par le logo du runtime).
 
 ## Ce qui reste ouvert
 

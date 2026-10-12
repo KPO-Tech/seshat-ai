@@ -22,7 +22,7 @@ The install script supports **Linux** and **macOS**, on `amd64` and `arm64`. On 
 1. **Run the installer.**
 
    ```bash
-   curl -fsSL https://raw.githubusercontent.com/KPO-Tech/seshat/main/scripts/install.sh | bash
+   curl -fsSL https://raw.githubusercontent.com/KPO-Tech/seshat-runtime/main/scripts/install.sh | bash
    ```
 
 2. **Reload your shell** if the installer asks you to, or open a new terminal. The installer adds `~/.local/bin` to your `PATH`.
@@ -46,10 +46,10 @@ The install script supports **Linux** and **macOS**, on `amd64` and `arm64`. On 
 
 ```bash
 # Pin a specific version
-VERSION=v1.3.0 bash <(curl -fsSL https://raw.githubusercontent.com/KPO-Tech/seshat/main/scripts/install.sh)
+VERSION=v1.3.0 bash <(curl -fsSL https://raw.githubusercontent.com/KPO-Tech/seshat-runtime/main/scripts/install.sh)
 
 # Install somewhere else
-INSTALL_DIR=/usr/local/bin bash <(curl -fsSL https://raw.githubusercontent.com/KPO-Tech/seshat/main/scripts/install.sh)
+INSTALL_DIR=/usr/local/bin bash <(curl -fsSL https://raw.githubusercontent.com/KPO-Tech/seshat-runtime/main/scripts/install.sh)
 ```
 
 ## Install with the Go toolchain
@@ -57,13 +57,13 @@ INSTALL_DIR=/usr/local/bin bash <(curl -fsSL https://raw.githubusercontent.com/K
 You need **Go 1.25 or later**.
 
 ```bash
-go install github.com/KPO-Tech/seshat/cmd/cli@latest
+go install github.com/KPO-Tech/seshat-runtime/cmd/cli@latest
 ```
 
 ## Build from source
 
 ```bash
-git clone https://github.com/KPO-Tech/seshat
+git clone https://github.com/KPO-Tech/seshat-runtime
 cd seshat
 make build
 ```
@@ -80,7 +80,7 @@ This produces two binaries in `bin/`:
 To embed the runtime in your own Go application, add the SDK to your module:
 
 ```bash
-go get github.com/KPO-Tech/seshat@latest
+go get github.com/KPO-Tech/seshat-runtime@latest
 ```
 
 ## Next step

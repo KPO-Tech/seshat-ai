@@ -32,4 +32,4 @@ Examples: `docs(strategie): update positioning`, `feat(website): rebuild the ser
 
 ## Out of scope here
 
-Product code and technical documentation belong in [`seshat`](https://github.com/KPO-Tech/seshat), [`SeshatOS`](https://github.com/KPO-Tech/SeshatOS) and [`SeshatCloud`](https://github.com/KPO-Tech/SeshatCloud).
+Product code and technical documentation belong in [`seshat`](https://github.com/KPO-Tech/seshat-runtime), [`SeshatOS`](https://github.com/KPO-Tech/SeshatOS) and [`SeshatCloud`](https://github.com/KPO-Tech/SeshatCloud).

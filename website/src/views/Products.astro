@@ -13,7 +13,7 @@ const t = dict(lang).products;
 
 // Éléments qui ne dépendent pas de la langue.
 const meta = [
-  { name: 'Seshat', logo: '/brand/seshat.svg', tone: 'ok', dark: false, code: 'https://github.com/KPO-Tech/seshat', stage: 3 },
+  { name: 'Seshat', logo: '/brand/seshat.svg', tone: 'ok', dark: false, code: 'https://github.com/KPO-Tech/seshat-runtime', stage: 3 },
   { name: 'SeshatOS', logo: '/brand/seshatos.svg', tone: 'wip', dark: true, code: 'https://github.com/KPO-Tech/SeshatOS', stage: 1 },
   { name: 'SeshatCloud', logo: '/brand/seshatcloud.svg', tone: 'wip', dark: false, code: '', stage: 1 },
 ];
@@ -93,9 +93,9 @@ const verbMeta = [
       <div class="install reveal">
         <div class="cmd-bar">
           <span class="cmd-label">{t.tui.installLabel}</span>
-          <button class="copy" type="button" data-copy="curl -fsSL https://raw.githubusercontent.com/KPO-Tech/seshat/main/scripts/install.sh | bash" data-copied={t.tui.copied}>{t.tui.copy}</button>
+          <button class="copy" type="button" data-copy="curl -fsSL https://raw.githubusercontent.com/KPO-Tech/seshat-runtime/main/scripts/install.sh | bash" data-copied={t.tui.copied}>{t.tui.copy}</button>
         </div>
-        <pre class="cmd"><code><span class="t-p">$</span> <span class="t-c">curl</span> <span class="t-f">-fsSL</span> <span class="t-u">https://raw.githubusercontent.com/KPO-Tech/seshat/main/scripts/install.sh</span> <span class="t-o">|</span> <span class="t-c">bash</span>
+        <pre class="cmd"><code><span class="t-p">$</span> <span class="t-c">curl</span> <span class="t-f">-fsSL</span> <span class="t-u">https://raw.githubusercontent.com/KPO-Tech/seshat-runtime/main/scripts/install.sh</span> <span class="t-o">|</span> <span class="t-c">bash</span>
 <span class="t-p">$</span> <span class="t-c">seshat</span> <span class="t-a">chat</span></code></pre>
       </div>
       <div class="gallery reveal" data-gallery>
@@ -113,7 +113,7 @@ const verbMeta = [
         </div>
       </div>
       <aside class="rename reveal"><strong>{t.tui.renameTitle}</strong> {t.tui.renameText}</aside>
-      <a class="link reveal" href="https://github.com/KPO-Tech/seshat" rel="noopener"><Icon name="github-logo" /> {t.tui.codeLink} <Arrow /></a>
+      <a class="link reveal" href="https://github.com/KPO-Tech/seshat-runtime" rel="noopener"><Icon name="github-logo" /> {t.tui.codeLink} <Arrow /></a>
     </div>
   </section>
 
