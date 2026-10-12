@@ -2,8 +2,8 @@
 title: Inside the runtime
 description: "A detailed tour of how the Seshat runtime is built: its layers, one turn of the loop, one tool call, and what happens when a model provider fails. With counts you can reproduce."
 section: concepts
-order: 2
-updated: "2026-10-09"
+order: 3
+updated: "2026-10-12"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import Diagram from '@/components/docs/Diagram.astro';
@@ -11,7 +11,7 @@ import { layers, turn, tool, routing } from '@/components/docs/diagrams/runtime'
 import Steps from '@/components/docs/Steps.astro';
 import LinkCards from '@/components/docs/LinkCards.astro';
 
-[Architecture](/en/docs/concepts/architecture) gives the short version. This page goes one level down, for people who want to extend the runtime, embed it, or simply judge how it is made. Everything below was checked against the source on **9 October 2026, `dev` branch, commit `a1eee2f`**. Counts change with the code: the last section shows how to recompute them.
+[Architecture](/en/docs/concepts/architecture) gives the short version. This page goes one level down, for people who want to extend the runtime, embed it, or simply judge how it is made. Everything below was checked against the source on **12 October 2026, `dev` branch, commit `e151301`**. Counts change with the code: the last section shows how to recompute them.
 
 ## The layers, and which way dependencies point
 
@@ -65,7 +65,7 @@ Every tool call goes through the same stages, and each one reports its progress 
 Before the pipeline, calls are partitioned: tools declared safe for concurrency run in one parallel batch, the others run one after the other.
 
 <Callout type="note" title="How many tools?">
-The default built-in registry registers **116 tools** at the time of counting. The exact list depends on your configuration, on the platform and on the MCP servers you connect, so ask the runtime: `client.ToolNames()` in the SDK.
+The default built-in registry registers **129 tools**; 95 of them are enabled in an environment with no provider keys. The exact list depends on your configuration, on the platform and on the MCP servers you connect, so ask the runtime: `client.ToolNames()` in the SDK, which lists the enabled ones.
 </Callout>
 
 ## When a provider fails
@@ -78,30 +78,30 @@ Seshat reaches **16 providers** through one interface: Anthropic, OpenAI, Codex,
 |---|---|
 | **Retry** | Exponential backoff with jitter. Errors are classified (client, authentication, rate limit, network, overload) so only the retryable ones are retried. |
 | **Fallback model** | If retries fail, the next model in `Routing.FallbackModels` is tried. |
-| **Fallback provider** | If the models are exhausted, another provider is tried through its own client. |
+| **Fallback provider** | If the models are exhausted, a configured fallback provider is tried through its own client. Nothing leaves your chosen vendor unless you list one. |
 | **Circuit breaker** | One per provider. After **5 consecutive failures** the circuit opens and calls fail immediately without touching the provider. After **60 seconds** it half-opens and lets **3 trial calls** through; if they succeed, it closes. |
 
 A non-recoverable error is terminal at once: the loop does not retry what cannot succeed.
 
 ## By the numbers
 
-Counted on 9 October 2026, `dev` branch, commit `a1eee2f`.
+Counted on 12 October 2026, `dev` branch, commit `e151301`.
 
 | What | Count |
 |---|---|
-| Go version | 1.26.6 |
-| Go files | 1,193 (943 without tests) |
-| Lines of Go, without tests | 213,035 |
-| Lines of Go, tests only | 60,692 |
+| Go version | 1.26.9 |
+| Go files | 1,232 (947 without tests) |
+| Lines of Go, without tests | 214,361 |
+| Lines of Go, tests only | 65,483 |
 | Packages under `internal/` | 43 |
-| Packages under `pkg/` | 39 |
+| Packages under `pkg/` | 40 |
 | Providers | 16 |
-| Built-in tools in the default registry | 116 |
+| Built-in tools in the default registry | 129 (95 enabled without keys) |
 
 The terminal interface, a fork, and the tools make up the largest share of the code. The agent core itself (engine, execution, prompt and permissions) is much smaller.
 
 <Callout type="tip" title="Recompute it yourself">
-Lines of Go without tests: `git ls-files '*.go' | grep -v '_test.go' | xargs cat | wc -l`. Tests: `git ls-files '*_test.go' | xargs cat | wc -l`. Providers: the entries of the registry in `internal/providers/registry.go`. Tools: the length of the list returned by `builtin.NewBuiltinRegistry()`.
+Lines of Go without tests: `git ls-files '*.go' | grep -v '_test.go' | xargs cat | wc -l`. Tests: `git ls-files '*_test.go' | xargs cat | wc -l`. Providers: the entries of the registry in `internal/providers/registry.go`. Tools: the length of the list returned by `builtin.NewBuiltinRegistry()`, and the number of entries it reports as enabled.
 </Callout>
 
 ## Where to go next

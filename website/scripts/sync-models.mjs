@@ -1,14 +1,14 @@
-// Génère src/content/docs/en/reference/models.mdx à partir de seshat/docs/providers.md
-// (lui-même produit par `go run scripts/gen_provider_docs.go` dans le dépôt seshat, d'après le registre des providers).
+// Génère src/content/docs/en/reference/models.mdx à partir de seshat-runtime/docs/providers.md
+// (lui-même produit par `go run scripts/gen_provider_docs.go` dans le dépôt seshat-runtime, d'après le registre des providers).
 //
-// Usage : npm run sync:models            (cherche ../../seshat)
-//         SESHAT_DIR=/chemin/vers/seshat npm run sync:models
+// Usage : npm run sync:models            (cherche ../../seshat-runtime)
+//         SESHAT_DIR=/chemin/vers/seshat-runtime npm run sync:models
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const seshat = resolve(process.env.SESHAT_DIR ?? resolve(here, '../../../seshat'));
+const seshat = resolve(process.env.SESHAT_DIR ?? resolve(here, '../../../seshat-runtime'));
 const source = readFileSync(resolve(seshat, 'docs/providers.md'), 'utf8').replace(/\r\n/g, '\n');
 
 const start = source.indexOf('## Supported providers');
