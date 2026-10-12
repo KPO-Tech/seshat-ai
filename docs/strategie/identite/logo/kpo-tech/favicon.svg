@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="KPO-Tech">
+<rect x="0" y="0" width="512" height="512" rx="96" fill="#2B2521"/>
+<g transform="translate(-38.545 -38.545) scale(1.964)">
+<g transform="translate(150 150) scale(1.1)">
+<path d="M 0.00,-100.00 L 28.58,-83.50 L 28.58,-50.50 L 0.00,-34.00 L -28.58,-50.50 L -28.58,-83.50 Z" fill="none" stroke="#F1DEC8" stroke-width="9" stroke-linejoin="round"/>
+<path d="M 58.00,-66.50 L 86.58,-50.00 L 86.58,-17.00 L 58.00,-0.50 L 29.42,-17.00 L 29.42,-50.00 Z" fill="none" stroke="#F1DEC8" stroke-width="9" stroke-linejoin="round"/>
+<path d="M 58.00,0.50 L 86.58,17.00 L 86.58,50.00 L 58.00,66.50 L 29.42,50.00 L 29.42,17.00 Z" fill="none" stroke="#F1DEC8" stroke-width="9" stroke-linejoin="round"/>
+<path d="M 0.00,34.00 L 28.58,50.50 L 28.58,83.50 L 0.00,100.00 L -28.58,83.50 L -28.58,50.50 Z" fill="none" stroke="#F1DEC8" stroke-width="9" stroke-linejoin="round"/>
+<path d="M -58.00,0.50 L -29.42,17.00 L -29.42,50.00 L -58.00,66.50 L -86.58,50.00 L -86.58,17.00 Z" fill="none" stroke="#F1DEC8" stroke-width="9" stroke-linejoin="round"/>
+<path d="M -58.00,-66.50 L -29.42,-50.00 L -29.42,-17.00 L -58.00,-0.50 L -86.58,-17.00 L -86.58,-50.00 Z" fill="none" stroke="#F1DEC8" stroke-width="9" stroke-linejoin="round"/>
+<path d="M 0.00,-30.00 L 25.98,-15.00 L 25.98,15.00 L 0.00,30.00 L -25.98,15.00 L -25.98,-15.00 Z" fill="#EA7828"/>
+</g>
+</g>
+</svg>

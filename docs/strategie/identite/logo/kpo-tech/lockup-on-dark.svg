@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 300" role="img" aria-label="KPO-Tech">
+<g transform="translate(157 150)">
+<path d="M 0.00,-100.00 L 28.58,-83.50 L 28.58,-50.50 L 0.00,-34.00 L -28.58,-50.50 L -28.58,-83.50 Z" fill="none" stroke="#F1DEC8" stroke-width="6.2" stroke-linejoin="round"/>
+<path d="M 58.00,-66.50 L 86.58,-50.00 L 86.58,-17.00 L 58.00,-0.50 L 29.42,-17.00 L 29.42,-50.00 Z" fill="none" stroke="#F1DEC8" stroke-width="6.2" stroke-linejoin="round"/>
+<path d="M 58.00,0.50 L 86.58,17.00 L 86.58,50.00 L 58.00,66.50 L 29.42,50.00 L 29.42,17.00 Z" fill="none" stroke="#F1DEC8" stroke-width="6.2" stroke-linejoin="round"/>
+<path d="M 0.00,34.00 L 28.58,50.50 L 28.58,83.50 L 0.00,100.00 L -28.58,83.50 L -28.58,50.50 Z" fill="none" stroke="#F1DEC8" stroke-width="6.2" stroke-linejoin="round"/>
+<path d="M -58.00,0.50 L -29.42,17.00 L -29.42,50.00 L -58.00,66.50 L -86.58,50.00 L -86.58,17.00 Z" fill="none" stroke="#F1DEC8" stroke-width="6.2" stroke-linejoin="round"/>
+<path d="M -58.00,-66.50 L -29.42,-50.00 L -29.42,-17.00 L -58.00,-0.50 L -86.58,-17.00 L -86.58,-50.00 Z" fill="none" stroke="#F1DEC8" stroke-width="6.2" stroke-linejoin="round"/>
+<path d="M 0.00,-30.00 L 25.98,-15.00 L 25.98,15.00 L 0.00,30.00 L -25.98,15.00 L -25.98,-15.00 Z" fill="#EA7828"/>
+</g>
+<text x="296" y="167" font-family="Inter, Arial, Helvetica, sans-serif" font-size="108" font-weight="800" fill="#F1DEC8">KPO</text>
+<text x="552" y="167" font-family="Inter, Arial, Helvetica, sans-serif" font-size="108" font-weight="400" fill="#B8A898">Tech</text>
+<text x="302" y="217" font-family="Inter, Arial, Helvetica, sans-serif" font-size="19" font-weight="400" letter-spacing="5"><tspan fill="#B8A898">BUILD </tspan><tspan fill="#EA7828">•</tspan><tspan fill="#B8A898"> OPEN </tspan><tspan fill="#EA7828">•</tspan><tspan fill="#B8A898"> EMPOWER</tspan></text>
+</svg>

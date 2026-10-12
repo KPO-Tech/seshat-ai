@@ -1,214 +1,122 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Identité visuelle Seshat AI — Seshat AI</title>
-  <link rel="stylesheet" href="assets/style.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <!-- polices chargées sans bloquer l'affichage ; la pile système prend le relais en attendant -->
-  <link rel="stylesheet" media="print" onload="this.media='all'"
-        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Seshat identity kit</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header class="top">
-    <a class="brand" href="index.html">Seshat AI · identité</a>
-    <nav>
-      <a href="index.html" class="on">Accueil</a>
-      <a href="logo.html">Logo</a>
-      <a href="themes.html">Couleurs et thèmes</a>
-      <a href="apps.html">Icônes des apps</a>
-      <a href="cloud.html">SeshatCloud</a>
-      <a href="runtime.html">seshat (runtime)</a>
-      <a href="kpo.html">KPO-Tech</a>
-    </nav>
-    <span></span>
-  </header>
-  <main class="wrap">
-    <h1>Identité visuelle Seshat AI</h1>
-    <p class="lead">Un point d'entrée pour tout le kit : logo, couleurs, thèmes, icônes des apps. Tout est généré par <code>python build.py</code> à partir de quelques constantes.</p>
-    <h2>État des décisions</h2>
-    <div class="note">
-      <ul>
-        <li><b>Logo</b> : styles v2 <code>emblem</code> et <code>reseau</code> retenus (l'étoile v1 est gardée), deux palettes conservées.</li>
-        <li><b>Thèmes du desktop</b> : les trois versions conservées, aucune tranchée.</li>
-        <li><b>Icônes des apps</b> : K1 pour Knowledge, A2 pour Automation. Les autres apps plus tard.</li>
-        <li><b>Couleurs</b> : alignées sur le desktop (charbon #2F2E34, orange #EF7C2F, papier #F6F1EA).</li>
-        <li><b>À faire</b> : vectoriser le logotype ; exports PNG ; recherche INPI.</li>
-      </ul>
-    </div>
-    <h2>Aperçu d'ensemble</h2>
-    <div class="grid">
-      <div class="card">
-        <h3>Logo principal · reseau</h3>
-        <div class="lock">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="6 0 88 88" role="img" aria-label="Seshat AI">
-            <path d="M13,46 C11,24 30,10 47.5,12 C49,9 47.5,5.5 45.5,3 M52.5,12 C70,10 89,24 87,46 M52.5,12 C51,9 52.5,5.5 54.5,3" fill="none" stroke="#2F2E34" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-96)" fill="none" stroke="#C2570C" stroke-width="2.6" stroke-linejoin="round"/>
-            <circle cx="19.17" cy="67.24" r="3.1" fill="#C2570C"/>
-            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-64)" fill="none" stroke="#C2570C" stroke-width="2.6" stroke-linejoin="round"/>
-            <circle cx="22.14" cy="50.41" r="3.1" fill="#C2570C"/>
-            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-32)" fill="none" stroke="#C2570C" stroke-width="2.6" stroke-linejoin="round"/>
-            <circle cx="33.57" cy="37.71" r="3.1" fill="#C2570C"/>
-            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(0)" fill="none" stroke="#C2570C" stroke-width="2.6" stroke-linejoin="round"/>
-            <circle cx="50.00" cy="33.00" r="3.1" fill="#C2570C"/>
-            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(32)" fill="none" stroke="#C2570C" stroke-width="2.6" stroke-linejoin="round"/>
-            <circle cx="66.43" cy="37.71" r="3.1" fill="#C2570C"/>
-            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(64)" fill="none" stroke="#C2570C" stroke-width="2.6" stroke-linejoin="round"/>
-            <circle cx="77.86" cy="50.41" r="3.1" fill="#C2570C"/>
-            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(96)" fill="none" stroke="#C2570C" stroke-width="2.6" stroke-linejoin="round"/>
-            <circle cx="80.83" cy="67.24" r="3.1" fill="#C2570C"/>
-            <line x1="50" y1="64" x2="50" y2="80" stroke="#2F2E34" stroke-width="3.0" stroke-linecap="round"/>
-            <circle cx="50" cy="64" r="3.8" fill="#C2570C"/>
-            <circle cx="50" cy="80" r="3.4" fill="#2F2E34"/>
-            <circle cx="13" cy="46" r="3.2" fill="#2F2E34"/>
-            <circle cx="87" cy="46" r="3.2" fill="#2F2E34"/>
-          </svg>
-          <span class="word">Seshat AI</span>
-        </div>
-      </div>
-      <div class="card">
-        <h3>Logo compact · emblem</h3>
-        <div class="lock">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="6 0 88 88" role="img" aria-label="Seshat AI">
-            <path d="M13,46 C11,24 30,10 47.5,12 C49,9 47.5,5.5 45.5,3 M52.5,12 C70,10 89,24 87,46 M52.5,12 C51,9 52.5,5.5 54.5,3" fill="none" stroke="#2F2E34" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(-96)" fill="#C2570C" stroke="#C2570C" stroke-width="1.2" stroke-linejoin="round"/>
-            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(-64)" fill="#C2570C" stroke="#C2570C" stroke-width="1.2" stroke-linejoin="round"/>
-            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(-32)" fill="#C2570C" stroke="#C2570C" stroke-width="1.2" stroke-linejoin="round"/>
-            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(0)" fill="#C2570C" stroke="#C2570C" stroke-width="1.2" stroke-linejoin="round"/>
-            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(32)" fill="#C2570C" stroke="#C2570C" stroke-width="1.2" stroke-linejoin="round"/>
-            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(64)" fill="#C2570C" stroke="#C2570C" stroke-width="1.2" stroke-linejoin="round"/>
-            <path d="M0,-5 Q-7.4,-18.0 0,-31 Q7.4,-18.0 0,-5Z" transform="translate(50 64) rotate(96)" fill="#C2570C" stroke="#C2570C" stroke-width="1.2" stroke-linejoin="round"/>
-            <line x1="50" y1="64" x2="50" y2="80" stroke="#2F2E34" stroke-width="3" stroke-linecap="round"/>
-            <circle cx="13" cy="46" r="3.6" fill="#C2570C"/>
-            <circle cx="87" cy="46" r="3.6" fill="#C2570C"/>
-            <circle cx="50" cy="80" r="3.6" fill="#C2570C"/>
-            <circle cx="50" cy="64" r="3" fill="#2F2E34"/>
-          </svg>
-          <span class="word">Seshat AI</span>
-        </div>
-      </div>
-      <div class="card dark">
-        <h3>Sur fond sombre</h3>
-        <div class="lock">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="6 0 88 88" role="img" aria-label="Seshat AI">
-            <path d="M13,46 C11,24 30,10 47.5,12 C49,9 47.5,5.5 45.5,3 M52.5,12 C70,10 89,24 87,46 M52.5,12 C51,9 52.5,5.5 54.5,3" fill="none" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-96)" fill="none" stroke="#EF7C2F" stroke-width="2.6" stroke-linejoin="round"/>
-            <circle cx="19.17" cy="67.24" r="3.1" fill="#EF7C2F"/>
-            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-64)" fill="none" stroke="#EF7C2F" stroke-width="2.6" stroke-linejoin="round"/>
-            <circle cx="22.14" cy="50.41" r="3.1" fill="#EF7C2F"/>
-            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(-32)" fill="none" stroke="#EF7C2F" stroke-width="2.6" stroke-linejoin="round"/>
-            <circle cx="33.57" cy="37.71" r="3.1" fill="#EF7C2F"/>
-            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(0)" fill="none" stroke="#EF7C2F" stroke-width="2.6" stroke-linejoin="round"/>
-            <circle cx="50.00" cy="33.00" r="3.1" fill="#EF7C2F"/>
-            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(32)" fill="none" stroke="#EF7C2F" stroke-width="2.6" stroke-linejoin="round"/>
-            <circle cx="66.43" cy="37.71" r="3.1" fill="#EF7C2F"/>
-            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(64)" fill="none" stroke="#EF7C2F" stroke-width="2.6" stroke-linejoin="round"/>
-            <circle cx="77.86" cy="50.41" r="3.1" fill="#EF7C2F"/>
-            <path d="M0,-5 Q-7.6,-16.25 0,-27.5 Q7.6,-16.25 0,-5Z" transform="translate(50 64) rotate(96)" fill="none" stroke="#EF7C2F" stroke-width="2.6" stroke-linejoin="round"/>
-            <circle cx="80.83" cy="67.24" r="3.1" fill="#EF7C2F"/>
-            <line x1="50" y1="64" x2="50" y2="80" stroke="#FFFFFF" stroke-width="3.0" stroke-linecap="round"/>
-            <circle cx="50" cy="64" r="3.8" fill="#EF7C2F"/>
-            <circle cx="50" cy="80" r="3.4" fill="#FFFFFF"/>
-            <circle cx="13" cy="46" r="3.2" fill="#FFFFFF"/>
-            <circle cx="87" cy="46" r="3.2" fill="#FFFFFF"/>
-          </svg>
-          <span class="word">Seshat AI</span>
-        </div>
-      </div>
-      <div class="card">
-        <h3>Apps</h3>
-        <div class="chips">
-          <div class="chip light">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="icône">
-              <rect x="1" y="1" width="98" height="98" rx="21" fill="#2F2E34"/>
-              <path d="M50,72 C41,65 28,64 18,68 L18,32 C28,28 41,29 50,36 Z" stroke="#E7E2DA" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-              <path d="M50,72 C59,65 72,64 82,68 L82,32 C72,28 59,29 50,36 Z" stroke="#E7E2DA" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-              <g stroke="#E7E2DA" stroke-width="2.4" stroke-linecap="round" opacity=".75">
-                <line x1="50" y1="52" x2="31" y2="46"/>
-                <line x1="50" y1="52" x2="69" y2="46"/>
-                <line x1="50" y1="52" x2="34" y2="58"/>
-                <line x1="50" y1="52" x2="66" y2="58"/>
-              </g>
-              <circle cx="50" cy="52" r="5.2" fill="#EF7C2F"/>
-              <circle cx="31" cy="46" r="3.4" fill="#EF7C2F"/>
-              <circle cx="69" cy="46" r="3.4" fill="#EF7C2F"/>
-              <circle cx="34" cy="58" r="3.4" fill="#EF7C2F"/>
-              <circle cx="66" cy="58" r="3.4" fill="#EF7C2F"/>
-            </svg>
-            Knowledge
-          </div>
-          <div class="chip light">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="icône">
-              <rect x="1" y="1" width="98" height="98" rx="21" fill="#2F2E34"/>
-              <path d="M26,50 C36.96,50.00 39.34,38.97 47.53,34.18" stroke="#E7E2DA" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-              <path d="M64.26,34.90 C70.26,39.99 71.02,50.00 74.00,50.00" stroke="#E7E2DA" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-              <path d="M26,50 C40,50 40,68 56,68 C70,68 70,50 74,50" stroke="#E7E2DA" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-              <circle cx="21" cy="50" r="5" fill="#E7E2DA"/>
-              <circle cx="56" cy="32" r="7.5" stroke="#EF7C2F" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-              <circle cx="56" cy="68" r="4.4" fill="#E7E2DA"/>
-              <circle cx="79" cy="50" r="6.5" fill="#EF7C2F"/>
-            </svg>
-            Automation
-          </div>
-        </div>
-      </div>
-    </div>
-    <h2>Couleurs du desktop</h2>
-    <div class="swatches">
-      <div class="sw" style="background:#2F2E34;color:#fff">Charbon #2F2E34<br>fond sombre du desktop</div>
-      <div class="sw" style="background:#EF7C2F;color:#1F1B16">Orange #EF7C2F<br>accent du desktop</div>
-      <div class="sw" style="background:#E7E2DA;color:#1F1B16">Crème #E7E2DA<br>texte sur sombre</div>
-      <div class="sw bordered" style="background:#F6F1EA;color:#1F1B16">Papier #F6F1EA<br>clair chaud proposé</div>
-    </div>
-    <h2>Typographie</h2>
-    <div class="grid wide">
-      <div class="card">
-        <h3>Space Grotesk 600–700 · titres et logotype</h3>
-        <div class="t1">Structurer pour que l'IA serve.</div>
-      </div>
-      <div class="card">
-        <h3>Inter 400–600 · texte courant</h3>
-        <div class="t2">Seshat AI aide les PME à identifier les bons cas d'usage, puis à déployer des solutions souveraines, auto-hébergées, avec validation humaine.</div>
-      </div>
-    </div>
-    <h2>Pages</h2>
-    <div class="grid">
-      <a class="card" href="logo.html">
-        <h3>Logo</h3>
-        <p>Trois styles, deux palettes, typographie, règles d'usage.</p>
-        <span class="go">Ouvrir →</span>
-      </a>
-      <a class="card" href="themes.html">
-        <h3>Couleurs et thèmes</h3>
-        <p>Sombre actuel, clair actuel et clair chaud proposé, en maquette.</p>
-        <span class="go">Ouvrir →</span>
-      </a>
-      <a class="card" href="apps.html">
-        <h3>Icônes des apps</h3>
-        <p>Knowledge (K1) et Automation (A2) : huit variantes chacune.</p>
-        <span class="go">Ouvrir →</span>
-      </a>
-      <a class="card" href="cloud.html">
-        <h3>SeshatCloud</h3>
-        <p>Logo officiel de SeshatCloud : arc en bord de nuage.</p>
-        <span class="go">Ouvrir →</span>
-      </a>
-      <a class="card" href="runtime.html">
-        <h3>seshat (runtime)</h3>
-        <p>Logo officiel du runtime seshat : rosette dans un terminal.</p>
-        <span class="go">Ouvrir →</span>
-      </a>
-      <a class="card" href="kpo.html">
-        <h3>KPO-Tech</h3>
-        <p>Logo officiel de la marque mère KPO-Tech : sept cellules.</p>
-        <span class="go">Ouvrir →</span>
-      </a>
-    </div>
-  </main>
-  <footer class="foot">
-    Généré par <code>python build.py</code> depuis <code>src/</code> et <code>templates/</code>. Ne pas modifier ces pages à la main.
-  </footer>
+<header>
+  <h1>Seshat identity kit</h1>
+  <p>Every logo below is generated from <code>kit/</code> by <code>build.py</code>. Orange is the only brand colour.</p>
+  <nav><a href="#seshat-ai">Seshat AI</a> <a href="#seshatos">SeshatOS</a> <a href="#seshat-cloud">SeshatCloud</a> <a href="#seshat-runtime">Seshat Runtime</a> <a href="#seshatos-knowledge">SeshatOS Knowledge</a> <a href="#seshatos-automation">SeshatOS Automation</a> <a href="#kpo-tech">KPO-Tech</a> <a href="signatures.html">Signatures mail</a></nav>
+</header>
+<main>
+<section id="colour">
+  <h2>Colour</h2>
+  <ul class="swatches"><li><i style="background:#EA7828"></i><b>Orange</b><br>#EA7828</li><li><i style="background:#FF9B50"></i><b>Orange light</b><br>#FF9B50</li><li><i style="background:#C45A1F"></i><b>Orange deep</b><br>#C45A1F</li><li><i style="background:#2A2420"></i><b>Ink</b><br>#2A2420</li><li><i style="background:#3A322C"></i><b>Charcoal</b><br>#3A322C</li><li><i style="background:#6B6058"></i><b>Grey</b><br>#6B6058</li><li><i style="background:#F6F1EA"></i><b>Paper</b><br>#F6F1EA</li><li><i style="background:#E7E2DA"></i><b>Cream</b><br>#E7E2DA</li><li><i style="background:#2B2521"></i><b>Dark tile</b><br>#2B2521</li><li><i style="background:#813915"></i><b>Root</b><br>#813915</li></ul>
+</section>
+<section id="seshat-ai"><h2>Seshat AI</h2><p>The official logo: the family emblem with the company name. Website, mail, social, profiles.</p>
+<div class="grid">
+<figure class="on-light"><div class="stage"><img src="../logo/seshat-ai/mark-on-light.svg" alt="mark-on-light.svg"></div><figcaption><b>mark-on-light.svg</b>The mark on a light background.</figcaption></figure>
+<figure class="on-dark"><div class="stage"><img src="../logo/seshat-ai/mark-on-dark.svg" alt="mark-on-dark.svg"></div><figcaption><b>mark-on-dark.svg</b>The mark on a dark background.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/seshat-ai/mono-black.svg" alt="mono-black.svg"></div><figcaption><b>mono-black.svg</b>One colour, black: documents, stamps, print.</figcaption></figure>
+<figure class="on-orange"><div class="stage"><img src="../logo/seshat-ai/mono-white.svg" alt="mono-white.svg"></div><figcaption><b>mono-white.svg</b>One colour, warm off-white: photos and coloured backgrounds.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/seshat-ai/icon-light.svg" alt="icon-light.svg"></div><figcaption><b>icon-light.svg</b>Square app icon, paper tile.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/seshat-ai/icon-dark.svg" alt="icon-dark.svg"></div><figcaption><b>icon-dark.svg</b>Square app icon, dark tile.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/seshat-ai/icon-orange.svg" alt="icon-orange.svg"></div><figcaption><b>icon-orange.svg</b>Square app icon, orange tile (#EA7828), off-white mark.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/seshat-ai/favicon.svg" alt="favicon.svg"></div><figcaption><b>favicon.svg</b>Browser icon: dark tile, heavier strokes, no fine detail, for 16 and 32 px.</figcaption></figure>
+<figure class="on-light wide"><div class="stage"><img src="../logo/seshat-ai/lockup-on-light.svg" alt="lockup-on-light.svg"></div><figcaption><b>lockup-on-light.svg</b>Mark and name, horizontal, on a light background.</figcaption></figure>
+<figure class="on-dark wide"><div class="stage"><img src="../logo/seshat-ai/lockup-on-dark.svg" alt="lockup-on-dark.svg"></div><figcaption><b>lockup-on-dark.svg</b>Mark and name, horizontal, on a dark background.</figcaption></figure>
+</div>
+<div class="sizes"><figure class="on-light"><img src="../logo/seshat-ai/favicon.svg" width="16" height="16" alt="16px"></figure><figure class="on-light"><img src="../logo/seshat-ai/favicon.svg" width="32" height="32" alt="32px"></figure><figure class="on-light"><img src="../logo/seshat-ai/favicon.svg" width="48" height="48" alt="48px"></figure><figure class="on-light"><img src="../logo/seshat-ai/favicon.svg" width="64" height="64" alt="64px"></figure></div></section>
+<section id="seshatos"><h2>SeshatOS</h2><p>The desktop product and the family emblem: the flower under an arc.</p>
+<div class="grid">
+<figure class="on-light"><div class="stage"><img src="../logo/seshatos/mark-on-light.svg" alt="mark-on-light.svg"></div><figcaption><b>mark-on-light.svg</b>The mark on a light background.</figcaption></figure>
+<figure class="on-dark"><div class="stage"><img src="../logo/seshatos/mark-on-dark.svg" alt="mark-on-dark.svg"></div><figcaption><b>mark-on-dark.svg</b>The mark on a dark background.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/seshatos/mono-black.svg" alt="mono-black.svg"></div><figcaption><b>mono-black.svg</b>One colour, black: documents, stamps, print.</figcaption></figure>
+<figure class="on-orange"><div class="stage"><img src="../logo/seshatos/mono-white.svg" alt="mono-white.svg"></div><figcaption><b>mono-white.svg</b>One colour, warm off-white: photos and coloured backgrounds.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/seshatos/icon-light.svg" alt="icon-light.svg"></div><figcaption><b>icon-light.svg</b>Square app icon, paper tile.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/seshatos/icon-dark.svg" alt="icon-dark.svg"></div><figcaption><b>icon-dark.svg</b>Square app icon, dark tile.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/seshatos/icon-orange.svg" alt="icon-orange.svg"></div><figcaption><b>icon-orange.svg</b>Square app icon, orange tile (#EA7828), off-white mark.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/seshatos/favicon.svg" alt="favicon.svg"></div><figcaption><b>favicon.svg</b>Browser icon: dark tile, heavier strokes, no fine detail, for 16 and 32 px.</figcaption></figure>
+<figure class="on-light wide"><div class="stage"><img src="../logo/seshatos/lockup-on-light.svg" alt="lockup-on-light.svg"></div><figcaption><b>lockup-on-light.svg</b>Mark and name, horizontal, on a light background.</figcaption></figure>
+<figure class="on-dark wide"><div class="stage"><img src="../logo/seshatos/lockup-on-dark.svg" alt="lockup-on-dark.svg"></div><figcaption><b>lockup-on-dark.svg</b>Mark and name, horizontal, on a dark background.</figcaption></figure>
+</div>
+<div class="sizes"><figure class="on-light"><img src="../logo/seshatos/favicon.svg" width="16" height="16" alt="16px"></figure><figure class="on-light"><img src="../logo/seshatos/favicon.svg" width="32" height="32" alt="32px"></figure><figure class="on-light"><img src="../logo/seshatos/favicon.svg" width="48" height="48" alt="48px"></figure><figure class="on-light"><img src="../logo/seshatos/favicon.svg" width="64" height="64" alt="64px"></figure></div></section>
+<section id="seshat-cloud"><h2>SeshatCloud</h2><p>The multi-tenant product: the flower under a cloud.</p>
+<div class="grid">
+<figure class="on-light"><div class="stage"><img src="../logo/seshat-cloud/mark-on-light.svg" alt="mark-on-light.svg"></div><figcaption><b>mark-on-light.svg</b>The mark on a light background.</figcaption></figure>
+<figure class="on-dark"><div class="stage"><img src="../logo/seshat-cloud/mark-on-dark.svg" alt="mark-on-dark.svg"></div><figcaption><b>mark-on-dark.svg</b>The mark on a dark background.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/seshat-cloud/mono-black.svg" alt="mono-black.svg"></div><figcaption><b>mono-black.svg</b>One colour, black: documents, stamps, print.</figcaption></figure>
+<figure class="on-orange"><div class="stage"><img src="../logo/seshat-cloud/mono-white.svg" alt="mono-white.svg"></div><figcaption><b>mono-white.svg</b>One colour, warm off-white: photos and coloured backgrounds.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/seshat-cloud/icon-light.svg" alt="icon-light.svg"></div><figcaption><b>icon-light.svg</b>Square app icon, paper tile.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/seshat-cloud/icon-dark.svg" alt="icon-dark.svg"></div><figcaption><b>icon-dark.svg</b>Square app icon, dark tile.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/seshat-cloud/icon-orange.svg" alt="icon-orange.svg"></div><figcaption><b>icon-orange.svg</b>Square app icon, orange tile (#EA7828), off-white mark.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/seshat-cloud/favicon.svg" alt="favicon.svg"></div><figcaption><b>favicon.svg</b>Browser icon: dark tile, heavier strokes, no fine detail, for 16 and 32 px.</figcaption></figure>
+<figure class="on-light wide"><div class="stage"><img src="../logo/seshat-cloud/lockup-on-light.svg" alt="lockup-on-light.svg"></div><figcaption><b>lockup-on-light.svg</b>Mark and name, horizontal, on a light background.</figcaption></figure>
+<figure class="on-dark wide"><div class="stage"><img src="../logo/seshat-cloud/lockup-on-dark.svg" alt="lockup-on-dark.svg"></div><figcaption><b>lockup-on-dark.svg</b>Mark and name, horizontal, on a dark background.</figcaption></figure>
+</div>
+<div class="sizes"><figure class="on-light"><img src="../logo/seshat-cloud/favicon.svg" width="16" height="16" alt="16px"></figure><figure class="on-light"><img src="../logo/seshat-cloud/favicon.svg" width="32" height="32" alt="32px"></figure><figure class="on-light"><img src="../logo/seshat-cloud/favicon.svg" width="48" height="48" alt="48px"></figure><figure class="on-light"><img src="../logo/seshat-cloud/favicon.svg" width="64" height="64" alt="64px"></figure></div></section>
+<section id="seshat-runtime"><h2>Seshat Runtime</h2><p>The open-source agent runtime: the flower rising from a stacked slab.</p>
+<div class="grid">
+<figure class="on-light"><div class="stage"><img src="../logo/seshat-runtime/mark-on-light.svg" alt="mark-on-light.svg"></div><figcaption><b>mark-on-light.svg</b>The mark on a light background.</figcaption></figure>
+<figure class="on-dark"><div class="stage"><img src="../logo/seshat-runtime/mark-on-dark.svg" alt="mark-on-dark.svg"></div><figcaption><b>mark-on-dark.svg</b>The mark on a dark background.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/seshat-runtime/mono-black.svg" alt="mono-black.svg"></div><figcaption><b>mono-black.svg</b>One colour, black: documents, stamps, print.</figcaption></figure>
+<figure class="on-orange"><div class="stage"><img src="../logo/seshat-runtime/mono-white.svg" alt="mono-white.svg"></div><figcaption><b>mono-white.svg</b>One colour, warm off-white: photos and coloured backgrounds.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/seshat-runtime/icon-light.svg" alt="icon-light.svg"></div><figcaption><b>icon-light.svg</b>Square app icon, paper tile.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/seshat-runtime/icon-dark.svg" alt="icon-dark.svg"></div><figcaption><b>icon-dark.svg</b>Square app icon, dark tile.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/seshat-runtime/icon-orange.svg" alt="icon-orange.svg"></div><figcaption><b>icon-orange.svg</b>Square app icon, orange tile (#EA7828), off-white mark.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/seshat-runtime/favicon.svg" alt="favicon.svg"></div><figcaption><b>favicon.svg</b>Browser icon: dark tile, heavier strokes, no fine detail, for 16 and 32 px.</figcaption></figure>
+<figure class="on-light wide"><div class="stage"><img src="../logo/seshat-runtime/lockup-on-light.svg" alt="lockup-on-light.svg"></div><figcaption><b>lockup-on-light.svg</b>Mark and name, horizontal, on a light background.</figcaption></figure>
+<figure class="on-dark wide"><div class="stage"><img src="../logo/seshat-runtime/lockup-on-dark.svg" alt="lockup-on-dark.svg"></div><figcaption><b>lockup-on-dark.svg</b>Mark and name, horizontal, on a dark background.</figcaption></figure>
+</div>
+<div class="sizes"><figure class="on-light"><img src="../logo/seshat-runtime/favicon.svg" width="16" height="16" alt="16px"></figure><figure class="on-light"><img src="../logo/seshat-runtime/favicon.svg" width="32" height="32" alt="32px"></figure><figure class="on-light"><img src="../logo/seshat-runtime/favicon.svg" width="48" height="48" alt="48px"></figure><figure class="on-light"><img src="../logo/seshat-runtime/favicon.svg" width="64" height="64" alt="64px"></figure></div></section>
+<section id="seshatos-knowledge"><h2>SeshatOS Knowledge</h2><p>The knowledge app: an open book carrying a tree of nodes.</p>
+<div class="grid">
+<figure class="on-light"><div class="stage"><img src="../logo/seshatos-knowledge/mark-on-light.svg" alt="mark-on-light.svg"></div><figcaption><b>mark-on-light.svg</b>The mark on a light background.</figcaption></figure>
+<figure class="on-dark"><div class="stage"><img src="../logo/seshatos-knowledge/mark-on-dark.svg" alt="mark-on-dark.svg"></div><figcaption><b>mark-on-dark.svg</b>The mark on a dark background.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/seshatos-knowledge/mono-black.svg" alt="mono-black.svg"></div><figcaption><b>mono-black.svg</b>One colour, black: documents, stamps, print.</figcaption></figure>
+<figure class="on-orange"><div class="stage"><img src="../logo/seshatos-knowledge/mono-white.svg" alt="mono-white.svg"></div><figcaption><b>mono-white.svg</b>One colour, warm off-white: photos and coloured backgrounds.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/seshatos-knowledge/icon-light.svg" alt="icon-light.svg"></div><figcaption><b>icon-light.svg</b>Square app icon, paper tile.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/seshatos-knowledge/icon-dark.svg" alt="icon-dark.svg"></div><figcaption><b>icon-dark.svg</b>Square app icon, dark tile.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/seshatos-knowledge/icon-orange.svg" alt="icon-orange.svg"></div><figcaption><b>icon-orange.svg</b>Square app icon, orange tile (#EA7828), off-white mark.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/seshatos-knowledge/favicon.svg" alt="favicon.svg"></div><figcaption><b>favicon.svg</b>Browser icon: dark tile, heavier strokes, no fine detail, for 16 and 32 px.</figcaption></figure>
+<figure class="on-light wide"><div class="stage"><img src="../logo/seshatos-knowledge/lockup-on-light.svg" alt="lockup-on-light.svg"></div><figcaption><b>lockup-on-light.svg</b>Mark and name, horizontal, on a light background.</figcaption></figure>
+<figure class="on-dark wide"><div class="stage"><img src="../logo/seshatos-knowledge/lockup-on-dark.svg" alt="lockup-on-dark.svg"></div><figcaption><b>lockup-on-dark.svg</b>Mark and name, horizontal, on a dark background.</figcaption></figure>
+</div>
+<div class="sizes"><figure class="on-light"><img src="../logo/seshatos-knowledge/favicon.svg" width="16" height="16" alt="16px"></figure><figure class="on-light"><img src="../logo/seshatos-knowledge/favicon.svg" width="32" height="32" alt="32px"></figure><figure class="on-light"><img src="../logo/seshatos-knowledge/favicon.svg" width="48" height="48" alt="48px"></figure><figure class="on-light"><img src="../logo/seshatos-knowledge/favicon.svg" width="64" height="64" alt="64px"></figure></div></section>
+<section id="seshatos-automation"><h2>SeshatOS Automation</h2><p>The automation app: a circuit fan. Reconstructed from the brand board.</p>
+<div class="grid">
+<figure class="on-light"><div class="stage"><img src="../logo/seshatos-automation/mark-on-light.svg" alt="mark-on-light.svg"></div><figcaption><b>mark-on-light.svg</b>The mark on a light background.</figcaption></figure>
+<figure class="on-dark"><div class="stage"><img src="../logo/seshatos-automation/mark-on-dark.svg" alt="mark-on-dark.svg"></div><figcaption><b>mark-on-dark.svg</b>The mark on a dark background.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/seshatos-automation/mono-black.svg" alt="mono-black.svg"></div><figcaption><b>mono-black.svg</b>One colour, black: documents, stamps, print.</figcaption></figure>
+<figure class="on-orange"><div class="stage"><img src="../logo/seshatos-automation/mono-white.svg" alt="mono-white.svg"></div><figcaption><b>mono-white.svg</b>One colour, warm off-white: photos and coloured backgrounds.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/seshatos-automation/icon-light.svg" alt="icon-light.svg"></div><figcaption><b>icon-light.svg</b>Square app icon, paper tile.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/seshatos-automation/icon-dark.svg" alt="icon-dark.svg"></div><figcaption><b>icon-dark.svg</b>Square app icon, dark tile.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/seshatos-automation/icon-orange.svg" alt="icon-orange.svg"></div><figcaption><b>icon-orange.svg</b>Square app icon, orange tile (#EA7828), off-white mark.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/seshatos-automation/favicon.svg" alt="favicon.svg"></div><figcaption><b>favicon.svg</b>Browser icon: dark tile, heavier strokes, no fine detail, for 16 and 32 px.</figcaption></figure>
+<figure class="on-light wide"><div class="stage"><img src="../logo/seshatos-automation/lockup-on-light.svg" alt="lockup-on-light.svg"></div><figcaption><b>lockup-on-light.svg</b>Mark and name, horizontal, on a light background.</figcaption></figure>
+<figure class="on-dark wide"><div class="stage"><img src="../logo/seshatos-automation/lockup-on-dark.svg" alt="lockup-on-dark.svg"></div><figcaption><b>lockup-on-dark.svg</b>Mark and name, horizontal, on a dark background.</figcaption></figure>
+</div>
+<div class="sizes"><figure class="on-light"><img src="../logo/seshatos-automation/favicon.svg" width="16" height="16" alt="16px"></figure><figure class="on-light"><img src="../logo/seshatos-automation/favicon.svg" width="32" height="32" alt="32px"></figure><figure class="on-light"><img src="../logo/seshatos-automation/favicon.svg" width="48" height="48" alt="48px"></figure><figure class="on-light"><img src="../logo/seshatos-automation/favicon.svg" width="64" height="64" alt="64px"></figure></div></section>
+<section id="kpo-tech"><h2>KPO-Tech</h2><p>The maker: a honeycomb of seven cells.</p>
+<div class="grid">
+<figure class="on-light"><div class="stage"><img src="../logo/kpo-tech/mark-on-light.svg" alt="mark-on-light.svg"></div><figcaption><b>mark-on-light.svg</b>The mark on a light background.</figcaption></figure>
+<figure class="on-dark"><div class="stage"><img src="../logo/kpo-tech/mark-on-dark.svg" alt="mark-on-dark.svg"></div><figcaption><b>mark-on-dark.svg</b>The mark on a dark background.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/kpo-tech/mono-black.svg" alt="mono-black.svg"></div><figcaption><b>mono-black.svg</b>One colour, black: documents, stamps, print.</figcaption></figure>
+<figure class="on-orange"><div class="stage"><img src="../logo/kpo-tech/mono-white.svg" alt="mono-white.svg"></div><figcaption><b>mono-white.svg</b>One colour, warm off-white: photos and coloured backgrounds.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/kpo-tech/icon-light.svg" alt="icon-light.svg"></div><figcaption><b>icon-light.svg</b>Square app icon, paper tile.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/kpo-tech/icon-dark.svg" alt="icon-dark.svg"></div><figcaption><b>icon-dark.svg</b>Square app icon, dark tile.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/kpo-tech/icon-orange.svg" alt="icon-orange.svg"></div><figcaption><b>icon-orange.svg</b>Square app icon, orange tile (#EA7828), off-white mark.</figcaption></figure>
+<figure class="on-light"><div class="stage"><img src="../logo/kpo-tech/favicon.svg" alt="favicon.svg"></div><figcaption><b>favicon.svg</b>Browser icon: dark tile, heavier strokes, no fine detail, for 16 and 32 px.</figcaption></figure>
+<figure class="on-light wide"><div class="stage"><img src="../logo/kpo-tech/lockup-on-light.svg" alt="lockup-on-light.svg"></div><figcaption><b>lockup-on-light.svg</b>Mark and name, horizontal, on a light background.</figcaption></figure>
+<figure class="on-dark wide"><div class="stage"><img src="../logo/kpo-tech/lockup-on-dark.svg" alt="lockup-on-dark.svg"></div><figcaption><b>lockup-on-dark.svg</b>Mark and name, horizontal, on a dark background.</figcaption></figure>
+<figure class="on-light wide"><div class="stage"><img src="../logo/kpo-tech/lockup-vertical-on-light.svg" alt="lockup-vertical-on-light.svg"></div><figcaption><b>lockup-vertical-on-light.svg</b>Mark above the name, on a light background.</figcaption></figure>
+<figure class="on-dark wide"><div class="stage"><img src="../logo/kpo-tech/lockup-vertical-on-dark.svg" alt="lockup-vertical-on-dark.svg"></div><figcaption><b>lockup-vertical-on-dark.svg</b>Mark above the name, on a dark background.</figcaption></figure>
+</div>
+<div class="sizes"><figure class="on-light"><img src="../logo/kpo-tech/favicon.svg" width="16" height="16" alt="16px"></figure><figure class="on-light"><img src="../logo/kpo-tech/favicon.svg" width="32" height="32" alt="32px"></figure><figure class="on-light"><img src="../logo/kpo-tech/favicon.svg" width="48" height="48" alt="48px"></figure><figure class="on-light"><img src="../logo/kpo-tech/favicon.svg" width="64" height="64" alt="64px"></figure></div></section>
+</main>
 </body>
 </html>

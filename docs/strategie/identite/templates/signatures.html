@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Signatures mail Seshat AI</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  main { max-width: 760px; }
+  .signature { margin-top: 28px; }
+  .signature header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .signature h2 { margin: 0; }
+  button { font: inherit; padding: 6px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--fg); cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  .sheet { margin-top: 12px; padding: 20px; border-radius: 12px; border: 1px solid var(--line); background: #ffffff; overflow-x: auto; }
+  ol { color: var(--muted); padding-left: 20px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Signatures mail</h1>
+  <p>Générées par <code>kit/signatures.py</code> avec les couleurs du kit et le logo officiel Seshat AI. <a href="index.html">Retour à l'aperçu</a>.</p>
+</header>
+<main>
+<ol>
+  <li>Cliquer sur « Copier la signature » (ou sélectionner la signature et copier).</li>
+  <li>Dans Gmail : Paramètres, Voir tous les paramètres, Signature, puis coller.</li>
+  <li>Le logo est une image hébergée sur le site : elle s'affiche une fois le site déployé.</li>
+</ol>
+$blocks
+</main>
+<script>
+document.querySelectorAll('button[data-copy]').forEach(function (button) {
+  button.addEventListener('click', function () {
+    var sheet = document.getElementById('sheet-' + button.dataset.copy);
+    var range = document.createRange();
+    range.selectNodeContents(sheet);
+    var selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    var label = button.textContent;
+    try { document.execCommand('copy'); button.textContent = 'Copiée'; } catch (e) { button.textContent = 'Copier à la main'; }
+    setTimeout(function () { button.textContent = label; selection.removeAllRanges(); }, 1600);
+  });
+});
+</script>
+</body>
+</html>
