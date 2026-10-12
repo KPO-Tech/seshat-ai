@@ -3,7 +3,7 @@ title: Providers and authentication
 description: "Choose a model provider, point it at your own endpoint, set fallbacks, and manage keys and sign-in from your application."
 section: sdk
 order: 7
-updated: "2026-10-09"
+updated: "2026-10-12"
 ---
 import Callout from '@/components/docs/Callout.astro';
 
@@ -78,7 +78,9 @@ The base URL decides who receives your API key. Never take it from a file or a r
 
 A provider configuration can name other models and providers to try when the first one fails. The loop tries the fallback models first (same provider), then the fallback providers. A circuit breaker stops calling a provider that keeps failing and tries it again after a delay.
 
-Today only the Anthropic defaults come with a routing section. By default it tries `claude-3-5-sonnet` and `claude-3-5-haiku`, then falls back to **OpenAI** if an OpenAI key is available. That means a prompt can end up at another vendor than the one you chose. If that is not acceptable for your data, change the lists: start from the defaults and set `FallbackProviders` to the vendors you accept, or to an empty list for none.
+By default, only models of the **same** provider are tried: for Anthropic, `claude-3-5-sonnet` and then `claude-3-5-haiku`. A prompt is never sent to another vendor unless you list one in `Routing.FallbackProviders`, so picking a provider is enough to keep your data with that provider.
+
+Cross-vendor fallback is opt-in. Start from the defaults and add the providers you accept, or set the list to empty for none:
 
 ```go
 pc := providers.GetProviderConfig(sdk.APIProviderAnthropic)

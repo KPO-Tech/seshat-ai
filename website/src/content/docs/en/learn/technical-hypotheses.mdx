@@ -3,7 +3,7 @@ title: Technical hypotheses
 description: "The bets behind Seshat, written down with how we would know each one is right, and what would show it is wrong."
 section: learn
 order: 4
-updated: "2026-10-07"
+updated: "2026-10-12"
 ---
 import Callout from '@/components/docs/Callout.astro';
 
@@ -65,7 +65,7 @@ These are hypotheses. The project is early, and several of them have little real
 
 **It is wrong if** most target workflows stay too ambiguous or too heavy on governance to automate reliably. Then the claim has to narrow.
 
-*Where it stands:* automation exists in SeshatOS and SeshatCloud, not in the runtime itself.
+*Where it stands:* automation lives in SeshatCloud (jobs, schedules and runs). SeshatOS no longer runs jobs locally. The runtime carries the tools that talk to an automation service (`schedule_job` and six others), but it does not run one itself: without that service configured, the tools stay inactive.
 
 ## 7. An open, self-hostable, multi-provider base beats a closed single-vendor stack
 

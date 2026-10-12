@@ -3,7 +3,7 @@ title: Using the CLI
 description: "Every `seshat` command, the options you will use most, background runs, sessions and the terminal shortcuts."
 section: guides
 order: 1
-updated: "2026-10-07"
+updated: "2026-10-12"
 ---
 import Callout from '@/components/docs/Callout.astro';
 
@@ -78,7 +78,7 @@ seshat sessions prune --older-than 30 --closed
 |---|---|
 | `onRequest` | The default. Seshat asks before actions that need approval |
 | `acceptEdits` | Safe file operations in the working directory are allowed without asking |
-| `auto` | A classifier decides each action. Without a classifier configured, every action is allowed |
+| `auto` | A classifier decides each action. With no classifier configured, Seshat asks you, and in a headless run it refuses |
 | `never` | Nothing is ever asked: a refused action goes back to the model as a failure. For headless and background runs |
 | `granular` | Fine-grained control of each approval flow |
 | `bypass` | No questions. Deny and ask rules, and the safety check, still apply |

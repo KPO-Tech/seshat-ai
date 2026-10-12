@@ -9,7 +9,7 @@ Ce dossier sert à **définir le projet Seshat AI, réfléchir à sa stratégie 
 | [`strategie/`](./strategie/) | Positionnement commercial, idées futures, archives d'août et de septembre 2026. | Vivant |
 | [`produits/`](./produits/) | Cadrage produit : portefeuille SeshatOS, Chat, Knowledge, Automation (pages, PRD, maquettes Stitch). | Vivant, à réviser au fil du MVP |
 | [`mvp/`](./mvp/) | Stratégie MVP : ordre des surfaces, règles de gouvernance du desktop, frontières entre les quatre dépôts, critères de fin. Rapatrié le 2026-10-08 (il vivait hors dépôt). | Vivant |
-| [`reflexions/`](./reflexions/) | Réflexions et historique d'ingénierie : audits, anciennes feuilles de route. Figé, avec un bandeau par fichier. | Archive |
+| [`reflexions/`](./reflexions/) | Réflexions et historique d'ingénierie : audits, anciennes feuilles de route. Les fichiers rapatriés le 2026-10-08 sont figés, avec un bandeau. La série du 2026-10-12 sur la documentation du site (audit, plan, bilan) est en cours. | Archive, plus une série en cours |
 
 Point de départ : [`strategie/positionnement-commercial.md`](./strategie/positionnement-commercial.md), source de vérité actuelle de l'offre.
 

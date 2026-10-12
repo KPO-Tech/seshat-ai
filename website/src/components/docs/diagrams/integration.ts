@@ -69,7 +69,7 @@ export const planMode = {
   height: 330,
   minWidth: 680,
   label: 'The life of plan mode: the agent enters it, explores and plans, presents the plan for approval, then goes back to the earlier mode.',
-  caption: 'Plan mode is a protocol the model is told to follow, not a lock: the runtime does not block file changes while it is on.',
+  caption: 'Plan mode refuses file writes and edits until the plan is approved.',
   nodes: [
     { id: 'ex', x: 15, y: 40, w: 200, h: 96, icon: 'play', title: 'Execute mode', sub: ['the default: tools', 'run normally'] },
     { id: 'en', x: 265, y: 40, w: 200, h: 96, kind: 'entry', icon: 'signpost', title: 'Plan mode starts', sub: ['the agent calls', 'enter_plan_mode, or', 'the host forces it'] },
