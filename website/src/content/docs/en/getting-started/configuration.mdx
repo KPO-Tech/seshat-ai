@@ -3,7 +3,7 @@ title: Configuration
 description: "Choose a provider and a model, set API keys, and enable the optional tools."
 section: start
 order: 3
-updated: "2026-10-09"
+updated: "2026-10-12"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import Diagram from '@/components/docs/Diagram.astro';
@@ -21,11 +21,7 @@ seshat config --print                                     # show the current con
 
 `seshat config` also takes `--region`, `--project-id`, `--base-url` and `--resource` for the cloud providers, `--cwd` for the default working directory, `--db` for the database path, and `--search` to set only the web search keys. The keys you save this way are stored **encrypted**, per provider, in the local database.
 
-In the terminal interface, press `ctrl+,` for providers and `ctrl+m` for models.
-
-<Callout type="warning" title="Keys entered in the terminal interface">
-A key entered in the providers screen is saved in `seshat.json`, in the runtime folder (described below). The file is readable only by you, but the key is **not encrypted**. To keep a key out of a file, leave the field empty and use an environment variable instead.
-</Callout>
+In the terminal interface, press `ctrl+,` for providers and `ctrl+m` for models. A key entered in the providers screen is stored the same way, so it never reaches `seshat.json`: that file holds settings, not secrets. The key that protects the database is `secret.key`, next to it in the runtime folder.
 
 ## With environment variables
 
