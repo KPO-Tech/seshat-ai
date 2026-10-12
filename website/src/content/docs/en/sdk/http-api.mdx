@@ -3,7 +3,7 @@ title: HTTP API (SeshatOS)
 description: "The local HTTP API of the SeshatOS backend: queries and streaming, sessions, and an Anthropic-compatible endpoint."
 section: sdk
 order: 9
-updated: "2026-10-07"
+updated: "2026-10-12"
 ---
 import Callout from '@/components/docs/Callout.astro';
 
@@ -88,7 +88,7 @@ When a tool needs approval, answer it with `POST /api/v1/permissions/{tool_use_i
 
 ## Other resources
 
-The API also covers files, knowledge corpora and search, memories, plans, agents, skills, MCP servers, web search settings, provider settings, automation jobs, and quotas. These routes follow the screens of the app and change the most, so look at the running backend or its source (`seshat-backend/internal/api/routes.go`) rather than relying on a list here.
+The API also covers files, knowledge corpora and search, connectors, memories, plans, agents, skills, MCP servers, hooks, web search settings, provider settings, users, organizations, workspaces, administration routes, and the connection to a SeshatCloud server (`/cloud/*`). Automation is not part of this backend: jobs, schedules and runs live in SeshatCloud. These routes follow the screens of the app and change the most, so look at the running backend or its source (`seshat-backend/internal/api/routes.go`) rather than relying on a list here.
 
 ## Use it as an Anthropic endpoint
 

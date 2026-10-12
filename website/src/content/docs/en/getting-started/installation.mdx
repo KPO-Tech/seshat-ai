@@ -3,7 +3,7 @@ title: Installation
 description: "Install the Seshat binary with one command, with the Go toolchain, or from source."
 section: start
 order: 1
-updated: "2026-10-07"
+updated: "2026-10-12"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import Steps from '@/components/docs/Steps.astro';
@@ -46,7 +46,7 @@ The install script supports **Linux** and **macOS**, on `amd64` and `arm64`. On 
 
 ```bash
 # Pin a specific version
-VERSION=v1.3.0 bash <(curl -fsSL https://raw.githubusercontent.com/KPO-Tech/seshat-runtime/main/scripts/install.sh)
+VERSION=v1.5.0 bash <(curl -fsSL https://raw.githubusercontent.com/KPO-Tech/seshat-runtime/main/scripts/install.sh)
 
 # Install somewhere else
 INSTALL_DIR=/usr/local/bin bash <(curl -fsSL https://raw.githubusercontent.com/KPO-Tech/seshat-runtime/main/scripts/install.sh)
@@ -54,7 +54,7 @@ INSTALL_DIR=/usr/local/bin bash <(curl -fsSL https://raw.githubusercontent.com/K
 
 ## Install with the Go toolchain
 
-You need **Go 1.25 or later**.
+You need **Go 1.26 or later**.
 
 ```bash
 go install github.com/KPO-Tech/seshat-runtime/cmd/cli@latest
@@ -64,7 +64,7 @@ go install github.com/KPO-Tech/seshat-runtime/cmd/cli@latest
 
 ```bash
 git clone https://github.com/KPO-Tech/seshat-runtime
-cd seshat
+cd seshat-runtime
 make build
 ```
 
