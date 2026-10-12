@@ -17,7 +17,7 @@ Point de départ : [`strategie/positionnement-commercial.md`](./strategie/positi
 
 | Sujet | Où |
 |---|---|
-| Runtime d'agents (Go, SDK, CLI/TUI) | [`seshat`](https://github.com/KPO-Tech/seshat) |
+| Runtime d'agents (Go, SDK, CLI/TUI) | [`seshat`](https://github.com/KPO-Tech/seshat-runtime) |
 | Application desktop et backend local | [`SeshatOS`](https://github.com/KPO-Tech/SeshatOS) |
 | Serveur multi-tenant, console, service d'intelligence documentaire | [`SeshatCloud`](https://github.com/KPO-Tech/SeshatCloud) |
 | Journal d'ingénierie historique, audits n8n et OpenWork | [`reflexions/journal-engineering-2026/`](./reflexions/journal-engineering-2026/) (rapatrié le 2026-10-08) |

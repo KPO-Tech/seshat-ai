@@ -228,7 +228,7 @@ Legende :
 
 Ordre recommande cote `seshat/` :
 
-1. [x] Publier/taguer le moteur `seshat` puis bumper `github.com/KPO-Tech/seshat` dans `seshat-server` (`v1.2.34`).
+1. [x] Publier/taguer le moteur `seshat` puis bumper `github.com/KPO-Tech/seshat-runtime` dans `seshat-server` (`v1.2.34`).
 2. [x] Finaliser le branchement OpenSearch complet dans `seshat-server`.
 3. Ajouter les facettes/aggregations generiques.
 4. Ouvrir le chantier reranking.

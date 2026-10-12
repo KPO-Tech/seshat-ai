@@ -8,7 +8,7 @@ Workspace of the **Seshat AI** activity: the public website (`seshat-ai.com`), t
 
 | Repository | Role | License |
 |---|---|---|
-| [`seshat`](https://github.com/KPO-Tech/seshat) | Open-source Go agent runtime: tools, sessions, permissions, providers, MCP, RAG, CLI/TUI, gRPC, SDK | Apache-2.0 |
+| [`seshat`](https://github.com/KPO-Tech/seshat-runtime) | Open-source Go agent runtime: tools, sessions, permissions, providers, MCP, RAG, CLI/TUI, gRPC, SDK | Apache-2.0 |
 | [`SeshatOS`](https://github.com/KPO-Tech/SeshatOS) | Local-first, self-hosted environment: Go backend + Electron/React desktop | Apache-2.0 + Commons Clause (source-available) |
 | [`SeshatCloud`](https://github.com/KPO-Tech/SeshatCloud) | Multi-tenant server, admin console and document-intelligence service | Source-available (draft) |
 | `seshat-ai` (this repository) | Website, commercial positioning, product docs, private collateral | Proprietary content |
