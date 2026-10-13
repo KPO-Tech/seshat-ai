@@ -5,6 +5,7 @@ import sitemap from '@astrojs/sitemap';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { slugs } from './src/i18n/index.ts';
+import brandVersion from './integrations/brand-version.mjs';
 
 const SITE = 'https://seshat-ai.com';
 // Pages traduites : chaque adresse connaît son équivalent dans l'autre langue (les adresses diffèrent : /a-propos et /en/about).
@@ -69,6 +70,9 @@ export default defineConfig({
       },
     }),
     pagefind(),
+    // Les logos et les images sociales gardent leur nom de fichier : c'est l'URL qui
+    // porte l'empreinte du contenu, sinon le cache d'une semaine sert l'ancien logo.
+    brandVersion(),
   ],
   markdown: {
     // Deux thèmes de coloration : le site choisit lequel afficher (voir global.css).
