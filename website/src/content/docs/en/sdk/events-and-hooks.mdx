@@ -3,7 +3,7 @@ title: Streaming, events and hooks
 description: "Show progress while the agent works, answer permission questions from your own interface, and plug code into the lifecycle."
 section: sdk
 order: 3
-updated: "2026-10-09"
+updated: "2026-10-13"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import Diagram from '@/components/docs/Diagram.astro';
@@ -45,7 +45,7 @@ Use it to show "running `bash`…" lines or a progress bar while a tool works.
 
 ## Runtime events
 
-One callback receives structured events for the whole turn: when it starts and ends, chunks, tool progress, plans, tasks, goals, sub-agents and compaction.
+One callback receives structured events for the whole turn: when it starts and ends, chunks, tool progress, permission questions, plans, tasks, goals, sub-agents and compaction.
 
 ```go
 session.SetRuntimeEventFn(func(e sdk.RuntimeEvent) {
@@ -64,7 +64,10 @@ The runtime emits these events:
 |---|---|
 | `turn.started`, `turn.completed`, `turn.failed` | A turn begins and ends |
 | `response.chunk` | Each piece of the answer (the same data as the streaming callback) |
+| `turn.stage` | A phase of the turn setup, before the first chunk (`preparing_turn`) |
 | `tool.progress` | The stages of a tool call |
+| `tool.permission_required` | A tool needs approval, just before your prompt function is called |
+| `prompt.request` | The agent asks you a question, just before your prompt function is called |
 | `context.compacted` | After a turn that compacted the context |
 | `plan.submitted`, `execution_mode.changed` | Plan mode |
 | `task.changed`, `goal.updated` | Tasks and goals |
@@ -73,8 +76,8 @@ The runtime emits these events:
 
 Events from a sub-agent carry `AgentToolUseID`, which identifies the tool call that started it.
 
-<Callout type="note" title="Defined but not emitted">
-`tool.permission_required`, `prompt.request`, `plan.status_changed` and `turn.stage` exist as names but nothing emits them today. Do not rely on them. Permission questions reach you through the prompt function, described next.
+<Callout type="note" title="Events or the prompt function">
+`tool.permission_required` and `prompt.request` let a host that only listens to events show its own approval screen. The answer still goes back through the prompt function, described next.
 </Callout>
 
 ## Answering permission questions
@@ -107,30 +110,41 @@ Three kinds of hooks run your code inside the runtime.
 `RegisterHook` attaches a handler to one event of the loop. The handler receives the session and turn identifiers and event data in `Data`.
 
 ```go
-id := client.RegisterHook(sdk.HookEventIterationStart,
+id, err := client.RegisterHook(sdk.HookEventIterationStart,
     func(ctx context.Context, p sdk.HookProgress) (*sdk.HookResult, error) {
         if overBudget(p.Data) {
             return &sdk.HookResult{Action: "stop", Message: "budget reached"}, nil
         }
         return nil, nil // continue
     })
+if err != nil {
+    log.Fatal(err)
+}
 
 client.HookRegistry().Remove(id)
 ```
 
-Returning `nil, nil` means continue. The loop emits these events:
+Returning `nil, nil` means continue. `RegisterHook` returns an error for an event the runtime never emits, so a handler that could never run is refused instead of being accepted in silence.
 
-| Event | When | A `stop` or `deny` ends the turn |
+The runtime emits 19 events:
+
+| Event | When | A `stop` or `deny` |
 |---|---|---|
-| `query_start` | A turn begins | No |
-| `iteration_start` | Each iteration, before the model call | Yes |
-| `tool_uses_start` | The model asked for tools, before they run | Yes |
-| `tool_uses_complete` | The tool results were added | No |
-| `iteration_stop`, `iteration_continue`, `iteration_complete` | An iteration ends | No |
-| `query_complete` | A turn ends | No |
-| `subagent_start`, `subagent_stop`, `on_error` | Around a sub-agent | No |
+| `session_start`, `session_end` | A session is created, and closed | Observe only |
+| `turn_start` | A turn is requested, before your message is accepted | Refuses the turn, with an error |
+| `query_start` | The loop starts | Observe only |
+| `iteration_start` | Each iteration, before the model call | Ends the turn |
+| `pre_compact` | Before an automatic compaction | Skips that compaction, the turn goes on |
+| `post_compact` | After a compaction | Observe only |
+| `tool_uses_start` | The model asked for tools, before they run | Ends the turn |
+| `pre_tool_use` | Before each tool call | Ends the turn. A `modify` result rewrites the tool input (`UpdatedInput`) |
+| `post_tool_use` | After each tool call, with its success or error | Ends the turn (the tools already ran) |
+| `tool_uses_complete` | The tool results were added | Observe only |
+| `iteration_stop`, `iteration_continue`, `iteration_complete` | An iteration ends | Observe only |
+| `query_complete`, `turn_end` | A turn ends | Observe only |
+| `subagent_start`, `subagent_stop`, `on_error` | Around a sub-agent | Observe only |
 
-Where a stop is not possible, the handler still runs, so use those events to observe and log. The SDK also defines other event names, such as `session_start`, `turn_start` or `pre_tool_use`, but the runtime does not emit them today, so a handler registered on them never runs.
+Where a stop is not possible, the handler still runs, so use those events to observe and log. A `retry` result has no effect: the turn goes on as if the handler had returned `continue`. The SDK defines more event names than these 19, but `RegisterHook` refuses them because the runtime never emits them.
 
 ### Shell hooks before a tool call
 

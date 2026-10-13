@@ -132,6 +132,13 @@ A server that cannot be created, started or initialised is skipped, and a line i
 A stdio server runs on your machine with your rights. Only connect servers you trust, and note that a project's own MCP configuration is ignored until the project is trusted.
 </Callout>
 
+### From a host application
+
+A Go program that embeds Seshat can go further than the config file:
+
+- `skills.RegisterAlias(alias, target)` makes the `skill` tool accept `alias` as another name for `target`. Call it before the session starts: the registry is shared by the whole process and is not saved.
+- `mcp.AddServer`, `mcp.RemoveServer` and `mcp.SetServerEnabled` edit the MCP configuration files for you, so a settings screen does not have to write JSON by hand. `AddServer` checks the name (letters, digits, hyphens and underscores) and infers the transport when it is not set.
+
 <Callout type="note" title="Not supported yet">
 Servers that need an interactive OAuth sign-in cannot be connected yet. If the server accepts a token, pass it in `Headers`. The `websocket` transport name is accepted but uses the same HTTP connection as the others.
 </Callout>
