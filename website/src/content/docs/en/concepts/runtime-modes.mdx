@@ -3,7 +3,7 @@ title: Runtime modes
 description: "Three separate ideas that are easy to mix up: how you reach Seshat, how it executes, and who approves its actions."
 section: concepts
 order: 4
-updated: "2026-10-12"
+updated: "2026-10-13"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import Diagram from '@/components/docs/Diagram.astro';
@@ -14,7 +14,7 @@ When people talk about "modes" they usually mean one of three different things. 
 | Question | Setting | Values |
 |---|---|---|
 | **How do I reach the runtime?** | Entry surface | Terminal (CLI), Go SDK, gRPC server |
-| **How does it behave?** | Execution mode | `execute`, `plan` (`pair_programming` exists but does nothing yet) |
+| **How does it behave?** | Execution mode | `execute`, `plan` |
 | **Who approves what it does?** | Permission mode | `onRequest`, `acceptEdits`, `auto`, `never`, `granular`, `bypass` |
 
 You can combine them freely: for example, `plan` mode with `onRequest` approvals through the SDK.
@@ -33,13 +33,14 @@ All surfaces drive the same runtime, so the same sessions, tools and providers a
 |---|---|
 | `execute` | The default. Tools run normally |
 | `plan` | The agent explores, asks you questions and writes a plan, then asks you to approve it before it starts changing things |
-| `pair_programming` | Defined, but nothing in the runtime changes its behaviour yet: it only shows as a label in the terminal interface |
 
 ### Plan mode
 
 <Diagram {...planMode} />
 
 The agent enters plan mode by calling the `enter_plan_mode` tool, or a Go host can do it with `session.ForcePlanMode()`. It then receives instructions: explore with read-only tools, ask about unclear requirements, design the steps, and call `exit_plan_mode` with the full plan. You are asked to approve the plan. On approval the plan is saved to a file, the earlier permission mode comes back, and the agent starts implementing, usually with the task tools.
+
+In the terminal interface, `shift+tab` enters and leaves plan mode, so you can design a plan with the agent yourself. When the host supports it, the plan is submitted for your review with `submit_plan`. While it waits for your answer, `exit_plan_mode` is refused: the agent has to wait for your decision, or revise the plan and submit it again if you ask for changes. A Go host that shows plans in its own interface records the approval with `session.ApprovePlan()`, or with `sdk.ApprovePlan(sessionID)` for a session that is reloaded on every turn.
 
 <Callout type="warning" title="What plan mode refuses">
 In plan mode, writes and edits are **refused**: `write_file` and `edit_file` are denied outright, so the agent cannot change a file while it plans. The plan itself does not go through those tools: `exit_plan_mode` saves it. The other tools, the shell included, are still governed by the permission mode, so plan mode is not a full read-only sandbox. If you need a strictly read-only agent, restrict its tools: the `explore` sub-agent only has read tools.

@@ -3,7 +3,7 @@ title: Skills and MCP
 description: "Two ways to extend the agent: skills teach it your rules, MCP servers give it new tools."
 section: concepts
 order: 6
-updated: "2026-10-09"
+updated: "2026-10-13"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import Diagram from '@/components/docs/Diagram.astro';
@@ -43,16 +43,18 @@ The agent's `skill` tool reads these folders. The runtime root is the runtime fo
 | Folder | Scope |
 |---|---|
 | `.claude/skills/` in the project | Shared with your team when committed |
+| `.seshat/skills/` in the project | The same, in Seshat's own folder |
 | `.seshat/commands/` in the project | Older command files, still read |
+| `.claude/skills/` in a sub-folder of the project | Found too, for a monorepo: up to 6 levels below the project root |
 | `<runtime root>/skills/user/` | Your personal skills |
 | `<runtime root>/skills/managed/` | Skills set by an administrator |
 | `<runtime root>/skills/builtin/` | A folder for built-in skills |
 | `<runtime root>/skills/repos/<name>/` | A cloned collection: each subfolder with a `SKILL.md` is a skill |
 
-When two skills have the same name, the first one found wins, in this order: project, managed, user, builtin, older command files, collections, bundled skills. So a project skill overrides a personal one, and also an administrator's.
+When two skills have the same name, the first one found wins, in this order: project `.claude/skills`, project `.seshat/skills`, managed, user, builtin, older command files, sub-folder `.claude/skills`, collections, bundled skills. So a project skill overrides a personal one, and also an administrator's.
 
-<Callout type="warning" title="Other folders in the terminal interface">
-The terminal interface also lists skills it finds in `.agents/skills`, `.seshat/skills` and `.cursor/skills` of the project and in `~/.claude/skills`. The agent's `skill` tool does not read those folders today, so a skill placed only there is shown in the list but the agent cannot call it. Put project skills in `.claude/skills/`.
+<Callout type="note" title="Other folders in the terminal interface">
+The terminal interface also lists skills it finds in `.agents/skills` and `.cursor/skills` of the project and in `~/.claude/skills`. The agent's `skill` tool does not read those folders, so a skill placed only there is shown in the list but the agent cannot call it. Put project skills in `.claude/skills/` or `.seshat/skills/`.
 </Callout>
 
 ### Header fields
@@ -61,14 +63,18 @@ Not every field of the header does something yet. This table says what each one 
 
 | Field | Effect today |
 |---|---|
-| `name`, `description` | The name and description listed in the `skill` tool. The model chooses from them |
-| `arguments`, `argument-hint` | `arguments` is a list of names (`["pr"]`) or a comma-separated string. `${name}` or `${argument:name}` in the body is replaced by the whole arguments text the model passes. Only names are read: a structured form with descriptions or defaults is ignored |
+| `name`, `description`, `when_to_use` | Listed by the `skill` tool, `when_to_use` next to the description. The model chooses from them |
+| `arguments`, `argument-hint` | `arguments` is a list of names (`["pr"]`) or a comma-separated string. `${name}` or `${argument:name}` in the body is replaced by the text the model passes. With one name, it gets the whole text. With several, the text is split on spaces by position and the last name gets the rest. Only names are read: a structured form with `description` and `default` is accepted, but the description and the default are not used |
 | `triggers` | Phrases shown next to the skill in the list, as a hint to the model |
+| `context: fork` | The skill runs in an isolated sub-agent and its result comes back to the parent. `allowed-tools` and `model` apply to that sub-agent |
 | `agent` | Also registers the skill as a sub-agent type: the body becomes its system prompt |
-| `allowed-tools`, `model`, `effort` | Applied only to that sub-agent type. Ignored when the skill is called through the `skill` tool |
+| `allowed-tools`, `model` | Apply only to a sub-agent: a skill with `context: fork` or with `agent`. Ignored when the skill is called inline through the `skill` tool |
+| `effort` | Sets the turns of the sub-agent type made by `agent` (see [Agents and delegation](/en/docs/concepts/agents-and-delegation)) |
+| `shell.before` | The commands are added to the skill's text. The agent runs them with its shell tool, after asking permission |
+| `shell.after`, `on_error`, `on_complete`, `hooks` | Read but not run. For commands on events, use [hooks](/en/docs/sdk/events-and-hooks) |
 | `user-invocable` | Used by the terminal interface to decide whether the skill appears as a command |
-| `when_to_use` | Not shown in the list today. Put that guidance in `description` |
-| `context`, `shell`, `hooks` | Read from the header but not applied today |
+| `disable-model-invocation` | The terminal interface leaves the skill out of the list it gives the model |
+| `paths` | Not applied by the `skill` tool. A Go host can filter skills by the files it works on with `skills.GetSkillsForContext` |
 
 <Callout type="note" title="Project skills and trust">
 In the terminal interface, a project can add skill folders through `options.skills_paths`. That setting is ignored until you run `seshat trust`. See [Security and trust](/en/docs/concepts/security-and-trust).
@@ -88,7 +94,7 @@ The official collection is [seshat-skills](https://github.com/KPO-Tech/seshat-sk
 
 ### In Go
 
-The `Transport` field is required. Without it, the server is skipped.
+Seshat works out `Transport` when you leave it out: `stdio` when the server has a `Command`, `http` when it has a `URL`. Set it yourself for `sse`, which cannot be told apart from `http` by its fields. In `Command`, `Args`, `URL`, `Env` and `Headers`, `${VAR}` is replaced by the value of that environment variable, and a variable that is not set produces a warning.
 
 ```go
 client, _ := sdk.NewClient(&sdk.ClientConfig{

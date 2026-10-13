@@ -3,7 +3,7 @@ title: Workflows
 description: "Describe a task as a graph of agent steps with dependencies, and run it from the CLI or from Go."
 section: sdk
 order: 5
-updated: "2026-10-09"
+updated: "2026-10-13"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import Flow from '@/components/docs/Flow.astro';
@@ -46,7 +46,7 @@ nodes:
 | `kind` | `agent` (default), `verifier`, `critic` or `router` |
 | `routes` | For a `router`: the steps it may choose between (required for a router) |
 | `output_format` | The shape you want the result in, added to the prompt |
-| `agent`, `max_turns` | Read and kept in the results, but the default executor does not apply them. Use your own `Executor` to honour them |
+| `agent`, `max_turns` | Applied by the default executor: a step with `agent` runs as that built-in agent type, for at most `max_turns` turns (`Client.RunAgentTask`). Without `agent`, the step runs as a normal request |
 
 The kind only changes the role written into the step's prompt: a `verifier` is asked to check the outputs it depends on and answer PASS or FAIL, a `critic` to look for weaknesses and risks, a `router` to choose among its `routes`. **Nothing acts on the answer.** A verifier that answers FAIL still counts as a success, and a router does not stop the other steps from running: every step runs once its dependencies have succeeded. Use these kinds to produce a judgement for a person or for your own code to read, not as control flow.
 
