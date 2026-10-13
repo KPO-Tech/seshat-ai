@@ -7,14 +7,15 @@ import Products from '../views/Products.astro';
 import OpenSource from '../views/OpenSource.astro';
 import About from '../views/About.astro';
 import Contact from '../views/Contact.astro';
+import ProductDetail from '../views/ProductDetail.astro';
 
-const views = { home: Home, services: Services, products: Products, openSource: OpenSource, about: About, contact: Contact } as const;
+const views = { home: Home, services: Services, products: Products, openSource: OpenSource, about: About, contact: Contact, productSeshat: ProductDetail, productSeshatOS: ProductDetail, productSeshatCloud: ProductDetail } as const;
 
 export function getStaticPaths() {
-  return allRoutes().filter((r) => ['home', 'services', 'products', 'openSource', 'about', 'contact'].includes(r.page)).map((r) => ({ params: { slug: r.slug }, props: { lang: r.lang, page: r.page } }));
+  return allRoutes().filter((r) => ['home', 'services', 'products', 'openSource', 'about', 'contact', 'productSeshat', 'productSeshatOS', 'productSeshatCloud'].includes(r.page)).map((r) => ({ params: { slug: r.slug }, props: { lang: r.lang, page: r.page } }));
 }
 
 const { lang, page } = Astro.props;
 const View = views[page as keyof typeof views];
 ---
-<View lang={lang} />
+<View lang={lang} page={page} />
