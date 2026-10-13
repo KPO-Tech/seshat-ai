@@ -418,6 +418,21 @@ section.contact-block { padding: 28px 0 88px; }
 .prod-what { font-size: 1.1rem; }
 .prod .deliver { margin-top: 20px; }
 .prod:not(.dark) .deliver li { background: var(--bg); border-color: var(--line); }
+.prod-more { margin-top: 16px; }
+.back { display: inline-block; margin-bottom: 20px; font-size: 0.95rem; font-weight: 500; color: var(--text2); text-decoration: none; }
+.back:hover { color: var(--text); }
+.badge.plan { background: transparent; color: var(--text2); border-color: var(--line); }
+.pilot .badge { margin: 2px 0; }
+.docs-link { margin-top: 24px; display: grid; gap: 6px; justify-items: start; }
+.docs-link span { color: var(--text2); font-size: 0.95rem; }
+.layer-list { list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.layer-list li { display: grid; grid-template-columns: 14px 1fr; gap: 12px; align-items: start; padding: 18px 20px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.layer-list .dot { width: 10px; height: 10px; margin-top: 6px; border-radius: 50%; background: var(--line); }
+.layer-list .dot.available { background: #2f7d4f; }
+.layer-list .dot.partial { background: var(--accent); opacity: 0.6; }
+.layer-list .dot.building { background: var(--accent); }
+.layer-list strong { display: block; }
+.layer-list span:not(.dot) { display: block; margin-top: 4px; color: var(--text2); font-size: 0.92rem; line-height: 1.45; }
 .prod-status { margin-top: 20px; font-size: 0.95rem; color: var(--text2); }
 .prod.dark .prod-status { color: var(--on-panel2); }
 .prod.dark .link { color: var(--orange-light); }
