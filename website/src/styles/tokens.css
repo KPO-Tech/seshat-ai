@@ -1,0 +1,54 @@
+/* Généré par kit/palette.py depuis kit/tokens.py. Ne pas modifier à la main. */
+
+/* La palette du kit, telle quelle. */
+:root {
+  --orange: #EA7828;
+  --orange-light: #FF9B50;
+  --orange-deep: #C45A1F;
+  --orange-text: #B8500F;
+  --ink: #2A2420;
+  --charcoal: #3A322C;
+  --grey: #6B6058;
+  --paper: #F6F1EA;
+  --cream: #E7E2DA;
+  --tile-dark: #2B2521;
+  --off-white: #F1DEC8;
+  --black: #111111;
+  --ink-on-dark: #F6E8D8;
+  --grey-on-dark: #B8A898;
+}
+
+/* Ce que les pages utilisent : une couleur, du papier, des gris. */
+:root {
+  color-scheme: light;
+  --bg: var(--paper);
+  --band: color-mix(in srgb, var(--cream) 55%, var(--paper));
+  --surface: #FFFCF8;
+  --line: color-mix(in srgb, var(--cream) 96%, var(--ink));
+  --text: var(--ink);
+  --text2: var(--grey);
+  --accent: var(--orange);
+  --accent-text: var(--orange-text);
+  --on-accent: var(--ink);
+  --panel: var(--tile-dark);
+  --on-panel: var(--ink-on-dark);
+  --on-panel2: var(--grey-on-dark);
+  --code-bg: color-mix(in srgb, var(--cream) 45%, var(--paper));
+  --shadow: 0 1px 2px color-mix(in srgb, var(--ink) 6%, transparent), 0 8px 24px color-mix(in srgb, var(--ink) 6%, transparent);
+}
+
+/* Le thème sombre : la page s'assombrit, l'orange monte d'un cran. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: color-mix(in srgb, var(--tile-dark) 55%, var(--black));
+  --band: color-mix(in srgb, var(--surface) 40%, var(--bg));
+  --surface: var(--tile-dark);
+  --line: #3B332D;
+  --text: var(--off-white);
+  --text2: var(--grey-on-dark);
+  --accent: var(--orange-light);
+  --accent-text: var(--orange-light);
+  --panel: color-mix(in srgb, var(--bg) 55%, var(--black));
+  --code-bg: color-mix(in srgb, var(--bg) 55%, var(--black));
+  --shadow: 0 1px 2px color-mix(in srgb, var(--black) 30%, transparent), 0 8px 24px color-mix(in srgb, var(--black) 25%, transparent);
+}
