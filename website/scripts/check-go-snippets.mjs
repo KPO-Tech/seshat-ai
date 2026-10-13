@@ -32,7 +32,7 @@ const IMPORTS = {
   context: 'context', fmt: 'fmt', log: 'log', os: 'os', time: 'time', errors: 'errors', strings: 'strings', io: 'io',
   json: 'encoding/json', http: 'net/http', sync: 'sync', slog: 'log/slog',
   sdk: `${MODULE}/pkg/sdk`, mcp: `${MODULE}/pkg/mcp`, skills: `${MODULE}/pkg/skills`, rag: `${MODULE}/pkg/rag`,
-  types: `${MODULE}/pkg/types`, workflow: `${MODULE}/pkg/workflow`, config: `${MODULE}/pkg/config`,
+  types: `${MODULE}/pkg/types`, monitoring: `${MODULE}/pkg/monitoring`, netdiag: `${MODULE}/pkg/netdiag`, workflow: `${MODULE}/pkg/workflow`, config: `${MODULE}/pkg/config`,
 };
 
 function walk(dir) {
