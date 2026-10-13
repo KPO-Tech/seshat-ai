@@ -8,7 +8,9 @@ and a repository never holds a hand-edited variant.
     python publish.py            show what would be written
     python publish.py --apply    write it (needs Microsoft Edge for the PNG and ICO files)
 
-Sibling repositories are looked up next to seshat-ai (<workspace>/<name>).
+Sibling repositories are looked up next to seshat-ai (<workspace>/<name>). An
+operation whose repository is not checked out is reported and skipped, never
+written: writing it would create a stray tree next to the repositories.
 """
 from __future__ import annotations
 
@@ -17,25 +19,28 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import export, variants
+from . import export, og, palette, variants
 from .marks import MARKS
 from .outputs import LOGO_DIR, ROOT
 from .surface import DARK, LIGHT, Surface
 
 WORKSPACE = ROOT.parents[3]            # the folder that holds seshat, SeshatOS, SeshatCloud, seshat-ai
-SITE_PUBLIC = ROOT.parents[2] / "website" / "public"
+SITE = ROOT.parents[2] / "website"
+SITE_PUBLIC = SITE / "public"
 ICO_SIZES = (16, 24, 32, 48, 64, 128, 256)
+TEXT_KINDS = ("svg", "text")           # the operations whose content can be compared byte for byte
 
 
 @dataclass(frozen=True)
 class Op:
     target: Path
-    what: str                           # "svg", "png", "ico" or "remove"
+    what: str                           # "svg", "text", "png", "ico", "og" or "remove"
     source: str | None = None           # kit file, relative to logo/
-    text: str | None = None             # literal text, for svg built on the fly
+    text: str | None = None             # literal text: an SVG or the palette, built on the fly
     size: int | None = None             # png: square size in pixels
     width: int | None = None            # png: width when not square
     height: int | None = None
+    page: str | None = None             # og: which social image to render (kit/og.py)
 
 
 def _repo(name: str) -> Path:
@@ -62,10 +67,10 @@ def _tight(key: str, surface: Surface, target: Path) -> Op:
 def plan() -> list[Op]:
     ops: list[Op] = []
 
-    # --- seshat: runtime ---------------------------------------------------------
-    seshat = _repo("seshat")
-    ops += _brand_set("seshat-runtime", seshat / "docs" / "brand")
-    notification = seshat / "internal" / "seshattui" / "ui" / "notification"
+    # --- seshat-runtime: the runtime ---------------------------------------------
+    runtime = _repo("seshat-runtime")
+    ops += _brand_set("seshat-runtime", runtime / "docs" / "brand")
+    notification = runtime / "internal" / "seshattui" / "ui" / "notification"
     for name in ("seshat-icon.png", "seshat-icon-solo.png"):     # OS notifications cannot show SVG
         ops.append(Op(notification / name, "png", source="seshat-runtime/icon-dark.svg", size=512))
 
@@ -88,8 +93,9 @@ def plan() -> list[Op]:
     ops.append(Op(desktop / "build" / "icon.png", "png", source="seshatos/icon-dark.svg", size=1024))
     ops.append(Op(desktop / "build" / "icon.ico", "ico", source="seshatos/icon-dark.svg"))
 
-    # --- website: the official Seshat AI logo and the product icons --------------
+    # --- website: the palette, the official Seshat AI logo and the product icons -
     site = SITE_PUBLIC
+    ops.append(Op(SITE / "src" / "styles" / "tokens.css", "text", text=palette.css()))
     ops.append(_tight("seshat-ai", LIGHT, site / "brand" / "mark-on-light.svg"))
     ops.append(_tight("seshat-ai", DARK, site / "brand" / "mark-on-dark.svg"))
     ops.append(Op(site / "favicon.svg", "svg", source="seshat-ai/favicon.svg"))
@@ -103,6 +109,9 @@ def plan() -> list[Op]:
     ops.append(Op(site / "brand" / "seshat-ai-logo.png", "png", source="seshat-ai/lockup-on-light.svg",
                   width=660, height=200))
     ops.append(Op(site / "brand" / "seshat-ai-logo.svg", "svg", source="seshat-ai/lockup-on-light.svg"))
+    # Social images: copy, lockup, fonts and orange all come from the kit (kit/og.py).
+    for name in og.files():
+        ops.append(Op(site / "og" / name, "og", page=name))
     return ops
 
 
@@ -125,11 +134,67 @@ def _render_bytes(source: Path, width: int, height: int | None = None) -> bytes:
         return out.read_bytes()
 
 
-def apply(ops: list[Op], *, write: bool) -> list[str]:
-    """Run the plan. With write=False only report what would change."""
+def repo_of(op: Op) -> str:
+    """The sibling repository an operation writes into."""
+    return op.target.relative_to(WORKSPACE).parts[0]
+
+
+def text_of(op: Op) -> str:
+    """What an SVG or text operation writes: the kit file, or the content held here."""
+    if op.text is not None:
+        return op.text
+    if op.source is None:
+        raise ValueError(f"{op.target.name}: no content to write")
+    return (ROOT / LOGO_DIR / op.source).read_text(encoding="utf-8")
+
+
+def same(current: bytes, wanted: bytes) -> bool:
+    """Whether a file already holds what the kit would write.
+
+    Line endings are ignored: a Windows checkout can hold CRLF where the kit
+    writes LF, and reporting those as changes would drown the real ones.
+    """
+    return current == wanted or (current.replace(b"\r\n", b"\n") == wanted.replace(b"\r\n", b"\n"))
+
+
+def drift(ops: list[Op]) -> list[str]:
+    """Every text file the kit would write and that the repository does not hold.
+
+    This is what `python publish.py --check` reports. The PNG, ICO and social
+    images are left out: comparing them means rendering them with Edge, so
+    `--check` does not prove them.
+    """
     report: list[str] = []
     for op in ops:
         rel = op.target.relative_to(WORKSPACE).as_posix()
+        if not (WORKSPACE / repo_of(op)).is_dir():
+            report.append(f"missing   {rel} (repository not checked out: {repo_of(op)})")
+            continue
+        if op.what == "remove":
+            if op.target.exists():
+                report.append(f"stale     {rel}")
+            continue
+        if op.what not in TEXT_KINDS:
+            continue
+        if not op.target.exists():
+            report.append(f"missing   {rel}")
+        elif not same(op.target.read_bytes(), text_of(op).encode("utf-8")):
+            report.append(f"outdated  {rel}")
+    return report
+
+
+def apply(ops: list[Op], *, write: bool) -> list[str]:
+    """Run the plan. With write=False only report what would change.
+
+    An operation in a repository that is not checked out is reported and
+    skipped.
+    """
+    report: list[str] = []
+    for op in ops:
+        rel = op.target.relative_to(WORKSPACE).as_posix()
+        if not (WORKSPACE / repo_of(op)).is_dir():
+            report.append(f"skip    {rel} (repository not checked out: {repo_of(op)})")
+            continue
         if op.what == "remove":
             if op.target.exists():
                 report.append(f"remove  {rel}")
@@ -137,19 +202,20 @@ def apply(ops: list[Op], *, write: bool) -> list[str]:
                     op.target.unlink()
             continue
         source = ROOT / LOGO_DIR / op.source if op.source else None
-        if op.what == "svg":
-            text = op.text if op.text is not None else source.read_text(encoding="utf-8")
-            data: bytes | None = text.encode("utf-8")
+        if op.what in TEXT_KINDS:
+            data: bytes | None = text_of(op).encode("utf-8")
         elif not write:
-            report.append(f"{op.what:<7} {rel}")
+            report.append(f"{'png' if op.what == 'og' else op.what:<7} {rel}")
             continue
+        elif op.what == "og":
+            data = og.render_bytes(op.page)
         elif op.what == "png":
             data = _render_bytes(source, op.width or op.size, op.height)
         elif op.what == "ico":
             data = _ico([(px, _render_bytes(source, px)) for px in ICO_SIZES])
         else:
             raise ValueError(op.what)
-        if op.target.exists() and op.target.read_bytes() == data:
+        if op.target.exists() and same(op.target.read_bytes(), data):
             continue
         report.append(f"write   {rel}")
         if write:
