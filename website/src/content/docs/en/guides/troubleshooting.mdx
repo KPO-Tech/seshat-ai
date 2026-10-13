@@ -1,0 +1,84 @@
+---
+title: Troubleshooting
+description: "Symptoms you may meet with Seshat, what causes each one, and what to do, starting with seshat doctor."
+section: guides
+order: 4
+updated: "2026-10-13"
+---
+import Callout from '@/components/docs/Callout.astro';
+
+Start with `seshat doctor`. Then look for your symptom below. Each entry gives the message when there is one, the cause and the remedy.
+
+## Start with `seshat doctor`
+
+```bash
+seshat doctor          # add --json for a machine-readable report
+```
+
+It checks the runtime folder, the configuration file, the working directory, the session database, the model and its credential, the document reader and the helper tools Seshat relies on. Each line is `[ok]`, `[warn]`, `[fail]` or `[skip]`, and a line that needs action says what to run. The command exits with an error when a check fails, so you can use it in a script.
+
+## A tool is missing from the list
+
+**Cause.** A tool that is not available is left out of the list the model sees. Many tools need something: a key, a provider or a service. For example the research tools need their keys, `generate_image` needs an image provider, and the scheduling tools need the automation service.
+
+**Remedy.** Look the tool up in [Built-in tools](/en/docs/reference/tools): the last column says what it needs. In Go, `client.ToolNames()` lists the tools that are active.
+
+## An MCP server does not appear
+
+**Cause.** A server that cannot be created, started or initialised is skipped, and a line is written to the log. The client still starts with the servers that worked. In the terminal interface, the `mcp` section of a project's own `seshat.json` is also ignored until you trust the project.
+
+**Remedy.** Read the log in the `logs` folder of the runtime folder. Check that the command exists and starts by hand. For a project file, run `seshat trust --status`, then `seshat trust` if you trust it. See [Skills and MCP](/en/docs/concepts/skills-and-mcp).
+
+## A setting in the project file has no effect
+
+**Cause.** A repository you cloned can carry a `seshat.json`, so some sections are ignored until you trust the project: `mcp`, `lsp`, `hooks`, `permissions`, `providers`, the multimedia providers, and `options.context_paths` and `options.skills_paths`. Trust is recorded for the exact content of the file: a change brings the question back. The same holds for `SESHAT.md`, `AGENTS.md` and `.seshat/instructions.md`.
+
+**Remedy.** Run `seshat trust --status` to see the files and their state. See [Configuration file](/en/docs/reference/configuration-file#projects-you-do-not-trust).
+
+## The provider refuses the key
+
+**Message.** An error that starts with `api_auth` (the provider answered `401`).
+
+**Cause.** The key is wrong, expired or not the one you think Seshat uses. A key can come from several places, and the first found wins.
+
+**Remedy.** Print the configuration with `seshat config --print` and check where the key comes from. The order is in [Configuration](/en/docs/getting-started/configuration). See also [Errors](/en/docs/sdk/errors) for the other `api_` codes: `api_rate_limit` and `api_timeout` are temporary, and the runtime already retries them.
+
+## The request is too large
+
+**Message.** `compact_full: request needs N tokens but the hard blocking limit for the model is M, even after compaction`.
+
+**Cause.** What you sent, plus the history, does not fit the window of the model. A single very large tool result can cause it. The request fails on your machine, before reaching the provider.
+
+**Remedy.** Start a new session, shorten the input, or choose a model with a larger window. See [Memory and compaction](/en/docs/concepts/memory).
+
+## A command is refused because of the sandbox
+
+**Message.** `sandbox required but unavailable on this host: refusing to run the command unconfined`.
+
+**Cause.** `RequireSandbox` is on, and the host has no sandbox: Landlock exists only on Linux, and Docker was not requested or not reachable.
+
+**Remedy.** Choose `SandboxKindDocker` and start Docker, or turn `RequireSandbox` off if refusing to run `bash` is not what you want. See [Sandboxing](/en/docs/concepts/sandboxing).
+
+## The gRPC server does not start
+
+**Message.** `refusing to listen on "..." without authentication: set SESHAT_GRPC_AUTH_TOKEN`.
+
+**Cause.** Since version 1.3, the server listens on `127.0.0.1` only. On any other address it refuses to start without a token.
+
+**Remedy.** Set `SESHAT_GRPC_AUTH_TOKEN`, and `SESHAT_GRPC_TLS_CERT` and `SESHAT_GRPC_TLS_KEY` to turn TLS on. See [Upgrading](/en/docs/guides/upgrading#13-closed-by-default) and [gRPC API](/en/docs/sdk/grpc-api).
+
+## A skill is listed but the agent cannot call it
+
+**Cause.** The terminal interface also lists skills it finds in `.agents/skills` and `.cursor/skills` of the project and in `~/.claude/skills`. The `skill` tool of the agent does not read those folders.
+
+**Remedy.** Put the skill in `.claude/skills/` or `.seshat/skills/` of the project. See [Skills and MCP](/en/docs/concepts/skills-and-mcp#where-skills-live).
+
+## The model changes nothing in plan mode
+
+**Cause.** That is what plan mode is for: `write_file` and `edit_file` are refused, and `exit_plan_mode` is refused while a submitted plan waits for your answer.
+
+**Remedy.** Answer the plan, or leave plan mode with `shift+tab`. A Go host must record the approval with `session.ApprovePlan()`. See [Runtime modes](/en/docs/concepts/runtime-modes).
+
+## Still stuck?
+
+Run `seshat doctor --json` and keep the report. Write to the support address on the [contact page](/en/contact) with the version (`seshat --version`) and the exact message.
