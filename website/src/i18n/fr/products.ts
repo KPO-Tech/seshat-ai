@@ -21,7 +21,7 @@ export default {
         'Interface en terminal (seshat chat), ligne de commande, gRPC et SDK.',
       ],
       licence: "Runtime open source, Apache-2.0. L'interface terminal reprend du code de Crush (licence FSL-1.1-MIT).",
-      status: "Version 1.3, installable aujourd'hui, avec son interface en terminal.",
+      status: "Version 1.7, installable aujourd'hui, avec son interface en terminal.",
     },
     {
       badge: 'En construction',
