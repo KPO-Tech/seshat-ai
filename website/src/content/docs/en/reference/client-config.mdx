@@ -1,0 +1,142 @@
+---
+title: ClientConfig reference
+description: "Every field of sdk.ClientConfig, grouped by theme, with its type, its default and what it does."
+section: reference
+order: 3
+updated: "2026-10-13"
+---
+import Callout from '@/components/docs/Callout.astro';
+import LinkCards from '@/components/docs/LinkCards.astro';
+
+`sdk.ClientConfig` is the configuration of a Go client. Start from `sdk.DefaultClientConfig()` and change what you need: see [Go SDK](/en/docs/sdk/go-sdk) for a first example and [Integrating in your product](/en/docs/sdk/integration) for a server.
+
+In the **Default** column, a dash means the zero value: nothing is set, or the feature is off. "From `DefaultClientConfig()`" means the value is set by that function and not by `ClientConfig` itself. Fields marked **Go only** cannot be written in a JSON file (they are functions, interfaces or pointers).
+
+<Callout type="note" title="Checked against the code">
+This page lists every field of `ClientConfig` in `pkg/sdk/client_config.go`. The command `npm run check:config` in the website repository fails when a field is missing here or does not exist any more.
+</Callout>
+
+## Model and provider
+
+| Field | Type | Default | Effect |
+|---|---|---|---|
+| `APIKey` | `string` | none | The provider key. A `CredentialResolver` wins over it |
+| `Model` | `ModelIdentifier` | Anthropic `claude-3-5-sonnet-20241022`, from `DefaultClientConfig()` | The model of the session: `{Provider, Model}` |
+| `TitleModel` | `ModelIdentifier` | none | A model for the automatic session titles. Both `Provider` and `Model` must be set |
+| `CompactSummaryModel` | `ModelIdentifier` | the session model | The model that writes compaction summaries. See [Memory and compaction](/en/docs/concepts/memory) |
+| `CredentialResolver` | `CredentialResolver` | none | Called when the client is created to find the key of the provider. Wins over `APIKey`. Use it on a server, with one key per user. **Go only** |
+| `ProviderConfig` | `*providers.Config` | none | Provider options such as a base URL, headers or model aliases. **Go only**. See [Providers and authentication](/en/docs/sdk/providers-and-auth) |
+| `TitleProviderConfig` | `*providers.Config` | none | A provider client used only for the titles, for example a small local model. **Go only** |
+| `TitleGenerator` | `TitleGenerator` | none | Your own title generator. Wins over `TitleProviderConfig` and `TitleModel`. **Go only** |
+| `LocalTitle` | `*LocalTitleConfig` | none | Settings of the default local title generator. Ignored when `TitleGenerator` is set |
+| `DisableTitleGeneration` | `bool` | `false` | Turn the automatic titles off |
+| `OnSessionTitled` | `func(id SessionID, title string)` | none | Called once, after the first completed turn, when a title has been written. Use it to refresh your interface. **Go only** |
+
+## Limits of a request
+
+| Field | Type | Default | Effect |
+|---|---|---|---|
+| `MaxTurns` | `int` | 100, from `DefaultClientConfig()` | Limit on turns per request |
+| `MaxIterations` | `int` | 100 when left at zero | Limit on rounds of model calls per request |
+| `MaxTokens` | `int` | 8192, from `DefaultClientConfig()` | The most the model may write in one call |
+| `TurnTokenBudget` | `int` | 0, off | When above zero, turns on the token budget: the loop may continue while the budget allows it |
+| `BudgetContinuationLimit` | `int` | 3 when left at zero | How many budget continuations one request may use |
+| `ContinuationNudgeLimit` | `int` | 3 when left at zero | How many times the loop pushes a model that announces a next step and stops |
+| `TaskNudgeLimit` | `int` | 3 when left at zero | How many reminders about open tasks one turn sends. A negative value turns them off |
+| `MaxConsecutiveDenials` | `int` | 3 when left at zero | Back-to-back permission denials that trigger the orchestrator's fallback |
+
+See [One runtime, one loop](/en/docs/concepts/mono-run) for what each limit does.
+
+## Permissions and the prompt
+
+| Field | Type | Default | Effect |
+|---|---|---|---|
+| `PermissionMode` | `PermissionMode` | `PermissionModeOnRequest`, from `DefaultClientConfig()` | Who approves the actions of the agent. See [Runtime modes](/en/docs/concepts/runtime-modes) |
+| `PromptFn` | `PromptFn` | none | Called when the agent asks you a question or needs an approval. Without it, an action that needs approval is not approved. **Go only** |
+| `EnablePromptReaderFallback` | `bool` | `false` | When there is no `PromptFn`, lets the question tool read the answer from the standard input |
+| `TrustProjectInstructions` | `func(path string, content []byte) bool` | none | Decides whether `SESHAT.md`, `AGENTS.md` and `.seshat/instructions.md` of `WorkingDir` may reach the model. Left empty, none is read. **Go only**. See [Prompt](/en/docs/sdk/prompt) |
+| `ManagedPolicy` | `*ManagedPolicy` | none | What an organization imposes on every agent: a text to follow and tools never to use. Set it from an administrator's configuration, not from the end user's. **Go only** |
+
+## Sessions and storage
+
+| Field | Type | Default | Effect |
+|---|---|---|---|
+| `PersistSessions` | `bool` | `true`, from `DefaultClientConfig()` | Save conversations |
+| `SessionStorageDir` | `string` | the runtime folder, from `DefaultClientConfig()` | Where session files are kept |
+| `SessionSQLitePath` | `string` | none | The SQLite file where tasks and goals are stored |
+| `SessionBackend`, `SessionStore` | interfaces | none | Your own storage for sessions, to keep them in your database. **Go only** |
+| `UserID` | `string` | none | Who the caller is, passed to `PlanStore` so that plans are saved against the right user. Never sent anywhere else. **Go only** |
+| `StorageConfig` | `*StorageConfig` | none | Where files made by the agent are kept: local folder or S3. **Go only** |
+| `ArtifactStore` | `ArtifactStore` | none | Your own store for those files. **Go only** |
+| `StorageGCEnabled` | `bool` | `true`, from `DefaultClientConfig()` | Clean up expired artifacts |
+| `StorageGCInterval` | `time.Duration` | one hour, from `DefaultClientConfig()` | How often the cleanup runs |
+| `StorageGCLimit` | `int` | 512, from `DefaultClientConfig()` | How many items one cleanup handles |
+| `StorageGCNamespaces` | `[]string` | empty, from `DefaultClientConfig()` | Which artifact namespaces the cleanup covers |
+
+## Memory and compaction
+
+| Field | Type | Default | Effect |
+|---|---|---|---|
+| `AutoCompact` | `bool` | `true`, from `DefaultClientConfig()` | Compact the context when it gets full |
+| `EnableMemory` | `bool` | `true`, from `DefaultClientConfig()` | Long-term notes across sessions |
+| `MemoryFailFast` | `bool` | `false` | If the memory service cannot start, fail instead of going on without memory (a line is logged) |
+| `LongTermMemory` | `LongTermMemory` | none | Your own long-term memory. **Go only** |
+| `PlanStore` | `PlanStore` | none | Where `submit_plan` saves plans. Without it, `submit_plan` is not available. **Go only** |
+
+## Working folder, browser and sandbox
+
+| Field | Type | Default | Effect |
+|---|---|---|---|
+| `WorkingDir` | `string` | the current folder | The folder the agent works in |
+| `BrowserRemoteControlURL` | `string` | none | Attach the browser tools to a browser that is already running |
+| `BrowserExecutablePath` | `string` | none | Which browser program to start |
+| `BrowserSessionTargetResolver` | `func(ctx, SessionID) (string, bool)` | none | Lets a desktop app attach a session's browser calls to a tab it already shows to the user. **Go only** |
+| `RequireSandbox` | `bool` | `false` | The `bash` tool refuses to run when no OS-level sandbox is available |
+| `SandboxKind` | `SandboxKind` | `SandboxKindLocal` | `SandboxKindLocal` or `SandboxKindDocker` |
+| `SandboxDocker` | `SandboxDockerConfig` | secure defaults | Settings of the Docker sandbox. **Go only** |
+
+See [Integrating in your product](/en/docs/sdk/integration#run-commands-safely) for the choice between the two sandboxes.
+
+## Tools and connected services
+
+| Field | Type | Default | Effect |
+|---|---|---|---|
+| `MCPServers` | `[]MCPServerConfig` | none | MCP servers to connect. See [Skills and MCP](/en/docs/concepts/skills-and-mcp) |
+| `EnableToolSearch` | `bool` | `false` | Keep deferred tools (MCP tools, for example) out of the first tool list: the model finds them with `tool_search`. The environment variable `ENABLE_TOOL_SEARCH` can also turn it on |
+| `RAGService` | `*RAGService` | none | The knowledge service behind the RAG tools. **Go only** |
+| `DocumentReaderURL` | `string` | none | The address of a document-reader service, used to build the default converter |
+| `DocumentConverter` | `documentreader.Converter` | built from `DocumentReaderURL` | Your own converter behind the document tools. Wins over `DocumentReaderURL`. **Go only** |
+| `DocumentPageRenderer` | `pdfsmart.PageRenderer` | none | Backs `render_document_page`, so the agent can look at a page with a multimodal model. **Go only** |
+| `AutomationServiceURL` | `string` | none | The address of the automation daemon. The scheduling tools work only with it |
+| `AutomationAPIKey` | `string` | none | Its key. **Go only** |
+| `WebSearchKeys` | `map[string]string` | none | Keys of the web search providers (`tavily`, `exa`, `jina`, `langsearch`) for this client only. They replace the environment, so a shared server does not leak keys between sessions. **Go only** |
+| `ResearchKeys` | `map[string]string` | none | The same for the research tools: `reddit_client_id`, `reddit_client_secret`, `youtube_api_key`, `google_places_api_key`, `trustpilot_api_key`. A research tool without its keys is not offered to the model. **Go only** |
+| `ImageGeneration`, `TextToSpeech`, `SpeechToText` | config pointers | none | The providers behind the multimodal tools. Without one, the tool is not offered |
+
+## Prompt and behaviour
+
+| Field | Type | Default | Effect |
+|---|---|---|---|
+| `SystemPromptTemplate` | `string` | none | A text that fully replaces the default system prompt |
+| `PromptConfig` | `*PromptConfig` | none | Replace or extend the prompt, set the stage, add tool hints. See [Prompt](/en/docs/sdk/prompt). **Go only** |
+| `Companion` | `*companion.Profile` | none | A persona added to the system prompt. **Go only** |
+
+## Hooks, callbacks and observability
+
+| Field | Type | Default | Effect |
+|---|---|---|---|
+| `EnableHooks` | `bool` | `true`, from `DefaultClientConfig()` | Run lifecycle hooks |
+| `PreToolHooks` | `[]PreToolHookConfig` | none | Shell commands run before each tool call. See [Streaming, events and hooks](/en/docs/sdk/events-and-hooks). **Go only** |
+| `StopHooks` | `[]StopHook` | none | Run when the model is about to stop, and may ask for one more cycle. **Go only** |
+| `ProgressFn` | `func(ToolProgress)` | none | Progress of tool calls. **Go only** |
+| `ResponseChunkFn` | `func(ResponseChunk)` | none | Each piece of the answer as it arrives. **Go only** |
+| `RuntimeEventFn` | `func(RuntimeEvent)` | none | Structured events for the whole turn. **Go only** |
+| `EnableMonitoring` | `bool` | `true`, from `DefaultClientConfig()` | Turn the monitoring system on |
+| `Monitoring` | `*MonitoringSystem` | built by the client | Your own monitoring system. **Go only** |
+
+## Next
+
+<LinkCards cards={[
+  { title: 'Configuration file', text: 'The JSON settings of the terminal interface.', href: '/en/docs/reference/configuration-file', icon: 'file-code' },
+  { title: 'Go SDK', text: 'A first client, a conversation and the settings you will touch first.', href: '/en/docs/sdk/go-sdk', icon: 'code' },
+]} />

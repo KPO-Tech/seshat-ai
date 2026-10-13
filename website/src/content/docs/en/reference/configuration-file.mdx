@@ -1,0 +1,265 @@
+---
+title: Configuration file
+description: "Where the terminal interface reads its JSON settings, which projects may set which sections, and every key of seshat.json."
+section: reference
+order: 2
+updated: "2026-10-13"
+---
+import Callout from '@/components/docs/Callout.astro';
+import LinkCards from '@/components/docs/LinkCards.astro';
+
+The terminal interface and the `seshat` command read their settings from JSON files named `seshat.json`. This page lists the files, the order in which they apply, and every key. For the usual ways to set a provider and a model without editing a file, see [Configuration](/en/docs/getting-started/configuration). A Go program that embeds the runtime does not use these files: it uses [ClientConfig](/en/docs/reference/client-config).
+
+## Where the files are
+
+| File | Scope |
+|---|---|
+| `seshat.json` in the runtime folder | Global: your own settings, for every project. The runtime folder is described in [Configuration](/en/docs/getting-started/configuration). `SESHAT_GLOBAL_CONFIG` points to another folder |
+| `seshat.json` or `.seshat.json` in the project | Project: found from the working directory up to the root of the git repository. A file above the repository is never read |
+| `.seshat/seshat.json` in the project | Workspace: the file that Seshat itself writes when you change a setting for one project |
+
+The files are merged. When the same key is set twice, the file closest to the project wins over the global one.
+
+## Projects you do not trust
+
+A repository you just cloned can carry any of these files. Some sections start programs or decide where your keys go, so the terminal interface **ignores them until you trust the project** with `seshat trust`:
+
+- `mcp` and `mcpServers`
+- `lsp`
+- `hooks`
+- `permissions`
+- `providers`
+- `image_generation`, `text_to_speech` and `speech_to_text`
+- `options.context_paths` and `options.skills_paths`
+
+The other sections still apply: `models`, the display options and the tools you disable. Your own global file is never restricted. Trust is recorded for the exact content of each file, so a change brings the question back. See [Security and trust](/en/docs/concepts/security-and-trust#project-files-are-not-trusted-until-you-say-so).
+
+## An example
+
+```json
+{
+  "models": {
+    "large": { "provider": "anthropic", "model": "claude-sonnet-4-20250514" }
+  },
+  "options": {
+    "tui": { "compact_mode": true },
+    "disabled_tools": ["monitor"]
+  },
+  "permissions": {
+    "allowed_tools": ["glob", "grep"]
+  },
+  "mcp": {
+    "github": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"]
+    }
+  },
+  "hooks": {
+    "pre_tool_use": [
+      { "matcher": "bash", "command": "./scripts/check-command.sh", "timeout": 10 }
+    ]
+  }
+}
+```
+
+The `mcp` and `permissions` sections of a project file would be ignored until the project is trusted.
+
+## Keys
+
+<Callout type="note" title="Generated from the code">
+The tables below are written by `npm run sync:config-file` from the structures that Seshat reads (`internal/seshattui/config/config.go`), so keys, defaults and descriptions follow the code. A key that is not listed is not read.
+</Callout>
+
+{/* generated:start */}
+### `models`
+
+One entry per model type, `large` and `small`. Each entry has these keys.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `model` | string, required |  | The model ID as used by the provider API |
+| `provider` | string, required |  | The model provider ID that matches a key in the providers config |
+| `reasoning_effort` | string |  | Reasoning effort level for OpenAI models that support it. One of `low`, `medium`, `high`. |
+| `think` | boolean |  | Enable thinking mode for Anthropic models that support reasoning |
+| `max_tokens` | number |  | Maximum number of tokens for model responses |
+| `temperature` | number |  | Sampling temperature |
+| `top_p` | number |  | Top-p (nucleus) sampling parameter |
+| `top_k` | number |  | Top-k sampling parameter |
+| `frequency_penalty` | number |  | Frequency penalty to reduce repetition |
+| `presence_penalty` | number |  | Presence penalty to increase topic diversity |
+| `provider_options` | object |  | Additional provider-specific options for the model |
+
+### `providers`
+
+One entry per provider, named by its id. Each entry has these keys.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `id` | string |  | Unique identifier for the provider |
+| `name` | string |  | Human-readable name for the provider |
+| `base_url` | string |  | Base URL for the provider's API |
+| `type` | string | `openai` | Provider type that determines the API format. One of `openai`, `openai-compat`, `anthropic`, `gemini`, `azure`, `vertexai`. |
+| `api_key` | string |  | API key for authentication with the provider |
+| `oauth` | object |  | OAuth2 token for authentication with the provider |
+| `disable` | boolean | `false` | Whether this provider is disabled |
+| `system_prompt_prefix` | string |  | Custom prefix to add to system prompts for this provider |
+| `extra_headers` | object |  | Additional HTTP headers to send with requests |
+| `extra_body` | object |  | Additional fields to include in request bodies, only works with openai-compatible providers |
+| `provider_options` | object |  | Additional provider-specific options for this provider |
+| `flat_rate` | boolean |  | Flat-rate mode for this provider |
+| `models` | list of objects |  | List of models available from this provider |
+
+### `mcp`
+
+One entry per MCP server, named by you. Each entry has these keys. In `mcp`, `type` is `stdio`, `sse` or `http`.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `command` | string |  | Command to execute for stdio MCP servers |
+| `env` | object |  | Environment variables to set for the MCP server |
+| `args` | list of strings |  | Arguments to pass to the MCP server command |
+| `type` | string, required | `stdio` | Type of MCP connection. One of `stdio`, `sse`, `http`. |
+| `url` | string |  | URL for HTTP or SSE MCP servers |
+| `disabled` | boolean | `false` | Whether this MCP server is disabled |
+| `disabled_tools` | list of strings |  | List of tools from this MCP server to disable |
+| `enabled_tools` | list of strings |  | Allow list of tools from this MCP server |
+| `timeout` | number | `15` | Timeout in seconds for MCP server connections |
+| `headers` | object |  | HTTP headers for HTTP/SSE MCP servers |
+
+### `lsp`
+
+One entry per language server, named by you. Each entry has these keys.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `disabled` | boolean | `false` | Whether this LSP server is disabled |
+| `command` | string |  | Command to execute for the LSP server |
+| `args` | list of strings |  | Arguments to pass to the LSP server command |
+| `env` | object |  | Environment variables to set to the LSP server command |
+| `filetypes` | list of strings |  | File types this LSP server handles |
+| `root_markers` | list of strings |  | Files or directories that indicate the project root |
+| `init_options` | object |  | Initialization options passed to the LSP server during initialize request |
+| `options` | object |  | LSP server-specific settings passed during initialization |
+| `timeout` | number | `30` | Timeout in seconds for LSP server initialization |
+
+### `options`
+
+General options.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `context_paths` | list of strings |  | Paths to files containing context information for the AI |
+| `skills_paths` | list of strings |  | Paths to directories containing Agent Skills (folders with SKILL.md files) |
+| `tui` | object |  | Terminal user interface options |
+| `debug` | boolean | `false` | Enable debug logging |
+| `debug_lsp` | boolean | `false` | Enable debug logging for LSP servers |
+| `disable_auto_summarize` | boolean | `false` | Disable automatic conversation summarization |
+| `data_directory` | string | `.seshat` | Directory for storing application data. Relative paths are resolved against the working directory; absolute paths are used as-is. |
+| `disabled_tools` | list of strings |  | List of built-in tools to disable and hide from the agent |
+| `disable_provider_auto_update` | boolean | `false` | Disable providers auto-update |
+| `disable_default_providers` | boolean | `false` | Ignore all default/embedded providers. When enabled, providers must be fully specified in the config file with base_url, models, and api_key - no merging with defaults occurs |
+| `attribution` | object |  | Attribution settings for generated content |
+| `disable_metrics` | boolean | `false` | Disable sending metrics |
+| `initialize_as` | string | `AGENTS.md` | Name of the context file to create/update during project initialization |
+| `auto_lsp` | boolean | `true` | Automatically setup LSPs based on root markers |
+| `progress` | boolean | `true` | Show indeterminate progress updates during long operations |
+| `disable_notifications` | boolean | `false` | Deprecated: Use notification_style instead. Disable desktop notifications |
+| `notification_style` | string | `auto` | Notification style to use. One of `auto`, `native`, `osc`, `bell`, `disabled`. |
+| `disabled_skills` | list of strings |  | List of skill names to disable and hide from the agent |
+
+### `options.tui`
+
+Options of the terminal interface.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `compact_mode` | boolean | `false` | Enable compact mode for the TUI interface |
+| `diff_mode` | string |  | Diff mode for the TUI interface. One of `unified`, `split`. |
+| `verbose_steps` | boolean | `false` | Show full agent step narration between tool calls |
+| `completions` | object |  | Completions UI options |
+| `transparent` | boolean | `false` | Enable transparent background for the TUI interface |
+
+### `options.attribution`
+
+What Seshat adds to commit messages, issues and pull requests it writes.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `trailer_style` | string | `assisted-by` | Style of attribution trailer to add to commits. One of `none`, `co-authored-by`, `assisted-by`. |
+| `co_authored_by` | boolean |  | Deprecated: use trailer_style instead |
+| `generated_with` | boolean | `true` | Add Generated with Seshat line to commit messages and issues and PRs |
+
+### `permissions`
+
+Which tools do not ask for approval.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `allowed_tools` | list of strings |  | List of tools that don't require permission prompts |
+
+### `tools.ls`
+
+Settings of the directory listing tool.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `max_depth` | number | `0` | Maximum depth for the ls tool |
+| `max_items` | number | `1000` | Maximum number of items to return for the ls tool |
+
+### `tools.grep`
+
+Settings of the search tool.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `timeout` | duration | `5s` | Timeout for the grep tool call |
+
+### `hooks`
+
+A map from an event name to a list of shell hooks. Each hook has these keys. Today the terminal interface reads the `pre_tool_use` event.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `matcher` | string |  | Regex pattern tested against the tool name. Empty means match all tools. |
+| `command` | string, required |  | Shell command to execute when the hook fires |
+| `timeout` | number | `30` | Timeout in seconds for the hook command |
+
+### `image_generation`
+
+The provider behind the image tool.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `provider` | string |  | Provider ID used for image generation |
+| `model` | string |  | Optional model override for image generation |
+
+### `text_to_speech`
+
+The provider behind the text-to-speech tool.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `provider` | string |  | Provider ID used for text-to-speech |
+| `model` | string |  | Optional model override for text-to-speech |
+| `voice` | string |  | Optional voice override for text-to-speech |
+| `format` | string |  | Optional output format override for text-to-speech |
+
+### `speech_to_text`
+
+The provider behind the speech-to-text tool.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `provider` | string |  | Provider ID used for speech-to-text |
+| `model` | string |  | Optional model override for speech-to-text |
+| `language` | string |  | Optional language hint for speech-to-text |
+
+{/* generated:end */}
+
+## Next
+
+<LinkCards cards={[
+  { title: 'ClientConfig reference', text: 'The settings of a Go client.', href: '/en/docs/reference/client-config', icon: 'code' },
+  { title: 'Using the CLI', text: 'Commands, options and shortcuts.', href: '/en/docs/guides/cli', icon: 'terminal-window' },
+]} />

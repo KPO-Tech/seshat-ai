@@ -1,0 +1,99 @@
+---
+title: Environment variables
+description: "The environment variables Seshat reads for folders, storage, providers, web search, observability and a few behaviours, with their defaults."
+section: reference
+order: 5
+updated: "2026-10-13"
+---
+import Callout from '@/components/docs/Callout.astro';
+import LinkCards from '@/components/docs/LinkCards.astro';
+
+Environment variables are the simplest way to configure Seshat on a server or in a script. This page lists the ones that [Configuration](/en/docs/getting-started/configuration), [Security and trust](/en/docs/concepts/security-and-trust) and [Using the CLI](/en/docs/guides/cli) do not already describe: the model and key variables, the gRPC variables and the `RAG_*` variables are there.
+
+<Callout type="note" title="Checked against the code">
+Every variable on this page is read by the runtime. The command `npm run check:env` in the website repository fails when a variable named here does not appear in the code any more. Debugging switches and variables that only the operating system sets (`HOME`, `APPDATA`, `TERM`...) are left out on purpose.
+</Callout>
+
+## Folders and files
+
+The runtime folder is described in [Configuration](/en/docs/getting-started/configuration). Its location is set by `SESHAT_RUNTIME_ROOT`.
+
+| Variable | Default | Effect |
+|---|---|---|
+| `SESHAT_GLOBAL_CONFIG` | the runtime folder | The folder that holds the global `seshat.json`. See [Configuration file](/en/docs/reference/configuration-file) |
+| `SESHAT_GLOBAL_DATA` | the runtime folder | The folder of the data configuration, used when an application overrides settings instead of updating the global file |
+| `SESHAT_CACHE_DIR` | `cache` in the runtime folder | Where the cache is kept |
+| `SESHAT_SKILLS_DIR` | the usual skill folders | When set, the terminal interface uses this one folder for global skills |
+| `SESHAT_MEMORY_PATH` | `memory` in the runtime folder | Where long-term memory is kept |
+| `SESHAT_AUTH_PATH` | none | Where `auth.json` is kept, the file that holds sign-in tokens |
+| `SESHAT_MASTER_KEY` | a key derived from the machine | The key that encrypts the stored credentials: 64 hexadecimal characters, which is 32 bytes. Any other length is refused. Set it on a server so that the credentials do not depend on the machine |
+
+## Storage of files made by the agent
+
+By default the files the agent produces are kept in a local folder. See [ClientConfig](/en/docs/reference/client-config) for the `StorageConfig` field that sets the same thing from Go.
+
+| Variable | Default | Effect |
+|---|---|---|
+| `SESHAT_STORAGE_PROVIDER` | local | `s3` keeps the files in an S3 bucket. Any other value, or none, keeps them locally |
+| `SESHAT_STORAGE_LOCAL_PATH` | the runtime folder | The folder of the local storage |
+| `SESHAT_S3_ENDPOINT` | none | The address of the S3 service |
+| `SESHAT_S3_BUCKET` | none | The bucket |
+| `SESHAT_S3_ACCESS_KEY_ID`, `SESHAT_S3_SECRET_ACCESS_KEY` | none | The credentials |
+| `SESHAT_S3_REGION` | none | The region |
+| `SESHAT_S3_KEY_PREFIX` | none | A prefix added to the keys of the stored objects |
+
+## Providers
+
+The variables that carry the key of each provider are in the table of [Configuration](/en/docs/getting-started/configuration#supported-providers). These add to it.
+
+| Variable | Default | Effect |
+|---|---|---|
+| `OLLAMA_HOST` | `http://localhost:11434` | The address of the Ollama server |
+| `AWS_PROFILE` | none | An AWS profile. With a region, it makes Bedrock available |
+| `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` | none | The rest of the AWS credentials used to sign Bedrock requests, with `AWS_ACCESS_KEY_ID` |
+| `AWS_DEFAULT_REGION` | none | Counts as a region when Seshat checks whether Bedrock is available. The requests themselves use `AWS_REGION`, so set that one too |
+| `AWS_BEARER_TOKEN_BEDROCK` | none | A bearer token for Bedrock. When set, the requests use it instead of the AWS signature |
+| `ANTHROPIC_VERTEX_API_KEY` | none | A bearer token for Vertex AI, used when no key was given another way |
+| `SESHAT_DISABLE_DEFAULT_PROVIDERS` | `false` | The same as `options.disable_default_providers` in the configuration file |
+| `SESHAT_DISABLE_PROVIDER_AUTO_UPDATE` | `false` | The same as `options.disable_provider_auto_update` in the configuration file |
+
+## Web search
+
+The provider keys (`TAVILY_API_KEY`, `EXA_API_KEY`, `JINA_API_KEY`, `LANGSEARCH_API_KEY`) are described in [Configuration](/en/docs/getting-started/configuration#optional-tools). To search with your own SearXNG instance or your own endpoint:
+
+| Variable | Default | Effect |
+|---|---|---|
+| `SEARXNG_URL`, `SEARXNG_BASE_URL` | none | The base address of a SearXNG instance. `SEARXNG_URL` wins when both are set |
+| `SEARXNG_AUTH_USERNAME`, `SEARXNG_AUTH_PASSWORD` | none | Basic authentication. `AUTH_USERNAME` and `AUTH_PASSWORD` are read when these are not set |
+| `SEARXNG_USER_AGENT` | `SeshatAI-WebSearch/2.0` | The `User-Agent` sent to SearXNG. `USER_AGENT` is read when it is not set |
+| `SEARXNG_HTTP_PROXY` | none | A proxy for SearXNG. `HTTP_PROXY` and `HTTPS_PROXY` are read when it is not set |
+| `SEARXNG_DEFAULT_LANGUAGE` | `all` | The language of the results when the call does not give one |
+| `WEB_SEARCH_API` | none | The address of a search endpoint of your own. The tool sends it the query as `q`, and one `allowed_domain` per allowed domain |
+
+## Retrieval
+
+| Variable | Default | Effect |
+|---|---|---|
+| `RAG_RERANK_API_KEY` | none | The key sent to the reranking service named by `RAG_RERANK_URL`. See [Retrieval and knowledge](/en/docs/concepts/rag) |
+
+## Observability
+
+| Variable | Default | Effect |
+|---|---|---|
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | none | When set, traces are exported to this OpenTelemetry endpoint over gRPC. Without it, nothing is exported |
+| `OTEL_EXPORTER_OTLP_INSECURE` | no TLS | The exporter connects without TLS, which suits a local collector. Set it to `false` to use TLS |
+| `ENVIRONMENT` | `development` | The environment name written in the logs |
+
+## Behaviour
+
+| Variable | Default | Effect |
+|---|---|---|
+| `SESHAT_REPO_MAP` | off | With `1`, `true`, `yes`, `on` or `enabled`, a compact map of the repository (about 1,024 tokens) is added to the prompt every turn |
+| `SESHAT_CORE_UTILS` | on Windows only | `true` or `false`. Whether the shell of the terminal interface uses the core utilities built into Seshat |
+
+## Next
+
+<LinkCards cards={[
+  { title: 'Configuration', text: 'Providers, keys and the usual variables.', href: '/en/docs/getting-started/configuration', icon: 'gear' },
+  { title: 'Configuration file', text: 'The JSON settings of the terminal interface.', href: '/en/docs/reference/configuration-file', icon: 'file-code' },
+]} />
