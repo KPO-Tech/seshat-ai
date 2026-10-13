@@ -36,6 +36,10 @@ graphify-out/
 tmp/
 .tmp/
 
+# Personal collateral: the founder's own mail signature carries his contact
+# details and is never versioned (docs/strategie/identite/README.md).
+docs/strategie/signatures-mail/
+
 # Build output
 bin/
 dist/

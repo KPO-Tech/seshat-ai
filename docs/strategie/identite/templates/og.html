@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="$lang">
+<head>
+<meta charset="utf-8">
+<title>$doc_title</title>
+<style>
+  /* The two typefaces of the kit, inlined by kit/og.py so the rendering does not
+     depend on what the machine has installed (see fonts/README.md). */
+  @font-face {
+    font-family: 'Space Grotesk';
+    src: url(data:font/woff2;base64,$display_font) format('woff2-variations');
+    font-weight: 300 700;
+    font-display: block;
+  }
+  @font-face {
+    font-family: 'Inter';
+    src: url(data:font/woff2;base64,$text_font) format('woff2-variations');
+    font-weight: 100 900;
+    font-display: block;
+  }
+  html, body { margin: 0; padding: 0; width: ${width}px; height: ${height}px; overflow: hidden; }
+  body { display: flex; background: $paper; color: $ink; }
+  .rule { flex: 0 0 20px; background: $orange; }
+  .card {
+    flex: 1 1 auto; display: flex; flex-direction: column;
+    padding: 84px 84px 76px 64px;
+  }
+  .lockup { height: 66px; }
+  .lockup svg { height: 66px; width: auto; display: block; }
+  h1 {
+    font-family: 'Space Grotesk', 'Inter', Arial, sans-serif;
+    font-size: 62px; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em;
+    margin: 58px 0 0;
+  }
+  h1 .accent { color: $orange; }
+  p {
+    font-family: 'Inter', Arial, sans-serif;
+    font-size: 26px; line-height: 1.35; color: $grey;
+    margin: 20px 0 0; max-width: 880px;
+  }
+  .domain {
+    font-family: 'Inter', Arial, sans-serif;
+    font-size: 24px; font-weight: 700; color: $orange_deep;
+    margin-top: auto;
+  }
+</style>
+</head>
+<body>
+<div class="rule"></div>
+<div class="card">
+  <div class="lockup">$lockup</div>
+  <h1>$before<span class="accent">$accent</span></h1>
+  <p>$subtitle</p>
+  <div class="domain">$domain</div>
+</div>
+</body>
+</html>

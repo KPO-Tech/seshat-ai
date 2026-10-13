@@ -35,13 +35,13 @@
 .post-cta p { color: var(--on-panel2); margin: 10px 0 0; }
 .post-cta .post-cta-actions { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 12px; }
 .btn-light { border-color: rgba(255, 255, 255, 0.3); color: var(--on-panel); background: transparent; }
-.btn-light:hover { border-color: #fff; }
+.btn-light:hover { border-color: var(--off-white); }
 .post-related { margin-top: 56px; }
 .post-related h2 { font-size: 1.3rem; margin-bottom: 18px; max-width: none; }
 
 /* Vidéo dans un article ou une page de doc */
 .vid { margin: 0; }
-.vid video { display: block; width: 100%; border-radius: var(--radius); background: #111; }
+.vid video { display: block; width: 100%; border-radius: var(--radius); background: var(--black); }
 .vid figcaption { margin-top: 10px; color: var(--text2); font-size: 0.92rem; }
 
 /* Mise en page de la liste : un article à la une, puis une grille */
@@ -60,9 +60,9 @@
 .post-feature .pcover { border-radius: 0; min-height: 280px; }
 
 /* Visuel d'article : motif de la marque et icône de la catégorie */
-.pcover { position: relative; display: grid; place-items: center; overflow: hidden; background: var(--panel); color: #f6c9a4; }
+.pcover { position: relative; display: grid; place-items: center; overflow: hidden; background: var(--panel); color: var(--off-white); }
 .pcover::before { content: ''; position: absolute; inset: 0; opacity: 0.9; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cpath d='M28 0l28 16v32L28 64 0 48V16zM28 64l28 16v17M28 64L0 80v17' fill='none' stroke='%23ffffff' stroke-opacity='0.09' stroke-width='1'/%3E%3C/svg%3E"); }
-.pcover-pme { background: linear-gradient(135deg, #3a2a1f, var(--panel)); }
+.pcover-pme { background: linear-gradient(135deg, var(--charcoal), var(--panel)); }
 .pcover-proof { background: linear-gradient(135deg, #1f3a2d, var(--panel)); color: #9fe0bf; }
 .pcover-ic { position: relative; width: 84px; height: 84px; display: grid; place-items: center; border-radius: 22px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.16); }
 .pcover-ic .pi { width: 44px; height: 44px; fill: currentColor; }
