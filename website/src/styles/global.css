@@ -928,3 +928,29 @@ section.legal-block { padding: 16px 0 96px; }
 @media (max-width: 1039px) {
   .stk-scn { max-width: 760px; margin-left: 0; }
 }
+
+/* Page Seshat : trois façons de l'utiliser, ce que ça apporte, démarrer */
+.surf { margin-top: 40px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.surf-card { display: grid; gap: 12px; align-content: start; padding: 28px; border-radius: calc(var(--radius) + 4px); background: var(--surface); border: 1px solid var(--line); }
+.surf-head { display: flex; align-items: center; justify-content: space-between; }
+.surf-card h3 { font-size: 1.35rem; }
+.surf-who { color: var(--text); font-size: 1rem; }
+.surf-code { border-radius: var(--radius); background: var(--panel); }
+.surf-code code { color: var(--on-panel); font-size: 0.85rem; line-height: 1.7; white-space: pre; }
+.surf-note { color: var(--text2); font-size: 0.92rem; }
+.surf-card .link { margin-top: 4px; }
+.gives { margin-top: 40px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.give { display: grid; gap: 10px; align-content: start; padding: 24px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); }
+.give .chip { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); color: var(--accent-text); }
+.give .chip .pi { width: 22px; height: 22px; fill: currentColor; }
+.give h3 { font-size: 1.15rem; }
+.give p { color: var(--text2); font-size: 0.95rem; }
+.start { list-style: none; margin: 40px 0 0; padding: 0; display: grid; gap: 28px; }
+.start li { display: grid; grid-template-columns: 40px 1fr; gap: 18px; align-items: start; }
+.start .n { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; background: var(--accent); color: var(--on-accent); font-weight: 700; }
+.start strong { display: block; font-family: var(--font-display); font-size: 1.15rem; }
+.start li > div > span { display: block; margin-top: 4px; color: var(--text2); }
+.start .install { margin-top: 14px; max-width: 760px; }
+@media (max-width: 960px) {
+  .surf, .gives { grid-template-columns: 1fr; }
+}

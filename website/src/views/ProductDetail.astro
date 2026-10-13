@@ -3,6 +3,8 @@ import Base from '../layouts/Base.astro';
 import Arrow from '../components/Arrow.astro';
 import Check from '../components/Check.astro';
 import Icon from '../components/Icon.astro';
+import RuntimeMap from '../components/RuntimeMap.astro';
+import LoopFlow from '../components/LoopFlow.astro';
 import { dict, url, docUrl } from '../i18n';
 import type { Lang, PageKey } from '../i18n';
 
@@ -31,6 +33,22 @@ const verbMeta = [
   { icon: 'user-check', tone: 'plain' },
 ];
 const platformIcons = ['chat-circle-text', 'books', 'clock-clockwise'];
+
+const sd = pp.seshat.detail;
+const installCmd = 'curl -fsSL https://raw.githubusercontent.com/KPO-Tech/seshat-runtime/main/scripts/install.sh | bash';
+const goCode = `cfg := sdk.DefaultClientConfig()
+client, _ := sdk.NewClient(cfg)
+defer client.Close()
+
+resp, _ := client.Ask(ctx,
+  "List the TODOs", nil)
+fmt.Println(resp.Content)`;
+const termCode = `$ seshat chat
+$ seshat run "list the TODOs"`;
+const grpcCode = `SeshatService
+  Query · QueryStream
+  skills · MCP · models · health`;
+const codes = [termCode, goCode, grpcCode];
 
 const home = url(lang, 'home');
 const crumbs = [
@@ -92,18 +110,107 @@ const crumbs = [
   )}
 
   {page === 'productSeshat' && (
+    <>
+      <section class="block" style="padding-top:24px">
+        <div class="wrap">
+          <h2 class="reveal">{sd.map.title}</h2>
+          <p class="intro reveal">{sd.map.lead}</p>
+          <div class="reveal"><RuntimeMap t={sd.map} /></div>
+        </div>
+      </section>
+
+      <section class="block band">
+        <div class="wrap">
+          <h2 class="reveal">{sd.loop.title}</h2>
+          <p class="intro reveal">{sd.loop.lead}</p>
+          <LoopFlow steps={sd.loop.steps} loopBack={sd.loop.loopBack} aria={sd.loop.aria} />
+        </div>
+      </section>
+
+      <section class="block">
+        <div class="wrap">
+          <h2 class="reveal">{sd.surfaces.title}</h2>
+          <p class="intro reveal">{sd.surfaces.lead}</p>
+          <div class="surf">
+            {sd.surfaces.cards.map((c, i) => (
+              <article class="surf-card reveal" style={`--d:${i * 80}ms`}>
+                <div class="surf-head">
+                  <span class="chip big"><Icon name={c.icon} /></span>
+                  <span class={`badge ${c.tone}`}>{c.badge}</span>
+                </div>
+                <h3>{c.name}</h3>
+                <p class="surf-who">{c.who}</p>
+                <pre class="cmd surf-code"><code>{codes[i]}</code></pre>
+                <p class="surf-note">{c.note}</p>
+                <a class="link" href={docUrl(c.href)}>{sd.surfaces.docs} <Arrow /></a>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section class="block band">
+        <div class="wrap">
+          <h2 class="reveal">{sd.gives.title}</h2>
+          <div class="gives">
+            {sd.gives.items.map((g, i) => (
+              <article class="give reveal" style={`--d:${(i % 3) * 80}ms`}>
+                <span class="chip"><Icon name={g.icon} /></span>
+                <h3>{g.title}</h3>
+                <p>{g.text}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section class="block">
+        <div class="wrap">
+          <h2 class="reveal">{sd.start.title}</h2>
+          <p class="intro reveal">{sd.start.lead}</p>
+          <ol class="start">
+            <li class="reveal">
+              <span class="n">1</span>
+              <div>
+                <strong>{sd.start.steps[0].title}</strong>
+                <span>{sd.start.steps[0].text}</span>
+                <div class="install">
+                  <div class="cmd-bar">
+                    <span class="cmd-label">{t.tui.installLabel}</span>
+                    <button class="copy" type="button" data-copy={installCmd} data-copied={t.tui.copied}>{t.tui.copy}</button>
+                  </div>
+                  <pre class="cmd"><code><span class="t-p">$</span> <span class="t-c">curl</span> <span class="t-f">-fsSL</span> <span class="t-u">https://raw.githubusercontent.com/KPO-Tech/seshat-runtime/main/scripts/install.sh</span> <span class="t-o">|</span> <span class="t-c">bash</span></code></pre>
+                </div>
+              </div>
+            </li>
+            <li class="reveal">
+              <span class="n">2</span>
+              <div>
+                <strong>{sd.start.steps[1].title}</strong>
+                <span>{sd.start.steps[1].text}</span>
+                <div class="install"><pre class="cmd"><code><span class="t-p">$</span> <span class="t-c">seshat</span> <span class="t-a">config</span> <span class="t-f">--provider</span> <span class="t-u">ollama</span> <span class="t-f">--model</span> <span class="t-u">ollama:llama3.2</span></code></pre></div>
+              </div>
+            </li>
+            <li class="reveal">
+              <span class="n">3</span>
+              <div>
+                <strong>{sd.start.steps[2].title}</strong>
+                <span>{sd.start.steps[2].text}</span>
+                <div class="install"><pre class="cmd"><code><span class="t-p">$</span> <span class="t-c">seshat</span> <span class="t-a">chat</span></code></pre></div>
+              </div>
+            </li>
+          </ol>
+          <p class="docs-link reveal"><a class="link" href={docUrl('getting-started/quick-start')}><Icon name="book-open" /> {sd.start.docs} <Arrow /></a></p>
+        </div>
+      </section>
+    </>
+  )}
+
+  {page === 'productSeshat' && (
     <section class="block tui-block">
       <div class="wrap">
         <h2 class="reveal">{t.tui.title}</h2>
         <p class="intro reveal">{t.tui.introA}<code>{t.tui.introCode}</code>{t.tui.introB}</p>
-        <div class="install reveal">
-          <div class="cmd-bar">
-            <span class="cmd-label">{t.tui.installLabel}</span>
-            <button class="copy" type="button" data-copy="curl -fsSL https://raw.githubusercontent.com/KPO-Tech/seshat-runtime/main/scripts/install.sh | bash" data-copied={t.tui.copied}>{t.tui.copy}</button>
-          </div>
-          <pre class="cmd"><code><span class="t-p">$</span> <span class="t-c">curl</span> <span class="t-f">-fsSL</span> <span class="t-u">https://raw.githubusercontent.com/KPO-Tech/seshat-runtime/main/scripts/install.sh</span> <span class="t-o">|</span> <span class="t-c">bash</span>
-<span class="t-p">$</span> <span class="t-c">seshat</span> <span class="t-a">chat</span></code></pre>
-        </div>
         <div class="gallery reveal" data-gallery>
           <figure class="shot">
             <div class="shot-frame"><img src={shots[0].img} alt={shots[0].t} width="1600" height="823" loading="lazy" decoding="async" data-main /></div>

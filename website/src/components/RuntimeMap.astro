@@ -1,0 +1,99 @@
+---
+// Schéma « Seshat en une image » : comment on l'atteint, le runtime, les modèles.
+import Icon from './Icon.astro';
+
+interface Item { name: string; note?: string; icon?: string }
+interface Props {
+  t: {
+    aria: string;
+    colA: string; surfaces: Item[]; built: string;
+    colB: string; core: Item[]; stays: string;
+    colC: string; models: Item[]; leaves: string;
+  };
+}
+const { t } = Astro.props;
+const built = [
+  { name: 'SeshatOS', logo: '/brand/seshatos.svg' },
+  { name: 'SeshatCloud', logo: '/brand/seshatcloud.svg' },
+];
+---
+<figure class="map" role="img" aria-label={t.aria}>
+  <div class="col">
+    <h3 class="col-h">{t.colA}</h3>
+    {t.surfaces.map((s) => (
+      <div class="card">
+        <span class="rm-chip"><Icon name={s.icon ?? 'code'} /></span>
+        <div><strong>{s.name}</strong><span>{s.note}</span></div>
+      </div>
+    ))}
+    <div class="built">
+      <span>{t.built}</span>
+      <div>
+        {built.map((b) => <em><img src={b.logo} alt="" width="18" height="18" />{b.name}</em>)}
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow" aria-hidden="true">
+    <svg viewBox="0 0 60 24" width="60" height="24"><path class="dash" d="M8 12h44" /><path d="M14 6l-8 6 8 6M46 6l8 6-8 6" /></svg>
+  </div>
+
+  <div class="col rm-core">
+    <h3 class="col-h">{t.colB}</h3>
+    <div class="core-grid">
+      {t.core.map((c) => (
+        <div class="core-item"><Icon name={c.icon ?? 'cpu'} /><span>{c.name}</span></div>
+      ))}
+    </div>
+    <p class="rm-note"><Icon name="lock-key" /> {t.stays}</p>
+  </div>
+
+  <div class="arrow" aria-hidden="true">
+    <svg viewBox="0 0 60 24" width="60" height="24"><path class="dash" d="M8 12h44" /><path d="M14 6l-8 6 8 6M46 6l8 6-8 6" /></svg>
+  </div>
+
+  <div class="col">
+    <h3 class="col-h">{t.colC}</h3>
+    {t.models.map((m, i) => (
+      <div class="card">
+        <span class="rm-chip"><Icon name={i === 0 ? 'cloud' : 'laptop'} /></span>
+        <div><strong>{m.name}</strong><span>{m.note}</span></div>
+      </div>
+    ))}
+    <p class="rm-note out">{t.leaves}</p>
+  </div>
+</figure>
+
+<style>
+  .map { margin: 40px 0 0; display: grid; grid-template-columns: 1fr 64px 1.25fr 64px 1fr; align-items: stretch; gap: 0; }
+  .col { display: grid; gap: 12px; align-content: start; }
+  .col-h { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text2); margin-bottom: 4px; }
+  .card { display: grid; grid-template-columns: 44px 1fr; gap: 14px; align-items: center; padding: 14px 16px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); }
+  .card strong { display: block; font-family: var(--font-display); font-size: 1.05rem; }
+  .card span:not(.rm-chip) { display: block; margin-top: 2px; color: var(--text2); font-size: 0.9rem; line-height: 1.35; }
+  .rm-chip { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); color: var(--accent-text); }
+  .rm-chip :global(.pi) { width: 22px; height: 22px; fill: currentColor; }
+  .built { margin-top: 6px; padding: 12px 14px; border: 1px dashed var(--line); border-radius: var(--radius); display: grid; gap: 8px; }
+  .built > span { font-size: 0.82rem; color: var(--text2); }
+  .built div { display: flex; flex-wrap: wrap; gap: 8px; }
+  .built em { font-style: normal; font-weight: 600; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 6px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); }
+  .arrow { display: grid; place-items: center; color: var(--accent-text); }
+  .arrow svg { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .rm-core { padding: 24px; border-radius: calc(var(--radius) + 6px); background: var(--panel); color: var(--on-panel); box-shadow: var(--shadow); }
+  .rm-core .col-h { color: var(--orange-light); }
+  .core-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .core-item { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px; background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12); font-weight: 600; font-size: 0.95rem; }
+  .core-item :global(.pi) { width: 20px; height: 20px; fill: var(--orange-light); flex: none; }
+  .rm-note { display: flex; gap: 8px; align-items: flex-start; margin-top: 8px; font-size: 0.88rem; color: var(--text2); line-height: 1.4; }
+  .rm-core .rm-note { color: var(--on-panel2); }
+  .rm-note :global(.pi) { width: 18px; height: 18px; fill: currentColor; flex: none; margin-top: 1px; }
+  @media (prefers-reduced-motion: no-preference) {
+    .dash { stroke-dasharray: 4 6; animation: map-dash 1.4s linear infinite; }
+  }
+  @keyframes map-dash { to { stroke-dashoffset: -20; } }
+  @media (max-width: 960px) {
+    .map { grid-template-columns: 1fr; gap: 6px; }
+    .arrow { height: 48px; }
+    .arrow svg { transform: rotate(90deg); }
+  }
+</style>
