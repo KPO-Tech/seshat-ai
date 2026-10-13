@@ -103,7 +103,7 @@ const en: typeof fr = {
   seshatcloud: {
     meta: {
       title: 'SeshatCloud: the multi-user layer | Seshat AI',
-      description: 'SeshatCloud: organisations, access rights, SCIM, an admin console and document reading, on top of the same runtime. Solid on the server side, not offered on its own yet.',
+      description: 'SeshatCloud: organisations, access rights, SCIM, an admin console and document reading, on top of the Seshat runtime. Not offered on its own yet.',
     },
     head: { title: 'SeshatCloud, AI shared across the whole company.', lead: 'The multi-user layer on top of the same runtime: organisations, access rights, administration.' },
     availability: 'Not offered on its own yet: it is deployed as part of a pilot or a tailored engagement.',

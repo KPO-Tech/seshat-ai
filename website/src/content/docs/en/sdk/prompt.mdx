@@ -3,7 +3,7 @@ title: Prompt
 description: "How the system prompt is assembled and how to add to it, replace parts of it, or guide individual tools."
 section: sdk
 order: 4
-updated: "2026-10-12"
+updated: "2026-10-13"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import Diagram from '@/components/docs/Diagram.astro';
@@ -35,8 +35,10 @@ If the working directory contains an instructions file, its content is added to 
 
 The content is cut at 32 KB. Use it for rules that belong to a project: how to build and test, conventions, things to avoid.
 
+These files are read only for a project you trust. In the terminal interface, run `seshat trust` first: one command covers the project's configuration files and its instruction files, and a file is trusted for its exact content, so a change brings the question back. In Go, set `ClientConfig.TrustProjectInstructions`, a function that receives the path and the content of each file and returns `true` to use it. Left empty, no instructions file is read at all.
+
 <Callout type="warning" title="Instructions come from the project">
-A project you just cloned can carry an instructions file, and its text reaches the model as instructions. Read an unfamiliar `AGENTS.md` before you run an agent in that folder.
+A project you just cloned can carry an instructions file, and its text would reach the model as instructions. That is why Seshat does not read it until you trust the project. Read an unfamiliar `AGENTS.md` before you do.
 </Callout>
 
 ## Configure it

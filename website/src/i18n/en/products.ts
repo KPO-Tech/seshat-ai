@@ -23,7 +23,7 @@ const en: typeof fr = {
         'Terminal interface (seshat chat), command line, gRPC and SDK.',
       ],
       licence: 'Open source runtime, Apache-2.0. The terminal interface reuses code from Crush (FSL-1.1-MIT license).',
-      status: 'Version 1.3, installable today, with its terminal interface.',
+      status: 'Version 1.7, installable today, with its terminal interface.',
     },
     {
       badge: 'Under construction',

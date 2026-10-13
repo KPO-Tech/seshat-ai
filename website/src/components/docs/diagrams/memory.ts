@@ -1,4 +1,4 @@
-// Diagrammes de la page « Memory and compaction ». Valeurs relues dans internal/runtime/memory (commit a1eee2f).
+// Diagrammes de la page « Memory and compaction ». Valeurs relues dans internal/runtime/memory (commit a1eee2f). Disjoncteur et modèle du résumé relus au commit d2317e8 (2026-10-13).
 
 // Où se situent les seuils par rapport à la fenêtre utile (100 % = fenêtre du modèle moins la réserve du résumé).
 export const gauge = {
@@ -41,8 +41,8 @@ export const compaction = {
     { id: 'micro', x: 150, y: 216, w: 300, h: 56, icon: 'scissors', title: 'Micro-compaction', sub: ['trims large tool results'] },
     { id: 'tgt', x: 185, y: 302, w: 230, h: 80, shape: 'diamond', title: 'Under the target ?' },
     { id: 'done1', x: 560, y: 314, w: 290, h: 56, kind: 'ok', icon: 'check-circle', title: 'Done, no model needed', sub: ['the trimmed history is kept'] },
-    { id: 'sum', x: 150, y: 412, w: 300, h: 62, kind: 'core', icon: 'robot', title: 'Summarise the conversation', sub: ['summary model, 2,000 tokens at most'] },
-    { id: 'fail', x: 560, y: 416, w: 290, h: 56, kind: 'bad', icon: 'warning', title: 'Summary failed', sub: ['the turn ends with an error'] },
+    { id: 'sum', x: 150, y: 412, w: 300, h: 62, kind: 'core', icon: 'robot', title: 'Summarise the conversation', sub: ['the session model, 2,000 tokens at most'] },
+    { id: 'fail', x: 560, y: 416, w: 290, h: 56, kind: 'bad', icon: 'warning', title: 'Summary failed', sub: ['the turn ends with an error;', '3 in a row stop the retries'] },
     { id: 'keep', x: 150, y: 504, w: 300, h: 62, icon: 'list-checks', title: 'Keep the recent messages', sub: ['up to the target, tool pairs intact'] },
     { id: 'build', x: 150, y: 596, w: 300, h: 62, kind: 'ok', icon: 'stack', title: 'Rebuild the history', sub: ['summary, marker, kept messages'] },
   ],

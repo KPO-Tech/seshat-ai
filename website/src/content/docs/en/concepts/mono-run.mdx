@@ -3,7 +3,7 @@ title: One runtime, one loop
 description: "Why Seshat keeps sessions, prompts, tools, permissions and storage in a single runtime, and what happens in each turn."
 section: concepts
 order: 8
-updated: "2026-10-07"
+updated: "2026-10-13"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import Hub from '@/components/docs/Hub.astro';
@@ -60,11 +60,12 @@ Each turn repeats these steps until the model has nothing left to do:
 | Rate limit or timeout | Waits with exponential backoff and retries |
 | The answer is cut off at the token limit | Adds a continuation message and goes on |
 | The model announces a next step but stops | Nudges it to continue, up to a limit you can set |
+| The model stops while its task list still has open items | Reminds it of the open tasks, up to 3 times by default |
 | A model keeps failing | Tries the fallback models, then the fallback providers |
 | Everything failed | Returns an error with the recovery context |
 
 <Callout type="note" title="Limits you control">
-`MaxTurns`, `TurnTokenBudget`, `ContinuationNudgeLimit` and `MaxConsecutiveDenials` in the client config bound what one request can spend. See [Go SDK](/en/docs/sdk/go-sdk).
+`MaxTurns`, `TurnTokenBudget`, `ContinuationNudgeLimit`, `TaskNudgeLimit` and `MaxConsecutiveDenials` in the client config bound what one request can spend. See [Go SDK](/en/docs/sdk/go-sdk).
 </Callout>
 
 ## Where to read more
