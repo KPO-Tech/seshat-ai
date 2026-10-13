@@ -1,0 +1,51 @@
+---
+title: Reading documents
+description: "How the agent reads PDFs and office files, what the built-in reader handles, and when to add a document-reader service."
+section: concepts
+order: 14
+updated: "2026-10-13"
+---
+import Callout from '@/components/docs/Callout.astro';
+import LinkCards from '@/components/docs/LinkCards.astro';
+
+Much of the knowledge in a company is in PDFs and office files, not in plain text. This page explains how the agent reads them, and what to do when the built-in reader is not enough.
+
+## The tools
+
+| Tool | Use |
+|---|---|
+| `read_file` | Reads a file. Text files, images and PDFs directly, and documents through the document reader. A PDF is read page by page, with a marker before each page |
+| `convert_document` | Converts a local file to markdown: text, headings, tables and layout, with OCR when the reader offers it |
+| `read_document_url` | Fetches a document from a URL and converts it to markdown. PDF, DOCX, PPTX, XLSX, web pages and arXiv papers. It can save the markdown in the working folder |
+| `render_document_page` | Draws one page of a local document as an image and attaches it to the conversation, so a model that sees images can look at the page itself |
+
+A long PDF is not read in one go. A read stops at a size limit and says which page to continue from, so the agent reads the rest with the `pages` parameter. The result also says which pages hold images or have no readable text.
+
+## The built-in reader and a reader service
+
+Without any setting, Seshat reads with its **built-in reader**: Word (`.docx`), PowerPoint (`.pptx`) and Excel (`.xlsx`) files, and PDFs that carry a text layer.
+
+For **scanned documents** and **complex layouts** (several columns, tables that are hard to follow), run a document-reader service and give its address to Seshat. `seshat-intelligence`, the document service of SeshatCloud, is one such service. Set `ClientConfig.DocumentReaderURL` in Go, or `DOCUMENT_READER_URL`: `seshat doctor` reports which reader is in use and suggests the variable.
+
+```bash
+seshat doctor
+```
+
+```text
+[ok]   document_reader     built-in reader (DOCX, PPTX, XLSX, PDF with a text layer)
+```
+
+To use your own converter, set `ClientConfig.DocumentConverter` in Go. It takes precedence over the address. To let the agent look at pages as images, set `ClientConfig.DocumentPageRenderer`, which backs `render_document_page`. See [ClientConfig reference](/en/docs/reference/client-config).
+
+<Callout type="note" title="What to expect from a scan">
+A scanned PDF has no text to extract. Without a service that does OCR, the agent can read the pages that have a text layer, and `render_document_page` lets a multimodal model look at the others. The result of a read tells which pages have no readable text, so the agent knows what it did not read.
+</Callout>
+
+## Documents and retrieval
+
+Reading a file puts it in the conversation. To search across many documents, use the knowledge tools instead: `rag_ingest` splits a document into a corpus and `rag_search` finds the passages that answer a question. See [Retrieval and knowledge](/en/docs/concepts/rag). These tools need a `RAGService`, so they are off until a host provides one.
+
+<LinkCards cards={[
+  { title: 'Retrieval and knowledge', text: 'Search across documents instead of reading one.', href: '/en/docs/concepts/rag', icon: 'magnifying-glass' },
+  { title: 'Built-in tools', text: 'The document tools and what each needs.', href: '/en/docs/reference/tools', icon: 'toolbox' },
+]} />

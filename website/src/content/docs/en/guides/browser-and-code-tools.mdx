@@ -1,0 +1,84 @@
+---
+title: Browser and code tools
+description: "How the agent browses the web, understands code with a language server, works in an isolated worktree, and keeps goals, plans and tasks."
+section: guides
+order: 3
+updated: "2026-10-13"
+---
+import Callout from '@/components/docs/Callout.astro';
+import LinkCards from '@/components/docs/LinkCards.astro';
+
+[Built-in tools](/en/docs/reference/tools) lists every tool. This page explains how a few families work together, because a single tool does not tell you the sequence.
+
+## Browsing
+
+Besides `web_fetch` and `web_search`, which read a page or a search result as text, the agent can drive a real browser with the `browser_*` tools. It is useful when a page needs a click, a form or some waiting before it shows what you want.
+
+**The sequence.** The agent opens a page, takes a **snapshot**, then acts on what the snapshot shows:
+
+1. `browser_open` opens a page, `browser_navigate` moves an existing one.
+2. `browser_snapshot` captures a compact view of the page: its visible text and its interactive elements, each with an `element_id`.
+3. `browser_click` and `browser_type` act on an element by its `element_id`, not by a CSS selector. The IDs come from the latest snapshot, so the agent takes a new snapshot after the page changes.
+4. `browser_press` sends a key (Enter, Tab, Escape), `browser_scroll` scrolls, and `browser_wait` waits for the page to settle or for some text to appear.
+5. `browser_extract` returns a readable text view of the page, with its headings, without the whole snapshot. `browser_screenshot` returns an image when the text is not enough.
+
+**Several pages.** A session can hold several pages. `browser_list_pages`, `browser_select_page` and `browser_close_page` manage them. `browser_search_content` searches the text of the snapshots already taken, across pages.
+
+**Downloads and network.** `browser_list_downloads` lists the files the page downloaded. `browser_network_list` shows recent requests, responses and failures, which helps when a page does not behave.
+
+### Making it lighter
+
+`browser_set_network_policy` blocks requests for the whole session, and `browser_get_network_policy` shows the current rules. It takes a list of URL patterns to block, and a preset:
+
+| Preset | What it blocks |
+|---|---|
+| `default` | Only your own patterns |
+| `text_only` | Images, fonts, audio and video |
+| `aggressive` | The same, and the main analytics and tracking domains |
+
+Blocking what the agent does not read makes pages load faster and keeps its snapshots small.
+
+### Choosing the browser
+
+In Go, `ClientConfig.BrowserExecutablePath` says which browser program to start, and `ClientConfig.BrowserRemoteControlURL` attaches the tools to a browser that is already running. See [ClientConfig reference](/en/docs/reference/client-config).
+
+<Callout type="warning" title="A browser reaches the network and runs the page's code">
+Treat what a page says as untrusted, like any tool result. The agent can be told things by a page it reads. Keep approvals on for actions that matter, and use the network policy to cut what it does not need.
+</Callout>
+
+## Understanding code: `lsp`
+
+The `lsp` tool asks a language server about the code, which is more exact than searching for text. It needs a file path, and for most operations a line and a column:
+
+| Operation | What it answers |
+|---|---|
+| `definition` | Where a symbol is defined |
+| `references` | Where it is used |
+| `hover` | Its documentation and type |
+| `symbols` | Everything defined in a file |
+| `implementations` | The implementations of an interface or an abstract method |
+| `incoming_calls`, `outgoing_calls` | Who calls a function, and what it calls |
+| `workspace_symbol` | A search for symbols across the project |
+
+Language servers are set in the `lsp` section of the [configuration file](/en/docs/reference/configuration-file). In a project you have not trusted, that section is ignored.
+
+## Working in isolation: worktrees
+
+`enter_worktree` creates an isolated git worktree in a folder named `.worktree-...` and switches the session into it, so the agent can try changes without touching your working copy. `exit_worktree` returns to the original folder. By default Seshat creates a branch for the worktree and deletes the worktree when you leave it.
+
+## Goals, plans and tasks
+
+These tools keep the agent's own work visible to you.
+
+| Tool | Use |
+|---|---|
+| `create_goal`, `get_goal`, `update_goal` | A persistent goal for the session, with its status and the usage so far |
+| `enter_plan_mode`, `submit_plan`, `exit_plan_mode` | Agree on a plan before changing anything. See [Runtime modes](/en/docs/concepts/runtime-modes) |
+| `task_create`, `task_update`, `task_list`, `task_get`, `task_stop` | A checklist of the steps, and background tasks. `ctrl+t` shows it in the terminal interface |
+
+A turn does not end while the task list still has open items: the loop reminds the model, up to three times by default. See [One runtime, one loop](/en/docs/concepts/mono-run).
+
+<LinkCards cards={[
+  { title: 'Built-in tools', text: 'Every tool, with what it needs to be available.', href: '/en/docs/reference/tools', icon: 'toolbox' },
+  { title: 'Runtime modes', text: 'Execute, plan, and who approves what.', href: '/en/docs/concepts/runtime-modes', icon: 'list-checks' },
+]} />
