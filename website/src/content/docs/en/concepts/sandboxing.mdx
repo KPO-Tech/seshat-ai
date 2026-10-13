@@ -1,0 +1,75 @@
+---
+title: Sandboxing
+description: "How Seshat confines the shell commands the model runs: no isolation, Landlock on Linux, or a Docker container, and how to require one."
+section: concepts
+order: 12
+updated: "2026-10-13"
+---
+import Callout from '@/components/docs/Callout.astro';
+import LinkCards from '@/components/docs/LinkCards.astro';
+
+The `bash` tool lets the model run shell commands. A command runs with your rights, so Seshat can confine it. This page explains the three levels, how to choose one, and what happens when the one you asked for is not available.
+
+## Three levels
+
+| Level | What it does | Where it works |
+|---|---|---|
+| **None** | The command runs directly on the host, with your rights | Everywhere. It is the only level on Windows and macOS unless you choose Docker |
+| **Landlock** | The command can read the system but can write only inside the working folder | Linux, when the kernel supports Landlock |
+| **Docker** | The command runs inside a container, and only the working folder is shared with the host | Anywhere Docker runs |
+
+Landlock is used automatically on Linux when it is available. Docker is something you ask for.
+
+<Callout type="warning" title="On a desktop, the default is no isolation">
+On Windows and macOS there is no Landlock, so without Docker the commands of the model run unconfined, and Seshat writes a warning in the log. This is why sensitive commands ask for your approval first. See [Security and trust](/en/docs/concepts/security-and-trust).
+</Callout>
+
+## Choosing a level
+
+In Go, two fields of `ClientConfig` decide:
+
+```go
+cfg.SandboxKind = sdk.SandboxKindDocker // or sdk.SandboxKindLocal, the default
+cfg.RequireSandbox = true               // refuse to run a command without a sandbox
+```
+
+- **`SandboxKindLocal`** (the default) uses Landlock where it exists, and nothing elsewhere.
+- **`SandboxKindDocker`** runs the commands in a persistent container. If Docker is not reachable when the client starts, Seshat falls back to the local level and writes a warning in the log.
+- **`RequireSandbox`** turns an unconfined command into an error. When no sandbox is available, `bash` refuses with "sandbox required but unavailable on this host: refusing to run the command unconfined".
+
+| Situation | Advice |
+|---|---|
+| A desktop application | Leave `RequireSandbox` off. Refusing to run `bash` at all is often worse than a visible warning |
+| A shared server | Always set `RequireSandbox`. An unconfined command runs with the rights and the environment of the server |
+
+## What the Docker level does
+
+The working folder of the session is shared with the container, and appears there as `/workdir`. Everything else the command sees is the image. The defaults are meant to be careful, and you can change each one through `ClientConfig.SandboxDocker`:
+
+| Setting | Default | Effect |
+|---|---|---|
+| `BaseImage` | `ubuntu:24.04` | The image of new containers |
+| `SetupCommands` | none | Shell commands run once, when a container is created, for example to install tools |
+| `WorkDir` | `/workdir` | Where the working folder appears in the container |
+| `Env` | none | Variables always set in the container |
+| `NetworkAccess` | `true` | Set it to `false` for no network at all |
+| `MemoryLimitMB` | 2048 | The memory the container may use |
+| `CPULimit` | 2.0 | The CPUs the container may use |
+| `Runtime` | Docker's default | A stronger runtime such as `runsc` (gVisor). It must already be set up in Docker. If it is not, the health check fails instead of running without it |
+| `PublishPorts` | none | Container ports to publish, for example to preview a development server the agent starts |
+| `TrackFileChanges` | `false` | Keep a git history of the changes made in the working folder, in a separate repository, as an audit and undo aid. It needs `git` on the host |
+
+## Which level am I running at?
+
+`client.SandboxKind()` reports the sandbox this client actually resolved to: Docker only if you asked for it and Docker answered its health check at startup. `sdk.SandboxAvailable()` answers a different question: is Landlock available on this host? Use the first to show your users the real state. See [Integrating in your product](/en/docs/sdk/integration#run-commands-safely).
+
+## What the sandbox does not do
+
+- It confines the commands of the `bash` tool. It does not replace permissions: a command that deletes your files inside the working folder is still a command that can delete them.
+- It does not hide the working folder. Anything in it, a `.env` file included, can be read by the command.
+- The environment of the commands is filtered separately: variables whose name says secret (`*_API_KEY`, `*_TOKEN`...) are not passed on. See [Security and trust](/en/docs/concepts/security-and-trust).
+
+<LinkCards cards={[
+  { title: 'Integrating in your product', text: 'Run commands safely, storage, and a checklist for a server.', href: '/en/docs/sdk/integration', icon: 'plugs' },
+  { title: 'Security and trust', text: 'Project files, secrets and what Seshat refuses by default.', href: '/en/docs/concepts/security-and-trust', icon: 'shield-check' },
+]} />
