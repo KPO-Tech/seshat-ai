@@ -3,10 +3,12 @@ title: Go SDK
 description: "Embed the Seshat runtime in a Go application: create a client, ask a question, hold a conversation."
 section: sdk
 order: 1
-updated: "2026-10-13"
+updated: "2026-10-14"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import LinkCards from '@/components/docs/LinkCards.astro';
+import Diagram from '@/components/docs/Diagram.astro';
+import { lifecycle } from '@/components/docs/diagrams/sdk';
 
 The SDK is the `github.com/KPO-Tech/seshat-runtime/pkg/sdk` package. It gives you the same runtime as the terminal agent, as a library: sessions, tools, permissions, memory, MCP, hooks and providers.
 
@@ -61,6 +63,8 @@ func main() {
 </Callout>
 
 ## A conversation
+
+<Diagram {...lifecycle} />
 
 A session keeps the history between messages. Create one, send as many messages as you like, then close it.
 

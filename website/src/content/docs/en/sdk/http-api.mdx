@@ -3,9 +3,11 @@ title: HTTP API (SeshatOS)
 description: "The local HTTP API of the SeshatOS backend: queries and streaming, sessions, and an Anthropic-compatible endpoint."
 section: sdk
 order: 9
-updated: "2026-10-12"
+updated: "2026-10-14"
 ---
 import Callout from '@/components/docs/Callout.astro';
+import Diagram from '@/components/docs/Diagram.astro';
+import { httpFlow } from '@/components/docs/diagrams/http';
 
 SeshatOS runs a backend on your machine that the desktop app talks to. The same HTTP API can be used by your own scripts and tools.
 
@@ -65,6 +67,8 @@ Request fields (all optional except `prompt`):
 The response holds `session_id`, `content`, `stop_reason`, `turn_number`, `is_complete`, token `usage`, and the tool calls and their results.
 
 ## Stream the answer
+
+<Diagram {...httpFlow} />
 
 `POST /api/v1/query/stream` takes the same body and answers with Server-Sent Events. Check the `X-SSE-Version` response header (currently `1`) before parsing.
 

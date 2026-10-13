@@ -3,10 +3,12 @@ title: Sandboxing
 description: "How Seshat confines the shell commands the model runs: no isolation, Landlock on Linux, or a Docker container, and how to require one."
 section: concepts
 order: 12
-updated: "2026-10-13"
+updated: "2026-10-14"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import LinkCards from '@/components/docs/LinkCards.astro';
+import Diagram from '@/components/docs/Diagram.astro';
+import { sandboxChoice } from '@/components/docs/diagrams/sandbox';
 
 The `bash` tool lets the model run shell commands. A command runs with your rights, so Seshat can confine it. This page explains the three levels, how to choose one, and what happens when the one you asked for is not available.
 
@@ -25,6 +27,8 @@ On Windows and macOS there is no Landlock, so without Docker the commands of the
 </Callout>
 
 ## Choosing a level
+
+<Diagram {...sandboxChoice} />
 
 In Go, two fields of `ClientConfig` decide:
 

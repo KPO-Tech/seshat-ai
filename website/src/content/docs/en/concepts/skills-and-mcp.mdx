@@ -3,11 +3,11 @@ title: Skills and MCP
 description: "Two ways to extend the agent: skills teach it your rules, MCP servers give it new tools."
 section: concepts
 order: 6
-updated: "2026-10-13"
+updated: "2026-10-14"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import Diagram from '@/components/docs/Diagram.astro';
-import { skillFlow, mcpFlow } from '@/components/docs/diagrams/skillsMcp';
+import { skillFlow, mcpFlow, skillSources } from '@/components/docs/diagrams/skillsMcp';
 
 |  | Skills | MCP servers |
 |---|---|---|
@@ -52,6 +52,8 @@ The agent's `skill` tool reads these folders. The runtime root is the runtime fo
 | `<runtime root>/skills/repos/<name>/` | A cloned collection: each subfolder with a `SKILL.md` is a skill |
 
 When two skills have the same name, the first one found wins, in this order: project `.claude/skills`, project `.seshat/skills`, managed, user, builtin, older command files, sub-folder `.claude/skills`, collections, bundled skills. So a project skill overrides a personal one, and also an administrator's.
+
+<Diagram {...skillSources} />
 
 <Callout type="note" title="Other folders in the terminal interface">
 The terminal interface also lists skills it finds in `.agents/skills` and `.cursor/skills` of the project and in `~/.claude/skills`. The agent's `skill` tool does not read those folders, so a skill placed only there is shown in the list but the agent cannot call it. Put project skills in `.claude/skills/` or `.seshat/skills/`.

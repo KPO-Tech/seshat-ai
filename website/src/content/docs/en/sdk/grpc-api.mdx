@@ -3,9 +3,11 @@ title: gRPC API
 description: "Run Seshat as a service and call it from any language: the methods, streaming, authentication and TLS."
 section: sdk
 order: 6
-updated: "2026-10-07"
+updated: "2026-10-14"
 ---
 import Callout from '@/components/docs/Callout.astro';
+import Diagram from '@/components/docs/Diagram.astro';
+import { grpcRequest } from '@/components/docs/diagrams/grpc';
 
 The gRPC server lets programs written in any language use Seshat. It runs one service, `seshat.SeshatService`, defined in `pkg/grpc/proto/seshat.proto`.
 
@@ -40,6 +42,8 @@ It listens on `127.0.0.1:50051` by default and is closed to the network until yo
 More on the reasons in [Security and trust](/en/docs/concepts/security-and-trust).
 
 ## Methods
+
+<Diagram {...grpcRequest} />
 
 | Method | Type | Purpose |
 |---|---|---|
