@@ -2,7 +2,7 @@ import type fr from '../fr/productPages';
 
 const en: typeof fr = {
   crumb: 'Products',
-  more: 'See the product',
+  more: 'Explore',
   layersTitle: 'The layers of the stack that belong to this product',
   layersNote: 'Each layer and its maturity are detailed on the Products page.',
   seshat: {

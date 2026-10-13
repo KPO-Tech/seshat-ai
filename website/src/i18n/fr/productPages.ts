@@ -2,7 +2,7 @@
 // Les points, licences et statuts viennent de products.items ; les interfaces et le pilote, de products.tui et products.kta.
 export default {
   crumb: 'Produits',
-  more: 'Voir le produit',
+  more: 'Découvrir',
   layersTitle: 'Les couches de la pile qui relèvent de ce produit',
   layersNote: 'Le détail de chaque couche et de sa maturité est sur la page Produits.',
   seshat: {

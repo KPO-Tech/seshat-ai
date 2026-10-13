@@ -16,9 +16,9 @@ const t = dict(lang).products;
 const detail: PageKey[] = ['productSeshat', 'productSeshatOS', 'productSeshatCloud'];
 const more = dict(lang).productPages.more;
 const meta = [
-  { name: 'Seshat', logo: '/brand/seshat.svg', tone: 'ok', dark: false, code: 'https://github.com/KPO-Tech/seshat-runtime', stage: 3 },
-  { name: 'SeshatOS', logo: '/brand/seshatos.svg', tone: 'wip', dark: true, code: 'https://github.com/KPO-Tech/SeshatOS', stage: 1 },
-  { name: 'SeshatCloud', logo: '/brand/seshatcloud.svg', tone: 'wip', dark: false, code: '', stage: 1 },
+  { name: 'Seshat', page: 'productSeshat' as PageKey, logo: '/brand/seshat.svg', tone: 'ok', dark: false, code: 'https://github.com/KPO-Tech/seshat-runtime', stage: 3 },
+  { name: 'SeshatOS', page: 'productSeshatOS' as PageKey, logo: '/brand/seshatos.svg', tone: 'wip', dark: true, code: 'https://github.com/KPO-Tech/SeshatOS', stage: 1 },
+  { name: 'SeshatCloud', page: 'productSeshatCloud' as PageKey, logo: '/brand/seshatcloud.svg', tone: 'wip', dark: false, code: '', stage: 1 },
 ];
 const stages = t.stages.map((name, i) => ({ name, items: meta.filter((m) => m.stage === i) }));
 ---
@@ -38,7 +38,7 @@ const stages = t.stages.map((name, i) => ({ name, items: meta.filter((m) => m.st
             <span class="scale-name">{s.name}</span>
             <span class="scale-bar"></span>
             <span class="scale-items">
-              {s.items.map((it) => <span class="scale-chip"><img src={it.logo} alt="" width="22" height="22" />{it.name}</span>)}
+              {s.items.map((it) => <a class="scale-chip" href={url(lang, it.page)}><img src={it.logo} alt="" width="22" height="22" />{it.name}</a>)}
             </span>
           </li>
         ))}
@@ -46,7 +46,6 @@ const stages = t.stages.map((name, i) => ({ name, items: meta.filter((m) => m.st
     </div>
   </section>
 
-  <Stack t={t.stack} />
 
   <section class="block" style="padding-top:24px">
     <div class="wrap">
@@ -68,13 +67,15 @@ const stages = t.stages.map((name, i) => ({ name, items: meta.filter((m) => m.st
                 {p.points.map((x) => <li><Check />{x}</li>)}
               </ul>
               <p class="prod-status">{p.status}</p>
-          <p class="prod-more"><a class="link" href={url(lang, detail[i])}>{more} <Arrow /></a></p>
+          <p class="prod-more"><a class="btn btn-primary" href={url(lang, detail[i])}>{more} {meta[i].name} <Arrow /></a></p>
             </div>
           </article>
         ))}
       </div>
     </div>
   </section>
+
+  <Stack t={t.stack} />
 
   <section class="cta">
     <div class="wrap">

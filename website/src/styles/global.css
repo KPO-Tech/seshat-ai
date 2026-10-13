@@ -402,8 +402,10 @@ section.contact-block { padding: 28px 0 88px; }
 .scale li:last-child .scale-bar { border-radius: 0 4px 4px 0; }
 .scale li:nth-child(2) .scale-bar { background: color-mix(in srgb, var(--accent) 60%, var(--line)); }
 .scale li:nth-child(4) .scale-bar { background: var(--accent); }
-.scale-items { display: grid; gap: 8px; justify-items: start; min-height: 88px; }
+.scale-items { display: grid; gap: 8px; justify-items: start; align-content: start; min-height: 88px; }
 .scale-chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 8px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); font-weight: 600; font-size: 0.92rem; }
+a.scale-chip { text-decoration: none; color: var(--text); transition: border-color 0.2s, transform 0.2s var(--ease); }
+a.scale-chip:hover { border-color: var(--accent); transform: translateY(-1px); }
 .scale-chip img { width: 22px; height: 22px; }
 
 /* Produits : une ligne par brique */
@@ -418,7 +420,7 @@ section.contact-block { padding: 28px 0 88px; }
 .prod-what { font-size: 1.1rem; }
 .prod .deliver { margin-top: 20px; }
 .prod:not(.dark) .deliver li { background: var(--bg); border-color: var(--line); }
-.prod-more { margin-top: 16px; }
+.prod-more { margin-top: 24px; }
 .back { display: inline-block; margin-bottom: 20px; font-size: 0.95rem; font-weight: 500; color: var(--text2); text-decoration: none; }
 .back:hover { color: var(--text); }
 .badge.plan { background: transparent; color: var(--text2); border-color: var(--line); }
