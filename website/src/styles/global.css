@@ -51,6 +51,18 @@ p { margin: 0; }
 .nav a:not(.btn) { text-decoration: none; font-size: 0.9rem; font-weight: 500; color: var(--text2); padding: 8px 12px; border-radius: 10px; transition: color 0.2s, background 0.2s; }
 .nav a:not(.btn):hover { color: var(--text); background: color-mix(in srgb, var(--text) 7%, transparent); }
 .nav a[aria-current='page'] { color: var(--text); position: relative; }
+.nav a:not(.btn), .dd-btn { white-space: nowrap; }
+.dd { position: relative; }
+.dd-btn { display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 0.9rem; font-weight: 500; color: var(--text2); background: none; border: 0; padding: 8px 12px; border-radius: 10px; cursor: pointer; transition: color 0.2s, background 0.2s; }
+.dd-btn:hover, .dd:focus-within .dd-btn { color: var(--text); background: color-mix(in srgb, var(--text) 7%, transparent); }
+.dd-btn[aria-current='true'] { color: var(--text); }
+.dd-caret { transition: transform 0.2s; }
+.dd:hover .dd-caret, .dd:focus-within .dd-caret { transform: rotate(180deg); }
+.dd-panel { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); min-width: 190px; padding: 14px 6px 6px; display: none; }
+.dd-panel::before { content: ''; position: absolute; inset: 8px 0 0; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); z-index: -1; }
+.dd:hover .dd-panel, .dd:focus-within .dd-panel { display: grid; z-index: 21; }
+.dd-panel a { display: block; }
+
 .nav a[aria-current='page']::after { content: ''; position: absolute; left: 12px; right: 12px; bottom: -2px; height: 2px; border-radius: 2px; background: var(--accent); }
 .theme-toggle { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--text); cursor: pointer; }
 .theme-toggle:hover { border-color: var(--text2); }
@@ -769,6 +781,9 @@ section.legal-block { padding: 16px 0 96px; }
   .mnav a { display: block; padding: 14px 12px; border-radius: 12px; text-decoration: none; font-size: 1.05rem; font-weight: 600; color: var(--text); }
   .mnav a:hover { background: color-mix(in srgb, var(--text) 7%, transparent); }
   .mnav a[aria-current='page'] { background: color-mix(in srgb, var(--accent) 14%, var(--bg)); color: var(--accent-text); }
+  .mgroup { display: grid; gap: 2px; margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .mgroup + a { margin-top: 8px; padding-top: 20px; border-top: 1px solid var(--line); border-radius: 0 0 12px 12px; }
+  .mgroup-label { padding: 0 12px 4px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text2); }
 }
 
 /* Vue éclatée de la pile (page Produits) */

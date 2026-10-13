@@ -1,9 +1,7 @@
 ---
 import '../styles/global.css';
-import sunRaw from '@phosphor-icons/core/assets/bold/sun-bold.svg?raw';
-import moonRaw from '@phosphor-icons/core/assets/bold/moon-bold.svg?raw';
 import globeRaw from '@phosphor-icons/core/assets/bold/globe-bold.svg?raw';
-import { dict, locales, langNames, ogLocales, url, defaultLang } from '../i18n';
+import { dict, locales, langNames, ogLocales, url, docUrl, defaultLang } from '../i18n';
 import type { Lang, PageKey } from '../i18n';
 import interLatin from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
 import groteskLatin from '@fontsource-variable/space-grotesk/files/space-grotesk-latin-wght-normal.woff2?url';
@@ -11,8 +9,6 @@ import { legal } from '../data/legal';
 import { hasPosts } from '../lib/blog';
 import { SITE, graph, organizationNode, founderNode, websiteNode, breadcrumbNode, webPageNode } from '../lib/seo';
 
-const sun = sunRaw.replace('<svg ', '<svg class="ico i-sun" aria-hidden="true" focusable="false" ');
-const moon = moonRaw.replace('<svg ', '<svg class="ico i-moon" aria-hidden="true" focusable="false" ');
 const globe = globeRaw.replace('<svg ', '<svg class="ico" aria-hidden="true" focusable="false" ');
 
 // `page` : la page traduite affichée (sert au menu, au sélecteur de langue et à hreflang).
@@ -24,6 +20,10 @@ const c = dict(lang).common;
 // Le lien « Blog » n'apparaît que lorsqu'il existe au moins un article publié.
 const blogOn = await hasPosts();
 const navItems = c.nav.filter((n) => n.page !== 'blog' || blogOn);
+const groups = c.groups.filter((g) => g.page !== 'blog' || blogOn);
+// « Documentation » ouvre directement la première page (avec la barre latérale), pas la page d'accueil de la doc.
+const navHref = (key: string) => key === 'docs' ? docUrl('getting-started/installation') : url(lang, key as PageKey);
+const inGroup = (g: (typeof groups)[number]) => g.items?.some((i) => i.page === page);
 const home = page ? url(lang, 'home') : url(defaultLang, 'home');
 // `monolingual` : page qui n'existe que dans une langue (documentation) : ni sélecteur ni hreflang.
 const alternates = monolingual ? []
@@ -83,11 +83,13 @@ const nodes: object[] = [
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={image} />
     {nodes.length > 0 && <script type="application/ld+json" set:html={graph(nodes)} />}
-    <script is:inline>
+    <script is:inline data-themed={shell ? 'true' : 'false'}>
       document.documentElement.classList.add('js');
-      var th = null;
-      try { th = localStorage.getItem('theme'); } catch (e) {}
-      if (th !== 'light' && th !== 'dark') th = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      var th = 'light';
+      if (document.currentScript.dataset.themed === 'true') {
+        try { th = localStorage.getItem('theme'); } catch (e) {}
+        if (th !== 'light' && th !== 'dark') th = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
       document.documentElement.setAttribute('data-theme', th);
     </script>
   </head>
@@ -101,7 +103,14 @@ const nodes: object[] = [
           <span class="brand-text">Seshat AI</span>
         </a>
         <nav class="nav" aria-label={c.navAria}>
-          {navItems.map((n) => <a href={url(lang, n.page as PageKey)} aria-current={page === n.page ? 'page' : undefined}>{n.label}</a>)}
+          {groups.map((g) => g.items ? (
+            <div class="dd">
+              <button class="dd-btn" type="button" aria-haspopup="true" aria-current={inGroup(g) ? 'true' : undefined}>{g.label}<svg class="dd-caret" viewBox="0 0 10 6" width="10" height="6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg></button>
+              <div class="dd-panel">
+                {g.items.map((i) => <a href={navHref(i.page)} aria-current={page === i.page ? 'page' : undefined}>{i.label}</a>)}
+              </div>
+            </div>
+          ) : <a href={url(lang, g.page as PageKey)} aria-current={page === g.page ? 'page' : undefined}>{g.label}</a>)}
         </nav>
         <div class="actions">
           <a class="btn btn-primary btn-sm" href={url(lang, 'contact')}><span class="cta-long">{c.cta}</span><span class="cta-short">{c.ctaShort}</span></a>
@@ -120,13 +129,17 @@ const nodes: object[] = [
               </ul>
             </details>
           )}
-          <button class="theme-toggle" type="button" aria-label={c.themeToggle}><Fragment set:html={sun} /><Fragment set:html={moon} /></button>
           <button class="menu-toggle" type="button" aria-label={c.menu} aria-expanded="false" aria-controls="mnav"><span></span><span></span><span></span></button>
         </div>
       </div>
     </header>)}
     {!shell && (<nav class="mnav" id="mnav" aria-label={c.navAria} hidden>
-      {navItems.map((n) => <a href={url(lang, n.page as PageKey)} aria-current={page === n.page ? 'page' : undefined}>{n.label}</a>)}
+      {groups.map((g) => g.items ? (
+        <div class="mgroup">
+          <span class="mgroup-label">{g.label}</span>
+          {g.items.map((i) => <a href={navHref(i.page)} aria-current={page === i.page ? 'page' : undefined}>{i.label}</a>)}
+        </div>
+      ) : <a href={url(lang, g.page as PageKey)} aria-current={page === g.page ? 'page' : undefined}>{g.label}</a>)}
     </nav>)}
     <main id="contenu"><slot /></main>
     {!shell && (<footer class="site-footer">
@@ -174,7 +187,7 @@ const nodes: object[] = [
     </script>
     <script is:inline>
       (function () {
-        var mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+        var mq = document.body.classList.contains('shell') && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
         if (mq && mq.addEventListener) mq.addEventListener('change', function (e) {
           var saved = null;
           try { saved = localStorage.getItem('theme'); } catch (x) {}

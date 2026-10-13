@@ -10,6 +10,13 @@ export default {
     { page: 'blog', label: 'Blog' },
     { page: 'about', label: 'À propos' },
   ],
+  groups: [
+    { label: 'Services', page: 'services' },
+    { label: 'Produits', page: 'products' },
+    { label: 'Développeurs', items: [{ page: 'openSource', label: 'Open source' }, { page: 'docs', label: 'Documentation' }] },
+    { label: 'Blog', page: 'blog' },
+    { label: 'Entreprise', items: [{ page: 'about', label: 'À propos' }, { page: 'contact', label: 'Contact' }] },
+  ] as { label: string; page?: string; items?: { page: string; label: string }[] }[],
   cta: 'Demander un diagnostic',
   ctaShort: 'Diagnostic',
   menu: 'Menu',
