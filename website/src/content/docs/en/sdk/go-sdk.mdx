@@ -3,7 +3,7 @@ title: Go SDK
 description: "Embed the Seshat runtime in a Go application: create a client, ask a question, hold a conversation."
 section: sdk
 order: 1
-updated: "2026-10-07"
+updated: "2026-10-13"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import LinkCards from '@/components/docs/LinkCards.astro';
@@ -57,7 +57,7 @@ func main() {
 `AskResponse` also carries the tool calls and their results (`ToolUses`, `ToolResults`), token `Usage` and `IsComplete`.
 
 <Callout type="note" title="Start from DefaultClientConfig">
-`DefaultClientConfig()` turns on what you usually want: `onRequest` permissions, up to 100 turns, automatic compaction, session persistence, memory, hooks and monitoring. Change the fields you need and leave the rest.
+`DefaultClientConfig()` turns on what you usually want: `onRequest` permissions, up to 100 turns, automatic compaction, session persistence, memory, hooks and monitoring. It picks the model `claude-3-5-sonnet-20241022` from Anthropic, so set `Model` yourself. Change the fields you need and leave the rest.
 </Callout>
 
 ## A conversation
@@ -87,13 +87,18 @@ Come back to a saved session later with `client.LoadSession(ctx, id)`. `client.L
 | `Model` | A `ModelIdentifier{Provider, Model}` |
 | `PermissionMode` | Who approves actions. Default `PermissionModeOnRequest` |
 | `MaxTurns` | Limit on turns per request |
+| `MaxIterations` | Limit on rounds of model calls per request (100 when left at zero) |
+| `MaxTokens` | The most the model may write in one call (8,192 by default) |
 | `AutoCompact` | Compact the context when it gets full |
+| `CompactSummaryModel` | The model that writes the summaries. By default, the model of the session |
 | `WorkingDir` | The folder the agent works in. Defaults to the current one |
 | `MCPServers` | MCP servers to connect (see [Skills and MCP](/en/docs/concepts/skills-and-mcp)) |
 | `PersistSessions`, `SessionStorageDir` | Where conversations are kept |
 | `EnableMemory` | Long-term notes across sessions |
 | `ProviderConfig` | Provider options such as a base URL |
 | `SandboxKind`, `RequireSandbox` | Run commands in a local or Docker sandbox |
+| `ManagedPolicy` | What an organization imposes on every agent: a text to follow and tools that are never used. Set it from an administrator's configuration, not from the end user's |
+| `EnableToolSearch` | Keep deferred tools (MCP tools, for example) out of the first tool list: the model finds them with `tool_search` |
 
 <Callout type="warning" title="Serving several users">
 A `Client` is cheap to keep and holds shared state. In a multi-tenant server, give each request its own working directory and credentials through the config, and never share a session between users.
