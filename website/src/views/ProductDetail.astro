@@ -1,0 +1,333 @@
+---
+import Base from '../layouts/Base.astro';
+import Arrow from '../components/Arrow.astro';
+import Check from '../components/Check.astro';
+import Icon from '../components/Icon.astro';
+import RuntimeMap from '../components/RuntimeMap.astro';
+import LoopFlow from '../components/LoopFlow.astro';
+import { dict, url, docUrl } from '../i18n';
+import type { Lang, PageKey } from '../i18n';
+
+interface Props { lang: Lang; page: PageKey }
+const { lang, page } = Astro.props;
+const d = dict(lang);
+const t = d.products;
+const pp = d.productPages;
+
+// Éléments qui ne dépendent pas de la langue. `layers` : numéros des couches de la pile (products.stack.layers) qui relèvent du produit.
+const defs = {
+  productSeshat: { key: 'seshat', i: 0, name: 'Seshat', logo: '/brand/seshat.svg', tone: 'ok', dark: false, code: 'https://github.com/KPO-Tech/seshat-runtime', layers: [1, 2, 3, 4, 6, 8] },
+  productSeshatOS: { key: 'seshatos', i: 1, name: 'SeshatOS', logo: '/brand/seshatos.svg', tone: 'wip', dark: true, code: 'https://github.com/KPO-Tech/SeshatOS', layers: [0, 9] },
+  productSeshatCloud: { key: 'seshatcloud', i: 2, name: 'SeshatCloud', logo: '/brand/seshatcloud.svg', tone: 'wip', dark: false, code: '', layers: [3, 5, 7] },
+} as const;
+const def = defs[page as keyof typeof defs];
+const own = pp[def.key];
+const p = t.items[def.i];
+const layers = def.layers.map((n) => t.stack.layers[n]);
+
+const shotImgs = ['/captures/tui-home.webp', '/captures/tui-working1.webp', '/captures/tui-working2.webp', '/captures/tui-model_selction.webp', '/captures/tui-provider_config.webp', '/captures/tui-commands_pannel.webp'];
+const shots = t.tui.shots.map((s, i) => ({ ...s, img: shotImgs[i] }));
+const verbMeta = [
+  { icon: 'chat-circle-text', tone: 'dark' },
+  { icon: 'magnifying-glass', tone: 'warm' },
+  { icon: 'user-check', tone: 'plain' },
+];
+const platformIcons = ['chat-circle-text', 'books', 'clock-clockwise'];
+
+const sd = pp.seshat.detail;
+const installCmd = 'curl -fsSL https://raw.githubusercontent.com/KPO-Tech/seshat-runtime/main/scripts/install.sh | bash';
+const goCode = `cfg := sdk.DefaultClientConfig()
+client, _ := sdk.NewClient(cfg)
+defer client.Close()
+
+resp, _ := client.Ask(ctx,
+  "List the TODOs", nil)
+fmt.Println(resp.Content)`;
+const termCode = `$ seshat chat
+$ seshat run "list the TODOs"`;
+const grpcCode = `SeshatService
+  Query · QueryStream
+  skills · MCP · models · health`;
+const codes = [termCode, goCode, grpcCode];
+
+const home = url(lang, 'home');
+const crumbs = [
+  { name: 'Seshat AI', path: home },
+  { name: pp.crumb, path: url(lang, 'products') },
+  { name: def.name, path: url(lang, page) },
+];
+---
+<Base title={own.meta.title} description={own.meta.description} lang={lang} page={page} crumbs={crumbs}>
+  <header class="page-head contact-head">
+    <div class="wrap">
+      <a class="back" href={url(lang, 'products')}>← {pp.crumb}</a>
+      <h1>{own.head.title}</h1>
+      <p class="lead">{own.head.lead}</p>
+    </div>
+  </header>
+
+  <section class="block" style="padding-top:24px">
+    <div class="wrap">
+      <article class={`prod ${def.dark ? 'dark' : ''} reveal`}>
+        <div class="prod-id">
+          <img src={def.logo} alt="" width="64" height="64" />
+          <h2>{def.name}</h2>
+          <span class={`badge ${def.tone}`}>{p.badge}</span>
+          <p class="prod-lic">{p.licence}</p>
+          {def.code
+            ? <a class="link" href={def.code} rel="noopener"><Icon name="github-logo" /> {t.codeLabel} <Arrow /></a>
+            : <p class="prod-private"><Icon name="lock-key" /> {t.privateLabel}</p>}
+        </div>
+        <div>
+          <p class="prod-what">{p.what}</p>
+          <ul class="deliver">
+            {p.points.map((x) => <li><Check />{x}</li>)}
+          </ul>
+          <p class="prod-status">{p.status}</p>
+          {page === 'productSeshatCloud' && <p class="prod-status">{pp.seshatcloud.availability}</p>}
+        </div>
+      </article>
+    </div>
+  </section>
+
+  {page === 'productSeshatOS' && (
+    <section class="block" style="padding-top:24px">
+      <div class="wrap">
+        <h2 class="reveal">{pp.seshatos.platformsTitle}</h2>
+        <p class="intro reveal">{pp.seshatos.platformsLead}</p>
+        <div class="kta">
+          {pp.seshatos.platforms.map((pl, i) => (
+            <article class="pilot plain reveal" style={`--d:${i * 80}ms`}>
+              <span class="chip big"><Icon name={platformIcons[i]} /></span>
+              <h3>{pl.name}</h3>
+              <span class={`badge ${pl.tone}`}>{pl.badge}</span>
+              <p>{pl.text}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
+
+  {page === 'productSeshat' && (
+    <>
+      <section class="block" style="padding-top:24px">
+        <div class="wrap">
+          <h2 class="reveal">{sd.map.title}</h2>
+          <p class="intro reveal">{sd.map.lead}</p>
+          <div class="reveal"><RuntimeMap t={sd.map} /></div>
+        </div>
+      </section>
+
+      <section class="block band">
+        <div class="wrap">
+          <h2 class="reveal">{sd.loop.title}</h2>
+          <p class="intro reveal">{sd.loop.lead}</p>
+          <LoopFlow steps={sd.loop.steps} loopBack={sd.loop.loopBack} aria={sd.loop.aria} />
+        </div>
+      </section>
+
+      <section class="block">
+        <div class="wrap">
+          <h2 class="reveal">{sd.surfaces.title}</h2>
+          <p class="intro reveal">{sd.surfaces.lead}</p>
+          <div class="surf">
+            {sd.surfaces.cards.map((c, i) => (
+              <article class="surf-card reveal" style={`--d:${i * 80}ms`}>
+                <div class="surf-head">
+                  <span class="chip big"><Icon name={c.icon} /></span>
+                  <span class={`badge ${c.tone}`}>{c.badge}</span>
+                </div>
+                <h3>{c.name}</h3>
+                <p class="surf-who">{c.who}</p>
+                <pre class="cmd surf-code"><code>{codes[i]}</code></pre>
+                <p class="surf-note">{c.note}</p>
+                <a class="link" href={docUrl(c.href)}>{sd.surfaces.docs} <Arrow /></a>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section class="block band">
+        <div class="wrap">
+          <h2 class="reveal">{sd.gives.title}</h2>
+          <div class="gives">
+            {sd.gives.items.map((g, i) => (
+              <article class="give reveal" style={`--d:${(i % 3) * 80}ms`}>
+                <span class="chip"><Icon name={g.icon} /></span>
+                <h3>{g.title}</h3>
+                <p>{g.text}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section class="block">
+        <div class="wrap">
+          <h2 class="reveal">{sd.start.title}</h2>
+          <p class="intro reveal">{sd.start.lead}</p>
+          <ol class="start">
+            <li class="reveal">
+              <span class="n">1</span>
+              <div>
+                <strong>{sd.start.steps[0].title}</strong>
+                <span>{sd.start.steps[0].text}</span>
+                <div class="install">
+                  <div class="cmd-bar">
+                    <span class="cmd-label">{t.tui.installLabel}</span>
+                    <button class="copy" type="button" data-copy={installCmd} data-copied={t.tui.copied}>{t.tui.copy}</button>
+                  </div>
+                  <pre class="cmd"><code><span class="t-p">$</span> <span class="t-c">curl</span> <span class="t-f">-fsSL</span> <span class="t-u">https://raw.githubusercontent.com/KPO-Tech/seshat-runtime/main/scripts/install.sh</span> <span class="t-o">|</span> <span class="t-c">bash</span></code></pre>
+                </div>
+              </div>
+            </li>
+            <li class="reveal">
+              <span class="n">2</span>
+              <div>
+                <strong>{sd.start.steps[1].title}</strong>
+                <span>{sd.start.steps[1].text}</span>
+                <div class="install"><pre class="cmd"><code><span class="t-p">$</span> <span class="t-c">seshat</span> <span class="t-a">config</span> <span class="t-f">--provider</span> <span class="t-u">ollama</span> <span class="t-f">--model</span> <span class="t-u">ollama:llama3.2</span></code></pre></div>
+              </div>
+            </li>
+            <li class="reveal">
+              <span class="n">3</span>
+              <div>
+                <strong>{sd.start.steps[2].title}</strong>
+                <span>{sd.start.steps[2].text}</span>
+                <div class="install"><pre class="cmd"><code><span class="t-p">$</span> <span class="t-c">seshat</span> <span class="t-a">chat</span></code></pre></div>
+              </div>
+            </li>
+          </ol>
+          <p class="docs-link reveal"><a class="link" href={docUrl('getting-started/quick-start')}><Icon name="book-open" /> {sd.start.docs} <Arrow /></a></p>
+        </div>
+      </section>
+    </>
+  )}
+
+  {page === 'productSeshat' && (
+    <section class="block tui-block">
+      <div class="wrap">
+        <h2 class="reveal">{t.tui.title}</h2>
+        <p class="intro reveal">{t.tui.introA}<code>{t.tui.introCode}</code>{t.tui.introB}</p>
+        <div class="gallery reveal" data-gallery>
+          <figure class="shot">
+            <div class="shot-frame"><img src={shots[0].img} alt={shots[0].t} width="1600" height="823" loading="lazy" decoding="async" data-main /></div>
+            <figcaption data-cap><strong>{shots[0].t}</strong> <span>{shots[0].d}</span></figcaption>
+          </figure>
+          <div class="thumbs" role="tablist" aria-label={t.tui.galleryAria}>
+            {shots.map((s, i) => (
+              <button class="thumb" type="button" role="tab" aria-selected={i === 0 ? 'true' : 'false'} data-img={s.img} data-t={s.t} data-d={s.d}>
+                <img src={s.img.replace('.webp', '-thumb.webp')} alt="" width="240" height="124" loading="lazy" decoding="async" />
+                <span>{s.t}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+        <aside class="rename reveal"><strong>{t.tui.renameTitle}</strong> {t.tui.renameText}</aside>
+        <p class="docs-link reveal">
+          <a class="link" href={docUrl('getting-started/installation')}><Icon name="book-open" /> {own.docs.label} <Arrow /></a>
+          <span>{own.docs.text}</span>
+        </p>
+      </div>
+    </section>
+  )}
+
+  {page === 'productSeshatOS' && (
+    <section class="block band">
+      <div class="wrap">
+        <div class="kta-top">
+          <div>
+            <h2 class="reveal"><span class="kta-name">{t.kta.name}</span>{t.kta.title}</h2>
+            <p class="intro reveal">{t.kta.intro}</p>
+          </div>
+          <div class="kta-art reveal" aria-hidden="true">
+            <svg viewBox="0 0 400 320" fill="none">
+              <g stroke="currentColor" stroke-width="2.5" stroke-dasharray="6 8" stroke-linecap="round" class="kta-lines">
+                <line x1="200" y1="160" x2="80" y2="60" /><line x1="200" y1="160" x2="320" y2="60" /><line x1="200" y1="160" x2="200" y2="282" />
+              </g>
+            </svg>
+            <span class="kta-core"><img src="/brand/knowledge.svg" alt="" width="132" height="132" /></span>
+            {t.kta.verbs.map((v, i) => (
+              <span class={`kta-node k${i + 1}`}><Icon name={verbMeta[i].icon} /><em>{v.t}</em></span>
+            ))}
+          </div>
+        </div>
+        <div class="kta">
+          {t.kta.verbs.map((v, i) => (
+            <article class={`pilot ${verbMeta[i].tone} reveal`} style={`--d:${i * 80}ms`}>
+              <span class="chip big"><Icon name={verbMeta[i].icon} /></span>
+              <h3>{v.t}</h3>
+              <p>{v.d}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
+
+  <section class="block" style="padding-top:24px">
+    <div class="wrap">
+      <h2 class="reveal">{pp.layersTitle}</h2>
+      <ul class="layer-list reveal">
+        {layers.map((l) => (
+          <li>
+            <span class={`dot ${l.status}`} aria-hidden="true"></span>
+            <div>
+              <strong>{l.name}</strong>
+              <span>{l.where}</span>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <p class="prod-status"><a class="link" href={url(lang, 'products')}>{pp.layersNote} <Arrow /></a></p>
+    </div>
+  </section>
+
+  <section class="cta">
+    <div class="wrap">
+      <div class="cta-box">
+        <h2 class="reveal">{t.cta.title}</h2>
+        <div class="reveal" style="--d:100ms">
+          <p>{t.cta.text}</p>
+          <a class="btn btn-primary" href={url(lang, 'contact')}>{t.cta.button} <Arrow /></a>
+        </div>
+      </div>
+    </div>
+  </section>
+  {page === 'productSeshat' && (
+    <script is:inline>
+      (function () {
+        var g = document.querySelector('[data-gallery]');
+        if (g) {
+          var main = g.querySelector('[data-main]');
+          var cap = g.querySelector('[data-cap]');
+          var thumbs = [].slice.call(g.querySelectorAll('.thumb'));
+          var pick = function (i, focus) {
+            var b = thumbs[i];
+            thumbs.forEach(function (x, k) { x.setAttribute('aria-selected', k === i ? 'true' : 'false'); x.tabIndex = k === i ? 0 : -1; });
+            main.src = b.getAttribute('data-img');
+            main.alt = b.getAttribute('data-t');
+            cap.querySelector('strong').textContent = b.getAttribute('data-t');
+            cap.querySelector('span').textContent = b.getAttribute('data-d');
+            if (focus) b.focus();
+          };
+          thumbs.forEach(function (b, i) {
+            b.addEventListener('click', function () { pick(i); });
+            b.addEventListener('keydown', function (e) {
+              if (e.key === 'ArrowRight') { e.preventDefault(); pick(Math.min(i + 1, thumbs.length - 1), true); }
+              if (e.key === 'ArrowLeft') { e.preventDefault(); pick(Math.max(i - 1, 0), true); }
+            });
+          });
+        }
+        var cp = document.querySelector('.copy');
+        if (cp) cp.addEventListener('click', function () {
+          var text = cp.getAttribute('data-copy');
+          var done = function () { var old = cp.textContent; cp.textContent = cp.getAttribute('data-copied'); setTimeout(function () { cp.textContent = old; }, 1600); };
+          if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, function () {});
+        });
+      })();
+    </script>
+  )}
+</Base>

@@ -12,6 +12,13 @@ const en: typeof fr = {
     { page: 'blog', label: 'Blog' },
     { page: 'about', label: 'About' },
   ],
+  groups: [
+    { label: 'Services', page: 'services' },
+    { label: 'Products', page: 'products' },
+    { label: 'Developers', items: [{ page: 'openSource', label: 'Open source' }, { page: 'docs', label: 'Docs' }] },
+    { label: 'Blog', page: 'blog' },
+    { label: 'Company', items: [{ page: 'about', label: 'About' }, { page: 'contact', label: 'Contact' }] },
+  ],
   cta: 'Request an assessment',
   ctaShort: 'Assessment',
   menu: 'Menu',
