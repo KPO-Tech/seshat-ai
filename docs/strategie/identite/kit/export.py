@@ -37,22 +37,23 @@ def _page(image: Path, width: int, height: int, background: str | None, fit: int
             f'<img src="{image.resolve().as_uri()}" style="width:{size}px;height:auto">')
 
 
-def render(svg: Path, out: Path, width: int, height: int | None = None, *, background: str | None = None,
-           fit: int | None = None) -> None:
-    """Render one SVG to a PNG of width x height. background=None keeps it transparent."""
-    height = height or width
+def capture(page: Path, out: Path, width: int, height: int, *, settle: bool = False) -> None:
+    """Screenshot one local HTML page to a PNG of width x height.
+
+    settle gives Edge a virtual time budget, so a page that lays out text in an
+    embedded font is captured once it is drawn rather than mid-layout.
+    """
     out = out.resolve()
     out.parent.mkdir(parents=True, exist_ok=True)
+    extra = ["--virtual-time-budget=2000"] if settle else []
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
-        page = Path(tmp) / "page.html"
-        page.write_text(_page(svg, width, height, background, fit), encoding="utf-8")
         # A private profile: with the user's Edge already open, a plain headless call
         # hands over to that instance and exits without writing anything.
         subprocess.run(
             [edge(), "--headless=new", "--disable-gpu", "--hide-scrollbars", "--force-device-scale-factor=1",
              f"--user-data-dir={Path(tmp) / 'profile'}",
              "--default-background-color=00000000", f"--window-size={width},{height}",
-             f"--screenshot={out}", page.as_uri()],
+             *extra, f"--screenshot={out}", page.resolve().as_uri()],
             check=True, capture_output=True, timeout=120)
         # The Edge launcher can return before the browser has written the file.
         deadline = time.monotonic() + 60
@@ -60,7 +61,17 @@ def render(svg: Path, out: Path, width: int, height: int | None = None, *, backg
             time.sleep(0.2)
         time.sleep(0.2)
     if not out.exists():
-        raise RuntimeError(f"Edge produced no file for {svg}")
+        raise RuntimeError(f"Edge produced no file for {page}")
+
+
+def render(svg: Path, out: Path, width: int, height: int | None = None, *, background: str | None = None,
+           fit: int | None = None) -> None:
+    """Render one SVG to a PNG of width x height. background=None keeps it transparent."""
+    height = height or width
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+        page = Path(tmp) / "page.html"
+        page.write_text(_page(svg, width, height, background, fit), encoding="utf-8")
+        capture(page, out, width, height)
 
 
 def run(root: Path = ROOT) -> list[str]:

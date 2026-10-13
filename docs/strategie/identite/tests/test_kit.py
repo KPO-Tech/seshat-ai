@@ -12,7 +12,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from kit import outputs, preview, publish, signatures, variants  # noqa: E402
+from kit import og, outputs, palette, preview, publish, signatures, variants  # noqa: E402
+from kit import tokens as t  # noqa: E402
 from kit.marks import MARKS  # noqa: E402
 from parity import diff  # noqa: E402
 
@@ -69,6 +70,68 @@ class Build(unittest.TestCase):
                 self.assertTrue((ROOT / "apercu" / target).resolve().exists())
 
 
+class Palette(unittest.TestCase):
+    """The site's colours are the kit's colours: the stylesheet is generated, and the
+    site holds none of the values it used before."""
+
+    SITE = ROOT.parents[2] / "website"
+    STYLESHEET = SITE / "src" / "styles" / "tokens.css"
+    DARK = ":root[data-theme='dark']"
+
+    def test_every_colour_is_a_token_or_a_mix_of_tokens(self):
+        css = palette.css()
+        for token in (t.ORANGE, t.ORANGE_LIGHT, t.ORANGE_DEEP, t.ORANGE_TEXT, t.INK, t.CHARCOAL,
+                      t.GREY, t.PAPER, t.CREAM, t.TILE_DARK, t.OFF_WHITE, t.BLACK, t.GREY_ON_DARK,
+                      t.INK_STOPS[1][1], t.INK_STOPS_ON_DARK[0][1]):
+            with self.subTest(token):
+                self.assertIn(token, css)
+        for retired in palette.RETIRED:
+            with self.subTest(retired):
+                self.assertNotIn(retired, css.lower())
+
+    def test_the_dark_theme_redraws_the_whole_page(self):
+        light, dark = palette.css().split(self.DARK)
+        self.assertIn("--accent: var(--orange);", light)
+        for var in ("--bg", "--band", "--surface", "--line", "--text", "--text2", "--accent",
+                    "--accent-text", "--panel", "--code-bg", "--shadow"):
+            with self.subTest(var):
+                self.assertIn(f"  {var}:", dark)
+        self.assertIn("--accent: var(--orange-light);", dark)
+
+    def test_the_palette_is_published_into_the_site(self):
+        planned = {op.target: op for op in publish.plan()}
+        self.assertIn(self.STYLESHEET, planned)
+        op = planned[self.STYLESHEET]
+        self.assertEqual(op.what, "text")
+        self.assertEqual(publish.text_of(op), palette.css())
+
+    def test_the_site_stylesheet_is_up_to_date(self):
+        if not self.STYLESHEET.exists():
+            self.skipTest("le site n'est pas dans ce dossier de travail")
+        self.assertEqual(self.STYLESHEET.read_text(encoding="utf-8"), palette.css(),
+                         "python publish.py --apply --repo seshat-ai")
+
+    def test_the_site_holds_no_retired_colour(self):
+        styles = self.STYLESHEET.parent
+        if not styles.is_dir():
+            self.skipTest("le site n'est pas dans ce dossier de travail")
+        for path in sorted(styles.glob("*.css")):
+            if path == self.STYLESHEET:        # generated: checked just above
+                continue
+            text = path.read_text(encoding="utf-8").lower()
+            for retired in palette.RETIRED:
+                with self.subTest(f"{path.name} {retired}"):
+                    self.assertNotIn(retired, text)
+
+    def test_the_theme_colour_is_paper(self):
+        """A meta tag cannot hold a var()."""
+        base = self.SITE / "src" / "layouts" / "Base.astro"
+        if not base.exists():
+            self.skipTest("le site n'est pas dans ce dossier de travail")
+        wanted = f'content="{t.PAPER.lower()}"'
+        self.assertIn(wanted, base.read_text(encoding="utf-8").lower())
+
+
 class Publish(unittest.TestCase):
     def test_every_source_exists(self):
         generated = set(outputs.generate())
@@ -76,6 +139,38 @@ class Publish(unittest.TestCase):
             if op.source:
                 with self.subTest(op.target.name):
                     self.assertIn(f"logo/{op.source}", generated)
+
+    def test_every_social_image_is_planned(self):
+        planned = {op.page for op in publish.plan() if op.what == "og"}
+        self.assertEqual(planned, set(og.files()))
+
+
+class Social(unittest.TestCase):
+    """The social images are built from the kit. Only Edge proves the pixels, so
+    these check everything the rendering depends on."""
+
+    def test_every_page_is_complete(self):
+        self.assertEqual(og.files(), ["og-fr.png", "og-en.png", "og-docs.png"])
+        for name in og.files():
+            page = og.entry(name)
+            with self.subTest(name):
+                for field in ("lang", "doc_title", "before", "accent", "subtitle"):
+                    self.assertTrue(page[field].strip(), field)
+
+    def test_page_carries_the_kit_colours_and_the_official_lockup(self):
+        for name in og.files():
+            page = og.html(name)
+            with self.subTest(name):
+                self.assertIn(t.ORANGE, page)
+                self.assertIn(t.PAPER, page)
+                self.assertIn('<svg xmlns="http://www.w3.org/2000/svg"', page)
+                self.assertIn(og.DOMAIN, page)
+
+    def test_fonts_are_vendored(self):
+        for font in (og.DISPLAY_FONT, og.TEXT_FONT):
+            with self.subTest(font):
+                self.assertTrue((ROOT / og.FONT_DIR / font).exists())
+                self.assertTrue((ROOT / og.FONT_DIR / "OFL.txt").exists())
 
 
 class Files(unittest.TestCase):

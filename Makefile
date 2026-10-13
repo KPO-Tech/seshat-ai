@@ -5,7 +5,7 @@ CV_DIR := private/cvs-specialises
 PDFLATEX ?= pdflatex
 POWERSHELL ?= powershell.exe
 
-.PHONY: help install dev build preview clean cv-build cv-clean-logs identite identite-test identite-serve
+.PHONY: help install dev build preview clean cv-build cv-clean-logs identite identite-test identite-serve identite-publish identite-publish-apply identite-publish-check identite-publish-site
 
 .DEFAULT_GOAL := help
 
@@ -32,6 +32,18 @@ identite-test: ## Check the identity kit is up to date and matches the hand-draw
 
 identite-serve: ## Serve the identity kit on http://127.0.0.1:8765/apercu/index.html
 	cd docs/strategie/identite && python -m http.server 8765 --bind 127.0.0.1
+
+identite-publish: ## Show where the logos and the site palette would be copied
+	cd docs/strategie/identite && python publish.py
+
+identite-publish-check: ## Fail when a logo or the palette has drifted from the kit
+	cd docs/strategie/identite && python publish.py --check
+
+identite-publish-site: ## Copy the logos and the palette into this repository's website only
+	cd docs/strategie/identite && python publish.py --apply --repo seshat-ai
+
+identite-publish-apply: ## Copy the logos and the palette into the other repositories
+	cd docs/strategie/identite && python publish.py --apply
 
 cv-build: ## Build active CV PDFs and remove LaTeX auxiliary logs
 	$(POWERSHELL) -NoProfile -ExecutionPolicy Bypass -Command "$$ErrorActionPreference = 'Stop'; $$root = (Resolve-Path '$(CV_DIR)').Path; $$files = Get-ChildItem -LiteralPath $$root -Recurse -Filter '*.tex' | Where-Object { $$_.FullName -notmatch '\\old\\' }; foreach ($$file in $$files) { $$out = Join-Path $$file.Directory.FullName 'output'; New-Item -ItemType Directory -Force -Path $$out | Out-Null; & '$(PDFLATEX)' -interaction=nonstopmode -halt-on-error -output-directory $$out $$file.FullName; if ($$LASTEXITCODE -ne 0) { exit $$LASTEXITCODE } }; $$auxExt = @('.aux','.log','.out','.toc','.fls','.fdb_latexmk','.bbl','.blg','.nav','.snm'); Get-ChildItem -LiteralPath $$root -Recurse -File | Where-Object { $$auxExt -contains $$_.Extension -or $$_.Name -like '*.synctex.gz' } | Remove-Item -Force"

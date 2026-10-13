@@ -1,0 +1,208 @@
+% CV Finance - Stephane KPOVIESSI
+% Candidature a la maitrise en finance - Universite de Sherbrooke
+% Base : CV CDI ML / AI Engineer, adapte au contexte universitaire (finance quantitative).
+% Compile target: pdfLaTeX
+
+\documentclass[10pt,a4paper]{article}
+
+\usepackage[a4paper,left=0.95cm,right=0.95cm,top=0.55cm,bottom=0.55cm]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{tabularx}
+\usepackage{titlesec}
+\usepackage{fontawesome5}
+
+\definecolor{accent}{HTML}{1F4E79}
+\definecolor{accentdark}{HTML}{163A5A}
+\definecolor{text}{HTML}{2F3437}
+\definecolor{muted}{HTML}{666D70}
+\definecolor{rule}{HTML}{D5E2EC}
+\definecolor{sidebg}{HTML}{F2F7FB}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{3.6pt}
+\setlist[itemize]{leftmargin=*, topsep=3pt, itemsep=3pt, parsep=0pt, partopsep=0pt}
+
+\titleformat{\section}
+  {\fontsize{11.2pt}{13pt}\selectfont\bfseries\color{accent}}
+  {}{0pt}{}
+  [\vspace{2pt}{\color{rule}\titlerule}\vspace{3pt}]
+\titlespacing*{\section}{0pt}{10pt}{5pt}
+
+\newcommand{\smallsection}[2]{%
+  \vspace{9pt}
+  {\fontsize{8.9pt}{10.45pt}\selectfont\bfseries\color{accentdark}%
+  {\scriptsize\color{accent}#1}\hspace{3.5pt}#2}\par
+  \vspace{3.2pt}
+}
+
+\newcommand{\contactline}[2]{%
+  \noindent\makebox[0.34cm][l]{{\color{accent}\scriptsize#1}}%
+  \begin{minipage}[t]{\dimexpr\linewidth-0.36cm\relax}%
+  \fontsize{8.15pt}{9.5pt}\selectfont #2%
+  \end{minipage}\par
+  \vspace{1pt}
+}
+
+\newcommand{\sideitem}[2]{%
+  \textbf{#1}\par
+  #2\par
+  \vspace{5.7pt}
+}
+
+\newcommand{\certitem}[2]{%
+  \textbf{#1}\par
+  {\fontsize{7.15pt}{8.1pt}\selectfont\color{muted}#2}\par
+  \vspace{4.4pt}
+}
+
+\newcommand{\role}[3]{%
+  \vspace{3pt}
+  \begin{tabularx}{\linewidth}{@{}Xr@{}}
+  \textbf{#1} & {\color{muted}#2}
+  \end{tabularx}\vspace{0.8pt}\\
+  {\color{muted}#3}\par
+  \vspace{3pt}
+}
+
+\newcommand{\projectline}[2]{%
+  \textbf{#1} - #2\par
+}
+\newcommand{\githublink}[2]{%
+  \par{\footnotesize\color{accent}\faIcon{github}\ \href{#1}{#2}}\par
+}
+
+\newsavebox{\maincolumnbox}
+\newlength{\maincolumnheight}
+
+\begin{document}
+\fontsize{10pt}{12.3pt}\selectfont
+\sloppy
+
+\begin{minipage}[t]{0.52\textwidth}
+{\LARGE\bfseries\color{accentdark} Stéphane KPOVIESSI}\par
+\vspace{1pt}
+{\large\color{accent}Ingénieur diplômé en Big Data \& Data Science}\par
+\vspace{1pt}
+{\color{muted}Candidature à la maîtrise en finance \textbullet{} Université de Sherbrooke}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.42\textwidth}
+\raggedleft
+\vspace{2pt}
+{\normalsize\bfseries\color{accent}Analyse quantitative \textbullet{} Modélisation \textbullet{} Données}\par
+\vspace{3pt}
+{\small\color{muted}
+Mettre les compétences analytiques et techniques au service des décisions financières.
+}
+\end{minipage}
+
+\vspace{6pt}
+{\color{rule}\hrule height 1pt}
+\vspace{7pt}
+
+\begin{lrbox}{\maincolumnbox}
+\begin{minipage}[t]{0.695\textwidth}
+\vspace{0pt}
+\raggedright
+
+\section{Profil}
+Ingénieur diplômé en Big Data et Data Science, avec une expérience en ingénierie des données, modélisation et analyse quantitative, notamment dans le secteur de l'assurance chez Allianz France. Mon parcours combine des compétences techniques en Python, SQL et traitement de données avec des expériences en analyse d'activité et en développement de solutions technologiques. Je souhaite approfondir mes connaissances en finance afin d'appliquer ces compétences à l'analyse financière, à la gestion des risques et à la prise de décision.
+
+\section{Expériences}
+\role{Allianz France - Ingénieur Data / Data Scientist}{Nov. 2025 - Avr. 2026}{Direction P4D, Advanced Data \& Climate - Paris}
+\begin{itemize}
+  \item Migration d'un datamart Assurance de SAS vers Python/PySpark, avec validation de parité fonctionnelle sur plus de 15 000 lignes de code.
+  \item Architecture Médaillon sur Azure Databricks intégrant plus de 150 règles de gestion métier de l'assurance.
+  \item Pipeline de contrôle qualité des données (Data Quality) et tests automatisés pour sécuriser les indicateurs (KPI) et la non-régression.
+\end{itemize}
+
+\vspace{8pt}
+\role{LYNE ET FRERES SARL - Analyste de données}{2023 - 2025}{Appui à la décision - Bénin / À distance}
+\begin{itemize}
+  \item Analyse de données commerciales, opérationnelles et agricoles avec Python/Pandas pour suivre l'activité et éclairer les décisions.
+  \item Construction de rapports et tableaux de bord (Streamlit / web) pour restituer les analyses et les indicateurs aux décideurs.
+  \item Automatisations et outils internes pour fiabiliser les données et accompagner les équipes métier.
+\end{itemize}
+
+\vspace{8pt}
+\role{Seshat - Fondateur \& Ingénieur IA}{Sept. 2026 - Aujourd'hui}{Initiative entrepreneuriale et technologique - plateforme d'IA et d'automatisation}
+\begin{itemize}
+  \item Conception, développement et mise en ligne d'une plateforme d'IA agentique et d'automatisation (Python/Go, application desktop Electron/React).
+  \item RAG hybride et orchestration d'agents : ingestion documentaire, embeddings, recherche PostgreSQL/pgvector et Chroma, intégration de plusieurs fournisseurs LLM.
+\end{itemize}
+{\footnotesize\color{accent}\faIcon{globe}\ \href{https://seshat-ai.com}{seshat-ai.com}\enspace\textbullet\enspace\faIcon{github}\ \href{https://github.com/KPO-Tech/seshat}{github.com/KPO-Tech/seshat}}\par
+
+\vspace{8pt}
+\role{Groupe Sylvagreg - Machine Learning Engineer}{Mai 2024 - Août 2024}{Lille, France}
+R\&D en vision par ordinateur : reconstruction 3D à partir d'images 2D (PyTorch), pipelines de préparation de données, Docker et déploiement AWS.\par
+
+\section{Projets sélectionnés}
+\projectline{SOLAR IRRADIANCE FORECASTING}{Python, Scikit-learn, Pandas, FastAPI}
+Préparation de données temporelles, \emph{feature engineering} et évaluation de modèles de prévision de séries ; API REST pour exposer les résultats — \`a rapprocher de la modélisation de séries temporelles financières.
+\githublink{https://github.com/EngineerProjects/solar-forecasting}{github.com/EngineerProjects/solar-forecasting}
+
+\vspace{9pt}
+\projectline{BI RETAIL SOLUTION}{PySpark, Airflow, PostgreSQL, Power BI}
+Pipeline de données ventes et supply chain : ingestion, transformations PySpark, entrepôt PostgreSQL et tableaux de bord de pilotage pour l'analyse de l'activité.
+
+\end{minipage}
+\end{lrbox}
+\setlength{\maincolumnheight}{\dimexpr\ht\maincolumnbox+\dp\maincolumnbox\relax}
+
+\begin{minipage}[t]{0.285\textwidth}
+\vspace{0pt}
+
+\hspace*{-0.18cm}%
+\colorbox{sidebg}{%
+  \hspace*{0.18cm}%
+  \begin{minipage}[t][\maincolumnheight][t]{0.91\linewidth}
+  \vspace{8pt}
+  \fontsize{8.45pt}{10.35pt}\selectfont
+  \raggedright
+
+  \smallsection{\faIcon{address-card}}{Contact}
+  \contactline{\faIcon{map-marker-alt}}{Cergy / Île-de-France}
+  \contactline{\faIcon{phone}}{+33 7 48 59 47 13}
+  \contactline{\faIcon{envelope}}{\href{mailto:oastephanekpoviessi@gmail.com}{oastephanekpoviessi@gmail.com}}
+  \contactline{\faIcon{link}}{\href{https://linkedin.com/in/stephanekpoviessi}{linkedin.com/in/stephanekpoviessi}}
+  \contactline{\faIcon{github}}{\href{https://github.com/KPO-Tech}{github.com/KPO-Tech}}
+  \contactline{\faIcon{globe}}{\href{https://seshat-ai.com}{seshat-ai.com}}
+
+  \smallsection{\faIcon{layer-group}}{Compétences}
+  \sideitem{Analyse \& modélisation}{Python, statistiques, régression, séries temporelles, modélisation prédictive.}
+  \sideitem{Données \& SQL}{SQL, Pandas, PySpark, PostgreSQL, nettoyage et qualité des données.}
+  \sideitem{Analyse métier}{Données d'assurance, indicateurs (KPI), appui à la décision, contrôle qualité.}
+  \sideitem{Outils \& ingénierie}{Scikit-learn, PyTorch, FastAPI, Azure Databricks, Docker, Git.}
+
+  \smallsection{\faIcon{graduation-cap}}{Formation}
+  \sideitem{JUNIA ISEN Lille (France)}{Diplôme d'Ingénieur - Big Data \& Data Science, 2023 - 2026.}
+  \sideitem{JUNIA Maroc ISEN (Rabat)}{3\textsuperscript{e} année du cursus d'ingénieur - Électronique \& Systèmes Numériques, 2022 - 2023.}
+  \sideitem{Cycle préparatoire scientifique}{Ste Marie-Stella, Cotonou (Bénin), 2020 - 2022.}
+
+  \smallsection{\faIcon{certificate}}{Certifications}
+  \certitem{\href{https://www.coursera.org/account/accomplishments/verify/MWJS4Q3S2C3L}{Supervised ML: Regression \& Classification}}{DeepLearning.AI / Stanford Online \textbullet{} 2023}
+  \certitem{\href{https://www.freecodecamp.org/certification/amiche/data-analysis-with-python-v7}{Data Analysis with Python}}{freeCodeCamp \textbullet{} 2023}
+  \certitem{\href{https://learn.microsoft.com/fr-fr/training/career-paths/ai-engineer}{Microsoft AI Engineer Career Path}}{Microsoft Learn \textbullet{} \textbf{En cours}}
+
+  \smallsection{\faIcon{language}}{Langues}
+  \textbf{Français} - langue maternelle\par
+  \textbf{Anglais} - B2, Linguaskill Business\par
+
+  \smallsection{\faIcon{users}}{Engagements \& associations}
+  \textbf{JUNIA ALUMNI}\par
+  {\color{muted}Vice-président (2024 - 2025) \textbullet{} Responsable communication (2023 - 2024)}\par
+  \vspace{3pt}
+  \end{minipage}
+}
+
+\end{minipage}
+\hfill
+\usebox{\maincolumnbox}
+
+\end{document}
