@@ -1,0 +1,238 @@
+---
+title: Built-in tools
+description: "The tools the agent can use out of the box, grouped by theme: what each does, whether it only reads, and what it needs to be available."
+section: reference
+order: 4
+updated: "2026-10-13"
+---
+import Callout from '@/components/docs/Callout.astro';
+
+A tool is something the model can ask Seshat to do: read a file, run a command, search the web. Each tool is declared, and the agent only uses the ones it is given. Sensitive calls ask for your approval first, as described in [Security and trust](/en/docs/concepts/security-and-trust).
+
+<Callout type="note" title="Generated from the code">
+The tables below are written by `npm run sync:tools` from the real registry of the runtime, so they follow the code. Only the introduction and the notes around them are written by hand.
+</Callout>
+
+## How to read the tables
+
+- **Read-only** says whether the tool changes nothing. The runtime treats a read-only call more leniently and may run several in parallel.
+- **Available** says whether the tool is offered to the model. "Yes" means it is active without any configuration. Otherwise it names what is missing: a provider, a key or a service. A tool that is not available is left out of the list the model sees.
+- To add your own tools in Go, see [Tools](/en/docs/sdk/tools). Tools from MCP servers are described in [Skills and MCP](/en/docs/concepts/skills-and-mcp).
+
+{/* generated:start */}
+The runtime registers **129 tools**, and `sdk.NewClient` adds 3 more (`agent`, `spawn_agent`, `resume_agent`). **95 of the registered ones are active in an environment with no key, no provider and no service configured**; the others wait for what the last column names. `client.ToolNames()` lists the active ones only.
+
+### Files, shell and documents
+
+| Tool | What it does | Read-only | Available |
+|---|---|---|---|
+| `apply_patch` | Apply a structured multi-file patch that can add, delete, update, and rename files in one atomic call. | No | Yes |
+| `bash` | Execute shell commands in the current directory. | No | Yes |
+| `convert_document` | Convert a local file to markdown using the configured document reader: OCR, layout analysis, table structure, and audio transcription. | Yes | Yes |
+| `create_directory` | Create a directory and any necessary parent directories. | No | Yes |
+| `docx_edit` | Create a new Word (.docx) document, or find/replace edit an existing one's text. | No | Yes |
+| `edit_file` | Edit an existing file by replacing an exact string with a new one. | No | Yes |
+| `excel_edit` | Write values (and formulas) into an Excel (.xlsx) spreadsheet, creating the file or sheet if they don't exist yet. | No | Yes |
+| `get_file_metadata` | Return metadata for a file or directory: size, type (file/dir/symlink), permissions, timestamps. | Yes | Yes |
+| `glob` | Find files in the workspace by name or extension using glob patterns. | Yes | Yes |
+| `grep` | Search for text patterns in files using regular expressions. | Yes | Yes |
+| `job_kill` | Kill a running background bash job. | No | Yes |
+| `job_output` | Read buffered stdout/stderr from a background bash job, plus its current status. | No | Yes |
+| `list_directory` | List the files and directories inside a path. | Yes | Yes |
+| `read_document_url` | Fetch a document at a URL and convert it to readable markdown. | Yes | Yes |
+| `read_file` | Read the contents of a file. | Yes | Yes |
+| `remove_file` | Delete a file or directory. | No | Yes |
+| `render_document_page` | Render one page of a local document to a PNG image for visual inspection, then attach it to the conversation as an image (in the message that follows this... | Yes | Yes |
+| `search_start` | Start a content search as a background job instead of blocking until it finishes - use this instead of Grep for a search that might be slow (huge directory,... | Yes | Yes |
+| `write_file` | Write the full content of a file. | No | Yes |
+| `write_pdf` | Create a new PDF from plain/markdown-ish text, append text as new page(s) to an existing PDF, or delete pages from an existing PDF. | No | Yes |
+| `write_stdin` | Write text to a running background task's stdin and read back what it produces. | No | Yes |
+
+### Skills
+
+| Tool | What it does | Read-only | Available |
+|---|---|---|---|
+| `seshat_list_skills` | List the skills available to the current Seshat runtime, including builtin, managed, user, project, MCP, and installed repo collections. | Yes | Yes |
+| `seshat_read_skill` | Read the full content of a Seshat skill by name, including skill.md and the bundled files present in that skill directory. | Yes | Yes |
+| `seshat_validate_skill` | Validate a Seshat skill directory against the runtime's expected structure and frontmatter fields. | Yes | Yes |
+| `skill` | Run a skill. | No | Yes |
+
+### Web and browser
+
+| Tool | What it does | Read-only | Available |
+|---|---|---|---|
+| `browser_click` | Click an interactive element from the latest browser snapshot using its element_id. | No | Yes |
+| `browser_close_page` | Close a browser page in the current Seshat session. | No | Yes |
+| `browser_extract` | Extract a richer text-oriented view of the current browser page, including semantic headings when available. | Yes | Yes |
+| `browser_get_network_policy` | Return the current browser session request blocking policy, including blocked URL patterns and resource policy preset. | Yes | Yes |
+| `browser_list_downloads` | List recent browser downloads captured for the current session. | Yes | Yes |
+| `browser_list_pages` | List all browser pages associated with the current Seshat session. | Yes | Yes |
+| `browser_navigate` | Navigate an existing browser page to a URL. | No | Yes |
+| `browser_network_list` | List recent browser network activity captured for the current session. | Yes | Yes |
+| `browser_open` | Open a new browser page in the current Seshat session. | No | Yes |
+| `browser_press` | Send a keyboard key such as Enter, Tab, Escape, ArrowDown, or PageDown to the active browser page. | No | Yes |
+| `browser_screenshot` | Capture a PNG screenshot of the active browser page and return it as base64 data. | Yes | Yes |
+| `browser_scroll` | Scroll the active browser page up, down, left, or right by a configurable amount. | Yes | Yes |
+| `browser_search_content` | Search across the text, titles, URLs, and headings of snapshots previously captured in the current browser session. | Yes | Yes |
+| `browser_select_page` | Select the active browser page to target subsequent page-less operations. | No | Yes |
+| `browser_set_network_policy` | Replace the current browser session request blocking policy. | No | Yes |
+| `browser_snapshot` | Capture a compact agent-facing snapshot of the current browser page including visible text and indexed interactive elements. | Yes | Yes |
+| `browser_type` | Type text into an editable element from the latest browser snapshot using its element_id. | No | Yes |
+| `browser_wait` | Wait for the active browser page to stabilize, or until page text contains a requested string. | Yes | Yes |
+| `web_fetch` | Fetch content from a specified URL and process it using a prompt-oriented extraction. | Yes | Yes |
+| `web_search` | Search the web for current information. | Yes | Yes |
+
+### Research and communities
+
+| Tool | What it does | Read-only | Available |
+|---|---|---|---|
+| `appstore_reviews` | Read customer reviews of an app in the Apple App Store: rating, title, text, version, author and date. | Yes | Yes |
+| `appstore_search` | Find apps in the Apple App Store by name or topic. | Yes | Yes |
+| `devto_article` | Fetch a single dev.to article with full content. | Yes | Yes |
+| `devto_feed` | List recent articles from dev.to, optionally filtered by tag. | Yes | Yes |
+| `devto_publish` | Create or update an article on dev.to. | No | Yes |
+| `hn_item` | Fetch a single Hacker News story or comment thread by ID. | Yes | Yes |
+| `hn_search` | Search Hacker News posts and comments using Algolia. | Yes | Yes |
+| `hn_stories` | Fetch stories from Hacker News feeds. | Yes | Yes |
+| `places_reviews` | Read the reviews of a place on Google Maps, with its average rating and number of ratings. | Yes | With the key `google_places_api_key` |
+| `places_search` | Find businesses and places on Google Maps by name, type and area (a restaurant, a shop, a service company). | Yes | With the key `google_places_api_key` |
+| `reddit_post` | Read one Reddit post with its comments (the discussion under it), indented by reply depth. | Yes | With the keys `reddit_client_id` and `reddit_client_secret` |
+| `reddit_posts` | List posts of a subreddit. | Yes | With the keys `reddit_client_id` and `reddit_client_secret` |
+| `reddit_search` | Search public posts on Reddit, across Reddit or inside one subreddit. | Yes | With the keys `reddit_client_id` and `reddit_client_secret` |
+| `trustpilot_company` | Look a company up on Trustpilot by its website's domain: its TrustScore, stars and number of reviews, and the id that trustpilot_reviews accepts. | Yes | With the key `trustpilot_api_key` |
+| `trustpilot_reviews` | Read the public Trustpilot reviews of a company: stars, title, text, author, country and date, and the company's reply when there is one. | Yes | With the key `trustpilot_api_key` |
+| `youtube_comments` | Read the comments under a YouTube video: author, text, likes, date, and the first replies. | Yes | With the key `youtube_api_key` |
+| `youtube_search` | Search YouTube videos (reviews, comparisons, reactions). | Yes | With the key `youtube_api_key` |
+
+### Notebooks
+
+| Tool | What it does | Read-only | Available |
+|---|---|---|---|
+| `notebook_create` | Create a new Jupyter notebook (.ipynb) file. | No | Yes |
+| `notebook_edit` | Edit cells in a Jupyter notebook - single operation or batch. | No | Yes |
+| `notebook_execute` | Execute all (or selected) cells in a Jupyter notebook using a live kernel. | No | Yes |
+| `notebook_kernel` | Manage Jupyter kernels: list, start, restart, interrupt, or stop. | No | Yes |
+| `notebook_read` | Read and display the contents of a Jupyter notebook (.ipynb) file. | Yes | Yes |
+| `notebook_run` | Run arbitrary code in a Jupyter kernel and return the output. | No | Yes |
+| `notebook_write` | Write an entire Jupyter notebook in one shot - creates or fully replaces the file. | No | Yes |
+
+### Code and context
+
+| Tool | What it does | Read-only | Available |
+|---|---|---|---|
+| `code_complete` | Fill in code at the cursor position using a FIM (fill-in-the-middle) model. | No | With a fill-in-the-middle model |
+| `get_config` | Get the currently effective security policy: which commands need approval or are always blocked, which paths are protected from reads/writes, file-read... | Yes | Yes |
+| `lsp` | This tool provides Language Server Protocol (LSP) features for code intelligence. | No | Yes |
+| `repo_map` | Build a compact structural map of the current repository. | Yes | Yes |
+| `workflow_draft` | Validate and render a static workflow DAG draft as YAML or JSON. | Yes | Yes |
+
+### Plans, tasks and goals
+
+| Tool | What it does | Read-only | Available |
+|---|---|---|---|
+| `create_goal` | Set a persistent goal for the current session. | No | Yes |
+| `enter_plan_mode` | Enter plan mode, to explore and agree on a plan before changing anything. | Yes | Yes |
+| `exit_plan_mode` | Leave plan mode once you have approved the submitted plan. | No | Yes |
+| `get_goal` | Return the current goal for this session, including live usage metrics. | Yes | Yes |
+| `submit_plan` | Submit a plan for your review while in plan mode. | No | With a `PlanStore` |
+| `task_create` | Create a new task in the task list to track execution steps. | No | Yes |
+| `task_get` | Get detailed information about a specific tracked task or background task by its ID. | No | Yes |
+| `task_list` | List tracked session tasks and/or background runtime tasks. | No | Yes |
+| `task_stop` | Stop tracking a session task, or stop a running background task by its ID. | No | Yes |
+| `task_update` | Update a task's status, details, or dependencies. | No | Yes |
+| `update_goal` | Update the active goal's status and/or objective. | No | Yes |
+
+### Sub-agents
+
+| Tool | What it does | Read-only | Available |
+|---|---|---|---|
+| `agent` | Run a sub-agent on a focused task, with the tools of its type, and get its result back. | No | Yes |
+| `close_agent` | Terminate a sub-agent and remove it from the active registry. | No | Yes |
+| `list_agents` | List all currently active sub-agents and their status. | Yes | Yes |
+| `resume_agent` | Resume a sub-agent that has finished and give it a new task, with its history intact. | No | Yes |
+| `send_agent_message` | Send a message to a running sub-agent. | No | Yes |
+| `spawn_agent` | Start a background sub-agent on a task. | No | Yes |
+| `wait_agent` | Block until a previously spawned agent finishes, then return its result. | Yes | Yes |
+
+### Worktrees
+
+| Tool | What it does | Read-only | Available |
+|---|---|---|---|
+| `enter_worktree` | Creates an isolated git worktree and switches the session into it. | No | Yes |
+| `exit_worktree` | Exits a worktree session and returns to the original working directory. | No | Yes |
+
+### Scheduling
+
+| Tool | What it does | Read-only | Available |
+|---|---|---|---|
+| `delete_job` | Permanently delete an automation job. | No | With `AutomationServiceURL` |
+| `list_jobs` | List all automation jobs for the current user. | Yes | With `AutomationServiceURL` |
+| `pause_job` | Pause an active automation job so it stops triggering. | No | With `AutomationServiceURL` |
+| `resume_job` | Resume a paused automation job. | No | With `AutomationServiceURL` |
+| `run_job_now` | Immediately trigger a single run of an automation job, regardless of its schedule. | No | With `AutomationServiceURL` |
+| `schedule_job` | Create a new automation job that runs an agent on a defined schedule. | No | With `AutomationServiceURL` |
+| `update_job` | Update an existing automation job's configuration. | No | With `AutomationServiceURL` |
+
+### Memory and knowledge
+
+| Tool | What it does | Read-only | Available |
+|---|---|---|---|
+| `memory_add_observations` | Append new observations to existing entities in the knowledge graph. | No | With the memory service (`EnableMemory`) |
+| `memory_create_entities` | Create one or more entities in the long-term memory knowledge graph. | No | With the memory service (`EnableMemory`) |
+| `memory_open_nodes` | Retrieve specific entities from the knowledge graph by their exact names, along with relations that connect them. | Yes | With the memory service (`EnableMemory`) |
+| `memory_search_nodes` | Search for entities in the long-term memory knowledge graph. | Yes | With the memory service (`EnableMemory`) |
+| `rag_delete` | Delete an entire corpus (omit file_id/filename), or just one file's chunks within a corpus (provide file_id or filename). | No | With a `RAGService` |
+| `rag_ingest` | Chunk a text document into a named corpus for later search. | No | With a `RAGService` |
+| `rag_search` | Search a document corpus using semantic similarity (or keyword/BM25 ranking when no embedding provider is configured - same tool either way). | Yes | With a `RAGService` |
+
+### Media
+
+| Tool | What it does | Read-only | Available |
+|---|---|---|---|
+| `generate_image` | Generate an image from a text prompt using the configured image generation provider. | No | With an `ImageGeneration` provider |
+| `speech_to_text` | Transcribe audio to text using the configured STT provider (Whisper or equivalent). | No | With a `SpeechToText` provider |
+| `text_to_speech` | Convert text to speech audio using the configured TTS provider. | No | With a `TextToSpeech` provider |
+
+### Calculation
+
+| Tool | What it does | Read-only | Available |
+|---|---|---|---|
+| `calculator` | Perform mathematical calculations: basic arithmetic, advanced functions, and expression evaluation. | Yes | Yes |
+| `financial_calc` | Perform financial calculations: interest, loan payments, ROI, and present/future value. | Yes | Yes |
+| `statistics` | Perform statistical analysis on a numeric dataset. | Yes | Yes |
+| `unit_convert` | Convert values between units of measurement. | Yes | Yes |
+
+### Interaction and control
+
+| Tool | What it does | Read-only | Available |
+|---|---|---|---|
+| `ask_user_question` | Asks the user multiple choice questions to gather information, clarify ambiguity, understand preferences, make decisions or offer them choices. | Yes | Yes |
+| `mcp` | Call a tool of a connected MCP server. | Yes | Yes |
+| `monitor` | Execute a shell command in the background and stream its stdout line-by-line as notifications. | No | Yes |
+| `request_permissions` | Requests additional permissions before performing an operation that exceeds the current authorization. | No | Yes |
+| `tool_search` | Find deferred tools (MCP tools, for example) that are not in the first tool list. | Yes | With `EnableToolSearch` |
+
+### Planned, not active
+
+These tools are registered but always off. They have no working implementation yet: do not count on them.
+
+| Tool | What it was meant to do |
+|---|---|
+| `discord_send` | Send a message to a Discord channel via webhook or Bot API. |
+| `email_send` | Send an email via SMTP. |
+| `git_branch` | List, create, switch, or delete git branches. |
+| `git_commit` | Stage files and create a git commit. |
+| `git_diff` | Show changes between commits, working tree, or staged index. |
+| `git_log` | Show the commit history of a git repository. |
+| `git_status` | Show the working tree status of a git repository. |
+| `slack_send` | Send a message to a Slack channel or user. |
+| `telegram_send` | Send a message to a Telegram chat, group, or channel via Bot API. |
+| `twitter_search` | Search recent tweets on Twitter/X (last 7 days, free tier). |
+| `twitter_tweet` | Post a tweet on Twitter/X. |
+| `whatsapp_send` | Send a WhatsApp message via the Business Cloud API. |
+
+{/* generated:end */}
+
+## Limit the tools of an agent
+
+You do not have to give an agent every tool. A sub-agent type has its own tool list, and the `tools` parameter of a call narrows it further. See [Agents and delegation](/en/docs/concepts/agents-and-delegation). `ManagedPolicy.ForbiddenTools` in [ClientConfig](/en/docs/reference/client-config) removes tools for every agent of a host.
