@@ -3,14 +3,18 @@ title: Storage and data
 description: "Where Seshat keeps your sessions, files, credentials and indexes on disk, what the database holds, and what is deleted when you delete a session."
 section: concepts
 order: 13
-updated: "2026-10-13"
+updated: "2026-10-14"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import LinkCards from '@/components/docs/LinkCards.astro';
+import Diagram from '@/components/docs/Diagram.astro';
+import { runtimeFolder, databaseTables } from '@/components/docs/diagrams/storage';
 
 Everything Seshat remembers is on your machine, under one folder: the **runtime folder**. This page says what is in it, what the database holds, where the files made by the agent go, and what happens when you delete a session. Nothing here is sent anywhere by Seshat itself: only the requests to the model provider you chose leave your machine.
 
 ## The runtime folder
+
+<Diagram {...runtimeFolder} />
 
 | Program | Runtime folder |
 |---|---|
@@ -39,6 +43,8 @@ The folder holds:
 Other variables move parts of it: see [Environment variables](/en/docs/reference/environment-variables).
 
 ## The database
+
+<Diagram {...databaseTables} />
 
 `seshat.db` is a SQLite file. It holds what has to be queried or kept together:
 

@@ -3,9 +3,11 @@ title: Providers and authentication
 description: "Choose a model provider, point it at your own endpoint, set fallbacks, and manage keys and sign-in from your application."
 section: sdk
 order: 7
-updated: "2026-10-12"
+updated: "2026-10-14"
 ---
 import Callout from '@/components/docs/Callout.astro';
+import Diagram from '@/components/docs/Diagram.astro';
+import { keyChoice } from '@/components/docs/diagrams/providers';
 
 A provider is a company or server that runs a model. Seshat talks to all of them through one interface, so changing provider is a change of configuration.
 
@@ -29,6 +31,8 @@ models, err := providers.FetchModels(ctx, "ollama", providers.DefaultBaseURL("ol
 ```
 
 ## Keys
+
+<Diagram {...keyChoice} />
 
 Give the key in the config:
 

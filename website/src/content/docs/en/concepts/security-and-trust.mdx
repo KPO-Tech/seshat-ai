@@ -3,15 +3,18 @@ title: Security and trust
 description: "What Seshat refuses to do by default: untrusted project files, secrets in commands, the local network and the gRPC server."
 section: concepts
 order: 5
-updated: "2026-10-13"
+updated: "2026-10-14"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import Diagram from '@/components/docs/Diagram.astro';
 import { permissions } from '@/components/docs/diagrams/permissions';
+import { trustPath } from '@/components/docs/diagrams/security';
 
 An agent reads files and runs commands, so what it reads can be hostile: a repository you just cloned, a web page, a tool result. Seshat is built so that the safe behaviour is the default and loosening it is a decision you take.
 
 ## Project files are not trusted until you say so
+
+<Diagram {...trustPath} />
 
 The terminal interface reads its configuration from your own files, and also from the project: `.seshat.json` or `seshat.json` (from the working directory up to the git root) and `.seshat/seshat.json`. A cloned repository can carry any of them.
 
