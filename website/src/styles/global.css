@@ -374,6 +374,8 @@ section.contact-block { padding: 28px 0 88px; }
 .field.check label { font-weight: 400; color: var(--text2); font-size: 0.95rem; }
 .field.check a { color: var(--accent-text); }
 .hp { position: absolute; left: -9999px; }
+/* Vérification anti-robot (Cloudflare Turnstile) : la place est réservée avant l'arrivée du widget. */
+.ts-slot { grid-column: 1 / -1; min-height: 65px; }
 .form .btn { justify-self: start; cursor: pointer; font-family: inherit; }
 .status { min-height: 1.4em; margin: 0; font-weight: 500; }
 .status.ok { color: color-mix(in srgb, #2f7d4f 78%, var(--text)); }
