@@ -44,6 +44,9 @@ const en: typeof fr = {
     sending: 'Sending...',
     ok: 'Thank you, your message has been sent. We will get back to you.',
     error: 'The message could not be sent. Please try again in a moment, or write to contact@seshat-ai.com.',
+    rejected: 'The message was not accepted: it is too short, or it contains too many links. Rewrite it in a few sentences, then send it again.',
+    challenge: 'The anti-robot check did not complete. Reload the page and try again, or write to contact@seshat-ai.com.',
+    rate: 'Too many requests sent recently from this address. Try again later, or write to contact@seshat-ai.com.',
   },
 };
 

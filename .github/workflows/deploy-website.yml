@@ -30,6 +30,12 @@ jobs:
 
       - name: Build
         working-directory: website
+        env:
+          # Clé publique du widget Turnstile : elle est lue au build et vit dans les variables du dépôt
+          # (Settings, Secrets and variables, Actions, Variables). Vide, le site se construit sans le
+          # widget et la vérification serveur reste inactive : la clé secrète jumelle se pose dans les
+          # variables du projet Cloudflare Pages.
+          PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.PUBLIC_TURNSTILE_SITE_KEY }}
         run: npm run build
 
       # cloudflare/pages-action no longer exists (repository removed): deploy with Wrangler instead.

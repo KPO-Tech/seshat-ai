@@ -42,5 +42,8 @@ export default {
     sending: 'Envoi en cours...',
     ok: 'Merci, votre message est bien parti. Nous revenons vers vous.',
     error: "Le message n'a pas pu partir. Réessayez dans un instant, ou écrivez-nous à contact@seshat-ai.com.",
+    rejected: "Le message n'a pas été accepté : il est trop court, ou il contient trop de liens. Reformulez-le en quelques phrases, puis renvoyez-le.",
+    challenge: "La vérification anti-robot n'a pas abouti. Rechargez la page et réessayez, ou écrivez-nous à contact@seshat-ai.com.",
+    rate: "Trop de demandes envoyées récemment depuis cette adresse. Réessayez plus tard, ou écrivez-nous à contact@seshat-ai.com.",
   },
 };

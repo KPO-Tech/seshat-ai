@@ -9,6 +9,9 @@ interface Props { lang: Lang }
 const { lang } = Astro.props;
 const t = dict(lang).contact;
 const endpoint = import.meta.env.PUBLIC_FORM_ENDPOINT ?? '/api/contact';
+// Clé publique du widget Cloudflare Turnstile, posée au build. Sans elle, le widget n'apparaît pas et la
+// vérification côté serveur reste inactive : les deux clés se configurent en même temps (voir functions/api/contact.ts).
+const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
 ---
 <Base title={t.meta.title} description={t.meta.description} lang={lang} page="contact">
   <header class="page-head contact-head">
@@ -28,6 +31,9 @@ const endpoint = import.meta.env.PUBLIC_FORM_ENDPOINT ?? '/api/contact';
         data-sending={t.status.sending}
         data-ok={t.status.ok}
         data-error={t.status.error}
+        data-rejected={t.status.rejected}
+        data-challenge={t.status.challenge}
+        data-rate={t.status.rate}
         data-unavailable={t.status.unavailable}
         novalidate
       >
@@ -64,6 +70,7 @@ const endpoint = import.meta.env.PUBLIC_FORM_ENDPOINT ?? '/api/contact';
           <label for="site">{t.labels.honeypot}</label>
           <input id="site" name="site" type="text" tabindex="-1" autocomplete="off" />
         </div>
+        {turnstileKey && <div id="ts-slot" class="ts-slot" data-sitekey={turnstileKey} data-lang={lang} />}
         <button class="btn btn-primary" type="submit">{t.labels.submit} <Arrow /></button>
         <p class="status" role="status" aria-live="polite"></p>
       </form>
@@ -86,11 +93,46 @@ const endpoint = import.meta.env.PUBLIC_FORM_ENDPOINT ?? '/api/contact';
     </div>
   </section>
 
+  {turnstileKey && <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>}
   <script is:inline>
     (function () {
       var form = document.querySelector('.form');
       if (!form) return;
       var status = form.querySelector('.status');
+      var slot = document.getElementById('ts-slot');
+      var widgetId = null;
+      var challengeBroken = false;
+
+      // Le script Turnstile arrive en asynchrone : on attend son API avant de dessiner le widget, et on
+      // garde son identifiant pour pouvoir le réinitialiser (un jeton ne sert qu'une seule fois).
+      function drawWidget(tries) {
+        if (!slot || !slot.dataset.sitekey) return;
+        if (window.turnstile && window.turnstile.render) {
+          widgetId = window.turnstile.render(slot, {
+            sitekey: slot.dataset.sitekey,
+            theme: 'auto',
+            language: slot.dataset.lang || 'auto',
+            size: 'flexible',
+            action: 'contact',
+            'error-callback': function () {
+              challengeBroken = true;
+            },
+          });
+          return;
+        }
+        if ((tries || 0) < 200) setTimeout(function () { drawWidget((tries || 0) + 1); }, 150);
+      }
+      drawWidget(0);
+
+      // Codes d'échec renvoyés par l'API : chacun a son message, le reste retombe sur le message générique.
+      var statuses = {
+        invalid: form.dataset.rejected,
+        spam: form.dataset.rejected,
+        challenge: form.dataset.challenge,
+        rate_limited: form.dataset.rate,
+        not_configured: form.dataset.unavailable,
+      };
+
       form.addEventListener('submit', function (e) {
         e.preventDefault();
         status.className = 'status';
@@ -105,17 +147,43 @@ const endpoint = import.meta.env.PUBLIC_FORM_ENDPOINT ?? '/api/contact';
           status.textContent = form.dataset.unavailable;
           return;
         }
+        var body = new FormData(form);
+        // Sans jeton valide, inutile d'appeler l'API : elle refusera l'envoi.
+        if (slot && slot.dataset.sitekey) {
+          if (challengeBroken || widgetId === null || !window.turnstile) {
+            status.classList.add('err');
+            status.textContent = form.dataset.challenge;
+            return;
+          }
+          var token = window.turnstile.getResponse(widgetId);
+          if (!token) {
+            status.classList.add('err');
+            status.textContent = form.dataset.challenge;
+            return;
+          }
+          body.set('cf-turnstile-response', token);
+        }
         status.textContent = form.dataset.sending;
-        fetch(endpoint, { method: 'POST', body: new FormData(form), headers: { Accept: 'application/json' } })
+        fetch(endpoint, { method: 'POST', body: body, headers: { Accept: 'application/json' } })
           .then(function (r) {
-            if (!r.ok) throw new Error('http ' + r.status);
+            return r
+              .json()
+              .catch(function () { return {}; })
+              .then(function (b) { return { ok: r.ok, body: b }; });
+          })
+          .then(function (res) {
+            if (!res.ok || !res.body || res.body.ok === false) throw new Error((res.body && res.body.error) || 'http');
             form.reset();
             status.classList.add('ok');
             status.textContent = form.dataset.ok;
           })
-          .catch(function () {
+          .catch(function (err) {
             status.classList.add('err');
-            status.textContent = form.dataset.error;
+            status.textContent = statuses[err.message] || form.dataset.error;
+          })
+          .then(function () {
+            // Jeton consommé : on en redemande un pour un éventuel second message.
+            if (widgetId !== null && window.turnstile) window.turnstile.reset(widgetId);
           });
       });
     })();
