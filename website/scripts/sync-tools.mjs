@@ -162,6 +162,13 @@ const a = text.indexOf('{/* generated:start */}');
 const b = text.indexOf('{/* generated:end */}');
 if (a < 0 || b < 0) { console.error('marqueurs introuvables dans reference/tools.mdx'); process.exit(1); }
 const next = `${text.slice(0, a)}{/* generated:start */}\n${out.join('\n')}\n${text.slice(b)}`;
+// --check : ne rien écrire, échouer si la page ne correspond plus au registre (la date `updated` est ignorée).
+if (args.includes('--check')) {
+  const strip = (s) => s.replace(/^updated: "[0-9-]+"$/m, '');
+  if (strip(next) !== strip(text)) { console.error('reference/tools.mdx ne correspond plus au registre : lancez npm run sync:tools'); process.exit(1); }
+  console.log('reference/tools.mdx est à jour.');
+  process.exit(0);
+}
 const today = new Date().toISOString().slice(0, 10);
 writeFileSync(page, next.replace(/^updated: "[0-9-]+"$/m, `updated: "${today}"`));
 console.log(`${tools.length} outils (${active} actifs), ${plannedTools.length} prévus et inactifs. Page mise à jour.`);

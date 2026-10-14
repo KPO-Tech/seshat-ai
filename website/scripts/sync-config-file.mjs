@@ -100,5 +100,11 @@ const b = text.indexOf('{/* generated:end */}');
 if (a < 0 || b < 0) { console.error('marqueurs introuvables dans reference/configuration-file.mdx'); process.exit(1); }
 const today = new Date().toISOString().slice(0, 10);
 const next = `${text.slice(0, a)}{/* generated:start */}\n${out.join('\n')}\n${text.slice(b)}`.replace(/^updated: "[0-9-]+"$/m, `updated: "${today}"`);
+if (args.includes('--check')) {
+  const strip = (s) => s.replace(/^updated: "[0-9-]+"$/m, '');
+  if (strip(next) !== strip(text)) { console.error('reference/configuration-file.mdx ne correspond plus au code : lancez npm run sync:config-file'); process.exit(1); }
+  console.log('reference/configuration-file.mdx est à jour.');
+  process.exit(0);
+}
 writeFileSync(page, next);
 console.log(`${sections.length} sections générées.`);

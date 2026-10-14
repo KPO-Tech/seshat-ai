@@ -3,7 +3,7 @@ title: Configuration file
 description: "Where the terminal interface reads its JSON settings, which projects may set which sections, and every key of seshat.json."
 section: reference
 order: 2
-updated: "2026-10-13"
+updated: "2026-10-14"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import LinkCards from '@/components/docs/LinkCards.astro';
@@ -217,7 +217,7 @@ Settings of the search tool.
 
 ### `hooks`
 
-A map from an event name to a list of shell hooks. Each hook has these keys. Today the terminal interface reads the `pre_tool_use` event.
+A map from an event name to a list of shell hooks. Each hook has these keys. Today `seshat` reads the `pre_tool_use` event.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|

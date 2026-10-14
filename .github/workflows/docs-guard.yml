@@ -1,0 +1,65 @@
+name: Docs guard
+
+# Compare la documentation du site au code de seshat-runtime. Ce n'est pas un contrôle du `Gate` : le runtime
+# avance de son côté, et une page qui devient fausse ne doit pas bloquer une PR sans rapport. On le lance
+# sur les PR qui touchent la documentation, et chaque lundi pour voir si le runtime a bougé.
+
+on:
+  pull_request:
+    branches: ["main", "staging"]
+    paths:
+      - "website/src/content/docs/**"
+      - "website/src/components/docs/**"
+      - "website/scripts/**"
+      - ".github/workflows/docs-guard.yml"
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      runtime_ref:
+        description: "Branche, tag ou commit de seshat-runtime à comparer"
+        required: false
+        default: "main"
+
+concurrency:
+  group: docs-guard-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    name: Docs against the runtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check out seshat-runtime
+        uses: actions/checkout@v7
+        with:
+          repository: KPO-Tech/seshat-runtime
+          ref: ${{ github.event.inputs.runtime_ref || 'main' }}
+          path: seshat-runtime
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: seshat-runtime/go.mod
+          cache-dependency-path: seshat-runtime/go.sum
+
+      - name: Install dependencies
+        working-directory: website
+        run: npm ci
+
+      - name: Run the guards
+        working-directory: website
+        env:
+          SESHAT_RUNTIME_DIR: ${{ github.workspace }}/seshat-runtime
+        run: npm run guard:docs

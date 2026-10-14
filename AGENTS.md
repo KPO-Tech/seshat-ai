@@ -45,4 +45,5 @@ make clean
 - Treat `private/` as sensitive. Only `private/cvs-specialises/` is versioned; do not publish CV contact details on the site.
 - No product code, no backend or desktop documentation here: it goes in the dedicated repositories.
 - A superseded strategy document is archived with a dated banner, not edited in place.
+- Documentation pages are checked against `seshat-runtime`, and the code is the only reference. Before a documentation PR, run `cd website && npm run guard:docs -- --runtime ../../seshat-runtime`. When a page is corrected against the code, add the claim that matters to `website/scripts/doc-claims.json`. See `docs/reflexions/journal-engineering-2026/bilan-2026-10-14-lots-b-a-f-documentation-du-site.md`.
 - The `dev-old` branch preserves the pre-cleanup monorepo, including the old engineering docs and the previous website (`website-old/`, deleted from the tree on 2026-10-08).
