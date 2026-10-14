@@ -1,0 +1,77 @@
+---
+title: Upgrading
+description: "What changed between versions of Seshat that can break a program or a deployment, from the most recent to the oldest, with what to do about each."
+section: guides
+order: 2
+updated: "2026-10-13"
+---
+import Callout from '@/components/docs/Callout.astro';
+
+This page lists the changes that can break something for you, from version 1.7 back to 1.3, with what to do. It is not the full history: every change is in [`CHANGELOG.md`](https://github.com/KPO-Tech/seshat-runtime/blob/main/CHANGELOG.md) of the repository. If you are older than 1.3, upgrade to 1.3 first and read the changelog of the versions you skip.
+
+<Callout type="note" title="Who is concerned">
+**Terminal users** are concerned by the behaviour changes. **Go hosts** (programs that import the SDK) are concerned by the removed and changed API. **Server deployments** are concerned by the gRPC change in 1.3.
+</Callout>
+
+## 1.7 and 1.6: plan approval and task reminders
+
+Behaviour only. No code changes are needed, but a host that shows plans in its own interface should read the first point.
+
+- **A plan waits for your answer.** While a plan submitted with `submit_plan` is waiting for you, `exit_plan_mode` is refused. A Go host that shows plans in its own interface must now record the approval, with `session.ApprovePlan()`, or with `sdk.ApprovePlan(sessionID)` for a session reloaded on every turn (1.7). Without it, `exit_plan_mode` stays refused while a submitted plan is waiting. See [Runtime modes](/en/docs/concepts/runtime-modes).
+- **A turn does not end while tasks are open.** When the model stops while its task list still has unfinished items, the loop reminds it, up to 3 times by default. `ClientConfig.TaskNudgeLimit` changes the number, and a negative value turns the reminder off (1.6, field added in 1.7).
+- **New shortcut.** `shift+tab` enters and leaves plan mode in the terminal interface (1.6).
+- **Keys are hidden.** The provider key field of the configuration screens shows bullets, never the key (1.6).
+
+## 1.5: the module is now `seshat-runtime`
+
+**Go hosts only.** The repository and the Go module changed name. The old address redirects, but the import paths do not.
+
+| Before | After |
+|---|---|
+| `github.com/KPO-Tech/seshat` | `github.com/KPO-Tech/seshat-runtime` |
+
+To migrate, run `go get github.com/KPO-Tech/seshat-runtime@v1.5.0`, then replace the old prefix in the imports of your `.go` files and in your `go.mod`. A `sed` over those files is enough. Packages, functions and behaviour are the same, and the binaries are still called `seshat` and `seshat-grpc`. Releases up to 1.4.1 stay published under the old path.
+
+## 1.4: removed API, and tools that really are restricted
+
+This version fixed several behaviours that did not do what they claimed. Some programs relied on the old behaviour.
+
+**Go hosts**
+
+- **`RegisterHook` returns two values.** It now returns `(string, error)`, and the error says that the event you asked for is never emitted by the runtime. Update `id := client.RegisterHook(...)` to `id, err := client.RegisterHook(...)`. See [Streaming, events and hooks](/en/docs/sdk/events-and-hooks).
+- **`pair_programming` is gone.** The execution mode and `sdk.ExecutionModePairProgramming` are removed. Only `execute` and `plan` remain.
+- **MCP OAuth is gone.** `ConnectWithOAuth`, `ShouldUseOAuth`, `GetOAuthConfig`, `MCPOAuthConfig` and the variables `SESHAT_MCP_CLIENT_ID`, `SESHAT_MCP_CLIENT_SECRET`, `SESHAT_MCP_AUTH_URL`, `SESHAT_MCP_TOKEN_URL` and `SESHAT_MCP_SCOPES` were removed: they never performed an OAuth sign-in. If a server accepts a token, pass it in `Headers`. `RegisterPluginMcpServer` and `GetPluginMcpServers` were removed too.
+- **No default fallback to another vendor.** The default routing of a model no longer falls back to another provider, for example from Anthropic to OpenAI. Only models of the same provider are tried. If you relied on the old fallback, configure the fallback providers yourself. See [Providers and authentication](/en/docs/sdk/providers-and-auth).
+
+**Everyone**
+
+- **Plan mode no longer allows writes without a question.** In plan mode, `write_file` and `edit_file` are refused. See [Runtime modes](/en/docs/concepts/runtime-modes).
+- **Sub-agent tool lists are enforced.** The tool list of an agent type, and the `tools` parameter of a call, were accepted but had no effect on any path. They restrict the sub-agent now, so an agent that quietly used a tool that was not on its list loses it. See [Agents and delegation](/en/docs/concepts/agents-and-delegation).
+- **A `never` session keeps its sub-agents in `never`.** Before, they always ran in `bypass`.
+- **`auto` mode without a classifier asks, or refuses.** It asks in an interactive session and refuses in a session without an interface. It no longer allows everything.
+- **Workflow steps use `agent` and `max_turns`.** The default executor now applies them. See [Workflows](/en/docs/sdk/workflows).
+- **A skill's `shell.before` commands run.** They are added to the skill's text and the agent runs them, after asking permission.
+
+## 1.3: closed by default
+
+**Server deployments.** The gRPC server (`seshat-grpc`) used to listen on every interface with no authentication and no TLS, and `ConnectMCP` could start any program on the host. It is now closed by default.
+
+- It listens on `127.0.0.1`. To reach it from outside its host or container, set `SESHAT_GRPC_HOST=0.0.0.0` **and** `SESHAT_GRPC_AUTH_TOKEN`. On any other address it refuses to start without a token, unless `SESHAT_GRPC_ALLOW_INSECURE_REMOTE=true`.
+- With a token, every call except `HealthCheck` needs `authorization: Bearer <token>`.
+- `SESHAT_GRPC_TLS_CERT` and `SESHAT_GRPC_TLS_KEY` turn TLS on.
+- `ConnectMCP` refuses a stdio server unless `SESHAT_GRPC_ALLOW_STDIO_MCP=true`.
+- The contract no longer declares `FileService` and `SystemService`: they were never implemented, so a client generated from the old file got stubs that always failed. Generate your client again.
+
+**Everyone.**
+
+- **Project files are not trusted until you say so.** The terminal interface ignores the sections of a project's `seshat.json` that start programs or decide where keys go, until you run `seshat trust`. See [Configuration file](/en/docs/reference/configuration-file#projects-you-do-not-trust).
+- **Commands do not inherit your secrets.** The `bash` tool no longer passes variables such as `*_API_KEY` or `*_TOKEN` to the commands the model runs. A command that really needs one can get it through `SESHAT_BASH_ENV_ALLOW`. See [Security and trust](/en/docs/concepts/security-and-trust).
+- **A `.env` file cannot run a command.** An entry with `$(...)` or a backquote is ignored, with a warning.
+- **The engine does not write on the standard output.** Diagnostics go through `log/slog`. A host that read them from the output will find them in its logs.
+
+## Before you upgrade
+
+1. Read the sections above for the versions between yours and the target.
+2. Run your tests with the new version.
+3. For a Go host, compile your program against the new version: the compiler finds the changed `RegisterHook` and the removed names at once.
+4. For a server, start it in a test environment first: the 1.3 change makes a deployment that worked fail to start rather than run open.

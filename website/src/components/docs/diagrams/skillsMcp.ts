@@ -61,3 +61,30 @@ export const mcpFlow = {
     { x: 15, y: 262, text: 'If a step fails for one server, that server is skipped and a line is logged.' },
   ],
 };
+
+const src = (i: number, title: string, sub: string, kind = 'default') => ({ id: 's' + i, x: 150, y: 40 + i * 76, w: 460, h: 58, kind, title: (i + 1) + '.  ' + title, sub: [sub] });
+
+export const skillSources = {
+  uid: 'dg-skillsources',
+  width: 960,
+  height: 40 + 9 * 76 + 20,
+  minWidth: 600,
+  label: 'The order in which Seshat looks for a skill: nine sources, and the first one that has the name wins.',
+  caption: 'When two skills have the same name, the first source in this list wins. A project skill overrides a personal one, and an administrator\'s.',
+  nodes: [
+    src(0, 'Project .claude/skills/', 'shared with your team', 'ok'),
+    src(1, 'Project .seshat/skills/', 'the same, in the folder of Seshat'),
+    src(2, 'Managed skills', 'set by an administrator'),
+    src(3, 'User skills', 'your personal skills'),
+    src(4, 'Built-in skills', 'the builtin folder'),
+    src(5, 'Older command files', '.seshat/commands/ of the project'),
+    src(6, '.claude/skills/ in a sub-folder', 'a monorepo, up to 6 levels below the project'),
+    src(7, 'Collections', 'skills/repos/<name>/ and the other folders of skills/'),
+    src(8, 'Bundled skills', 'compiled into Seshat: the lowest priority', 'warn'),
+  ],
+  edges: [0, 1, 2, 3, 4, 5, 6, 7].map((i) => ({ from: 's' + i + ':bottom', to: 's' + (i + 1) + ':top' })),
+  notes: [
+    { x: 650, y: 60, text: 'MOST SPECIFIC', anchor: 'start' },
+    { x: 650, y: 40 + 8 * 76 + 36, text: 'LEAST SPECIFIC', anchor: 'start' },
+  ],
+};

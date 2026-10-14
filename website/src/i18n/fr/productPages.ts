@@ -103,7 +103,7 @@ export default {
   seshatcloud: {
     meta: {
       title: 'SeshatCloud : la couche multi-utilisateurs | Seshat AI',
-      description: "SeshatCloud : organisations, droits d'accès, SCIM, console d'administration et lecture de documents, au-dessus du même runtime. Solide côté serveur, pas encore proposé seul.",
+      description: "SeshatCloud : organisations, droits d'accès, SCIM, console d'administration et lecture de documents, au-dessus du runtime Seshat. Pas encore proposé seul.",
     },
     head: { title: "SeshatCloud, l'IA partagée par toute l'entreprise.", lead: "La couche multi-utilisateurs au-dessus du même runtime : organisations, droits d'accès, administration." },
     availability: "Pas encore proposé seul : il se déploie dans le cadre d'un pilote ou d'un accompagnement sur mesure.",

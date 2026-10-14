@@ -1,0 +1,50 @@
+---
+title: Licensing
+description: "The licence of the Seshat runtime, the part of the terminal interface that has another origin, and where SeshatOS and SeshatCloud stand."
+section: learn
+order: 5
+updated: "2026-10-13"
+---
+import Callout from '@/components/docs/Callout.astro';
+
+<Callout type="note" title="A summary, not legal advice">
+This page summarises the licence files of the repositories. The texts themselves prevail: read `LICENSE` and `NOTICE` in the repository, and ask a lawyer when a decision depends on them.
+</Callout>
+
+## The runtime: Apache-2.0
+
+The Seshat runtime is published under the **Apache License 2.0**. The repository is [`seshat-runtime`](https://github.com/KPO-Tech/seshat-runtime), copyright 2025-2026 KPO-Tech. You can use it, change it, redistribute it and build a commercial product on it, as the licence says.
+
+This covers the engine and everything you reach through the SDK (`pkg/`), the gRPC server and the other packages, with the exception described next.
+
+## The terminal interface has another origin
+
+The terminal interface, in `internal/seshattui`, was built from the terminal interface of [Crush](https://github.com/charmbracelet/crush) by Charmbracelet, Inc. Crush is published under the **Functional Source License 1.1, MIT Future License** (FSL-1.1-MIT):
+
+- You may use, copy, modify and redistribute it for any purpose **except a Competing Use**. The licence defines a Competing Use as making the software available to others in a commercial product or service that substitutes for Crush, or for another product or service of Charmbracelet that uses it.
+- Each version of Crush becomes available under the **MIT licence two years after it was published**.
+
+What it means for the Seshat repository:
+
+- The files of `internal/seshattui` that come from Crush stay subject to the FSL-1.1-MIT **in addition to** the Apache-2.0 terms of the rest of the repository. Apache-2.0 does not replace it for them.
+- Which files are copied and which were written for Seshat is not recorded file by file. Until it is, the whole directory is treated as subject to the Crush licence.
+- The engine does not use that code.
+
+In practice:
+
+| You want to | What it means |
+|---|---|
+| Run `seshat`, use the SDK or the gRPC server, in your company or your product | Nothing special. The Apache-2.0 terms apply to what you use |
+| Redistribute the terminal interface inside a commercial coding-agent product | Read the Crush licence first, or leave `internal/seshattui` out and use the engine through the SDK or gRPC |
+
+The authoritative statement is the `NOTICE` file of the repository, and `docs/licensing.md` explains it.
+
+## SeshatOS and SeshatCloud
+
+[SeshatOS](/en/products/seshatos) and [SeshatCloud](/en/products/seshatcloud) are **source-available**, not open source: the code can be read, and you can use and host it yourself, but the licence limits resale. Only the runtime is open source.
+
+<Callout type="warning" title="The licences of these two products are drafts">
+The `LICENSE` file of each repository says so itself: the SeshatOS licence (Apache-2.0 with a Commons Clause condition) and the SeshatCloud licence (modelled on the Functional Source License, with a small-deployment exception) have not been reviewed by a lawyer yet. Treat them as a statement of intent until they are final, and ask before you build a commercial offer on them.
+</Callout>
+
+The page [Open source and licenses](/en/open-source) compares the three on the website.

@@ -3,9 +3,10 @@ title: Configuration
 description: "Choose a provider and a model, set API keys, and enable the optional tools."
 section: start
 order: 3
-updated: "2026-10-12"
+updated: "2026-10-13"
 ---
 import Callout from '@/components/docs/Callout.astro';
+import LinkCards from '@/components/docs/LinkCards.astro';
 import Diagram from '@/components/docs/Diagram.astro';
 import { keyLookup, settingsLadder } from '@/components/docs/diagrams/config';
 
@@ -81,3 +82,11 @@ Some tools exist in every installation but do nothing until you give them what t
 <Callout type="tip" title="Search tools need ripgrep">
 The `glob` and `grep` tools use [ripgrep](https://github.com/BurntSushi/ripgrep). Install it with your package manager if you do not have it.
 </Callout>
+
+## Reference
+
+<LinkCards cards={[
+  { title: 'Configuration file', text: 'Every key of seshat.json.', href: '/en/docs/reference/configuration-file', icon: 'file-code' },
+  { title: 'Environment variables', text: 'Folders, storage, providers, search and observability.', href: '/en/docs/reference/environment-variables', icon: 'terminal' },
+  { title: 'Built-in tools', text: 'Every tool, and what it needs to be available.', href: '/en/docs/reference/tools', icon: 'toolbox' },
+]} />

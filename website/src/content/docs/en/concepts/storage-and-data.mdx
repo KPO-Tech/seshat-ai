@@ -1,0 +1,98 @@
+---
+title: Storage and data
+description: "Where Seshat keeps your sessions, files, credentials and indexes on disk, what the database holds, and what is deleted when you delete a session."
+section: concepts
+order: 13
+updated: "2026-10-14"
+---
+import Callout from '@/components/docs/Callout.astro';
+import LinkCards from '@/components/docs/LinkCards.astro';
+import Diagram from '@/components/docs/Diagram.astro';
+import { runtimeFolder, databaseTables } from '@/components/docs/diagrams/storage';
+
+Everything Seshat remembers is on your machine, under one folder: the **runtime folder**. This page says what is in it, what the database holds, where the files made by the agent go, and what happens when you delete a session. Nothing here is sent anywhere by Seshat itself: only the requests to the model provider you chose leave your machine.
+
+## The runtime folder
+
+<Diagram {...runtimeFolder} />
+
+| Program | Runtime folder |
+|---|---|
+| The `seshat` binary | `~/.config/seshat-cli/` (or `$XDG_CONFIG_HOME/seshat-cli/`, and `%APPDATA%\seshat-cli\` on Windows) |
+| A Go program that uses the SDK | `~/.config/seshat/` |
+| Either one, if `SESHAT_RUNTIME_ROOT` is set | The folder it names |
+
+The folder holds:
+
+| Path | Content |
+|---|---|
+| `seshat.json` | The configuration file of the terminal interface. See [Configuration file](/en/docs/reference/configuration-file) |
+| `seshat.db` | The SQLite database. See below |
+| `secret.key` | The key that encrypts the stored credentials. Keep it private: it is created next to the database |
+| `data/sessions/` | The saved sessions |
+| `data/hnsw/`, `data/rag.sqlite3` | The vector indexes of the knowledge base. See [Retrieval and knowledge](/en/docs/concepts/rag) |
+| `data/permissions/{session}.json` | What you allowed during a session, for example "always allow this tool". It is kept outside the session folder on purpose: the agent can write inside that folder, and a grant it could edit would be a grant it could give itself |
+| `workspaces/{session}/` | The folder of one session: see next section |
+| `memory/` | Long-term notes. `SESHAT_MEMORY_PATH` moves it |
+| `skills/` | Your skills. See [Skills and MCP](/en/docs/concepts/skills-and-mcp) |
+| `plans/` | Saved plans |
+| `cache/`, `tmp/` | Caches, and the output of background commands (`tmp/bash-tasks`) |
+| `logs/` | The logs |
+| `models/` | Small local models, for example for session titles |
+
+Other variables move parts of it: see [Environment variables](/en/docs/reference/environment-variables).
+
+## The database
+
+<Diagram {...databaseTables} />
+
+`seshat.db` is a SQLite file. It holds what has to be queried or kept together:
+
+| Tables | Content |
+|---|---|
+| `session_metadata`, `session_transcript_entries`, `session_checkpoints` | The sessions: their titles, every message, and checkpoints |
+| `session_files`, `session_tasks`, `session_goals` | The files, tasks and goals of a session |
+| `memory_entities`, `memory_relations` | The long-term memory, a small knowledge graph |
+| `vector_records`, `vector_chunks` | Vectors for retrieval, when the SQLite store is used |
+| `automation_jobs`, `automation_runs` | Scheduled jobs and their runs |
+| `credentials` | The provider keys you entered in the interface, **encrypted** with `secret.key` (AES-256-GCM). They are never written in `seshat.json` |
+| `schema_migrations` | Which migrations were applied |
+
+By default `secret.key` is created the first time it is needed. To keep the same key on several machines, or to not depend on the machine at all, set `SESHAT_MASTER_KEY`.
+
+## What a session leaves on disk
+
+All the files that belong to a session are in `workspaces/{session}/`:
+
+```text
+workspaces/{session}/
+├── uploads/          files you attached
+├── artifacts/
+│   ├── screenshots/  browser screenshots
+│   ├── images/       generated images
+│   ├── audio/        speech made or transcribed
+│   └── web/          pages fetched from the web
+├── pastes/           pasted text, images and other files
+├── plans/            plans written in plan mode
+├── tools/            browser downloads and tool output
+└── session.log
+```
+
+This is also the folder a host such as SeshatOS uses as the working area of the session. Older versions kept this under `sessions/{id}/`: The `seshat` binary moves it for you when it starts.
+
+Files that the agent produces go through an **artifact store**. By default it is a local folder, and it can be an S3 bucket: `SESHAT_STORAGE_PROVIDER=s3` and the `SESHAT_S3_*` variables, or the `StorageConfig` field in Go. See [ClientConfig reference](/en/docs/reference/client-config) and [Environment variables](/en/docs/reference/environment-variables).
+
+## Cleaning up
+
+- **Deleting a session** (`client.DeleteSession(id)`, or from the interface) removes its record in the database, its folder `workspaces/{session}/`, its permissions file, and its artifacts in the store, including in S3. The cleanup of the files and the artifacts is best effort: a failure there does not make the deletion fail.
+- **Expired artifacts** are cleaned up in the background when `StorageGCEnabled` is on, which is the default. `StorageGCInterval` (one hour by default) sets how often, and `StorageGCLimit` (512 by default) how many items one pass handles.
+- **Knowledge-base documents** you uploaded on purpose are not part of a session. They stay until you remove them.
+
+<Callout type="tip" title="Back up the pair">
+To move or back up your data, copy `seshat.db` **and** `secret.key` together. The database alone holds the credentials in a form you cannot read without the key.
+</Callout>
+
+<LinkCards cards={[
+  { title: 'Configuration', text: 'Where the runtime folder is and how to set it.', href: '/en/docs/getting-started/configuration', icon: 'gear' },
+  { title: 'Memory and compaction', text: 'How the context and the long-term notes work.', href: '/en/docs/concepts/memory', icon: 'brain' },
+]} />

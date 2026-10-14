@@ -3,7 +3,7 @@ title: Memory and compaction
 description: "How Seshat keeps your sessions, stays inside the model's context window, and remembers things across sessions."
 section: concepts
 order: 7
-updated: "2026-10-09"
+updated: "2026-10-13"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import Flow from '@/components/docs/Flow.astro';
@@ -52,11 +52,15 @@ Compaction is checked before every model call, with two ways of freeing room: fi
 
 1. **Threshold.** Below it, nothing happens.
 2. **Micro-compaction.** Large tool results are trimmed. If that brings the session under the target, there is no model call at all.
-3. **Summary.** Otherwise a model writes a summary of the conversation, told to preserve the active requests, the decisions made, the tool outcomes that still matter and the unresolved work.
+3. **Summary.** Otherwise the session's own model writes a summary of the conversation, told to preserve the active requests, the decisions made, the tool outcomes that still matter and the unresolved work.
 4. **Recent messages are kept.** Starting from the newest message, Seshat keeps messages until it reaches the target. The cut is then moved back if needed, so a tool result is never kept without the tool call it answers.
 5. **Rebuild.** The new history is the summary, a marker saying the context was compacted, and the kept messages.
 
-If the summary call fails, that turn ends with an error.
+If the summary call fails, that turn ends with an error. By default the summary is written by the model of the session, so compaction works with any provider. In Go, `ClientConfig.CompactSummaryModel` picks another model for it.
+
+### When compaction keeps failing
+
+The runtime counts failed compactions from one turn to the next. After 3 in a row it stops trying to summarise for the rest of the session, instead of paying for a call that keeps failing. The request is still checked against the hard limit of the window: if it does not fit, it fails on your machine with the `compact_full` error, before it reaches the provider.
 
 ### What the history looks like afterwards
 

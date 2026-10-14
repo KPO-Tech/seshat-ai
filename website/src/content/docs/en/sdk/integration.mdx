@@ -3,7 +3,7 @@ title: Integrating in your product
 description: "What to decide when you embed Seshat in a backend, a desktop app or an internal platform: clients, sessions, credentials, sandboxing and storage."
 section: sdk
 order: 8
-updated: "2026-10-09"
+updated: "2026-10-13"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import Diagram from '@/components/docs/Diagram.astro';
@@ -63,7 +63,9 @@ cfg.SandboxKind = sdk.SandboxKindDocker
 | `SandboxKindDocker` | Commands run in a persistent Docker container. If Docker is not reachable when the client starts, it falls back to local with a logged warning |
 | `RequireSandbox` | The bash tool refuses to run when no sandbox is available, instead of running unconfined |
 
-`sdk.SandboxAvailable()` reports whether Landlock, the OS-level sandbox, exists on this host (Linux). It does not look at Docker: a host with a Docker sandbox configured still gets `false` on macOS or Windows.
+`client.SandboxKind()` reports the sandbox this client actually resolved to: `SandboxKindDocker` only if you asked for it and Docker answered its health check when the client started, `SandboxKindLocal` otherwise. Use it to show the real state to your users.
+
+`sdk.SandboxAvailable()` answers a different question: is Landlock, the OS-level sandbox, available on this host (Linux)? It does not look at Docker, so a host with a Docker sandbox configured still gets `false` on macOS or Windows.
 
 <Callout type="warning" title="A desktop app and a server are not the same">
 On a desktop, refusing to run `bash` at all is often worse than a visible warning, so leave `RequireSandbox` off. On a shared server, an unconfined command runs with the server's rights and its environment: always set it.
@@ -85,9 +87,45 @@ Secrets are removed from the environment of the commands the model runs. See [Se
 ## Observe and control
 
 - `SetProgressFn`, `SetResponseChunkFn` and `SetRuntimeEventFn` feed your interface. See [Streaming, events and hooks](/en/docs/sdk/events-and-hooks).
-- `RegisterHook` (on the loop events), `PreToolHooks` (shell commands before a tool call) and the stop hooks let you audit or block actions. See [Streaming, events and hooks](/en/docs/sdk/events-and-hooks) for what each can do. `AddToolHook` exists but cannot be used from outside the module yet, because the type it returns is not exported.
+- `RegisterHook` (on the loop events), `PreToolHooks` (shell commands before a tool call) and the stop hooks let you audit or block actions. See [Streaming, events and hooks](/en/docs/sdk/events-and-hooks) for what each can do. `AddToolHook` registers a Go function that runs before or after every tool call. The types it needs (`ToolHook`, `ToolHookInput`, `ToolHookResult` and `ToolHookStop`) are exported, so you can use it from your own module.
 - `GetMonitoring()` returns the monitoring system when `EnableMonitoring` is on.
 - `MaxTurns`, `TurnTokenBudget` and `MaxConsecutiveDenials` bound what one request can spend.
+
+## Rules imposed by the host
+
+A server that serves a whole organization can impose rules that no user can change. Set `ClientConfig.ManagedPolicy` from an administrator's configuration, never from what an end user sends:
+
+```go
+cfg.ManagedPolicy = &sdk.ManagedPolicy{
+    Instructions:   "Never send customer data outside the company network.",
+    ForbiddenTools: []string{"web_fetch", "browser_open"},
+}
+```
+
+- **`Instructions`** is added to the system prompt after everything else, under a heading that says these are the organization's rules and that they rank above the user's. A session cannot replace it.
+- **`ForbiddenTools`** lists tool names that no agent may use. A name matches the tool and its aliases, and an MCP tool is named like `mcp__server__tool`. These tools are removed from what the model sees, and any call is denied by a rule that outranks every other, **in every permission mode, `bypass` included**.
+
+## Diagnosing connectivity
+
+When a request to a provider or to an internal service fails, the useful question is which layer is broken. The package `pkg/netdiag` checks one target step by step:
+
+```go
+res := netdiag.ProbeHTTP(ctx, "model provider", "https://api.example.com", "/health")
+for _, step := range res.Steps {
+    fmt.Println(step.Name, step.Status, step.Detail, step.Suggestion)
+}
+fmt.Println("reachable:", res.OK)
+```
+
+`ProbeHTTP` runs DNS, then TCP, then TLS (for an `https` address), then an HTTP request, and times each step. The HTTP step succeeds when there is no transport error, whatever the status code: a `404` still proves that the network path works. `ProbeTCP(ctx, name, host, port)` stops at the TCP step, for a service that does not speak HTTP. A failed step carries a suggestion and says who should act: the network administrator, IT security or support.
+
+## Running one agent type
+
+`client.RunAgentTask(ctx, agentType, task, maxTurns)` runs a task as a built-in agent type, such as `explore` or `general-purpose`, and returns its final text. `maxTurns` is the number of autonomous turns, and 0 means a single turn. It is what a workflow step with an `agent` uses. Use it when your program needs a focused sub-agent without opening a conversation.
+
+<Callout type="warning" title="It runs in bypass mode">
+`RunAgentTask` runs the agent with `PermissionModeBypass`: it does not ask before each tool, within the tools of its type. Choose a read-only type such as `explore` when the task does not need to change anything, and combine it with `ManagedPolicy` and a sandbox on a shared server.
+</Callout>
 
 ## Checklist before you ship
 

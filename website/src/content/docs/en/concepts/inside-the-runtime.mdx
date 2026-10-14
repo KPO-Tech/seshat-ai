@@ -3,7 +3,7 @@ title: Inside the runtime
 description: "A tour of how the Seshat runtime is built: layers, one turn of the loop, one tool call, and what happens when a provider fails. With counts you can reproduce."
 section: concepts
 order: 3
-updated: "2026-10-12"
+updated: "2026-10-13"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import Diagram from '@/components/docs/Diagram.astro';
@@ -27,7 +27,7 @@ The terminal interface (`internal/seshattui`) is a fork of the Charm Crush inter
 |---|---|---|
 | **Execution** | `prompt`, `providers`, `execution`, `tools`, `permissions` | Builds the system prompt in cached sections, talks to the models, runs tool calls, and decides what is allowed. |
 | **State and data** | `db`, `runtime`, `memory`, `vector`, `storage` | SQLite for sessions, checkpoints, goals, vectors and tasks. Compaction and state backends (SQLite, files, memory). A long-term memory graph. |
-| **Platform services** | `web` and the browser, `sandbox`, `agent`, `mailbox`, `team`, `automation`, `auth`, `monitoring`, `hooks`, `modes` | Web access, Docker or Landlock isolation, sub-agents and teams, scheduled work, OAuth, OpenTelemetry and Prometheus, shell hooks, and the plan, execute, browse and pair modes. |
+| **Platform services** | `web` and the browser, `sandbox`, `agent`, `mailbox`, `team`, `automation`, `auth`, `monitoring`, `hooks`, `modes` | Web access, Docker or Landlock isolation, sub-agents and teams, scheduled work, OAuth, OpenTelemetry and Prometheus, shell hooks, and the plan and execute modes. |
 
 ## One turn: what the loop does
 

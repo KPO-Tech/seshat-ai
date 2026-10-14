@@ -1,0 +1,74 @@
+---
+title: Observability
+description: "How to see what Seshat is doing: the logs, the metrics of the monitoring system, and OpenTelemetry traces."
+section: concepts
+order: 15
+updated: "2026-10-13"
+---
+import Callout from '@/components/docs/Callout.astro';
+import LinkCards from '@/components/docs/LinkCards.astro';
+
+Seshat gives you three ways to see what it does: a log file, a set of metrics, and traces. The first is for you, at your desk. The other two are for a server that someone has to watch.
+
+## Logs
+
+The terminal interface writes its log to `logs/app.log` in the [runtime folder](/en/docs/concepts/storage-and-data). The level is `info`. A line is written when something is skipped or fails quietly, for example an MCP server that could not start, a memory service that is not available, or a sandbox that fell back to a weaker level. When something does not work, look there first. [Troubleshooting](/en/docs/guides/troubleshooting) lists the common cases.
+
+In Go, the monitoring system that the client creates by default logs at the `info` level on the standard output. The `ENVIRONMENT` variable (`development` by default) is written in the logs, so that several deployments can be told apart.
+
+## Metrics
+
+The monitoring system counts what happens. It is on by default in `DefaultClientConfig()` (`EnableMonitoring`), and `client.GetMonitoring()` gives it to you.
+
+| Metric | Kind | What it counts |
+|---|---|---|
+| `api_requests_total`, `api_requests_success`, `api_requests_failure` | counters | Calls to the model provider |
+| `api_latency_ms` | timer | How long they take |
+| `api_rate_limit_hits` | counter | Answers that said "too many requests" |
+| `api_circuit_breaker_trips` | counter | Times the provider circuit breaker opened |
+| `tool_calls_total`, `tool_calls_success`, `tool_calls_failure` | counters | Tool calls |
+| `tool_latency_ms` | timer | How long they take |
+| `tool_permission_denials` | counter | Calls that were refused |
+| `query_turns_total` | counter | Turns |
+
+The system also tracks the iterations of the loop, the cache reads and writes of the provider, the number of active sessions and connections, and the errors in total.
+
+Read the numbers with a snapshot, in the format you need:
+
+```go
+mon := client.GetMonitoring()
+text, err := mon.GetMetricsSnapshot("prometheus") // or "json", or any other value for plain text
+```
+
+`prometheus` gives the text format that a Prometheus server scrapes. Seshat does not start an HTTP server for it: expose the text yourself, on the path you choose.
+
+## Traces
+
+Seshat can export OpenTelemetry traces. It is off until you give it an endpoint:
+
+```bash
+export OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4317
+```
+
+Traces go to that endpoint over gRPC, **without TLS** by default, which suits a collector on the same machine. Set `OTEL_EXPORTER_OTLP_INSECURE=false` to use TLS. Without the endpoint, nothing is exported and nothing slows down.
+
+Every tool call is a span named `tool <name>`, for example `tool bash`, with the attributes `tool.name` and `tool.use_id`. So a trace shows which tools a request used, in which order, and how long each took.
+
+A Go program starts the exporter itself and stops it before exiting:
+
+```go
+shutdown, err := monitoring.InitTracer(ctx, "my-service")
+if err != nil {
+    log.Fatal(err)
+}
+defer shutdown(ctx)
+```
+
+<Callout type="note" title="Nothing leaves your machine by itself">
+Logs stay in a file, metrics stay in memory until you read them, and traces are sent only to the endpoint you set. Seshat does not report anything to anyone else.
+</Callout>
+
+<LinkCards cards={[
+  { title: 'Environment variables', text: 'The OTEL_* and ENVIRONMENT variables, with their defaults.', href: '/en/docs/reference/environment-variables#observability', icon: 'terminal' },
+  { title: 'Integrating in your product', text: 'What to watch and limit on a server.', href: '/en/docs/sdk/integration', icon: 'plugs' },
+]} />

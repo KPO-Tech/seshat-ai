@@ -3,7 +3,7 @@ title: Agents and delegation
 description: "How an agent hands work to sub-agents, runs them in the background, keeps them under control, and what is not available yet."
 section: concepts
 order: 10
-updated: "2026-10-09"
+updated: "2026-10-13"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import AgentTree from '@/components/docs/AgentTree.astro';
@@ -19,7 +19,7 @@ A single agent working through a large task fills its context quickly. Seshat le
   icon: 'robot',
   children: [
     { name: 'explore', note: 'Read-only: read_file, glob, grep', icon: 'magnifying-glass' },
-    { name: 'plan', note: 'Designs an approach, can write and edit files', icon: 'list-checks' },
+    { name: 'plan', note: 'Designs an approach, read-only', icon: 'list-checks' },
     { name: 'general-purpose', note: 'Does a self-contained piece of work', icon: 'wrench',
       children: [{ name: 'helper', note: 'A sub-agent of a sub-agent, within the depth limit', icon: 'robot' }] },
     { name: 'browse', note: 'Read-only research on the web and in documents', icon: 'globe' },
@@ -61,11 +61,11 @@ A single agent working through a large task fills its context quickly. Seshat le
 |---|---|---|---|
 | `general-purpose` | A self-contained piece of work | All of them | 20 |
 | `explore` | Understanding a codebase | `read_file`, `glob`, `grep` | 12 |
-| `plan` | Designing an approach | `read_file`, `glob`, `grep`, `write_file`, `edit_file` | 20 |
+| `plan` | Designing an approach | `read_file`, `glob`, `grep` | 20 |
 | `browse` | Deep read-only research across the web, documents and code | Reading, search, web and browser tools | 35 |
 | `verify` | Checking an agent setup: that definitions are valid, that security constraints and tool permissions are correctly scoped. It does not review your code changes | `read_file`, `glob`, `grep` | 20 |
 
-`max_turns` overrides the default for one call. An agent defined by a skill gets its turns from its `effort` field: 10, 20, 50 (the default), 100 or 150.
+`max_turns` overrides the default for one call. An agent defined by a skill gets its turns from its `effort` field: `minimal` is 10, `low` 20, `medium` 50 (the default), `high` 100 and `maximum` 150.
 
 A skill that has an `agent` field in its header also becomes a sub-agent type of that name, with the skill's text as its instructions. See [Skills and MCP](/en/docs/concepts/skills-and-mcp).
 
@@ -82,9 +82,11 @@ Delegation can run away if nothing stops it, so the runtime sets limits:
 
 ### Permissions of a sub-agent
 
-Starting an agent is itself an action that asks for approval, like any other tool. Once you approve it, the sub-agent runs in `bypass` mode: it **does not ask again for each tool**, within the tools it was given. Deny rules and the safety check still apply, as in any `bypass` run (see [Security and trust](/en/docs/concepts/security-and-trust#permissions)).
+Starting an agent is itself an action that asks for approval, like any other tool. Once you approve it, the sub-agent **does not ask again for each tool**, within the tools it was given: it runs in `bypass` mode. Deny rules and the safety check still apply, as in any `bypass` run (see [Security and trust](/en/docs/concepts/security-and-trust#permissions)).
 
-That is why the tool list matters. `explore`, `browse` and `verify` can only read. `plan` can also write and edit files. `general-purpose` has every tool, including the shell. You can narrow any agent further with the `tools` parameter.
+There is one exception. A parent session in `never` mode starts its sub-agents in `never` mode too, so nothing is escalated and a refused action goes back to the model as an error. This holds for a foreground agent, a background agent and a skill that runs in a fork. Every other parent mode gives a `bypass` sub-agent, because a sub-agent has no screen of its own to show a question on.
+
+That is why the tool list matters. `explore`, `plan`, `browse` and `verify` can only read. `general-purpose` has every tool, including the shell. You can narrow any agent further with the `tools` parameter. Both the tool list of a type and the `tools` parameter really restrict the sub-agent: a tool that is not on the list is not available to it.
 
 <Callout type="warning" title="Sub-agents cost tokens">
 Every sub-agent is a full model loop with its own calls. Delegating a one-line question costs more than answering it. Delegate work that is large, parallel, or that would flood the main context.

@@ -1,0 +1,65 @@
+---
+title: Errors
+description: "What an error from the runtime looks like, which error codes it really returns, and how to react to them from your own code."
+section: sdk
+order: 10
+updated: "2026-10-13"
+---
+import Callout from '@/components/docs/Callout.astro';
+
+An error the runtime builds itself has a **code**, a message and sometimes the error underneath. Its text reads `code: message`, or `code: message: cause` when there is a cause:
+
+```text
+api_rate_limit: slow down: 429
+```
+
+The type behind it, `EngineError`, lives in an internal package, so your program cannot name it or read its `Code` field. You can still react to it in two ways, described below.
+
+## Reacting to an error
+
+**Ask whether it is worth trying again.** An `EngineError` answers `IsRetryable()`, which is true for `api_rate_limit` and `api_timeout`, and `IsPermanent()`, which is true for `api_auth`, `api_invalid`, `permission_denied`, `tool_not_found`, `tool_invalid_input` and `invalid_input`. Go lets you ask for an interface instead of a type:
+
+```go
+var r interface{ IsRetryable() bool }
+if errors.As(err, &r) && r.IsRetryable() {
+    // wait, then try again
+}
+```
+
+**Look at the code in the text.** When you need one precise case, test the start of the message:
+
+```go
+if strings.Contains(err.Error(), "compact_full:") {
+    // the request does not fit the context window, even after compaction
+}
+```
+
+The runtime already retries the temporary provider failures for you: see [One runtime, one loop](/en/docs/concepts/mono-run) and [Providers and authentication](/en/docs/sdk/providers-and-auth). What reaches you is what it could not recover from.
+
+## The codes you can get
+
+These are the codes the runtime returns today.
+
+| Code | When |
+|---|---|
+| `api_auth` | The provider answered `401`: the key is refused |
+| `api_rate_limit` | The provider answered `429` |
+| `api_invalid` | The provider answered `400`: it refused the request |
+| `api_timeout` | The provider answered `408`, `500`, `502`, `503`, `504` or `529` (overloaded), or the call timed out |
+| `api_request`, `api_response` | Any other failure on the way to the provider or in its answer, such as an answer that cannot be read, or a client that is not configured |
+| `tool_not_found` | You asked for a tool that does not exist |
+| `tool_execution` | A tool failed in a way the runtime could not recover from |
+| `tool_permission` | A tool call needed approval and did not get it: the text says whether a confirmation was required or the call was denied |
+| `permission_error` | The permission check itself failed |
+| `session_closed` | You used a session after closing it |
+| `compact_full` | The request does not fit the window of the model, even after compaction. It fails on your machine, before reaching the provider. See [Memory and compaction](/en/docs/concepts/memory) |
+
+<Callout type="note" title="Defined but not returned today">
+`tool_timeout`, `tool_invalid_input`, `permission_denied`, `session_not_found`, `session_interrupted`, `compact_failed`, `invalid_input`, `internal` and `not_supported` exist as names, but nothing in the runtime returns them yet. Do not write code that waits for them.
+</Callout>
+
+## Errors that are not codes
+
+- **A problem the model should see** (bad input, file not found) is not an error of your call. It goes back to the model as a tool result, so the model can adapt. See [Tools](/en/docs/sdk/tools#reporting-errors).
+- **A cancelled context** returns the error of the context, not an `EngineError`.
+- **A network failure** before the provider answers is not an `EngineError` either. The runtime treats it as recoverable.
