@@ -10,6 +10,7 @@ This series is not archived and carries no banner: it is the current work that c
 | `audit-2026-10-12-documentation-du-site.md` | What the 30 pages get wrong, verified in `seshat-runtime` (E1 to E18, C1 to C14, S1 to S11). |
 | `plan-2026-10-12-correction-documentation-du-site.md` | The execution plan, lot A to lot F, with the file and the proof for every task. |
 | `bilan-2026-10-12-lots-a-et-d-documentation-du-site.md` | What lots A and D delivered, where the plan was not followed, and what remains. |
+| `bilan-2026-10-14-lots-b-a-f-documentation-du-site.md` | What lots B to F delivered (PR #166 to #171), the guards that keep the pages right (`npm run guard:docs`), and what remains (terminal screenshots, a few runtime inconsistencies). Start here to resume. |
 
 ## Brought back on 2026-10-08 (archived, one banner per file)
 

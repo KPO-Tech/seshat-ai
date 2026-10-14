@@ -13,7 +13,9 @@
     "sync:tools": "node scripts/sync-tools.mjs",
     "sync:config-file": "node scripts/sync-config-file.mjs",
     "check:config": "node scripts/check-client-config.mjs",
-    "check:env": "node scripts/check-env-vars.mjs"
+    "check:env": "node scripts/check-env-vars.mjs",
+    "check:claims": "node scripts/check-doc-claims.mjs",
+    "guard:docs": "node scripts/guard-docs.mjs"
   },
   "dependencies": {
     "@astrojs/markdown-remark": "^7.3.2",
