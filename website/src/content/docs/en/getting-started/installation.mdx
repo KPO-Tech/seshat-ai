@@ -1,21 +1,21 @@
 ---
 title: Installation
-description: "Install the Seshat binary with one command, with the Go toolchain, or from source."
+description: "Install the Seshat binary with one command on Linux, macOS or Windows, with the Go toolchain, or from source."
 section: start
 order: 1
-updated: "2026-10-12"
+updated: "2026-10-16"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import Steps from '@/components/docs/Steps.astro';
 import LinkCards from '@/components/docs/LinkCards.astro';
 
-Seshat ships as a single binary. Pick the route that fits you: a one-line install script for end users, the Go toolchain for developers, or a source build if you want to hack on it.
+Seshat ships as a single binary. Pick the route that fits you: a one-line install script for end users (a shell script on Linux and macOS, a PowerShell script on Windows), the Go toolchain for developers, or a source build if you want to hack on it.
 
 <Callout type="note" title="Platforms">
-The install script supports **Linux** and **macOS**, on `amd64` and `arm64`. On Windows, use the Go toolchain below.
+There is an install script for **Linux** and **macOS** and one for **Windows**, all on `amd64` and `arm64`. The terminal interface is used on Windows Terminal; other Windows setups have had less testing.
 </Callout>
 
-## Install with the script
+## Install with the script on Linux and macOS
 
 <Steps>
 
@@ -51,6 +51,51 @@ VERSION=v1.5.0 bash <(curl -fsSL https://raw.githubusercontent.com/KPO-Tech/sesh
 # Install somewhere else
 INSTALL_DIR=/usr/local/bin bash <(curl -fsSL https://raw.githubusercontent.com/KPO-Tech/seshat-runtime/main/scripts/install.sh)
 ```
+
+## Install on Windows
+
+<Steps>
+
+1. **Open PowerShell** and run the installer. It does not need administrator rights.
+
+   ```powershell
+   irm https://raw.githubusercontent.com/KPO-Tech/seshat-runtime/main/scripts/install.ps1 | iex
+   ```
+
+2. **Open a new terminal** if `seshat` is not found: the installer adds its folder to your user `PATH`, which only new terminals read.
+
+3. **Check the installation.**
+
+   ```powershell
+   seshat version
+   ```
+
+</Steps>
+
+### What the Windows script does
+
+- Picks the build for your processor (`amd64` or `arm64`) and downloads it from the GitHub release.
+- Verifies its SHA-256 checksum, and stops before writing anything if it does not match.
+- Installs `seshat.exe` in `%LOCALAPPDATA%\Programs\seshat` and adds that folder to your user `PATH`.
+- Installs [ripgrep](https://github.com/BurntSushi/ripgrep) with winget, scoop or choco when it is missing: the `glob` and `grep` tools need it. If none of them is available, the script tells you where to get it.
+- Uses the runtime folder `%APPDATA%\seshat-cli\`. The database and your sessions are created on first run.
+
+### Windows options
+
+Set these variables in the same PowerShell session, before the command.
+
+```powershell
+# Pin a specific version
+$env:SESHAT_VERSION = "v1.9.0"
+
+# Install somewhere else
+$env:SESHAT_INSTALL_DIR = "C:	ools\seshat"
+
+# Do not try to install ripgrep
+$env:SESHAT_SKIP_RIPGREP = "1"
+```
+
+To make `shift+Enter` insert a new line in Windows Terminal or VS Code, run `seshat terminal-setup`.
 
 ## Install with the Go toolchain
 

@@ -25,7 +25,7 @@ const own = pp[def.key];
 const p = t.items[def.i];
 const layers = def.layers.map((n) => t.stack.layers[n]);
 
-const shotImgs = ['/captures/tui-home.webp', '/captures/tui-working1.webp', '/captures/tui-working2.webp', '/captures/tui-model_selction.webp', '/captures/tui-provider_config.webp', '/captures/tui-commands_pannel.webp'];
+const shotImgs = ['/captures/tui-home.webp', '/captures/tui-settings.webp', '/captures/tui-providers.webp', '/captures/tui-models.webp', '/captures/tui-questions.webp', '/captures/tui-web-research.webp', '/captures/tui-plan-review.webp', '/captures/tui-agent-working.webp'];
 const shots = t.tui.shots.map((s, i) => ({ ...s, img: shotImgs[i] }));
 const verbMeta = [
   { icon: 'chat-circle-text', tone: 'dark' },
@@ -36,6 +36,7 @@ const platformIcons = ['chat-circle-text', 'books', 'clock-clockwise'];
 
 const sd = pp.seshat.detail;
 const installCmd = 'curl -fsSL https://raw.githubusercontent.com/KPO-Tech/seshat-runtime/main/scripts/install.sh | bash';
+const installCmdWindows = 'irm https://raw.githubusercontent.com/KPO-Tech/seshat-runtime/main/scripts/install.ps1 | iex';
 const goCode = `cfg := sdk.DefaultClientConfig()
 client, _ := sdk.NewClient(cfg)
 defer client.Close()
@@ -181,6 +182,13 @@ const crumbs = [
                   </div>
                   <pre class="cmd"><code><span class="t-p">$</span> <span class="t-c">curl</span> <span class="t-f">-fsSL</span> <span class="t-u">https://raw.githubusercontent.com/KPO-Tech/seshat-runtime/main/scripts/install.sh</span> <span class="t-o">|</span> <span class="t-c">bash</span></code></pre>
                 </div>
+                <div class="install">
+                  <div class="cmd-bar">
+                    <span class="cmd-label">{t.tui.installLabelWindows}</span>
+                    <button class="copy" type="button" data-copy={installCmdWindows} data-copied={t.tui.copied}>{t.tui.copy}</button>
+                  </div>
+                  <pre class="cmd"><code><span class="t-p">PS&gt;</span> <span class="t-c">irm</span> <span class="t-u">https://raw.githubusercontent.com/KPO-Tech/seshat-runtime/main/scripts/install.ps1</span> <span class="t-o">|</span> <span class="t-c">iex</span></code></pre>
+                </div>
               </div>
             </li>
             <li class="reveal">
@@ -211,21 +219,28 @@ const crumbs = [
       <div class="wrap">
         <h2 class="reveal">{t.tui.title}</h2>
         <p class="intro reveal">{t.tui.introA}<code>{t.tui.introCode}</code>{t.tui.introB}</p>
+        {lang === 'fr' && (
+        <figure class="tui-film reveal">
+          <video controls playsinline preload="none" poster="/videos/seshat-au-travail-poster.jpg" aria-label={t.tui.filmLabel}>
+            <source src="/videos/seshat-au-travail.mp4" type="video/mp4" />
+          </video>
+          <figcaption>{t.tui.filmCaption}</figcaption>
+        </figure>
+        )}
         <div class="gallery reveal" data-gallery>
           <figure class="shot">
-            <div class="shot-frame"><img src={shots[0].img} alt={shots[0].t} width="1600" height="823" loading="lazy" decoding="async" data-main /></div>
+            <div class="shot-frame"><img src={shots[0].img} alt={shots[0].t} width="1600" height="812" loading="lazy" decoding="async" data-main /></div>
             <figcaption data-cap><strong>{shots[0].t}</strong> <span>{shots[0].d}</span></figcaption>
           </figure>
           <div class="thumbs" role="tablist" aria-label={t.tui.galleryAria}>
             {shots.map((s, i) => (
               <button class="thumb" type="button" role="tab" aria-selected={i === 0 ? 'true' : 'false'} data-img={s.img} data-t={s.t} data-d={s.d}>
-                <img src={s.img.replace('.webp', '-thumb.webp')} alt="" width="240" height="124" loading="lazy" decoding="async" />
+                <img src={s.img.replace('.webp', '-thumb.webp')} alt="" width="240" height="122" loading="lazy" decoding="async" />
                 <span>{s.t}</span>
               </button>
             ))}
           </div>
         </div>
-        <aside class="rename reveal"><strong>{t.tui.renameTitle}</strong> {t.tui.renameText}</aside>
         <p class="docs-link reveal">
           <a class="link" href={docUrl('getting-started/installation')}><Icon name="book-open" /> {own.docs.label} <Arrow /></a>
           <span>{own.docs.text}</span>
