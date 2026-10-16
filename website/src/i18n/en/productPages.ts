@@ -9,10 +9,10 @@ const en: typeof fr = {
   layersNote: 'Each layer and its maturity are detailed on the Products page.',
   seshat: {
     meta: {
-      title: 'Seshat: the open source agent runtime | Seshat AI',
-      description: 'Seshat, the Go agent runtime under the Apache-2.0 license: tools, sessions, permissions, model providers, MCP, terminal interface, gRPC and SDK.',
+      title: 'Seshat: the AI agent in your terminal, open source | Seshat AI',
+      description: 'Seshat opens a full terminal interface for long agent sessions, with your own models. Under it, an open source Go runtime (Apache-2.0): tools, sessions, permissions, MCP, gRPC and SDK.',
     },
-    head: { title: 'Seshat, the open source agent runtime.', lead: 'The foundation of the other two building blocks, usable on its own by technical teams.' },
+    head: { title: 'Seshat, the AI agent in your terminal.', lead: 'A full interface for long agent sessions, with your own models, on your machine. Under it, an open source runtime that the other two building blocks also build on.' },
     who: 'For technical teams (developers, data and AI engineers) who want agents under their control, with the model of their choice, rather than a closed assistant.',
     not: 'It is not a ready-to-use assistant for non-technical teams: that one is SeshatOS, which builds on this same runtime.',
     docs: { label: 'Read the documentation', text: 'Installation, concepts, configuration and reference.' },

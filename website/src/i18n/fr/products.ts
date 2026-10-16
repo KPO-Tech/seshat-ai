@@ -14,14 +14,14 @@ export default {
   items: [
     {
       badge: 'Disponible',
-      what: "Le runtime d'agents en Go. C'est la fondation des deux autres briques, utilisable seul par des équipes techniques.",
+      what: "Un agent IA dans votre terminal, construit sur un runtime en Go. Utilisable seul par des équipes techniques, c'est aussi la fondation des deux autres briques.",
       points: [
+        'Interface complète en terminal (seshat chat) : plan à valider, outils, sous-agents, tâches.',
         'Outils, sessions, permissions et sandbox.',
-        'Une quinzaine de fournisseurs de modèles, MCP, skills et RAG.',
-        'Interface en terminal (seshat chat), ligne de commande, gRPC et SDK.',
+        'Une quinzaine de fournisseurs de modèles, MCP, skills et RAG ; ligne de commande, gRPC et SDK.',
       ],
       licence: "Runtime open source, Apache-2.0. L'interface terminal reprend du code de Crush (licence FSL-1.1-MIT).",
-      status: "Version 1.7, installable aujourd'hui, avec son interface en terminal.",
+      status: "Version 1.9, installable aujourd'hui sur Linux, macOS et Windows.",
     },
     {
       badge: 'En construction',
@@ -88,7 +88,7 @@ export default {
   },
   tui: {
     title: "Seshat dans votre terminal, installable aujourd'hui.",
-    introA: "Pas besoin d'attendre le reste : ",
+    introA: "",
     introCode: 'seshat chat',
     introB: " ouvre une interface complète pour des sessions d'agent longues, avec vos propres clés de modèles, sur votre machine.",
     installLabel: 'Linux et macOS',
