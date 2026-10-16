@@ -1,9 +1,9 @@
 ---
 title: Installation
-description: "Install the Seshat binary with one command on Linux, macOS or Windows, with the Go toolchain, or from source."
+description: "Install the Seshat binary with one command on Linux, macOS or Windows, update it from the terminal, or use the Go toolchain or a source build."
 section: start
 order: 1
-updated: "2026-10-16"
+updated: "2026-10-17"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import Steps from '@/components/docs/Steps.astro';
@@ -14,6 +14,16 @@ Seshat ships as a single binary. Pick the route that fits you: a one-line instal
 <Callout type="note" title="Platforms">
 There is an install script for **Linux** and **macOS** and one for **Windows**, all on `amd64` and `arm64`. The terminal interface is used on Windows Terminal; other Windows setups have had less testing.
 </Callout>
+
+## Which command for which system
+
+| System | Command | Needs |
+|---|---|---|
+| **Linux** (amd64, arm64) | `curl -fsSL https://raw.githubusercontent.com/KPO-Tech/seshat-runtime/main/scripts/install.sh \| bash` | `curl` or `wget`, a shell |
+| **macOS** (Intel, Apple silicon) | the same command as Linux | `curl`, a shell |
+| **Windows** (amd64, arm64) | `irm https://raw.githubusercontent.com/KPO-Tech/seshat-runtime/main/scripts/install.ps1 \| iex` in PowerShell | nothing else, no administrator rights |
+
+None of them needs Go: the script downloads a ready-made binary. Whatever the system, the command you type afterwards is `seshat`.
 
 ## Install with the script on Linux and macOS
 
@@ -89,7 +99,7 @@ Set these variables in the same PowerShell session, before the command.
 $env:SESHAT_VERSION = "v1.9.0"
 
 # Install somewhere else
-$env:SESHAT_INSTALL_DIR = "C:	ools\seshat"
+$env:SESHAT_INSTALL_DIR = "C:\tools\seshat"
 
 # Do not try to install ripgrep
 $env:SESHAT_SKIP_RIPGREP = "1"
@@ -97,13 +107,41 @@ $env:SESHAT_SKIP_RIPGREP = "1"
 
 To make `shift+Enter` insert a new line in Windows Terminal or VS Code, run `seshat terminal-setup`.
 
+## Update
+
+An installed `seshat` tells you when a new release is published. When you start it in a terminal, it checks the latest release (at most once a day, with a two-second limit, and silently when you are offline) and asks:
+
+```text
+seshat v1.10.0 is available (you have v1.9.0).
+Update now? [Y]es / [l]ater / [s]kip this version:
+```
+
+- **Yes** (or Enter) downloads the new binary, checks it against the release's `SHA256SUMS.txt` and puts it in place of the running one. Start `seshat` again to use it. If anything fails, the old binary stays where it is.
+- **Later** stays quiet for a day. **Skip** stays quiet until a newer release comes out.
+
+You can also update whenever you want:
+
+```bash
+seshat update           # look for a newer release, ask, install
+seshat update --check   # only say whether there is one
+seshat update --yes     # install without asking
+```
+
+Set `SESHAT_NO_UPDATE_CHECK=1` to turn the offer off. It is never shown for a development build, in a pipe or in CI. Running the install script again also updates, and is the way to get the `seshat update` command on a version that does not have it yet.
+
+<Callout type="note" title="How the download is checked">
+The checksum proves that the download is intact. The trust in who published it is the one you already place in the GitHub release when you run the install script.
+</Callout>
+
 ## Install with the Go toolchain
 
 You need **Go 1.26 or later**.
 
 ```bash
-go install github.com/KPO-Tech/seshat-runtime/cmd/cli@latest
+go install github.com/KPO-Tech/seshat-runtime/tui/cmd/cli@latest
 ```
+
+The command installs a binary called `cli`; rename it to `seshat` or use the install script, which names it for you. The terminal interface is a module of its own (`tui`), so this path exists from the first release that includes it; earlier releases use `github.com/KPO-Tech/seshat-runtime/cmd/cli@latest`.
 
 ## Build from source
 
