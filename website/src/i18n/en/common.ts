@@ -14,7 +14,16 @@ const en: typeof fr = {
   ],
   groups: [
     { label: 'Services', page: 'services' },
-    { label: 'Products', page: 'products' },
+    {
+      label: 'Products',
+      items: [
+        { page: 'productSeshat', label: 'Seshat', note: 'The agent runtime, with its terminal', badge: 'Available', tone: 'ok' },
+        { page: 'productSeshatOS', label: 'SeshatOS', note: 'The local AI environment: Chat and Projects', badge: 'Under construction', tone: 'wip' },
+        { page: 'productSeshatCloud', label: 'SeshatCloud', note: 'Organizations, access and scheduled tasks', badge: 'Under construction', tone: 'wip' },
+        { label: 'Knowledge', note: 'Internal knowledge', badge: 'Coming soon', tone: 'plan' },
+        { page: 'products', label: 'The whole stack', note: 'Overview and maturity of each layer' },
+      ] as { page?: string; label: string; note?: string; badge?: string; tone?: string }[],
+    },
     { label: 'Developers', items: [{ page: 'openSource', label: 'Open source' }, { page: 'docs', label: 'Docs' }] },
     { label: 'Blog', page: 'blog' },
     { label: 'Company', items: [{ page: 'about', label: 'About' }, { page: 'contact', label: 'Contact' }] },
