@@ -21,7 +21,7 @@ This page lists every field of `ClientConfig` in `pkg/sdk/client_config.go`. The
 | Field | Type | Default | Effect |
 |---|---|---|---|
 | `APIKey` | `string` | none | The provider key. A `CredentialResolver` wins over it |
-| `Model` | `ModelIdentifier` | Anthropic `claude-3-5-sonnet-20241022`, from `DefaultClientConfig()` | The model of the session: `{Provider, Model}` |
+| `Model` | `ModelIdentifier` | Anthropic `claude-sonnet-5-5`, from `DefaultClientConfig()` | The model of the session: `{Provider, Model}` |
 | `TitleModel` | `ModelIdentifier` | none | A model for the automatic session titles. Both `Provider` and `Model` must be set |
 | `CompactSummaryModel` | `ModelIdentifier` | the session model | The model that writes compaction summaries. See [Memory and compaction](/en/docs/concepts/memory) |
 | `CredentialResolver` | `CredentialResolver` | none | Called when the client is created to find the key of the provider. Wins over `APIKey`. Use it on a server, with one key per user. **Go only** |
@@ -102,6 +102,7 @@ See [Integrating in your product](/en/docs/sdk/integration#run-commands-safely) 
 | Field | Type | Default | Effect |
 |---|---|---|---|
 | `MCPServers` | `[]MCPServerConfig` | none | MCP servers to connect. See [Skills and MCP](/en/docs/concepts/skills-and-mcp) |
+| `MainAgentTools` | `[]string` | none | When not empty, limits the tools the main agent sees to exactly these names (a host's general-purpose agent with a short, curated list). Sub-agents started through the agent tools are not limited by it. Empty offers every enabled tool |
 | `EnableToolSearch` | `bool` | `false` | Keep deferred tools (MCP tools, for example) out of the first tool list: the model finds them with `tool_search`. The environment variable `ENABLE_TOOL_SEARCH` can also turn it on |
 | `RAGService` | `*RAGService` | none | The knowledge service behind the RAG tools. **Go only** |
 | `DocumentReaderURL` | `string` | none | The address of a document-reader service, used to build the default converter |
