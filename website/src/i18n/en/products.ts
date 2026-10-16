@@ -16,14 +16,14 @@ const en: typeof fr = {
   items: [
     {
       badge: 'Available',
-      what: 'The agent runtime in Go. It is the foundation of the two other blocks, and can be used on its own by technical teams.',
+      what: 'An AI agent in your terminal, built on a runtime in Go. It can be used on its own by technical teams, and it is also the foundation of the two other blocks.',
       points: [
+        'A full terminal interface (seshat chat): plan to approve, tools, sub-agents, tasks.',
         'Tools, sessions, permissions and sandbox.',
-        'About fifteen model providers, MCP, skills and RAG.',
-        'Terminal interface (seshat chat), command line, gRPC and SDK.',
+        'About fifteen model providers, MCP, skills and RAG; command line, gRPC and SDK.',
       ],
       licence: 'Open source runtime, Apache-2.0. The terminal interface reuses code from Crush (FSL-1.1-MIT license).',
-      status: 'Version 1.7, installable today, with its terminal interface.',
+      status: 'Version 1.9, installable today on Linux, macOS and Windows.',
     },
     {
       badge: 'Under construction',
@@ -90,7 +90,7 @@ const en: typeof fr = {
   },
   tui: {
     title: 'Seshat in your terminal, installable today.',
-    introA: 'No need to wait for the rest: ',
+    introA: '',
     introCode: 'seshat chat',
     introB: ' opens a full interface for long agent sessions, with your own model keys, on your machine.',
     installLabel: 'Linux and macOS',
