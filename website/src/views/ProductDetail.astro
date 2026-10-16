@@ -91,6 +91,40 @@ const crumbs = [
     </div>
   </section>
 
+  <section class="block" style="padding-top:8px;padding-bottom:36px">
+    <div class="wrap">
+      <div class="who-grid">
+        <article class="who reveal">
+          <h3>{pp.whoLabel}</h3>
+          <p>{own.who}</p>
+        </article>
+        <article class="who not reveal" style="--d:80ms">
+          <h3>{pp.notLabel}</h3>
+          <p>{own.not}</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  {page === 'productSeshatCloud' && (
+    <section class="block band">
+      <div class="wrap">
+        <h2 class="reveal">{pp.seshatcloud.can.title}</h2>
+        <p class="intro reveal">{pp.seshatcloud.can.lead}</p>
+        <div class="gives">
+          {pp.seshatcloud.can.items.map((g, i) => (
+            <article class="give reveal" style={`--d:${(i % 3) * 80}ms`}>
+              <span class="chip"><Icon name={g.icon} /></span>
+              <h3>{g.title}</h3>
+              <span class={`badge ${g.tone}`}>{g.badge}</span>
+              <p>{g.text}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
+
   {page === 'productSeshatOS' && (
     <section class="block" style="padding-top:24px">
       <div class="wrap">

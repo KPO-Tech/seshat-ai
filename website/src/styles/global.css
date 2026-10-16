@@ -62,6 +62,14 @@ p { margin: 0; }
 .dd-panel::before { content: ''; position: absolute; inset: 8px 0 0; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); z-index: -1; }
 .dd:hover .dd-panel, .dd:focus-within .dd-panel { display: grid; z-index: 21; }
 .dd-panel a { display: block; }
+.dd-panel:has(.dd-note) { min-width: 300px; }
+.dd-item, .m-item { display: grid; gap: 2px; padding: 9px 14px; border-radius: 10px; }
+.dd-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.dd-name { font-weight: 600; color: var(--text); }
+.dd-note { font-size: 0.82rem; color: var(--text2); line-height: 1.35; }
+.dd-item .badge, .m-item .badge { font-size: 0.7rem; padding: 2px 9px; }
+.dd-soon, .m-soon { opacity: 0.75; cursor: default; }
+.dd-panel a.dd-item:hover { background: color-mix(in srgb, var(--text) 6%, transparent); }
 
 .nav a[aria-current='page']::after { content: ''; position: absolute; left: 12px; right: 12px; bottom: -2px; height: 2px; border-radius: 2px; background: var(--accent); }
 .theme-toggle { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--text); cursor: pointer; }
@@ -457,6 +465,13 @@ a.scale-chip:hover { border-color: var(--accent); transform: translateY(-1px); }
 .t-u { color: var(--cream); }
 .t-o { color: var(--grey-on-dark); }
 .t-a { color: #9ed3a8; font-weight: 700; }
+.who-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+.who { padding: 22px 24px; border-radius: calc(var(--radius) + 2px); border: 1px solid var(--line); background: var(--surface); }
+.who h3 { font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-text); margin-bottom: 8px; }
+.who.not h3 { color: var(--text2); }
+.who p { margin: 0; color: var(--text); line-height: 1.55; }
+.give .badge { margin: 2px 0 6px; }
+@media (max-width: 720px) { .who-grid { grid-template-columns: 1fr; } }
 .tui-film { margin: 28px 0 0; }
 .tui-film video { display: block; width: 100%; height: auto; border-radius: calc(var(--radius) + 4px); background: var(--black); border: 1px solid var(--line); box-shadow: var(--shadow); }
 .tui-film figcaption { margin-top: 10px; color: var(--text2); font-size: 0.92rem; }

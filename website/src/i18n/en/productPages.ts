@@ -2,6 +2,8 @@ import type fr from '../fr/productPages';
 
 const en: typeof fr = {
   crumb: 'Products',
+  whoLabel: 'Who it is for',
+  notLabel: 'What it is not',
   more: 'Explore',
   layersTitle: 'The layers of the stack that belong to this product',
   layersNote: 'Each layer and its maturity are detailed on the Products page.',
@@ -11,6 +13,8 @@ const en: typeof fr = {
       description: 'Seshat, the Go agent runtime under the Apache-2.0 license: tools, sessions, permissions, model providers, MCP, terminal interface, gRPC and SDK.',
     },
     head: { title: 'Seshat, the open source agent runtime.', lead: 'The foundation of the other two building blocks, usable on its own by technical teams.' },
+    who: 'For technical teams (developers, data and AI engineers) who want agents under their control, with the model of their choice, rather than a closed assistant.',
+    not: 'It is not a ready-to-use assistant for non-technical teams: that one is SeshatOS, which builds on this same runtime.',
     docs: { label: 'Read the documentation', text: 'Installation, concepts, configuration and reference.' },
     detail: {
       map: {
@@ -92,12 +96,14 @@ const en: typeof fr = {
       description: 'SeshatOS: a local-first, self-hosted AI environment with a Go backend and a desktop app. What is usable today and what is under construction.',
     },
     head: { title: 'SeshatOS, AI that runs on your premises.', lead: 'A local, self-hosted environment organised in platforms. Each platform carries its own level of maturity.' },
-    platformsTitle: 'The platforms of SeshatOS',
+    who: 'For one person or a small team who wants an AI assistant on their own machine or server, without sending documents to a third party.',
+    not: 'It is not a complete product yet: only Chat and Projects are usable. It is not multi-user, and scheduled tasks are in SeshatCloud.',
+    platformsTitle: 'SeshatOS platforms',
     platformsLead: 'A platform is a workspace dedicated to one job, inside the product. We do not present any of them as ready if it is not.',
     platforms: [
       { name: 'Chat and Projects', badge: 'Under construction', tone: 'wip', text: 'Conversations with skills and tools, grouped into projects. Usable locally today, with search over your documents from the Chat.' },
       { name: 'Knowledge', badge: 'Roadmap', tone: 'plan', text: 'The internal knowledge platform. Its interface does not exist yet: sourced search is used from the Chat. The framing (mockups, requirements) is done.' },
-      { name: 'Automation', badge: 'Roadmap', tone: 'plan', text: 'Scheduled tasks and agent workflows, with human validation. This is a product direction: nothing is shipped.' },
+      { name: 'Scheduled tasks', badge: 'In SeshatCloud', tone: 'wip', text: 'They do not run inside SeshatOS: they run on a SeshatCloud server, so they keep going when your computer is off. They exist on the server side; the administration console and the packaged offer are under construction.' },
     ],
   },
   seshatcloud: {
@@ -106,6 +112,20 @@ const en: typeof fr = {
       description: 'SeshatCloud: organisations, access rights, SCIM, an admin console and document reading, on top of the Seshat runtime. Not offered on its own yet.',
     },
     head: { title: 'SeshatCloud, AI shared across the whole company.', lead: 'The multi-user layer on top of the same runtime: organisations, access rights, administration.' },
+    who: 'For an organization where AI has to be shared: several people, access rights, and tasks that run without a computer being on.',
+    not: 'It is not a packaged offer yet: the server is advanced, the console is under construction, and setting it up goes through a pilot or tailored support.',
+    can: {
+      title: 'What the server can already do.',
+      lead: 'Read in the code, not in a roadmap. Each card says where it stands.',
+      items: [
+        { icon: 'clock', title: 'Scheduled tasks, run by the server', text: 'A scheduler queues due tasks, starts them, and takes over the ones whose process stopped. Your computer can be off.', badge: 'Server side', tone: 'wip' },
+        { icon: 'lightning', title: 'Triggers', text: 'At a set time, by webhook, or when an email arrives (Gmail).', badge: 'Server side', tone: 'wip' },
+        { icon: 'graph', title: 'Workflows in steps', text: 'Agent steps, conditions and sends, built as a graph, with a test run before they are switched on.', badge: 'Server side', tone: 'wip' },
+        { icon: 'plugs-connected', title: 'About twenty connectors', text: 'Email, tickets, CRM, messaging, calendar, spreadsheets, payment: for example Gmail, Outlook, Jira, Notion, HubSpot, Teams.', badge: 'Server side', tone: 'wip' },
+        { icon: 'files', title: 'Starter templates', text: 'Invoice intake and extraction, operational inbox triage, document compliance check, weekly report digest.', badge: 'Server side', tone: 'wip' },
+        { icon: 'browser', title: 'An administration console', text: 'To manage organizations, access and tasks.', badge: 'Under construction', tone: 'plan' },
+      ],
+    },
     availability: 'Not offered on its own yet: it is deployed as part of a pilot or a tailored engagement.',
   },
 };
