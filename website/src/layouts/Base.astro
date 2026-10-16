@@ -108,7 +108,29 @@ const nodes: object[] = [
           {groups.map((g) => g.items ? (
             <div class="dd">
               <button class="dd-btn" type="button" aria-haspopup="true" aria-current={inGroup(g) ? 'true' : undefined}>{g.label}<svg class="dd-caret" viewBox="0 0 10 6" width="10" height="6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg></button>
-              <div class="dd-panel">
+              {g.wide ? (<div class="dd-panel dd-wide">
+                <div class="dd-cards">
+                  {g.items.filter((i) => i.logo).map((i) => i.page ? (
+                    <a class="dd-card" href={navHref(i.page)} aria-current={page === i.page ? 'page' : undefined}>
+                      <img src={i.logo} alt="" width="40" height="40" loading="lazy" />
+                      <span class="dd-name">{i.label}</span>
+                      {i.badge && <span class={`badge ${i.tone ?? ''}`}>{i.badge}</span>}
+                      <span class="dd-note">{i.note}</span>
+                      {i.cta && <span class="dd-cta">{i.cta} <span aria-hidden="true">→</span></span>}
+                    </a>
+                  ) : (
+                    <span class="dd-card dd-soon" aria-disabled="true">
+                      <img src={i.logo} alt="" width="40" height="40" loading="lazy" />
+                      <span class="dd-name">{i.label}</span>
+                      {i.badge && <span class={`badge ${i.tone ?? ''}`}>{i.badge}</span>}
+                      <span class="dd-note">{i.note}</span>
+                    </span>
+                  ))}
+                </div>
+                {g.items.filter((i) => !i.logo).map((i) => (
+                  <a class="dd-foot" href={navHref(i.page ?? 'products')} aria-current={page === i.page ? 'page' : undefined}><strong>{i.label}</strong><span>{i.note}</span><span aria-hidden="true">→</span></a>
+                ))}
+              </div>) : (<div class="dd-panel">
                 {g.items.map((i) => i.page ? (
                   <a class="dd-item" href={navHref(i.page)} aria-current={page === i.page ? 'page' : undefined}>
                     <span class="dd-row"><span class="dd-name">{i.label}</span>{i.badge && <span class={`badge ${i.tone ?? ''}`}>{i.badge}</span>}</span>
@@ -120,7 +142,7 @@ const nodes: object[] = [
                     {i.note && <span class="dd-note">{i.note}</span>}
                   </span>
                 ))}
-              </div>
+              </div>)}
             </div>
           ) : <a href={url(lang, g.page as PageKey)} aria-current={navPage === g.page ? 'page' : undefined}>{g.label}</a>)}
         </nav>
