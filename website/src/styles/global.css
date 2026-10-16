@@ -465,6 +465,13 @@ a.scale-chip:hover { border-color: var(--accent); transform: translateY(-1px); }
 .t-u { color: var(--cream); }
 .t-o { color: var(--grey-on-dark); }
 .t-a { color: #9ed3a8; font-weight: 700; }
+.who-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+.who { padding: 22px 24px; border-radius: calc(var(--radius) + 2px); border: 1px solid var(--line); background: var(--surface); }
+.who h3 { font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-text); margin-bottom: 8px; }
+.who.not h3 { color: var(--text2); }
+.who p { margin: 0; color: var(--text); line-height: 1.55; }
+.give .badge { margin: 2px 0 6px; }
+@media (max-width: 720px) { .who-grid { grid-template-columns: 1fr; } }
 .tui-film { margin: 28px 0 0; }
 .tui-film video { display: block; width: 100%; height: auto; border-radius: calc(var(--radius) + 4px); background: var(--black); border: 1px solid var(--line); box-shadow: var(--shadow); }
 .tui-film figcaption { margin-top: 10px; color: var(--text2); font-size: 0.92rem; }
