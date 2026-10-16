@@ -39,7 +39,7 @@ export default {
       what: "La couche multi-utilisateurs au-dessus du même runtime : celle qui sert quand l'IA doit être partagée par toute une entreprise.",
       points: [
         "Organisations, droits d'accès et provisionnement des comptes (SCIM).",
-        "Console d'administration et tâches planifiées.",
+        "Console d'administration, et tâches planifiées exécutées sur le serveur : elles continuent quand votre ordinateur est éteint.",
         'Lecture de documents et évaluation de la qualité de la recherche.',
       ],
       licence: "Source-available. Accord commercial au-delà d'un seuil. Licence en cours de finalisation.",

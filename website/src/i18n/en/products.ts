@@ -41,7 +41,7 @@ const en: typeof fr = {
       what: 'The multi-user layer on top of the same runtime: the one you need when AI has to be shared across a whole company.',
       points: [
         'Organizations, access rights and account provisioning (SCIM).',
-        'Administration console and scheduled tasks.',
+        'Administration console, and scheduled tasks run on the server: they keep going when your computer is off.',
         'Document reading and evaluation of search quality.',
       ],
       licence: 'Source-available. Commercial agreement above a threshold. License being finalized.',

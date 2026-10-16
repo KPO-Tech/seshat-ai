@@ -97,7 +97,7 @@ export default {
     platforms: [
       { name: 'Chat et Projets', badge: 'En construction', tone: 'wip', text: "Conversations avec skills et outils, regroupées en projets. Utilisable en local aujourd'hui, avec la recherche dans vos documents depuis le Chat." },
       { name: 'Knowledge', badge: 'Feuille de route', tone: 'plan', text: "La plateforme de connaissance interne. L'interface n'existe pas encore : la recherche sourcée s'utilise depuis le Chat. Le cadrage (maquettes, cahier des charges) est fait." },
-      { name: 'Automation', badge: 'Feuille de route', tone: 'plan', text: "Tâches planifiées et workflows d'agents, avec validation humaine. C'est une direction produit : rien n'est livré." },
+      { name: 'Tâches planifiées', badge: 'Dans SeshatCloud', tone: 'wip', text: "Elles ne tournent pas dans SeshatOS : elles s'exécutent sur un serveur SeshatCloud, pour continuer quand votre ordinateur est éteint. Elles existent côté serveur ; la console d'administration et l'offre packagée sont en construction." },
     ],
   },
   seshatcloud: {
