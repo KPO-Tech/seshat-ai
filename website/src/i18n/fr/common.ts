@@ -12,11 +12,20 @@ export default {
   ],
   groups: [
     { label: 'Services', page: 'services' },
-    { label: 'Produits', page: 'products' },
+    {
+      label: 'Produits',
+      items: [
+        { page: 'productSeshat', label: 'Seshat', note: "Le runtime d'agents, avec son terminal", badge: 'Disponible', tone: 'ok' },
+        { page: 'productSeshatOS', label: 'SeshatOS', note: "L'environnement IA local : Chat et Projets", badge: 'En construction', tone: 'wip' },
+        { page: 'productSeshatCloud', label: 'SeshatCloud', note: 'Organisations, accès et tâches planifiées', badge: 'En construction', tone: 'wip' },
+        { label: 'Knowledge', note: 'La connaissance interne', badge: 'Bientôt', tone: 'plan' },
+        { page: 'products', label: 'Toute la pile', note: "Vue d'ensemble et maturité de chaque couche" },
+      ],
+    },
     { label: 'Développeurs', items: [{ page: 'openSource', label: 'Open source' }, { page: 'docs', label: 'Documentation' }] },
     { label: 'Blog', page: 'blog' },
     { label: 'Entreprise', items: [{ page: 'about', label: 'À propos' }, { page: 'contact', label: 'Contact' }] },
-  ] as { label: string; page?: string; items?: { page: string; label: string }[] }[],
+  ] as { label: string; page?: string; items?: { page?: string; label: string; note?: string; badge?: string; tone?: string }[] }[],
   cta: 'Demander un diagnostic',
   ctaShort: 'Diagnostic',
   menu: 'Menu',
