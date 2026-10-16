@@ -28,7 +28,7 @@ const en = {
     title: 'Documentation',
     lead: 'Install Seshat, run your first agent and understand how the runtime works.',
     installTitle: 'Install with one command',
-    installNote: 'Linux and macOS. Then configure a provider and run seshat chat.',
+    installNote: 'Linux and macOS. On Windows, use the PowerShell installer from the installation page. Then configure a provider and run seshat chat.',
     start: 'Get started',
     browse: 'Browse',
     pages: 'pages',
