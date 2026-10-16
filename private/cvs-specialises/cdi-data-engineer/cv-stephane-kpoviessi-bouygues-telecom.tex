@@ -1,0 +1,213 @@
+% CV Bouygues Telecom - Data Analyst Performance Commerciale BtoB - Stephane KPOVIESSI
+% Two-column layout adapted from the freelance CV.
+% Compile target: pdfLaTeX
+
+\documentclass[10pt,a4paper]{article}
+
+\usepackage[a4paper,left=0.95cm,right=0.95cm,top=0.55cm,bottom=0.55cm]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{tabularx}
+\usepackage{titlesec}
+\usepackage{fontawesome5}
+
+\definecolor{accent}{HTML}{1F4E79}
+\definecolor{accentdark}{HTML}{163A5A}
+\definecolor{text}{HTML}{2F3437}
+\definecolor{muted}{HTML}{666D70}
+\definecolor{rule}{HTML}{D5E2EC}
+\definecolor{sidebg}{HTML}{F2F7FB}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{3.6pt}
+\setlist[itemize]{leftmargin=*, topsep=3pt, itemsep=3pt, parsep=0pt, partopsep=0pt}
+
+\titleformat{\section}
+  {\fontsize{11.2pt}{13pt}\selectfont\bfseries\color{accent}}
+  {}{0pt}{}
+  [\vspace{2pt}{\color{rule}\titlerule}\vspace{3pt}]
+\titlespacing*{\section}{0pt}{10pt}{5pt}
+
+\newcommand{\smallsection}[2]{%
+  \vspace{9pt}
+  {\fontsize{8.9pt}{10.45pt}\selectfont\bfseries\color{accentdark}%
+  {\scriptsize\color{accent}#1}\hspace{3.5pt}#2}\par
+  \vspace{3.2pt}
+}
+
+\newcommand{\contactline}[2]{%
+  \noindent\makebox[0.34cm][l]{{\color{accent}\scriptsize#1}}%
+  \begin{minipage}[t]{\dimexpr\linewidth-0.36cm\relax}%
+  \fontsize{8.15pt}{9.5pt}\selectfont #2%
+  \end{minipage}\par
+  \vspace{1pt}
+}
+
+\newcommand{\sideitem}[2]{%
+  \textbf{#1}\par
+  #2\par
+  \vspace{5.7pt}
+}
+
+\newcommand{\certitem}[2]{%
+  \textbf{#1}\par
+  {\fontsize{7.15pt}{8.1pt}\selectfont\color{muted}#2}\par
+  \vspace{4.4pt}
+}
+
+\newcommand{\role}[3]{%
+  \vspace{3pt}
+  \begin{tabularx}{\linewidth}{@{}Xr@{}}
+  \textbf{#1} & {\color{muted}#2}
+  \end{tabularx}\vspace{0.8pt}\\
+  {\color{muted}#3}\par
+  \vspace{3pt}
+}
+
+\newcommand{\projectline}[2]{%
+  \textbf{#1} - #2\par
+}
+\newcommand{\githublink}[2]{%
+  \par{\footnotesize\color{accent}\faIcon{github}\ \href{#1}{#2}}\par
+}
+
+\newsavebox{\maincolumnbox}
+\newlength{\maincolumnheight}
+
+\begin{document}
+\fontsize{10pt}{12.3pt}\selectfont
+\sloppy
+
+\begin{minipage}[t]{0.52\textwidth}
+{\LARGE\bfseries\color{accentdark} Stéphane KPOVIESSI}\par
+\vspace{1pt}
+{\large\color{accent}Data Analyst | Data Engineer}\par
+\vspace{1pt}
+{\color{muted}Disponible en CDI}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.42\textwidth}
+\raggedleft
+\vspace{2pt}
+{\normalsize\bfseries\color{accent}SQL \textbullet{} Python \textbullet{} Power BI \textbullet{} Databricks}\par
+\vspace{3pt}
+{\small\color{muted}
+Performance commerciale, KPI, BI et qualité de données.
+}
+\end{minipage}
+
+\vspace{6pt}
+{\color{rule}\hrule height 1pt}
+\vspace{7pt}
+
+\begin{lrbox}{\maincolumnbox}
+\begin{minipage}[t]{0.695\textwidth}
+\vspace{0pt}
+\raggedright
+
+\section{Profil}
+Ingénieur diplômé en Big Data \& Data Science, avec une expérience en analyse de performance commerciale, suivi des KPI et fiabilisation des données. Chez Lyne et Frères, j'ai contribué à l'analyse des activités et à la production de reportings décisionnels. Chez Allianz France, j'ai travaillé sur la modernisation de traitements data et l'automatisation des contrôles qualité. Je mobilise SQL, Python et la Business Intelligence pour transformer les données en indicateurs utiles aux décisions métiers.
+
+\section{Expériences}
+\role{Allianz France - Ingénieur Data / Data Scientist}{Nov. 2025 - Avr. 2026}{Direction P4D, Advanced Data \& Climate - Paris}
+\begin{itemize}
+  \item Migration d'un datamart Assurance de SAS vers Python/PySpark, avec validation de la parité fonctionnelle sur plus de 15 000 lignes de code.
+  \item Architecture Médaillon sur Azure Databricks intégrant plus de 150 règles de gestion métier, contrôles de cohérence et traitements industrialisés.
+  \item Pipeline de Data Quality et tests automatisés SAS/Python pour détecter les anomalies, comparer les KPI, tracer les écarts et sécuriser la non-régression avant production.
+\end{itemize}
+
+\vspace{8pt}
+\role{LYNE ET FRERES SARL - Data Analyst}{2023 - 2025}{Missions d'appui stratégique - Bénin / À distance}
+\begin{itemize}
+  \item Structuration et analyse de données commerciales, opérationnelles et agricoles avec Python/Pandas pour suivre les KPI d'activité, les volumes, les tendances et les écarts.
+  \item Production de reportings de performance pour appuyer les décisions de pilotage : lecture des résultats, identification des points d'attention et restitution aux interlocuteurs métier.
+  \item Automatisation de traitements récurrents et restitution des analyses via rapports, interfaces Streamlit / web et échanges réguliers avec les équipes.
+\end{itemize}
+
+\vspace{8pt}
+\role{Groupe Sylvagreg - Machine Learning Engineer}{Mai 2024 - Août 2024}{Lille, France}
+\begin{itemize}
+  \item R\&D d'une solution de reconstruction 3D à partir d'images 2D, combinant vision par ordinateur, photogrammétrie et modèles génératifs sous PyTorch.
+  \item Automatisation des pipelines de prétraitement, augmentation de données et inférence ; conteneurisation Docker, déploiement AWS et interface de visualisation.
+\end{itemize}
+
+\section{Projets BI \& Data}
+\projectline{BI RETAIL SOLUTION}{PySpark, Airflow, PostgreSQL, Power BI, Docker}
+Chaîne data ventes/supply chain : ingestion, transformations PySpark, chargement dans un entrepôt PostgreSQL et orchestration Airflow. Modélisation des données commerciales et tableaux de bord Power BI pour analyser les ventes, le suivi produit, les tendances et les indicateurs métier.
+\githublink{https://github.com/EngineerProjects/BI_Retail}{github.com/EngineerProjects/BI\_Retail}
+
+\vspace{7pt}
+\projectline{Seshat}{Python/Go, PostgreSQL/pgvector, RAG, Electron/React}
+Plateforme open source d'IA et d'automatisation : ingestion documentaire, embeddings, recherche hybride, services backend local/cloud, contrôles d'accès et agents orientés workflows métier.
+{\footnotesize\color{accent}\faIcon{globe}\ \href{https://seshat-ai.com}{seshat-ai.com}}\par
+
+\vspace{7pt}
+\projectline{ROBOT COLLECTEUR DE DÉCHETS}{AceObject - YOLOv8, OpenCV, Dijkstra}
+Pipeline Python/YOLOv8/OpenCV pour détecter, classifier et suivre les déchets en les distinguant des obstacles. Navigation par Dijkstra pour planifier la collecte ; exploration de l'apprentissage par renforcement pour la décision et l'évitement d'obstacles.
+
+\end{minipage}
+\end{lrbox}
+\setlength{\maincolumnheight}{\dimexpr\ht\maincolumnbox+\dp\maincolumnbox\relax}
+
+\begin{minipage}[t]{0.285\textwidth}
+\vspace{0pt}
+
+\hspace*{-0.18cm}%
+\colorbox{sidebg}{%
+  \hspace*{0.18cm}%
+  \begin{minipage}[t][\maincolumnheight][t]{0.91\linewidth}
+  \vspace{8pt}
+  \fontsize{8.45pt}{10.35pt}\selectfont
+  \raggedright
+
+  \smallsection{\faIcon{address-card}}{Contact}
+  \contactline{\faIcon{map-marker-alt}}{Cergy / Île-de-France}
+  \contactline{\faIcon{phone}}{+33 7 48 59 47 13}
+  \contactline{\faIcon{envelope}}{\href{mailto:oastephanekpoviessi@gmail.com}{oastephanekpoviessi@gmail.com}}
+  \contactline{\faIcon{link}}{\href{https://linkedin.com/in/stephanekpoviessi}{linkedin.com/in/stephanekpoviessi}}
+  \contactline{\faIcon{github}}{\href{https://github.com/EngineerProjects}{github.com/EngineerProjects}}
+
+  \smallsection{\faIcon{layer-group}}{Compétences}
+  \sideitem{Analyse \& BI}{KPI commerciaux, reporting, Power BI, Streamlit, Python/Pandas.}
+  \sideitem{SQL \& données}{SQL, PostgreSQL, modélisation, qualité, contrôles, tests.}
+  \sideitem{Pipelines \& cloud}{PySpark, ETL/ELT, Azure Databricks, Azure Data Lake, Airflow.}
+  \sideitem{Industrialisation}{Docker, FastAPI, Git, CI/CD, automatisation de traitements.}
+
+  \smallsection{\faIcon{graduation-cap}}{Formation}
+  \sideitem{JUNIA ISEN Lille}{Diplôme d'Ingénieur - Big Data \& Data Science, 2026.}
+  \sideitem{JUNIA ISEN Rabat}{Licence - Électronique \& Systèmes Numériques, 2023.}
+
+  \smallsection{\faIcon{certificate}}{Certifications}
+  \certitem{\href{https://www.linkedin.com/learning/certificates/fed380ef1713eb9d1633ac7cd02b74bf58cf5f4bcf7e5fd47cb39bce19649bae}{Se préparer au métier d'analyste de données}}{Microsoft / LinkedIn Learning \textbullet{} 2024}
+  \certitem{\href{https://www.freecodecamp.org/certification/amiche/data-analysis-with-python-v7}{Data Analysis with Python}}{freeCodeCamp \textbullet{} 2023}
+  \certitem{\href{https://www.coursera.org/account/accomplishments/verify/LU2ZQ972BWNF}{Create ML Models in Microsoft Azure}}{Microsoft / Coursera \textbullet{} 2023}
+
+  \smallsection{\faIcon{language}}{Langues}
+  \textbf{Français} - langue maternelle\par
+  \textbf{Anglais} - B2, Linguaskill Business\par
+
+  \smallsection{\faIcon{users}}{{\fontsize{8.4pt}{10pt}\selectfont Engagements \& associations}}
+  \textbf{JUNIA ALUMNI}\par
+  {\color{muted}Commission Réseau}\par
+  \vspace{3pt}
+  \textbf{Vice-président}\par
+  {\color{muted}Sept. 2024 - Août 2025}\par
+  Animation du réseau alumni et événements professionnels.\par
+  \vspace{4pt}
+  \textbf{Responsable communication}\par
+  {\color{muted}Sept. 2023 - Août 2024}\par
+  Annonces et valorisation des initiatives.\par
+  \vspace{3pt}
+  \end{minipage}
+}
+
+\end{minipage}
+\hfill
+\usebox{\maincolumnbox}
+
+\end{document}
