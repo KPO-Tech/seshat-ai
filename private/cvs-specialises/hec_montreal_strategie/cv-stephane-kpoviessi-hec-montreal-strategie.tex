@@ -1,0 +1,205 @@
+% CV Strategie - Stephane KPOVIESSI
+% Candidature a la Maitrise en gestion (M. Sc.) - strategie - HEC Montreal
+% Base : CV Finance (Universite de Sherbrooke), repositionne pour une candidature universitaire en strategie.
+% Compile target: pdfLaTeX
+
+\documentclass[10pt,a4paper]{article}
+
+\usepackage[a4paper,left=0.95cm,right=0.95cm,top=0.55cm,bottom=0.55cm]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{tabularx}
+\usepackage{titlesec}
+\usepackage{fontawesome5}
+
+\definecolor{accent}{HTML}{1F4E79}
+\definecolor{accentdark}{HTML}{163A5A}
+\definecolor{text}{HTML}{2F3437}
+\definecolor{muted}{HTML}{666D70}
+\definecolor{rule}{HTML}{D5E2EC}
+\definecolor{sidebg}{HTML}{F2F7FB}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{3.2pt}
+\setlist[itemize]{leftmargin=*, topsep=2pt, itemsep=2pt, parsep=0pt, partopsep=0pt}
+
+\titleformat{\section}
+  {\fontsize{11.2pt}{13pt}\selectfont\bfseries\color{accent}}
+  {}{0pt}{}
+  [\vspace{2pt}{\color{rule}\titlerule}\vspace{3pt}]
+\titlespacing*{\section}{0pt}{8pt}{4pt}
+
+\newcommand{\smallsection}[2]{%
+  \vspace{7pt}
+  {\fontsize{8.9pt}{10.45pt}\selectfont\bfseries\color{accentdark}%
+  {\scriptsize\color{accent}#1}\hspace{3.5pt}#2}\par
+  \vspace{3pt}
+}
+
+\newcommand{\contactline}[2]{%
+  \noindent\makebox[0.34cm][l]{{\color{accent}\scriptsize#1}}%
+  \begin{minipage}[t]{\dimexpr\linewidth-0.36cm\relax}%
+  \fontsize{8.15pt}{9.5pt}\selectfont #2%
+  \end{minipage}\par
+  \vspace{1pt}
+}
+
+\newcommand{\sideitem}[2]{%
+  \textbf{#1}\par
+  #2\par
+  \vspace{5pt}
+}
+
+\newcommand{\certitem}[2]{%
+  \textbf{#1}\par
+  {\fontsize{7.15pt}{8.1pt}\selectfont\color{muted}#2}\par
+  \vspace{4pt}
+}
+
+\newcommand{\role}[3]{%
+  \vspace{2pt}
+  \begin{tabularx}{\linewidth}{@{}Xr@{}}
+  \textbf{#1} & {\color{muted}#2}
+  \end{tabularx}\vspace{0.8pt}\\
+  {\color{muted}#3}\par
+  \vspace{2pt}
+}
+
+\newsavebox{\maincolumnbox}
+\newlength{\maincolumnheight}
+\newlength{\sideboxheight}
+
+\begin{document}
+\fontsize{10pt}{12.3pt}\selectfont
+\sloppy
+
+\begin{minipage}[t]{0.52\textwidth}
+{\LARGE\bfseries\color{accentdark} Stéphane KPOVIESSI}\par
+\vspace{1pt}
+{\large\color{accent}Ingénieur diplômé en Big Data \& Data Science}\par
+\vspace{1pt}
+{\color{muted}Candidature à la Maîtrise en gestion (M.~Sc.), stratégie \textbullet{} HEC Montréal}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.42\textwidth}
+\raggedleft
+\vspace{2pt}
+{\normalsize\bfseries\color{accent}Comprendre un enjeu \textbullet{} Structurer les options \textbullet{} Décider}\par
+\vspace{3pt}
+{\small\color{muted}
+De la production d'indicateurs à la formulation de recommandations pour une organisation.
+}
+\end{minipage}
+
+\vspace{5pt}
+{\color{rule}\hrule height 1pt}
+\vspace{6pt}
+
+\begin{lrbox}{\maincolumnbox}
+\begin{minipage}[t]{0.695\textwidth}
+\vspace{0pt}
+\raggedright
+
+\section{Profil}
+Ingénieur diplômé en Big Data et Data Science, j'ai occupé des postes où l'analyse servait à décider : fiabilisation d'indicateurs chez Allianz France, appui à la direction chez Lyne \& Frères, R\&D en vision par ordinateur chez Groupe Sylvagreg. Je souhaite dépasser la production d'indicateurs pour apprendre à identifier des enjeux stratégiques, structurer des options et en évaluer les conséquences, en visant la stratégie, la transformation et le pilotage de la performance.
+
+\section{Expériences}
+\role{Seshat - Fondateur \& Ingénieur IA}{Sept. 2026 - Aujourd'hui}{Projet entrepreneurial en construction - IA, automatisation et logiciels métiers}
+\begin{itemize}
+  \item Définition de l'offre visée (solutions d'IA, d'automatisation et de logiciels métiers pour les entreprises) et conduite du développement produit jusqu'à la mise en ligne.
+  \item Conception et développement de la plateforme (Python/Go, application desktop Electron/React) : ingestion documentaire, RAG hybride et orchestration d'agents.
+  \item Analyse comparative des fournisseurs et des briques techniques (modèles de langage, recherche vectorielle, hébergement) pour arbitrer les dépendances du produit.
+\end{itemize}
+{\footnotesize\color{accent}\faIcon{globe}\ \href{https://seshat-ai.com}{seshat-ai.com}\enspace\textbullet\enspace\faIcon{github}\ \href{https://github.com/KPO-Tech/seshat}{github.com/KPO-Tech/seshat}}\par
+
+\vspace{4pt}
+\role{Allianz France - Ingénieur Data / Data Scientist}{Nov. 2025 - Avr. 2026}{Direction P4D, Advanced Data \& Climate - Paris}
+\begin{itemize}
+  \item Migration du datamart Assurance de SAS vers Python/PySpark : cadrage des traitements avec les équipes métier, validation de la parité fonctionnelle sur plus de 15 000 lignes de code et sécurisation de la reprise des indicateurs de pilotage.
+  \item Architecture Médaillon sur Azure Databricks intégrant plus de 150 règles de gestion métier de l'assurance : des indicateurs reproductibles et auditables.
+  \item Contrôle qualité des données et tests automatisés : détection des écarts avant restitution et fiabilisation des indicateurs métier.
+\end{itemize}
+
+\vspace{4pt}
+\role{LYNE ET FRERES SARL - Analyste de données}{2023 - 2025}{Appui à la décision - Bénin / À distance}
+\begin{itemize}
+  \item Analyses commerciales, opérationnelles et agricoles (Python/Pandas) : suivi de l'activité, analyse des écarts et mise en évidence des points de tension pour la direction.
+  \item Rapports et tableaux de bord (Streamlit / web) restituant les analyses et les indicateurs auprès des décideurs.
+  \item Automatisation de traitements et outils internes pour homogénéiser les chiffres utilisés par les équipes métier.
+\end{itemize}
+
+\vspace{4pt}
+\role{Groupe Sylvagreg - Machine Learning Engineer}{Mai 2024 - Août 2024}{Lille, France}
+R\&D en vision par ordinateur : reconstruction 3D à partir d'images 2D (PyTorch), cadrage du besoin avec les équipes, préparation des données, expérimentation et déploiement (Docker, AWS).\par
+
+\section{Engagements \& gouvernance}
+\textbf{JUNIA ALUMNI} - association des diplômés de JUNIA\\
+\begin{itemize}
+  \item \textbf{Vice-président (2024 - 2025)} : coordination du bureau et des bénévoles, préparation des décisions associatives, relations avec l'école et les partenaires diplômés.
+  \item \textbf{Responsable communication (2023 - 2024)} : animation de la communauté, supports et canaux de diffusion, organisation d'événements alumni.
+\end{itemize}
+
+\end{minipage}
+\end{lrbox}
+% Le bandeau est dimensionne sur la colonne de droite, plus courte : on ajoute une marge basse
+% pour que la derniere ligne du bandeau reste dans le fond bleu.
+\setlength{\maincolumnheight}{\dimexpr\ht\maincolumnbox+\dp\maincolumnbox\relax}
+\setlength{\sideboxheight}{\dimexpr\maincolumnheight+14pt\relax}
+
+\begin{minipage}[t]{0.285\textwidth}
+\vspace{0pt}
+
+\hspace*{-0.18cm}%
+\colorbox{sidebg}{%
+  \hspace*{0.18cm}%
+  \begin{minipage}[t][\sideboxheight][t]{0.91\linewidth}
+  \vspace{8pt}
+  \fontsize{8.45pt}{10.35pt}\selectfont
+  \raggedright
+
+  \smallsection{\faIcon{address-card}}{Contact}
+  \contactline{\faIcon{map-marker-alt}}{Cergy / Île-de-France}
+  \contactline{\faIcon{phone}}{+33 7 48 59 47 13}
+  \contactline{\faIcon{envelope}}{\href{mailto:oastephanekpoviessi@gmail.com}{oastephanekpoviessi@gmail.com}}
+  \contactline{\faIcon{link}}{\href{https://linkedin.com/in/stephanekpoviessi}{linkedin.com/in/stephanekpoviessi}}
+  \contactline{\faIcon{github}}{\href{https://github.com/KPO-Tech}{github.com/KPO-Tech}}
+  \contactline{\faIcon{globe}}{\href{https://seshat-ai.com}{seshat-ai.com}}
+
+  \smallsection{\faIcon{graduation-cap}}{Formation}
+  \sideitem{JUNIA ISEN Lille (France)}{Diplôme d'Ingénieur - Big Data \& Data Science, 2023 - 2026.}
+  \sideitem{JUNIA Maroc ISEN (Rabat)}{3\textsuperscript{e} année du cursus d'ingénieur - Électronique \& Systèmes Numériques, 2022 - 2023.}
+  \sideitem{Cycle préparatoire scientifique}{Ste Marie-Stella, Cotonou (Bénin), 2020 - 2022.}
+  {\fontsize{7.15pt}{8.1pt}\selectfont\color{muted}Moyenne estimée sur l'ensemble du cursus d'ingénieur (5 années) : 15,5/20.}\par
+  \vspace{5pt}
+
+  \smallsection{\faIcon{layer-group}}{Compétences}
+  \sideitem{Diagnostic \& analyse}{Formuler une problématique, analyser des données et des processus, mesurer un écart.}
+  \sideitem{Appui à la décision}{Indicateurs de pilotage, restitution aux décideurs, qualité et fiabilité des chiffres.}
+  \sideitem{Coordination}{Cadrage avec les équipes métier, travail en transverse, accompagnement à la prise en main des outils.}
+  \sideitem{Données \& outils}{Python, SQL, Pandas, PySpark, PostgreSQL, Azure Databricks, Docker, Git.}
+
+  \smallsection{\faIcon{language}}{Langues}
+  \textbf{Français} - langue maternelle\par
+  \textbf{Anglais} - B2, Linguaskill Business\par
+
+  \smallsection{\faIcon{certificate}}{Certifications}
+  \certitem{\href{https://www.coursera.org/account/accomplishments/verify/MWJS4Q3S2C3L}{Supervised ML: Regression \& Classification}}{DeepLearning.AI / Stanford Online \textbullet{} 2023}
+  \certitem{\href{https://www.freecodecamp.org/certification/amiche/data-analysis-with-python-v7}{Data Analysis with Python}}{freeCodeCamp \textbullet{} 2023}
+  \certitem{\href{https://learn.microsoft.com/fr-fr/training/career-paths/ai-engineer}{Microsoft AI Engineer Career Path}}{Microsoft Learn \textbullet{} \textbf{En cours}}
+
+  \smallsection{\faIcon{users}}{Champs d'intérêt}
+  {\color{muted}Mesure de la performance \textbullet{} appui à la décision \textbullet{} transformation des organisations.}\par
+  \vspace{3pt}
+  \end{minipage}
+}
+
+\end{minipage}
+\hfill
+\usebox{\maincolumnbox}
+
+\end{document}
