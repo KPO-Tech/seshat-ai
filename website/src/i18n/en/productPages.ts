@@ -97,7 +97,7 @@ const en: typeof fr = {
     platforms: [
       { name: 'Chat and Projects', badge: 'Under construction', tone: 'wip', text: 'Conversations with skills and tools, grouped into projects. Usable locally today, with search over your documents from the Chat.' },
       { name: 'Knowledge', badge: 'Roadmap', tone: 'plan', text: 'The internal knowledge platform. Its interface does not exist yet: sourced search is used from the Chat. The framing (mockups, requirements) is done.' },
-      { name: 'Automation', badge: 'Roadmap', tone: 'plan', text: 'Scheduled tasks and agent workflows, with human validation. This is a product direction: nothing is shipped.' },
+      { name: 'Scheduled tasks', badge: 'In SeshatCloud', tone: 'wip', text: 'They do not run inside SeshatOS: they run on a SeshatCloud server, so they keep going when your computer is off. They exist on the server side; the administration console and the packaged offer are under construction.' },
     ],
   },
   seshatcloud: {
