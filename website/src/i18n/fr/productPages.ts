@@ -9,10 +9,10 @@ export default {
   layersNote: 'Le détail de chaque couche et de sa maturité est sur la page Produits.',
   seshat: {
     meta: {
-      title: "Seshat : le runtime d'agents open source | Seshat AI",
-      description: "Seshat, le runtime d'agents en Go sous licence Apache-2.0 : outils, sessions, permissions, fournisseurs de modèles, MCP, interface en terminal, gRPC et SDK.",
+      title: "Seshat : l'agent IA dans votre terminal, open source | Seshat AI",
+      description: "Seshat ouvre une interface complète en terminal pour de longues sessions d'agent, avec vos propres modèles. Dessous, un runtime Go open source (Apache-2.0) : outils, sessions, permissions, MCP, gRPC et SDK.",
     },
-    head: { title: "Seshat, le runtime d'agents open source.", lead: 'La fondation des deux autres briques, utilisable seule par des équipes techniques.' },
+    head: { title: "Seshat, l'agent IA dans votre terminal.", lead: "Une interface complète pour de longues sessions d'agent, avec vos propres modèles, sur votre machine. Dessous, un runtime open source sur lequel s'appuient aussi les deux autres briques." },
     who: "Pour les équipes techniques (développeurs, ingénieurs data et IA) qui veulent des agents sous leur contrôle, avec le modèle de leur choix, plutôt qu'un assistant fermé.",
     not: "Ce n'est pas un assistant prêt à l'emploi pour des équipes non techniques : celui-là, c'est SeshatOS, qui s'appuie sur ce même runtime.",
     docs: { label: 'Lire la documentation', text: 'Installation, concepts, configuration et référence. La documentation est en anglais.' },
