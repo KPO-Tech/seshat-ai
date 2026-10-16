@@ -133,6 +133,23 @@ Set `SESHAT_NO_UPDATE_CHECK=1` to turn the offer off. It is never shown for a de
 The checksum proves that the download is intact. The trust in who published it is the one you already place in the GitHub release when you run the install script.
 </Callout>
 
+## Name sessions on your machine (optional)
+
+By default the chat provider gives each session a title after your first message. If you prefer that to happen offline, for free and without showing that message to the provider again, install a small model that runs on your CPU:
+
+```bash
+seshat title-model install
+```
+
+The command downloads the [llama.cpp](https://github.com/ggml-org/llama.cpp) server (a CPU build of 12 to 19 MB) and the Qwen2.5 0.5B Instruct model (about 470 MB). It checks both against checksums fixed inside seshat, then starts the model once to show that it answers. On a laptop CPU the first title takes under two seconds and the next ones less than half a second.
+
+- Both install scripts offer it at the end. Set `SESHAT_TITLE_MODEL=1` to install it without being asked, or `0` to skip the question.
+- `seshat title-model install --model gemma-3-270m` installs a smaller model (about 240 MB): faster, with rougher titles.
+- `seshat title-model status`, `disable`, `enable` and `remove` manage it. The model server only runs while seshat is open and stops after ten idle minutes.
+- If the model is not installed, is turned off or fails, the chat provider names the session as before.
+
+A 0.5-billion-parameter model gives plain titles. The provider's are usually better; the local model trades some quality for speed, cost and privacy.
+
 ## Install with the Go toolchain
 
 You need **Go 1.26 or later**.
