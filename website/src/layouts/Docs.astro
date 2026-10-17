@@ -116,7 +116,7 @@ const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
   <script is:inline define:vars={{ copy: d.ui.copy, copied: d.ui.copied }}>
     (function () {
       // Bouton « Copier » sur chaque bloc de code
-      document.querySelectorAll('.prose pre').forEach(function (pre) {
+      document.querySelectorAll('.prose pre:not(.osx-body)').forEach(function (pre) {
         var btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'copy-code';

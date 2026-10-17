@@ -8,6 +8,7 @@ updated: "2026-10-17"
 import Callout from '@/components/docs/Callout.astro';
 import Steps from '@/components/docs/Steps.astro';
 import LinkCards from '@/components/docs/LinkCards.astro';
+import OsInstall from '@/components/docs/OsInstall.astro';
 
 Seshat ships as a single binary. Pick the route that fits you: a one-line install script for end users (a shell script on Linux and macOS, a PowerShell script on Windows), the Go toolchain for developers, or a source build if you want to hack on it.
 
@@ -15,15 +16,15 @@ Seshat ships as a single binary. Pick the route that fits you: a one-line instal
 There is an install script for **Linux** and **macOS** and one for **Windows**, all on `amd64` and `arm64`. The terminal interface is used on Windows Terminal; other Windows setups have had less testing.
 </Callout>
 
-## Which command for which system
+## Install
 
-| System | Command | Needs |
-|---|---|---|
-| **Linux** (amd64, arm64) | `curl -fsSL https://raw.githubusercontent.com/KPO-Tech/seshat-runtime/main/scripts/install.sh \| bash` | `curl` or `wget`, a shell |
-| **macOS** (Intel, Apple silicon) | the same command as Linux | `curl`, a shell |
-| **Windows** (amd64, arm64) | `irm https://raw.githubusercontent.com/KPO-Tech/seshat-runtime/main/scripts/install.ps1 \| iex` in PowerShell | nothing else, no administrator rights |
+Pick your system. Each terminal shows the commands in order: the installer, the dependency it needs, the check, the optional model that names your sessions, the first configuration and the update. Click a command to copy it.
+
+<OsInstall />
 
 None of them needs Go: the script downloads a ready-made binary. Whatever the system, the command you type afterwards is `seshat`.
+
+The sections below explain what each script does and the options it takes.
 
 ## Install with the script on Linux and macOS
 
