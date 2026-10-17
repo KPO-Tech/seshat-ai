@@ -121,15 +121,16 @@ p { margin: 0; }
 .link { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: var(--accent-text); text-decoration: none; }
 .link:hover { text-decoration: underline; text-underline-offset: 4px; }
 
-/* Hero : asymétrique, tient dans l'écran */
-.hero { min-height: calc(100dvh - 68px); display: grid; align-items: center; padding: 48px 0 56px; }
-.hero .wrap { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 56px; align-items: center; }
-.hero h1 { font-size: clamp(2.4rem, 5.2vw, 4.4rem); max-width: 14ch; }
+/* Hero : tout est centré en haut (titre sur une ligne, texte, boutons), puis le film en grand */
+.hero { padding: 64px 0 80px; }
+.hero .wrap { display: grid; justify-items: center; gap: 56px; text-align: center; }
+.hero-copy { display: grid; justify-items: center; }
+.hero h1 { font-size: clamp(1.7rem, 4.6vw, 3.6rem); max-width: none; white-space: nowrap; }
 .hero h1 em { font-style: normal; color: var(--accent-text); }
-.hero .lead { margin-top: 24px; font-size: 1.2rem; color: var(--text2); }
-.hero .actions { margin-top: 36px; display: flex; flex-wrap: wrap; gap: 14px; }
+.hero .lead { margin: 22px auto 0; max-width: 60ch; font-size: 1.2rem; color: var(--text2); }
+.hero .actions { justify-self: center; margin-top: 32px; display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
 
-.filmwrap { margin: 0; }
+.filmwrap { width: 100%; max-width: 1080px; margin: 0 auto; }
 .film { position: relative; aspect-ratio: 16 / 9; border-radius: calc(var(--radius) + 6px); background: var(--panel); overflow: hidden; box-shadow: var(--shadow); }
 .film video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; background: var(--panel); }
 
@@ -754,10 +755,15 @@ section.legal-block { padding: 16px 0 96px; }
 }
 @keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
 
+@media (max-width: 700px) {
+  .hero h1 { white-space: normal; text-wrap: balance; font-size: clamp(1.9rem, 8vw, 2.6rem); }
+}
+
 /* Mobile : tout passe en une colonne */
 @media (max-width: 900px) {
-  .hero { min-height: auto; padding: 40px 0 56px; }
-  .hero .wrap, .why { grid-template-columns: 1fr; gap: 40px; }
+  .hero { padding: 40px 0 56px; }
+  .hero .wrap { gap: 40px; }
+  .why { grid-template-columns: 1fr; gap: 40px; }
   .foot-top { grid-template-columns: 1fr; gap: 28px; }
   .foot-mark { display: none; }
   .cta-box, .cta-box.perso { grid-template-columns: 1fr; gap: 24px; padding: 36px 24px; }
