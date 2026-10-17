@@ -257,9 +257,24 @@ Constaté dans le code (`internal/tools/system/skills/skillTool.go`) :
 - **Le corps d'un skill n'est lu qu'à l'appel** : le contenu de SKILL.md arrive comme résultat de l'outil, puis il reste dans la conversation (soumis au compactage). Les fichiers qu'il référence (scripts, documents de référence) ne sont lus qu'à la demande, par `read_file`.
 - Un skill qui listerait tous les outils différés et leur utilité coûterait une ligne d'index et son corps seulement quand l'agent en a besoin. Mais il doublerait ce que `tool_search` sait déjà (nom, description, indice de recherche) et vieillirait à chaque changement d'outil. Mieux vaut soigner les indices de recherche, et générer toute documentation d'outils depuis le registre (`docs/tools.md`).
 
+## Chantier : skills à grande échelle (à faire, gros travail)
+
+Problème : l'index des skills (une ligne par skill installé) est dans la description de l'outil `skill`, sans borne. Avec beaucoup de skills téléchargés, il pèse des milliers de tokens à chaque requête.
+
+Piste retenue par le propriétaire du produit : l'agent **cherche** un skill par mots-clés et seul celui qu'il choisit est chargé. Découpage proposé :
+
+1. Un petit nombre de skills **épinglés** (une dizaine) restent dans l'index, avec leur description.
+2. Tous les autres sont dans un index de recherche. Un outil `skill_search(mots-clés)` renvoie les 3 à 5 meilleurs (nom, description, raison de la correspondance) **sans charger leur contenu**. Le moteur de recherche existe déjà : le BM25 de `tool_search` (`internal/tools/special/tool_search`).
+3. `skill(nom)` charge ensuite ce skill seul.
+4. La description de l'outil `skill` ne dit plus que « N autres skills installés : utilise `skill_search` ».
+5. Variante plus fine, plus tard : recherche sémantique avec les embeddings (le desktop en a déjà).
+6. En plus : descriptions de skills plafonnées à l'installation, pour qu'un skill téléchargé ne gonfle pas l'index.
+
+À faire après l'agent général du desktop. Avant de coder, **lire comment les autres s'y prennent** : le code de Codex (`helps/codex/codex-rs/core`, notamment l'exposition des outils MCP et les plugins) et, pour Claude Code, le CHANGELOG et les plugins du dépôt public (`helps/claude-code`) : son code source n'est pas public, donc on y trouve des comportements et des formats, pas l'implémentation.
+
 ## Profils de plateforme
 
-Un profil est une liste d'outils par défaut plus des outils différés, choisie pour un type d'agent. Proposition de départ :
+Un profil est la liste d'outils par défaut d'un type d'agent (celle du TUI existe déjà dans le code : `GeneralAgentToolNames`), plus les outils différés qu'il peut découvrir. Les listes vivent dans le code du SDK, une fonction par type d'agent ; un réglage de plateforme pourra s'y ajouter plus tard. Proposition de départ :
 
 | Profil | Par défaut | Spécialisés qui s'y ajoutent |
 |---|---|---|
@@ -283,9 +298,11 @@ Un profil est une liste d'outils par défaut plus des outils différés, choisie
 4. Les opérations sur les jobs, y compris `schedule_job`, sont différées ; `workflow_draft` est spécialisé.
 5. Les calculs sont différés ; Python via `bash` suffit à l'agent général.
 6. Les outils `git_*` sont différés (ils dupliquent `bash`).
+7. `browser_wait` est différé ; les huit autres outils de navigation sont par défaut.
+8. Les listes de profils vivent dans le code du SDK (une fonction par type d'agent).
+9. Les trois outils d'écriture de documents sont supprimés maintenant (PR runtime #588).
+10. Les skills à grande échelle (recherche de skills) sont un chantier à part, après l'agent du desktop.
 
 ## À trancher
 
-1. Le noyau de navigation (huit outils) et le report de `browser_wait`.
-2. Où vit la définition d'un profil : une liste dans le SDK, ou un réglage de chaque plateforme.
-3. Quand supprimer les trois outils de documents : maintenant (Python via `bash` en attendant les skills), ou une fois les skills installés par défaut.
+Rien d'ouvert sur le classement. Reste à faire : écrire les indices de recherche des outils différés, et le mécanisme qui diffère les outils de l'agent principal.
