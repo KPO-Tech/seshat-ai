@@ -1,29 +1,30 @@
 ---
 title: Sandboxing
-description: "How Seshat confines the shell commands the model runs: no isolation, Landlock on Linux, or a Docker container, and how to require one."
+description: "How Seshat confines the shell commands the model runs: no isolation, Landlock on Linux, srt on macOS and Windows, or a Docker container, and how to require one."
 section: concepts
 order: 12
-updated: "2026-10-14"
+updated: "2026-10-17"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import LinkCards from '@/components/docs/LinkCards.astro';
 import Diagram from '@/components/docs/Diagram.astro';
 import { sandboxChoice } from '@/components/docs/diagrams/sandbox';
 
-The `bash` tool lets the model run shell commands. A command runs with your rights, so Seshat can confine it. This page explains the three levels, how to choose one, and what happens when the one you asked for is not available.
+The `bash` tool lets the model run shell commands. A command runs with your rights, so Seshat can confine it. This page explains the four levels, how to choose one, and what happens when the one you asked for is not available.
 
-## Three levels
+## Four levels
 
 | Level | What it does | Where it works |
 |---|---|---|
-| **None** | The command runs directly on the host, with your rights | Everywhere. It is the only level on Windows and macOS unless you choose Docker |
+| **None** | The command runs directly on the host, with your rights | Everywhere. It is the level on Windows and macOS unless you install srt or choose Docker |
 | **Landlock** | The command can read the system but can write only inside the working folder | Linux, when the kernel supports Landlock |
+| **srt** | The command can write only inside the working folder and the temporary folder, cannot read SSH, cloud or GPG keys, and reaches only common code hosts and package registries | macOS, and Windows (**alpha**), when [srt](https://github.com/anthropic-experimental/sandbox-runtime) is installed |
 | **Docker** | The command runs inside a container, and only the working folder is shared with the host | Anywhere Docker runs |
 
-Landlock is used automatically on Linux when it is available. Docker is something you ask for.
+Landlock is used automatically on Linux when it is available. srt is used when it is installed and working, on a host without Landlock. Docker is something you ask for.
 
 <Callout type="warning" title="On a desktop, the default is no isolation">
-On Windows and macOS there is no Landlock, so without Docker the commands of the model run unconfined, and Seshat writes a warning in the log. This is why sensitive commands ask for your approval first. See [Security and trust](/en/docs/concepts/security-and-trust).
+On Windows and macOS there is no Landlock, so without srt or Docker the commands of the model run unconfined, and Seshat writes a warning in the log. This is why sensitive commands ask for your approval first. See [Security and trust](/en/docs/concepts/security-and-trust).
 </Callout>
 
 ## Choosing a level
@@ -46,6 +47,24 @@ cfg.RequireSandbox = true               // refuse to run a command without a san
 | A desktop application | Leave `RequireSandbox` off. Refusing to run `bash` at all is often worse than a visible warning |
 | A shared server | Always set `RequireSandbox`. An unconfined command runs with the rights and the environment of the server |
 
+## The srt level
+
+[srt](https://github.com/anthropic-experimental/sandbox-runtime) (Anthropic's sandbox-runtime, Apache-2.0) confines a command with Seatbelt on macOS, bubblewrap on Linux, and a dedicated low-privilege account with a network filter on Windows. Seshat does not install it by itself: when an `srt` command is available and works, the `bash` tool runs every command through it.
+
+```sh
+npm install -g @anthropic-ai/sandbox-runtime   # provides the srt command
+```
+
+- **macOS**: nothing else to set up.
+- **Windows**: alpha. A one-time setup creates the account and the filter and asks for administrator rights once: `npx @anthropic-ai/sandbox-runtime windows-install`. It is **not set up automatically** by Seshat or by the desktop app, because it does not work on every Windows machine yet: on Windows 11 Home we saw it refuse to start commands even after a successful setup. If you need a confinement you can count on under Windows, use Docker.
+- Seshat tries `srt` once with a trivial command before relying on it. If it is installed but cannot confine, Seshat writes what it said in the log and runs as if it were absent, instead of failing every command.
+
+| Environment variable | Effect |
+|---|---|
+| `SESHAT_SRT` | The `srt` executable to use, or `off` to turn the level off |
+| `SESHAT_SRT_ALLOWED_DOMAINS` | Comma-separated domains to allow on top of the defaults (GitHub, GitLab, npm, PyPI, Go, crates.io, Maven and similar) |
+| `SESHAT_SRT_ALLOW_WRITE` | Comma-separated paths to make writable on top of the working folder and the temporary folder |
+
 ## What the Docker level does
 
 The working folder of the session is shared with the container, and appears there as `/workdir`. Everything else the command sees is the image. The defaults are meant to be careful, and you can change each one through `ClientConfig.SandboxDocker`:
@@ -65,7 +84,7 @@ The working folder of the session is shared with the container, and appears ther
 
 ## Which level am I running at?
 
-`client.SandboxKind()` reports the sandbox this client actually resolved to: Docker only if you asked for it and Docker answered its health check at startup. `sdk.SandboxAvailable()` answers a different question: is Landlock available on this host? Use the first to show your users the real state. See [Integrating in your product](/en/docs/sdk/integration#run-commands-safely).
+`client.SandboxKind()` reports the sandbox this client actually resolved to: Docker only if you asked for it and Docker answered its health check at startup. `sdk.SandboxAvailable()` answers a different question: is Landlock or srt available on this host? `sdk.SandboxBackend()` names it: `landlock`, `srt` or `none`. Use the first to show your users the real state. See [Integrating in your product](/en/docs/sdk/integration#run-commands-safely).
 
 ## What the sandbox does not do
 
