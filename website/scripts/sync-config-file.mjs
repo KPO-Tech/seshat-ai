@@ -1,5 +1,5 @@
 // Génère les tableaux de reference/configuration-file.mdx à partir des structures du fichier de configuration
-// (seshat-runtime/internal/seshattui/config/config.go) : clés, types, valeurs par défaut et descriptions
+// (seshat-runtime/tui/internal/seshattui/config/config.go) : clés, types, valeurs par défaut et descriptions
 // viennent des balises `json:` et `jsonschema:` du code.
 // Usage : npm run sync:config-file [-- --runtime <dossier de seshat-runtime>]
 // Le texte autour des marqueurs {/* generated:start */} et {/* generated:end */} reste écrit à la main.
@@ -9,7 +9,7 @@ import { join, resolve } from 'node:path';
 const args = process.argv.slice(2);
 const ri = args.indexOf('--runtime');
 const runtime = resolve(ri >= 0 ? args[ri + 1] : process.env.SESHAT_RUNTIME_DIR ?? '../../seshat-runtime');
-const source = join(runtime, 'internal/seshattui/config/config.go');
+const source = join(runtime, 'tui/internal/seshattui/config/config.go');
 const page = resolve('src/content/docs/en/reference/configuration-file.mdx');
 if (!existsSync(source)) { console.error(`introuvable : ${source}`); process.exit(2); }
 

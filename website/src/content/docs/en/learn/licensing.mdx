@@ -19,14 +19,15 @@ This covers the engine and everything you reach through the SDK (`pkg/`), the gR
 
 ## The terminal interface has another origin
 
-The terminal interface, in `internal/seshattui`, was built from the terminal interface of [Crush](https://github.com/charmbracelet/crush) by Charmbracelet, Inc. Crush is published under the **Functional Source License 1.1, MIT Future License** (FSL-1.1-MIT):
+The terminal interface, in `tui/internal/seshattui`, was built from the terminal interface of [Crush](https://github.com/charmbracelet/crush) by Charmbracelet, Inc. Crush is published under the **Functional Source License 1.1, MIT Future License** (FSL-1.1-MIT):
 
+- The terminal command and its interface are the `tui` module, apart from the engine: the engine (`pkg/`, `cmd/grpc`, the rest of `internal/`) does not contain or import that code, and a test fails if it starts to.
 - You may use, copy, modify and redistribute it for any purpose **except a Competing Use**. The licence defines a Competing Use as making the software available to others in a commercial product or service that substitutes for Crush, or for another product or service of Charmbracelet that uses it.
 - Each version of Crush becomes available under the **MIT licence two years after it was published**.
 
 What it means for the Seshat repository:
 
-- The files of `internal/seshattui` that come from Crush stay subject to the FSL-1.1-MIT **in addition to** the Apache-2.0 terms of the rest of the repository. Apache-2.0 does not replace it for them.
+- The files of `tui/internal/seshattui` that come from Crush stay subject to the FSL-1.1-MIT **in addition to** the Apache-2.0 terms of the rest of the repository. Apache-2.0 does not replace it for them.
 - Which files are copied and which were written for Seshat is not recorded file by file. Until it is, the whole directory is treated as subject to the Crush licence.
 - The engine does not use that code.
 
@@ -35,7 +36,7 @@ In practice:
 | You want to | What it means |
 |---|---|
 | Run `seshat`, use the SDK or the gRPC server, in your company or your product | Nothing special. The Apache-2.0 terms apply to what you use |
-| Redistribute the terminal interface inside a commercial coding-agent product | Read the Crush licence first, or leave `internal/seshattui` out and use the engine through the SDK or gRPC |
+| Redistribute the terminal interface inside a commercial coding-agent product | Read the Crush licence first, or leave `tui/internal/seshattui` out and use the engine through the SDK or gRPC |
 
 The authoritative statement is the `NOTICE` file of the repository, and `docs/licensing.md` explains it.
 

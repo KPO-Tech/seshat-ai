@@ -19,7 +19,7 @@ import LinkCards from '@/components/docs/LinkCards.astro';
 
 The direction is one-way: `cmd/*` calls `pkg/sdk`, which calls `internal/*`. A test, `internal/archtest/boundary_test.go`, fails when an `internal/` package imports `pkg/` outside a short, explicit allow-list. The public surface has 39 packages under `pkg/` (types, the tool contract, providers, config, storage, vector, RAG, web, skills, MCP, workflow, connectors and more), and the implementation has 43 under `internal/`.
 
-The terminal interface (`internal/seshattui`) is a fork of the Charm Crush interface, under the FSL-1.1-MIT license. It drives the SDK through a bridge in its `workspace/` package, like any other host.
+The terminal interface (`tui/internal/seshattui`) is a fork of the Charm Crush interface, under the FSL-1.1-MIT license. It drives the SDK through a bridge in its `workspace/` package, like any other host.
 
 ### What lives in `internal/`
 

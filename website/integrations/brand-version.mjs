@@ -9,13 +9,18 @@ import { fileURLToPath } from 'node:url';
  * navigateur comme chez Cloudflare. Un logo remplacé restait donc invisible une
  * semaine durant, l'ancien contenu continuant d'être servi sur la même URL.
  *
+ * Même cause pour les films (`/videos`, cachés 30 jours) et les captures (`/captures`, 7 jours) :
+ * le film d'accueil remplacé restait l'ancien en ligne, servi par Cloudflare sur la même URL
+ * bien après le déploiement (`cf-cache-status: HIT`, `Age` de dix jours). L'URL versionnée en
+ * change la clé de cache, sans purge à faire à la main.
+ *
  * Astro hache déjà ce qu'il construit (`/_astro/*`), mais pas les fichiers de
  * `public/`, qui sont recopiés tels quels. Cette intégration ajoute donc
  * l'empreinte du contenu à l'URL écrite dans les pages : remplacer un logo change
  * son URL, donc le cache, sans qu'aucun numéro de version ne soit à tenir à jour
  * à la main.
  */
-const FOLDERS = ['brand', 'og'];
+const FOLDERS = ['brand', 'og', 'videos', 'captures'];
 const REWRITTEN = ['.html', '.css'];
 
 const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

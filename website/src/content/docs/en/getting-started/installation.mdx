@@ -1,19 +1,30 @@
 ---
 title: Installation
-description: "Install the Seshat binary with one command on Linux, macOS or Windows, with the Go toolchain, or from source."
+description: "Install the Seshat binary with one command on Linux, macOS or Windows, update it from the terminal, or use the Go toolchain or a source build."
 section: start
 order: 1
-updated: "2026-10-16"
+updated: "2026-10-17"
 ---
 import Callout from '@/components/docs/Callout.astro';
 import Steps from '@/components/docs/Steps.astro';
 import LinkCards from '@/components/docs/LinkCards.astro';
+import OsInstall from '@/components/docs/OsInstall.astro';
 
 Seshat ships as a single binary. Pick the route that fits you: a one-line install script for end users (a shell script on Linux and macOS, a PowerShell script on Windows), the Go toolchain for developers, or a source build if you want to hack on it.
 
 <Callout type="note" title="Platforms">
 There is an install script for **Linux** and **macOS** and one for **Windows**, all on `amd64` and `arm64`. The terminal interface is used on Windows Terminal; other Windows setups have had less testing.
 </Callout>
+
+## Install
+
+Pick your system. Each terminal shows the commands in order: the installer, the dependency it needs, the check, the optional model that names your sessions, the first configuration and the update. Click a command to copy it.
+
+<OsInstall />
+
+None of them needs Go: the script downloads a ready-made binary. Whatever the system, the command you type afterwards is `seshat`.
+
+The sections below explain what each script does and the options it takes.
 
 ## Install with the script on Linux and macOS
 
@@ -89,7 +100,7 @@ Set these variables in the same PowerShell session, before the command.
 $env:SESHAT_VERSION = "v1.9.0"
 
 # Install somewhere else
-$env:SESHAT_INSTALL_DIR = "C:	ools\seshat"
+$env:SESHAT_INSTALL_DIR = "C:\tools\seshat"
 
 # Do not try to install ripgrep
 $env:SESHAT_SKIP_RIPGREP = "1"
@@ -97,13 +108,65 @@ $env:SESHAT_SKIP_RIPGREP = "1"
 
 To make `shift+Enter` insert a new line in Windows Terminal or VS Code, run `seshat terminal-setup`.
 
+## Update
+
+An installed `seshat` tells you when a new release is published. When you start it in a terminal, it checks the latest release (at most once a day, with a two-second limit, and silently when you are offline) and asks:
+
+```text
+seshat v1.10.0 is available (you have v1.9.0).
+Update now? [Y]es / [l]ater / [s]kip this version:
+```
+
+- **Yes** (or Enter) downloads the new binary, checks it against the release's `SHA256SUMS.txt` and puts it in place of the running one. Start `seshat` again to use it. If anything fails, the old binary stays where it is.
+- **Later** stays quiet for a day. **Skip** stays quiet until a newer release comes out.
+
+You can also update whenever you want:
+
+```bash
+seshat update           # look for a newer release, ask, install
+seshat update --check   # only say whether there is one
+seshat update --yes     # install without asking
+```
+
+Set `SESHAT_NO_UPDATE_CHECK=1` to turn the offer off. It is never shown for a development build, in a pipe or in CI. Running the install script again also updates, and is the way to get the `seshat update` command on a version that does not have it yet.
+
+<Callout type="note" title="How the download is checked">
+The checksum proves that the download is intact. The trust in who published it is the one you already place in the GitHub release when you run the install script.
+</Callout>
+
+## Name sessions on your machine (optional)
+
+By default the chat provider gives each session a title after your first message. If you prefer that to happen offline, for free and without showing that message to the provider again, install a small model that runs on your CPU:
+
+```bash
+seshat title-model install
+```
+
+The command downloads the [llama.cpp](https://github.com/ggml-org/llama.cpp) server (a CPU build of 12 to 19 MB) and the Qwen2.5 0.5B Instruct model (about 470 MB). It checks both against checksums fixed inside seshat, then starts the model once to show that it answers. On a laptop CPU the first title takes under two seconds and the next ones less than half a second.
+
+- Both install scripts offer it at the end. Set `SESHAT_TITLE_MODEL=1` to install it without being asked, or `0` to skip the question.
+- `seshat title-model install --model gemma-3-270m` installs a smaller model (about 240 MB): faster, with rougher titles.
+- `seshat title-model status`, `disable`, `enable` and `remove` manage it. The model server only runs while seshat is open and stops after ten idle minutes.
+- If the model is not installed, is turned off or fails, the chat provider names the session as before.
+
+### Where it lives and what it uses
+
+- Files: the folder `title-model/` inside the runtime folder (`~/.config/seshat-cli/` on Linux and macOS, `%APPDATA%\seshat-cli\` on Windows). It holds the llama.cpp server, the model, a `state.json` and the server's `server.log`. `seshat title-model remove` deletes the folder.
+- Memory and CPU: the server listens on the loopback address only, so nothing outside your machine can reach it. It uses about 600 MB of memory while it runs and the processor for a fraction of a second per title. It starts with the first title, and stops after ten idle minutes and when seshat exits.
+- Crashes: if seshat is killed, the next run notices the server left behind and stops it, but only if that server still has this exact model loaded, so another program is never touched.
+- Supported systems: Windows, Linux and macOS, on `amd64` and `arm64`. On another system the command says so and the provider keeps naming sessions.
+
+A 0.5-billion-parameter model gives plain titles. The provider's are usually better; the local model trades some quality for speed, cost and privacy.
+
 ## Install with the Go toolchain
 
 You need **Go 1.26 or later**.
 
 ```bash
-go install github.com/KPO-Tech/seshat-runtime/cmd/cli@latest
+go install github.com/KPO-Tech/seshat-runtime/tui/cmd/cli@latest
 ```
+
+The command installs a binary called `cli`; rename it to `seshat` or use the install script, which names it for you. The terminal interface is a module of its own (`tui`), so this path exists from the first release that includes it; earlier releases use `github.com/KPO-Tech/seshat-runtime/cmd/cli@latest`.
 
 ## Build from source
 
