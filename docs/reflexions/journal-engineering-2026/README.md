@@ -12,6 +12,12 @@ This series is not archived and carries no banner: it is the current work that c
 | `bilan-2026-10-12-lots-a-et-d-documentation-du-site.md` | What lots A and D delivered, where the plan was not followed, and what remains. |
 | `bilan-2026-10-14-lots-b-a-f-documentation-du-site.md` | What lots B to F delivered (PR #166 to #171), the guards that keep the pages right (`npm run guard:docs`), and what remains (terminal screenshots, a few runtime inconsistencies). Start here to resume. |
 
+## Current plan: what we keep from Freebuff, and the desktop work (2026-10-17)
+
+| File | What it is |
+|---|---|
+| `plan-2026-10-17-adoption-freebuff-et-desktop.md` | The decisions taken with the product owner, and the plan in five lots (security, desktop interface, runtime, desktop release, Knowledge), with where each idea lives in `helps/freebuff`. Living document: update the follow-up table as lots are done. |
+
 ## Brought back on 2026-10-08 (archived, one banner per file)
 
 Audits and roadmap written while the products were one repository. They moved here from
