@@ -17,6 +17,7 @@ This series is not archived and carries no banner: it is the current work that c
 | File | What it is |
 |---|---|
 | `plan-2026-10-17-adoption-freebuff-et-desktop.md` | The decisions taken with the product owner, and the plan in five lots (security, desktop interface, runtime, desktop release, Knowledge), with where each idea lives in `helps/freebuff`. Living document: update the follow-up table as lots are done. |
+| `inventaire-outils-et-agents-2026-10-17.md` | Every tool of the runtime registry with its measured token cost, sorted into default, deferred (found with `tool_search`) and specialised (not offered to the general agent), with the platform profiles and the decisions still open. Draft for validation before the desktop agent is changed. |
 
 ## Brought back on 2026-10-08 (archived, one banner per file)
 
