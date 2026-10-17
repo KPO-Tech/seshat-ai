@@ -114,6 +114,27 @@ Après les lots précédents. Voir `knowledge_platform_direction` (Knowledge est
 | S3 honnêteté sandbox | Backend `srt` du runtime (#584), ligne d'état dans le TUI (#585), carte « Command confinement » et `srt` livré dans le desktop (SeshatOS #114), doc du site mise à jour |
 | S4 vérifications | Ouverture de liens du TUI limitée à http(s) (#583). Reste : décodage JSON strict et idempotence pour SeshatCloud (CI bloquée par la facturation, à auditer) |
 
+### Artifacts : décisions de nommage et plan (2026-10-17, à faire plus tard)
+
+Constat : il n'existe pas de notion d'artifact pour un document dans la conversation. Dans le backend, « artifact » désigne soit l'aperçu HTML temporaire (`/artifacts/preview`), soit le stockage de blobs. Un `.md` écrit par l'agent est un fichier ordinaire du dossier de travail (`write_file`). Freebuff n'a rien de tel (son desktop n'est pas dans le snapshot). Onyx Craft (`helps/onyx/web/src/app/craft/components/output-panel/ArtifactsTab.tsx`) l'obtient par convention : l'agent écrit ses livrables dans `outputs/`, un onglet liste ce dossier.
+
+Ce qui est déjà fait côté desktop : la carte « fichiers créés ou modifiés » sous la fin d'une réponse, avec les icônes par type (SeshatOS #121). Les artifacts en sont le sous-ensemble choisi par l'agent, pas un doublon.
+
+Noms figés :
+
+| Élément | Nom |
+|---|---|
+| Outil du runtime | `present_artifact` |
+| Paramètres | `path` (obligatoire), `title` (obligatoire), `kind` (obligatoire), `summary` (optionnel, une phrase) |
+| Valeurs de `kind` | `markdown`, `html`, `pdf`, `docx`, `xlsx`, `pptx`, `image` |
+| Panneau desktop | « Artifacts » (liste des livrables de la session, avec les icônes de fichier), les visionneuses existantes (markdown, html, pdf, docx, xlsx, pptx) servent à l'ouverture |
+| Dossier de repli sans projet | `<racine de données>/artifacts/<identifiant de session>/` |
+| Réglage | « Ouvrir automatiquement le dernier artifact » (Appearance ou Préférences), actif par défaut |
+
+Fonctionnement : l'agent écrit le fichier (il apparaît dans la liste des fichiers du tour), puis appelle `present_artifact`. Le résultat de l'outil est enregistré dans la session, donc l'artifact survit au rechargement. Le desktop affiche une carte « Artifact » dans le chat et ouvre le document dans le bon panneau. La liste des fichiers modifiés reste le filet de sécurité si l'agent oublie d'appeler l'outil.
+
+À faire : (1) l'outil et la consigne du prompt système dans le runtime ; (2) la carte et le panneau Artifacts dans le desktop ; (3) le réglage d'ouverture automatique. Sujet sensible : valider les noms ci-dessus avant de coder.
+
 ### À reprendre plus tard : confinement des commandes sous Windows et macOS
 
 - **Décision (2026-10-17)** : pas d'installation automatique de `srt` pour l'instant. Sous Windows c'est l'utilisateur qui lance `npx @anthropic-ai/sandbox-runtime windows-install` pour essayer ; le desktop affiche la commande. Pour une isolation fiable aujourd'hui sous Windows, il faut Docker.
