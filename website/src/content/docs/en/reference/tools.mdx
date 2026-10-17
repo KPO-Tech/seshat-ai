@@ -3,7 +3,7 @@ title: Built-in tools
 description: "The tools the agent can use out of the box, grouped by theme: what each does, whether it only reads, and what it needs to be available."
 section: reference
 order: 4
-updated: "2026-10-13"
+updated: "2026-10-16"
 ---
 import Callout from '@/components/docs/Callout.astro';
 
@@ -43,7 +43,7 @@ The runtime registers **129 tools**, and `sdk.NewClient` adds 3 more (`agent`, `
 | `read_file` | Read the contents of a file. | Yes | Yes |
 | `remove_file` | Delete a file or directory. | No | Yes |
 | `render_document_page` | Render one page of a local document to a PNG image for visual inspection, then attach it to the conversation as an image (in the message that follows this... | Yes | Yes |
-| `search_start` | Start a content search as a background job instead of blocking until it finishes - use this instead of Grep for a search that might be slow (huge directory,... | Yes | Yes |
+| `search_start` | Start a content search as a background job instead of blocking until it finishes - use this instead of grep for a search that might be slow (huge directory,... | Yes | Yes |
 | `write_file` | Write the full content of a file. | No | Yes |
 | `write_pdf` | Create a new PDF from plain/markdown-ish text, append text as new page(s) to an existing PDF, or delete pages from an existing PDF. | No | Yes |
 | `write_stdin` | Write text to a running background task's stdin and read back what it produces. | No | Yes |

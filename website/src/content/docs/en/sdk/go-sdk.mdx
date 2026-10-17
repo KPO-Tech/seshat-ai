@@ -59,7 +59,7 @@ func main() {
 `AskResponse` also carries the tool calls and their results (`ToolUses`, `ToolResults`), token `Usage` and `IsComplete`.
 
 <Callout type="note" title="Start from DefaultClientConfig">
-`DefaultClientConfig()` turns on what you usually want: `onRequest` permissions, up to 100 turns, automatic compaction, session persistence, memory, hooks and monitoring. It picks the model `claude-3-5-sonnet-20241022` from Anthropic, so set `Model` yourself. Change the fields you need and leave the rest.
+`DefaultClientConfig()` turns on what you usually want: `onRequest` permissions, up to 100 turns, automatic compaction, session persistence, memory, hooks and monitoring. It picks the model `claude-sonnet-5-5` from Anthropic, so set `Model` yourself if you want another. Change the fields you need and leave the rest.
 </Callout>
 
 ## A conversation
