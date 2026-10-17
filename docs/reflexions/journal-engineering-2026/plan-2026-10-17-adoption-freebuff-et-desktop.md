@@ -99,10 +99,26 @@ Après les lots précédents. Voir `knowledge_platform_direction` (Knowledge est
 
 | Lot | État |
 |---|---|
-| 1 Sécurité | À faire |
+| 1 Sécurité | En cours : S1, S2, S3 (partiel) et S4 (liens du TUI) codés, voir le détail ci-dessous |
 | 2 Desktop | À faire (D1 prêt à revoir sur `feat/desktop-chat-ux`) |
 | 3 Runtime | À faire |
 | 4 Release desktop | À faire |
 | 5 Knowledge | Après les lots précédents |
 
-Fait : rien encore. Chaque lot s'ouvre par une PR par sujet, vers `dev` (ou `staging` pour seshat-ai), avec les règles de `git-workflow`.
+### Lot 1 : état au 2026-10-17
+
+| Point | État |
+|---|---|
+| S1 clé de chiffrement | Runtime : clé dans le trousseau du système avec migration et repli fichier (seshat-runtime #582, fusionnée). Reste : le backend SeshatOS (`seshat-backend/internal/db/credentials.go`, clé dans `~/.seshat_secret`) à faire passer par `pkg/keychain` après la release du runtime |
+| S2 texte non fiable | Runtime : refus des commandes à caractères cachés (#581, fusionnée), commande révélée et sortie nettoyée dans le TUI. Desktop : carte d'approbation (SeshatOS #113) |
+| S3 honnêteté sandbox | Backend `srt` du runtime (#584), ligne d'état dans le TUI (#585), carte « Command confinement » et `srt` livré dans le desktop (SeshatOS #114), doc du site mise à jour |
+| S4 vérifications | Ouverture de liens du TUI limitée à http(s) (#583). Reste : décodage JSON strict et idempotence pour SeshatCloud (CI bloquée par la facturation, à auditer) |
+
+### À reprendre plus tard : confinement des commandes sous Windows et macOS
+
+- **Décision (2026-10-17)** : pas d'installation automatique de `srt` pour l'instant. Sous Windows c'est l'utilisateur qui lance `npx @anthropic-ai/sandbox-runtime windows-install` pour essayer ; le desktop affiche la commande. Pour une isolation fiable aujourd'hui sous Windows, il faut Docker.
+- **Pourquoi** : le support Windows de `srt` est en alpha. Testé sur Windows 11 Home : le compte `srt-sandbox` est créé mais chaque lancement échoue (`CreateProcessWithLogonW: Access is denied`), cause non établie ; la lecture des filtres réseau demande les droits administrateur. Aucune commande confinée n'a été vue tourner. macOS : non testé (pas de Mac).
+- **Déjà en place pour l'automatiser** : `srt` est livré avec le desktop et lancé avec le Node d'Electron ; l'IPC `sandbox:srt-enable` existe (configuration Windows avec une invite UAC) mais l'interface ne l'offre pas.
+- **À faire** : (1) retester Windows, trouver la cause du refus (droits de connexion locale du compte ? Windows Home ?) ; (2) tester sur un Mac ; (3) quand ça marche partout, proposer l'activation dans le desktop et la lancer d'office sous macOS ; (4) chercher une solution Go existante, sinon écrire la nôtre sur le modèle de Codex (`windows-sandbox-rs`, `sandboxing/src/seatbelt*.sbpl`) ; clones de référence dans `helps/codex` et `helps/sandbox-runtime`.
+
+Chaque lot s'ouvre par une PR par sujet, vers `dev` (ou `staging` pour seshat-ai), avec les règles de `git-workflow`.
