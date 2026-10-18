@@ -111,6 +111,7 @@ See [Integrating in your product](/en/docs/sdk/integration#run-commands-safely) 
 |---|---|---|---|
 | `MCPServers` | `[]MCPServerConfig` | none | MCP servers to connect. See [Skills and MCP](/en/docs/concepts/skills-and-mcp) |
 | `MainAgentTools` | `[]string` | none | When not empty, limits the tools the main agent sees to exactly these names (a host's general-purpose agent with a short, curated list). Sub-agents started through the agent tools are not limited by it. Empty offers every enabled tool |
+| `MainAgentDeferredTools` | `[]string` | none | Tools the main agent does not have loaded but can find with `tool_search` and then use. With `MainAgentTools` it makes three levels: always loaded, found on demand, and not offered. Sub-agents are not affected. Empty keeps every tool as it is |
 | `EnableToolSearch` | `bool` | `false` | Keep deferred tools (MCP tools, for example) out of the first tool list: the model finds them with `tool_search`. The environment variable `ENABLE_TOOL_SEARCH` can also turn it on |
 | `RAGService` | `*RAGService` | none | The knowledge service behind the RAG tools. **Go only** |
 | `DocumentReaderURL` | `string` | none | The address of a document-reader service, used to build the default converter |
