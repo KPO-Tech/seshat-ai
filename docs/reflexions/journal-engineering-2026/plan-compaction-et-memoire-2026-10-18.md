@@ -2,6 +2,8 @@
 
 Objet : fixer ce que Seshat fait pour que la conversation d'un agent tienne dans sa fenêtre **sans rien perdre d'important**, et pour que l'agent **se souvienne** d'une session à l'autre. Le plan s'appuie sur la lecture du code de Codex et d'opencode, sur la recherche publiée (voir les références en fin de document) et sur les mesures faites avec de vrais modèles les 17 et 18 octobre 2026.
 
+**Avancement au 2026-10-18 (soir).** Livrés dans le runtime v1.10.2 : lot A (côté runtime), lot B en entier, lot C, lot E (lecture) et le début du lot F (instantanés avant consolidation, retour en arrière). En cours côté SeshatOS : lot A (affichage de l'historique, PR #127) et lot G (jauge de contexte en direct, PR #128). La documentation du site est à jour. Restent : bouton Compacter, extraction des sessions non fermées, portée par projet, évaluation sur de vraies sessions, banc d'essai v2 pour trancher la PR #607, mise à jour des fournisseurs et des modèles depuis OpenRouter.
+
 Règle du plan : **une amélioration n'est fusionnée que si elle est mesurée.** Plusieurs idées séduisantes de la littérature n'ont pas montré de gain chez nous ; elles restent en brouillon (voir le lot D).
 
 ## 1. Ce qui est vrai aujourd'hui
@@ -13,10 +15,10 @@ Règle du plan : **une amélioration n'est fusionnée que si elle est mesurée.*
 | Compaction manuelle `Session.Compact`, événements `compacting` / `compacted` | Livré | Test réel : 8 249 → 5 016 tokens, faits retrouvés |
 | Outil `get_context_remaining` | Livré | Test réel : le modèle l'appelle et donne un chiffre exact |
 | Mémoire : extraction à la fermeture, consolidation, garde-fous (opt-in) | Livré | Tests réels sur 2 modèles |
-| Rappel de mémoire dans le prompt | PR #604, en attente de CI | Mesuré : sans rappel la réponse est en anglais, avec rappel en français comme la préférence stockée |
-| Compaction sur modèle à raisonnement | Défaillante, corrigée dans la PR #606 | Le résumé revenait vide (budget épuisé par la réflexion) et le coupe-circuit arrêtait la compaction |
-| Taille après compaction | Trop haute, corrigée dans la PR #606 | 84 784 tokens pour une cible de 63 000, puis 71 730 avec le plafond à 5 % de la fenêtre |
-| **Historique après compaction** | **Détruit** | Test : 8 messages avant, 4 entrées stockées après ; le desktop relit ce même transcript |
+| Rappel de mémoire dans le prompt | Livré (v1.10.2) | Mesuré : sans rappel la réponse est en anglais, avec rappel en français comme la préférence stockée |
+| Compaction sur modèle à raisonnement | Corrigée (v1.10.2) | Le résumé revenait vide (budget épuisé par la réflexion) et le coupe-circuit arrêtait la compaction |
+| Taille après compaction | Corrigée (v1.10.2) | 84 784 tokens pour une cible de 63 000, puis 71 730 avec le plafond à 5 % de la fenêtre |
+| **Historique après compaction** | **Archivé au lieu d'être détruit** (v1.10.2) ; affichage dans le desktop : SeshatOS #127 | Test : 8 messages avant, 4 entrées stockées après ; le desktop relit ce même transcript |
 | Résumé itératif, piste de fichiers, masquage des vieux résultats d'outils | Brouillon (PR #607), **aucun gain mesuré** | 14/14 faits retrouvés par l'ancien comme par le nouveau code ; le nouveau résumé est plus gros sur une petite conversation |
 
 ## 2. Principes
