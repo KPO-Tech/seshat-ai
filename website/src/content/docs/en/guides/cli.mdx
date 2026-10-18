@@ -113,9 +113,11 @@ A line that starts with `!` is a shell command, not a message to the agent. Noth
 
 | You type | What happens |
 |---|---|
-| `!pip install rich` | The command runs in the project folder and its output appears in the chat. The agent is told about it with your next message: the output is placed in front of that message (cut to its start and end when long), so you do not copy errors by hand. |
-| `!!cat .env.example` | The same, but the agent is not told. |
+| `!pip install rich` | The command runs in the project folder and its output appears in a **command panel** next to the chat (at the right on a wide screen, under the chat on a narrower one). Scroll it with the mouse wheel. The output is not part of the conversation: it is not stored in the transcript, compacted, read by memory, or paid for in tokens. |
+| `!!cat error.log` | The same, and the output is also given to the agent: it is placed in front of your next message (cut to its start and end when long), so you do not copy errors by hand. |
 | `:!sudo su` | The terminal interface steps aside and gives the real terminal to the command until it ends, then comes back. Use it for anything that asks for input: a password, `ssh`, a shell, an editor. |
+
+To give the agent an output you ran with a single `!`, open the command palette (`\` on an empty prompt) and choose **Command Panel: Share Output With the Agent**. The same palette has entries to show or hide the panel, to move between the last 20 commands and to clear it.
 
 A `!` command has no keyboard input, stops after 5 minutes and keeps the first megabyte of its output. It starts fresh each time, so a `cd` does not carry over to the next command. A password you type after `:!` goes straight to the command: the terminal interface never sees it.
 
