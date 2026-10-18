@@ -107,6 +107,18 @@ seshat sessions prune --older-than 30 --closed
 | `ctrl+g` | More help |
 | `ctrl+c` | Quit |
 
+## Running shell commands from the prompt
+
+A line that starts with `!` is a shell command, not a message to the agent. Nothing is sent to the model when you press Enter.
+
+| You type | What happens |
+|---|---|
+| `!pip install rich` | The command runs in the project folder and its output appears in the chat. The agent is told about it with your next message: the output is placed in front of that message (cut to its start and end when long), so you do not copy errors by hand. |
+| `!!cat .env.example` | The same, but the agent is not told. |
+| `:!sudo su` | The terminal interface steps aside and gives the real terminal to the command until it ends, then comes back. Use it for anything that asks for input: a password, `ssh`, a shell, an editor. |
+
+A `!` command has no keyboard input, stops after 5 minutes and keeps the first megabyte of its output. It starts fresh each time, so a `cd` does not carry over to the next command. A password you type after `:!` goes straight to the command: the terminal interface never sees it.
+
 ## Check your setup
 
 ```bash
