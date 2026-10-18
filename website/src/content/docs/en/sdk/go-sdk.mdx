@@ -94,7 +94,7 @@ Come back to a saved session later with `client.LoadSession(ctx, id)`. `client.L
 | `MaxIterations` | Limit on rounds of model calls per request (100 when left at zero) |
 | `MaxTokens` | The most the model may write in one call (8,192 by default) |
 | `AutoCompact` | Compact the context when it gets full |
-| `CompactSummaryModel` | The model that writes the summaries. By default, the model of the session |
+| `CompactSummaryModel` | The model that writes the summaries. By default a small model of the session's own family is chosen by rules (`CompactModelRules`) |
 | `WorkingDir` | The folder the agent works in. Defaults to the current one |
 | `MCPServers` | MCP servers to connect (see [Skills and MCP](/en/docs/concepts/skills-and-mcp)) |
 | `PersistSessions`, `SessionStorageDir` | Where conversations are kept |
