@@ -122,7 +122,7 @@ seshat memory --action context                         # what would be given to 
 
 In the terminal interface, set `options.memory_enabled` to `true` in `seshat.json` (or use "Toggle Learning From Conversations" in the command palette; it applies from the next start). It turns on extraction and recall. Each start also reads, in the background, the sessions an earlier run left open (the terminal was closed or crashed). `SESHAT_MEMORY_ENABLED` and `SESHAT_MEMORY_CONSOLIDATE` do the same for hosts that read the runtime's environment. In SeshatOS the choice is per user, in Settings, Memories, "Learn from my conversations".
 
-In the terminal interface, type `/memory` to see what memory holds, `/memory forget NAME` to remove one note and `/memory undo` to go back to the copy taken before the last change. The answer is shown to you and is never sent to the agent.
+In the terminal interface, the command palette (`\` on an empty prompt) has **Memory: Show Notes**, **Memory: Forget a Note** (it asks for the note's name) and **Memory: Undo Last Change**, which goes back to the copy taken before the last change. The answer is shown to you and is never sent to the agent.
 
 Three settings of the Go SDK let memory fill and be used without the agent being asked, all **off by default** because they store facts from conversations without an explicit request:
 
