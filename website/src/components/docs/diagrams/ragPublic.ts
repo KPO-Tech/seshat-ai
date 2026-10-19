@@ -119,3 +119,52 @@ export const principeRag: DiagramData = {
     { x: 862, y: 452, text: 'Sans passage suffisant : abstention.', anchor: 'middle' },
   ],
 };
+
+// English versions of the two figures: same geometry, translated texts.
+export const corpusDisperseEn: DiagramData = {
+  ...corpusDisperse,
+  uid: 'rag-dispersion-en',
+  label:
+    'The same document lives in four document systems; on the right, the manual path of an agent looking for the version that applies.',
+  caption:
+    'The same document can live in four systems, with none saying which one is authoritative. On the right, the real path of an agent who has to rebuild the answer by hand.',
+  groups: [
+    { x: 10, y: 20, w: 470, h: 390, label: '1 · The scattered corpus' },
+    { x: 520, y: 20, w: 470, h: 390, label: '2 · The manual path' },
+  ],
+  nodes: [
+    { id: 'proc', x: 145, y: 74, w: 200, h: 88, title: 'The procedure', sub: ['several versions · 4 copies'], icon: 'file-text', kind: 'warn', layout: 'stack' },
+    { id: 'ged', x: 28, y: 260, w: 100, h: 92, title: 'DMS', sub: ['copy'], icon: 'folder', layout: 'stack' },
+    { id: 'intra', x: 137, y: 260, w: 100, h: 92, title: 'Intranet', sub: ['copy'], icon: 'globe', layout: 'stack' },
+    { id: 'part', x: 246, y: 260, w: 100, h: 92, title: 'Shared drive', sub: ['copy'], icon: 'share-network', layout: 'stack' },
+    { id: 'mail', x: 355, y: 260, w: 100, h: 92, title: 'Email', sub: ['copy'], icon: 'envelope', layout: 'stack' },
+
+    { id: 's1', x: 545, y: 72, w: 420, h: 66, title: 'Search one system', icon: 'magnifying-glass' },
+    { id: 's2', x: 545, y: 152, w: 420, h: 66, title: 'Ask a colleague', icon: 'user' },
+    { id: 's3', x: 545, y: 232, w: 420, h: 66, title: 'Open the PDF', icon: 'file-pdf' },
+    { id: 's4', x: 545, y: 312, w: 420, h: 66, title: 'Check the version', sub: ['which one applies?'], icon: 'clock', kind: 'warn' },
+  ],
+  notes: [{ x: 245, y: 395, text: 'No system says which version is authoritative.', anchor: 'middle' }],
+};
+
+export const principeRagEn: DiagramData = {
+  ...principeRag,
+  uid: 'rag-principe-en',
+  label:
+    'An agent question goes to two searches, lexical and semantic, that query the same index. The index leads either to a sourced answer or to an abstention when the documents are not enough.',
+  caption:
+    'The system answers from the passages it found, cites its sources, and abstains when the documents are not enough. Abstaining is a result, not an error.',
+  nodes: [
+    { id: 'agent', x: 10, y: 180, w: 170, h: 100, title: 'The agent', sub: ['a question'], icon: 'user', layout: 'stack' },
+    { id: 'lex', x: 240, y: 80, w: 200, h: 84, title: 'Lexical search', sub: ['exact words'], icon: 'magnifying-glass', layout: 'stack' },
+    { id: 'sem', x: 240, y: 280, w: 200, h: 84, title: 'Semantic search', sub: ['meaning of the question'], icon: 'brain', layout: 'stack' },
+    { id: 'index', x: 500, y: 170, w: 170, h: 120, title: 'Index', sub: ['lexical + vector', 'rights per passage'], icon: 'database', kind: 'core', layout: 'stack' },
+    { id: 'answer', x: 740, y: 70, w: 245, h: 150, title: 'Sourced answer', sub: ['2 references', 'document · section · page'], icon: 'file-text', kind: 'ok', layout: 'stack' },
+    { id: 'abstain', x: 740, y: 280, w: 245, h: 150, title: 'Abstention', sub: ['no sufficient passage', 'corpora searched are listed'], icon: 'prohibit', kind: 'warn', layout: 'stack' },
+  ],
+  notes: [
+    { x: 240, y: 42, text: 'Two complementary searches, one index.' },
+    { x: 740, y: 240, text: 'The passages used are cited.' },
+    { x: 862, y: 452, text: 'No sufficient passage: abstention.', anchor: 'middle' },
+  ],
+};
