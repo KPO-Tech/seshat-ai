@@ -122,23 +122,26 @@ const productMeta = [
     <div class="wrap">
       <h2 class="reveal">{t.proofs.title}</h2>
       <div class="proofs">
-        {t.proofs.items.map((p) => (
-          <article class="proof reveal">
-            <div>
-              <h3>{p.sector}</h3>
-              <p class="who">{p.who}</p>
+        {t.proofs.items.map((p, i) => (
+          <article class="proof reveal" style={`--d:${i * 90}ms`}>
+            <h3>{p.sector}</h3>
+            <div class="proof-logo">
+              {p.logo ? (
+                <img src={p.logo} alt={p.who} width="120" height="30" loading="lazy" decoding="async" />
+              ) : (
+                <span class="proof-wordmark">{p.wordmark}</span>
+              )}
             </div>
-            {p.note ? (
-              <div>
-                <p>{p.text}</p>
-                <p class="note">{p.note}</p>
-              </div>
-            ) : (
-              <p>{p.text}</p>
-            )}
+            <p class="proof-text">{p.text}</p>
+            {p.note && <p class="proof-note">{p.note}</p>}
+            <p class="proof-proves"><strong>{t.proofs.provesLabel}</strong>{p.proves}</p>
+            <a class="link" href={`${url(lang, 'services')}#niveau-${p.level}`}>
+              {t.proofs.levelPrefix} {p.levelName} <Arrow />
+            </a>
           </article>
         ))}
       </div>
+      <p class="proofs-source">{t.proofs.source}</p>
     </div>
   </section>
 

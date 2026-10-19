@@ -10,19 +10,14 @@ tags: ["Agents IA", "sécurité", "Go", "Seshat"]
 ---
 import Callout from '@/components/docs/Callout.astro';
 import Flow from '@/components/docs/Flow.astro';
-import Figure from '@/components/docs/Figure.astro';
+import Diagram from '@/components/docs/Diagram.astro';
+import { auditControlesFr } from '@/components/docs/diagrams/auditRuntime';
 
 Un agent IA lit des fichiers et exécute des commandes. La question « que peut-on lui faire lire ? » compte donc plus que « que peut lui demander un utilisateur ? ». Avant de publier Seshat 1.3.0, nous avons audité notre propre runtime avec cette question en tête. Nous avons trouvé des problèmes qu'un filtre de prompt n'aurait jamais attrapés, parce qu'aucun ne venait du prompt.
 
 Voici ce que nous avons trouvé, comment nous l'avons corrigé, et ce que vous pouvez vérifier dans votre propre agent. Tout ce qui suit figure dans le [changelog de la 1.3.0](https://github.com/KPO-Tech/seshat-runtime/blob/main/CHANGELOG.md) (en anglais), et la plupart des correctifs s'accompagnent d'un test qui reproduit le problème.
 
-<Figure
-  src="/img/blog/running-agents-safely/before-after.webp"
-  alt="Avant et après Seshat 1.3.0. À gauche, des entrées cachées atteignent l'agent : un dépôt cloné, un fichier .env, une page web, le réseau local, un serveur gRPC, un chemin git, l'environnement des outils. À droite, chacune est contenue : configuration du projet ignorée tant qu'elle n'est pas approuvée, .env assaini, adresses locales bloquées, gRPC fermé par défaut, références git vérifiées, secrets retirés des commandes, un scanner qui vérifie vraiment. Les textes de l'image sont en anglais."
-  caption="Avant et après Seshat 1.3.0, en une image (illustration générée par IA, textes en anglais). Les sections ci-dessous donnent les détails."
-  width={1536}
-  height={1024}
-/>
+<Diagram {...auditControlesFr} />
 
 ## Les fichiers que lit un agent sont la surface d'attaque
 
@@ -64,7 +59,7 @@ Ils sont désormais refusés, avant et après la résolution DNS. La leçon, c'e
 
 Le serveur gRPC écoutait sur toutes les interfaces, sans authentification ni TLS. Pire, `ConnectMCP` prenait un `command`, des `args` et un `env` et lançait ce processus sur l'hôte, puis l'enregistrait pour qu'il revienne au démarrage suivant. Quiconque pouvait atteindre le port pouvait exécuter des commandes avec les droits de l'utilisateur du serveur et dépenser ses clés de providers.
 
-Il est fermé par défaut maintenant : il écoute sur `127.0.0.1` ; sur toute autre adresse, il refuse de démarrer sans jeton (ou sans dérogation explicite) ; avec un jeton, chaque appel sauf `HealthCheck` exige `authorization: Bearer <token>` ; TLS est disponible ; et `ConnectMCP` refuse les serveurs stdio sauf autorisation. C'est un changement **cassant** pour un déploiement qui atteignait le serveur depuis une autre machine, et les notes de version le disent.
+Il est désormais fermé par défaut : il écoute sur `127.0.0.1` ; sur toute autre adresse, il refuse de démarrer sans jeton (ou sans dérogation explicite) ; avec un jeton, chaque appel sauf `HealthCheck` exige `authorization: Bearer <token>` ; TLS est disponible ; et `ConnectMCP` refuse les serveurs stdio sauf autorisation. C'est un changement **cassant** pour un déploiement qui atteignait le serveur depuis une autre machine, et les notes de version le disent.
 
 ## Un chemin qui lisait n'importe quel fichier
 

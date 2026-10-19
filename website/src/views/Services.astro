@@ -150,7 +150,24 @@ const pilotMeta = [
           if (e.key === 'ArrowLeft') { e.preventDefault(); select(Math.max(i - 1, 0), true); }
         });
       });
-      select(0);
+      // Un lien comme /services#niveau-3 ouvre directement le niveau visé
+      // (les preuves de l'accueil s'en servent), au lieu de retomber sur le diagnostic.
+      function fromHash() {
+        var m = /^#niveau-([0-9]+)$/.exec(location.hash || '');
+        if (!m) return -1;
+        var i = Math.min(Math.max(parseInt(m[1], 10) - 1, 0), tabs.length - 1);
+        return isNaN(i) ? -1 : i;
+      }
+      var initial = fromHash();
+      select(initial < 0 ? 0 : initial);
+      if (initial >= 0) {
+        var block = q.closest('.quest-block');
+        if (block) block.scrollIntoView({ block: 'start' });
+      }
+      addEventListener('hashchange', function () {
+        var i = fromHash();
+        if (i >= 0) select(i);
+      });
     })();
   </script>
   <script is:inline>
