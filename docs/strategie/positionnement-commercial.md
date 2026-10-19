@@ -108,15 +108,16 @@ Cibles secondaires : ETI avec une direction métier qui porte un sujet précis ;
 
 ### Les secteurs sont des preuves, pas des cibles
 
-Le site montre trois domaines où le fondateur a déjà travaillé, pour que le visiteur se dise « il a déjà vu un problème proche du mien » :
+Le site montre deux travaux du fondateur, pour que le visiteur se dise « il a déjà vu un problème proche du mien ». Chacun est rattaché au niveau de l'offre qu'il démontre, avec sa phrase « ce que ça prouve » :
 
-| Domaine | Preuve | Ce que ça démontre |
-|---|---|---|
-| Assurance | Allianz France : migration SAS vers PySpark (plus de 15 000 lignes), Azure Databricks, plus de 150 règles métier, tests de non-régression | Rigueur sur la donnée et les règles métier |
-| Construction | Groupe Sylvagreg : R&D computer vision, reconstruction 3D | Capacité à travailler sur un métier physique, avec des images et des plans |
-| Agriculture et commerce | Lyne et Frères : analyses, tableaux de bord, outils IA internes open source, accompagnement des équipes | Déploiement réel auprès d'utilisateurs non techniques |
+| Domaine | Preuve | Ce que ça démontre | Niveau |
+|---|---|---|---|
+| Assurance | Allianz France : migration SAS vers PySpark (plus de 15 000 lignes), Azure Databricks, plus de 150 règles métier, tests de non-régression | Rigueur sur la donnée et les règles métier | Exploitation |
+| Agriculture et commerce | Lyne et Frères : analyses, tableaux de bord, outils IA internes open source, accompagnement des équipes | Déploiement réel auprès d'utilisateurs non techniques | Pilote |
 
-Lyne et Frères est l'entreprise familiale du fondateur : à présenter honnêtement comme un premier déploiement en conditions réelles, sans le faire passer pour une référence client indépendante.
+Lyne et Frères est l'entreprise familiale du fondateur : à présenter honnêtement comme un premier déploiement en conditions réelles, sans le faire passer pour une référence client indépendante. Une phrase sous les preuves rappelle que ces travaux ont été menés hors missions Seshat.
+
+Le troisième terrain, Groupe Sylvagreg (R&D computer vision, reconstruction 3D), reste sur la page À propos mais ne figure pas dans les preuves de l'accueil : il illustre un métier physique, pas un niveau de l'offre.
 
 ### Marché : France d'abord, sans exclure l'international
 

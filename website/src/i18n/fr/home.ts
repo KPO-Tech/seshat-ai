@@ -1,3 +1,17 @@
+// Un travail de terrain, rattaché au niveau de service qu'il démontre (1 diagnostic,
+// 2 pilote, 3 exploitation) : c'est ce lien qui fait d'un ancien poste une preuve utile.
+export interface ProofItem {
+  sector: string;
+  who: string;
+  logo?: string;
+  wordmark?: string;
+  level: 1 | 2 | 3;
+  levelName: string;
+  text: string;
+  proves: string;
+  note?: string;
+}
+
 export default {
   meta: {
     title: "Conseil en IA souveraine pour PME et ETI | Seshat AI",
@@ -47,11 +61,30 @@ export default {
   },
   proofs: {
     title: 'Déjà vu sur le terrain.',
+    provesLabel: 'Ce que ça prouve',
+    levelPrefix: 'Voir le niveau',
+    source: "Ces deux travaux ont été menés par le fondateur en dehors de Seshat : chez Allianz France comme salarié, et chez Lyne et Frères, l'entreprise familiale. Ce ne sont pas des missions Seshat, et nous ne les présentons pas comme telles.",
     items: [
-      { sector: 'Assurance', who: 'Allianz France', text: "Migration d'un datamart de SAS vers Python et PySpark (plus de 15 000 lignes), architecture Médaillon sur Azure Databricks, plus de 150 règles métier et tests de non-régression." },
-      { sector: 'Construction', who: 'Groupe Sylvagreg', text: "Recherche et développement en vision par ordinateur pour la reconstruction 3D, à partir d'images et de plans." },
-      { sector: 'Agriculture et commerce', who: 'Lyne et Frères', text: "Analyses, tableaux de bord et outils d'IA internes open source, déployés auprès d'équipes non techniques, avec accompagnement.", note: 'Entreprise familiale du fondateur : un premier déploiement en conditions réelles.' },
-    ],
+      {
+        sector: 'Assurance',
+        who: 'Allianz France',
+        logo: '/img/clients/allianz.svg',
+        level: 3,
+        levelName: 'Exploitation',
+        text: "Un datamart assurance déjà en production, migré de SAS vers Python et PySpark : plus de 15 000 lignes reprises, architecture Médaillon sur Azure Databricks, plus de 150 règles métier. Contrôles de qualité et tests de non-régression à chaque livraison.",
+        proves: "Reprendre un système qui tourne, le faire évoluer sans le casser, et le prouver par des tests. C'est l'exigence que nous mettons dans l'exploitation.",
+      },
+      {
+        sector: 'Agriculture et commerce',
+        who: 'Lyne et Frères',
+        wordmark: 'Lyne et Frères',
+        level: 2,
+        levelName: 'Pilote',
+        text: "Outils d'IA internes auto-hébergés (OpenWebUI, modèles ouverts) installés dans une entreprise de commerce : analyses de ventes, de livraisons et de commandes, tableaux de bord, et accompagnement des équipes à la prise en main.",
+        proves: "Un usage réel, entre les mains de personnes qui ne sont pas techniques, avec quelqu'un pour répondre quand ça coince. C'est à quoi sert un pilote.",
+        note: 'Entreprise familiale du fondateur.',
+      },
+    ] as ProofItem[],
   },
   products: {
     title: "Ce que nous déployons, vous pouvez l'inspecter.",

@@ -24,5 +24,5 @@ export const legal = {
   },
   registrar: 'Cloudflare, Inc.',
   site: 'seshat-ai.com',
-  updated: '7 octobre 2026',
+  updated: '19 octobre 2026',
 };
