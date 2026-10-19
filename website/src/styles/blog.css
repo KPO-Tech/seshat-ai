@@ -46,14 +46,9 @@
 /* Le texte, les titres et les figures s'alignent sur l'image de couverture :
    toute la colonne, du même bord gauche au même bord droit. */
 .post-body .prose > .dg, .post-body .prose > .pm { width: 100%; max-width: none; left: auto; transform: none; margin-left: 0; margin-right: 0; }
-/* Justifié sur grand écran : le bord droit reste net, la césure évite les lézardes.
-   Sur mobile la mesure est trop courte, une justification y creuserait des trous. */
-.post-body .prose :is(p, li, blockquote) { hyphens: auto; }
-@media (min-width: 700px) {
-  .post-body .prose :is(p, li, blockquote) { text-align: justify; text-justify: inter-word; }
-}
-/* Ni les titres ni les légendes ne sont justifiés : une ligne courte s'y découpe mal. */
-.post-body .prose :is(h1, h2, h3, h4, figcaption, .callout-title) { text-align: left; hyphens: manual; }
+/* Aligné à gauche, sans césure automatique : sur un long article, un texte justifié fatigue (espaces inégaux, mots coupés)
+   alors que le bord droit irrégulier se lit sans effort. */
+.post-body .prose :is(p, li, blockquote, h1, h2, h3, h4, figcaption, .callout-title) { text-align: left; hyphens: manual; }
 /* Le parcours en icônes passe en liste verticale quand la colonne est étroite :
    à cinq colonnes sur un téléphone, les légendes se chevauchent. */
 @media (max-width: 560px) {
