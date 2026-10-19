@@ -58,14 +58,13 @@ The runtime folder holds the configuration file, the local SQLite database with 
 | Codex | `codex` | OAuth | `seshat login`, or `CODEX_API_KEY` or `CODEX_ACCESS_TOKEN` |
 | Z.ai | `z-ai` | API key | `Z_AI_API_KEY` or `ZHIPUAI_API_KEY` |
 | MiniMax | `minimax` | API key | `MINIMAX_API_KEY` |
-| AWS Bedrock | `bedrock` | AWS credentials | `AWS_ACCESS_KEY_ID`, `AWS_REGION` (default `us-east-1`) |
-| Google Cloud Vertex AI | `vertex` | Google Cloud | `ANTHROPIC_VERTEX_PROJECT_ID`, `CLOUD_ML_REGION` (default `us-east5`) |
-| Azure AI Foundry | `foundry` | API key | `ANTHROPIC_FOUNDRY_API_KEY`, and `ANTHROPIC_FOUNDRY_BASE_URL` or `ANTHROPIC_FOUNDRY_RESOURCE` |
-| Cloudflare Workers AI | `workers-ai` | API key | `CLOUDFLARE_API_KEY` and `CLOUDFLARE_ACCOUNT_ID` |
+| Cloudflare Workers AI | `cloudflare-workers-ai` | API key | `CLOUDFLARE_API_KEY` and `CLOUDFLARE_ACCOUNT_ID` |
 | OpenCode Zen | `opencode` | API key | `OPENCODE_API_KEY` |
 | Kimi (Moonshot AI) | `kimi` | API key | `MOONSHOT_API_KEY` or `KIMI_API_KEY` |
 
 The models each provider offers, with their context sizes and capabilities, are in [Providers and models](/en/docs/reference/models).
+
+About 190 more providers work without any setting of their own: name one in a model string (`groq:...`, `together:...`, `fireworks-ai:...`), set the key variable it uses, and Seshat calls it with the generic OpenAI-compatible client. They come from the public models.dev catalog; see [Providers and authentication](/en/docs/sdk/providers-and-auth#more-providers-from-the-modelsdev-catalog).
 
 ## Optional tools
 
