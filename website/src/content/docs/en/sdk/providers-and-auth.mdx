@@ -76,7 +76,7 @@ client, err := sdk.NewClient(&sdk.ClientConfig{
 `sdk.CatalogProviders()` lists them with their key variables. Three things to know:
 
 - **The catalog never decides where a key goes.** The base URL and key variable of a provider come from the catalog embedded in the program. A catalog you download adds models, and adds providers marked `Unverified`: such a provider gets no configuration of its own, so show its URL to the user and build the `ProviderConfig` with the URL they confirmed.
-- **Our own list wins.** For the built-in providers the catalog only fills in the models our list does not have; an output limit equal to the context window is treated as unknown.
+- **The built-in providers follow the catalog too.** For Anthropic, OpenAI, Gemini, Mistral, Z.ai and the other built-in providers, the models we describe by hand come first and last (they are the default large and small models), the catalog's newest models are listed between them, and a model we describe by hand is never replaced by the catalog's data. Updating the lists is rebuilding the embedded snapshot, not editing code. An output limit equal to the context window is treated as unknown.
 - **Refreshing is your choice.** `ClientConfig.CatalogCacheDir` reads a catalog downloaded earlier. `ClientConfig.RefreshCatalog` (or `sdk.RefreshCatalog(ctx, dir)` by hand) downloads the public one, at most once a day. It is off by default and sends nothing about the user.
 
 ## Your own endpoint
