@@ -52,6 +52,7 @@ const en: typeof fr = {
     title: 'Seen in the field.',
     provesLabel: 'What it proves',
     levelPrefix: 'See level',
+    sourceLabel: 'Note',
     source: 'Both projects were carried out by the founder outside Seshat: at Allianz France as an employee, and at Lyne et Frères, the family business. They are not Seshat engagements, and we do not present them as such.',
     items: [
       {

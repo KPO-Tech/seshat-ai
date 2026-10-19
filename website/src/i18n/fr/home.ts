@@ -63,6 +63,7 @@ export default {
     title: 'Déjà vu sur le terrain.',
     provesLabel: 'Ce que ça prouve',
     levelPrefix: 'Voir le niveau',
+    sourceLabel: 'À savoir',
     source: "Ces deux travaux ont été menés par le fondateur en dehors de Seshat : chez Allianz France comme salarié, et chez Lyne et Frères, l'entreprise familiale. Ce ne sont pas des missions Seshat, et nous ne les présentons pas comme telles.",
     items: [
       {
