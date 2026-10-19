@@ -87,6 +87,14 @@ seshat sessions prune --older-than 30 --closed
 `bypass` and the yolo toggle (`ctrl+y`) remove the questions. Use them only in a project you trust and, if possible, in a disposable environment.
 </Callout>
 
+## Providers and models in the interface
+
+Open the providers with `ctrl+p`, then Providers, then LLM. The list starts with the providers built into Seshat, the ones you have configured marked as such. The last entry, "More providers…", opens the rest of the [models.dev](https://models.dev) catalog, about 190 providers, with the ones you have configured first. Most of them have not been tried yet, so expect to meet a few rough edges. You do not have to open that list to find one: type in the search box and every provider is searched, the main ones and the others.
+
+Choosing a provider asks for what it needs. Most take an API key. **Codex** is a ChatGPT account and has no key: the dialog shows an address and a code, opens your browser by itself, and waits while you enter the code there. The token is kept with its refresh token, and the next start renews it if it has expired. GitHub Copilot signs in with a code in the same way.
+
+The model picker (`ctrl+l`) lists the models of the providers you have configured, so the list stays short. Until a provider is configured it offers the main providers, so you can set one up.
+
 ## Shortcuts in the terminal interface
 
 | Shortcut | Action |
@@ -95,8 +103,8 @@ seshat sessions prune --older-than 30 --closed
 | `\` at the start of the prompt | The palette commands, listed over the prompt: type a few letters to filter, Enter to run. The last entry, "All Commands…", opens the full dialog |
 | `/` | The skills, listed over the prompt (after a space, or at the start) |
 | `@` | Files and MCP resources to attach (after a space, or at the start) |
-| `ctrl+m` or `ctrl+l` | Models (on terminals that cannot tell `ctrl+m` from Enter, use `ctrl+l`) |
-| `ctrl+,` | Providers |
+| `ctrl+m` or `ctrl+l` | Models of the providers you have configured (on terminals that cannot tell `ctrl+m` from Enter, use `ctrl+l`) |
+| `ctrl+,` | Providers: the main ones, then "More providers…" for the rest of the catalog |
 | `ctrl+s` | Sessions |
 | `ctrl+n` | New session |
 | `ctrl+t` | Show or hide tasks |

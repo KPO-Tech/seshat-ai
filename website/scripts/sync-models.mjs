@@ -30,7 +30,9 @@ const sections = modelsPart.split(/\n### /).slice(1).map((s) => {
   const [title, ...rest] = s.split('\n');
   const table = rest.join('\n');
   const body = rows(table).map(([id, ctx, out, cache]) => `| ${id} | ${ctx} | ${out} | ${cache} |`);
-  return `### ${title.replace(/ — .*$/, '')}\n\n| Model ID | Context | Max output | Prompt cache |\n|---|---|:---:|:---:|\n${body.join('\n')}\n`;
+  // The generator adds one sentence when it shows only a provider's default models; keep it.
+  const note = rest.find((l) => l.startsWith('Default large and small model shown.'));
+  return `### ${title.replace(/ — .*$/, '')}\n\n| Model ID | Context | Max output | Prompt cache |\n|---|---|:---:|:---:|\n${body.join('\n')}\n${note ? `\n${note}\n` : ''}`;
 });
 
 const today = new Date().toISOString().slice(0, 10);
@@ -48,7 +50,7 @@ import Callout from '@/components/docs/Callout.astro';
 This page is generated from the provider registry of the runtime. How to set keys and endpoints is in [Configuration](/en/docs/getting-started/configuration), and the code side in [Providers and authentication](/en/docs/sdk/providers-and-auth).
 
 <Callout type="note" title="Models change often">
-Providers retire and add models all the time. The list below is what the runtime ships with. You can use any model name your provider accepts, and \`ollama\` models are whatever you have pulled locally.
+Providers retire and add models all the time, so the runtime does not keep its own lists: the models of each provider come from the public models.dev catalog embedded in the program, and the page below shows each provider's default large and small model. You can use any model name your provider accepts, and \`ollama\` models are whatever you have pulled locally.
 </Callout>
 
 ## Providers
