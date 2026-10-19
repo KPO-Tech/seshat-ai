@@ -85,6 +85,8 @@ See [One runtime, one loop](/en/docs/concepts/mono-run) for what each limit does
 | `EnableMemory` | `bool` | `true`, from `DefaultClientConfig()` | Long-term notes across sessions |
 | `MemoryFailFast` | `bool` | `false` | If the memory service cannot start, fail instead of going on without memory (a line is logged) |
 | `LongTermMemory` | `LongTermMemory` | none | Your own long-term memory. **Go only** |
+| `CatalogCacheDir` | `string` | none | Where the models.dev catalog downloaded earlier is read from, so the providers and models it added are known. Reading it never uses the network. See [Providers and authentication](/en/docs/sdk/providers-and-auth) |
+| `RefreshCatalog` | `bool` | `false` | Download the public models.dev catalog into `CatalogCacheDir` in the background when the cache is older than a day. The one call to the network the catalog makes. Needs `CatalogCacheDir` |
 | `ExtractMemories` | `bool` | `false` | When a session closes, read the conversation and store what a future assistant needs (preferences, procedures that worked, pitfalls). Needs `LongTermMemory`. Off by default: it stores facts from conversations without being asked |
 | `MemoryExtractionModel` | `ModelIdentifier` | the session model | The model that reads the conversation for `ExtractMemories` |
 | `RecallMemories` | `bool` | `false` | Put what memory knows about the user in the system prompt of each new session (about 1,500 tokens at most). Needs a `LongTermMemory` that can list entities, such as the SQLite one |

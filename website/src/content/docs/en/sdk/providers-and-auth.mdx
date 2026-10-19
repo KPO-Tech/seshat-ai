@@ -60,6 +60,25 @@ cfg.CredentialResolver = sdk.NewStoredCredentialResolver(sdk.StoredCredentialRes
 })
 ```
 
+## More providers, from the models.dev catalog
+
+Beyond the providers Seshat has built in, about 190 more speak the OpenAI chat completions protocol, and Seshat calls them with one generic client: siliconflow, together, nvidia, huggingface, fireworks and many gateways. Their list, their base URLs, the environment variable of each key and the context window, image support and price of each model come from the public [models.dev](https://models.dev) catalog, embedded in the program so nothing needs the network.
+
+Name one in a model string, set the variable it names, and you are done:
+
+```go
+client, err := sdk.NewClient(&sdk.ClientConfig{
+    Model: sdk.ModelIdentifier{Provider: "siliconflow", Model: "some-model"},
+    APIKey: os.Getenv("SILICONFLOW_API_KEY"),
+})
+```
+
+`sdk.CatalogProviders()` lists them with their key variables. Three things to know:
+
+- **The catalog never decides where a key goes.** The base URL and key variable of a provider come from the catalog embedded in the program. A catalog you download adds models, and adds providers marked `Unverified`: such a provider gets no configuration of its own, so show its URL to the user and build the `ProviderConfig` with the URL they confirmed.
+- **Our own list wins.** For the built-in providers the catalog only fills in the models our list does not have; an output limit equal to the context window is treated as unknown.
+- **Refreshing is your choice.** `ClientConfig.CatalogCacheDir` reads a catalog downloaded earlier. `ClientConfig.RefreshCatalog` (or `sdk.RefreshCatalog(ctx, dir)` by hand) downloads the public one, at most once a day. It is off by default and sends nothing about the user.
+
 ## Your own endpoint
 
 Use `ProviderConfig` to point a provider at another base URL, add headers, or map model aliases. This is how you reach a gateway, a self-hosted server or an OpenAI-compatible service.
