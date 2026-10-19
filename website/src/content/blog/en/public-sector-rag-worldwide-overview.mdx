@@ -1,0 +1,444 @@
+---
+title: "How RAG is changing access to knowledge in governments around the world"
+seoTitle: "RAG in public administrations around the world"
+description: "23 public RAG systems, twelve countries: what works, what stopped, and the four pieces of evidence almost nobody publishes."
+date: "2026-10-19"
+category: public
+translationOf: rag-secteur-public-panorama-mondial
+draft: false
+cover: /img/blog/rag-secteur-public/cover.jpg
+tags: ["RAG", "public sector", "document AI", "international", "evaluation"]
+---
+
+import Diagram from '@/components/docs/Diagram.astro';
+import ProofMatrix from '@/components/ProofMatrix.astro';
+import ModelGrid from '@/components/ModelGrid.astro';
+import { corpusDisperseEn, principeRagEn } from '@/components/docs/diagrams/ragPublic';
+
+**An agent has to answer a simple question: which procedure applies today to this case? The
+answer exists. It is probably in a PDF, perhaps in two, most likely in a version that is no longer
+in force. The problem is not that the administration lacks information. It is that it has too much
+of it, spread across too many places, and nobody can say which one is authoritative.**
+
+*First article of a series of five. This one draws the panorama and states the thesis; the four
+that follow open the hood.*
+
+## 1. A worldwide problem, not a model problem
+
+Document dispersion is not a French peculiarity. In France, according to a 2017 survey by the
+Cour des comptes (the national audit court), only 16% of the State's archives are kept at the
+Archives nationales; more than 60% are kept in the departmental archives <sup class="cite"><a href="#src-1">1</a></sup>. The Archives
+nationales hold 395 linear kilometres, 135 terabytes and 14.9 million digitised documents available
+online <sup class="cite"><a href="#src-2">2</a></sup>. These are not saturation figures: they are distribution figures. The document that
+answers the question exists, but you have to know in which silo, in which version and under which
+authority to look for it.
+
+<Diagram {...corpusDisperseEn} />
+
+Elsewhere, the same structure appears in other forms. At KIRA, in Germany, analysing an IT project
+contract means cross-checking pieces spread over several documents <sup class="cite"><a href="#src-3">3</a></sup>. At Digdir, in Norway, the tool
+meant to extract measures from strategic documents first runs into the heterogeneity of formats
+<sup class="cite"><a href="#src-4">4</a></sup>. In Brazil, the public guide to RAG places revoked norms among the first risks: a document still
+in the base may have lost all legal value <sup class="cite"><a href="#src-5">5</a></sup>. Three countries, three trades, one finding: the
+corpus is the problem, long before the model.
+
+How much does this searching cost? Nobody measures it. JuriScope, an investigative project of the
+French Ministry of Foreign Affairs, mentions 40 to 60% of the time of some projects spent on
+document research, with no protocol that would turn it into a general figure <sup class="cite"><a href="#src-6">6</a></sup>. The Cour des
+comptes, for its part, establishes that existing mechanisms allow neither a firm commitment on the
+productivity gains of digital projects nor a reliable measurement of them <sup class="cite"><a href="#src-7">7</a></sup>. This is an
+important precision: the cost of the problem is documented qualitatively, not quantitatively.
+Anyone who puts forward a percentage of lost time must say where it comes from.
+
+> **What this article does not claim**
+>
+> It does not promise a demonstrated average gain: none is published. It does not promise
+> automatic compliance: a RAG does not check that a norm is applicable. It does not promise
+> sovereignty through hosting alone: an "on-premise" system can be less traceable than a cloud
+> under contract. It does not promise infallibility: the systems that work are bounded. It gives
+> no unit cost: no public case publishes one.
+
+**A note on method.** The corpus of this article holds **23 RAG systems or projects** spread over
+twelve countries, plus three European institutions (four projects). A source enters only if it
+explicitly names RAG, or unambiguously describes the "document retrieval → generation" cycle.
+Borderline cases (the *Pair* chatbot in Singapore, *Jüri* in Estonia, *Hankintavälkky* in
+Finland) are cited as counter-examples, never counted as RAG. All pages were consulted on 19
+October 2026; the statuses are those of the sources, not a field update.
+
+
+
+## 2. Four things not to confuse
+
+The word "chatbot" now covers four different things, and the confusion is the first source of
+error in public projects.
+
+| Object | What it does | Example | What it does not do |
+|---|---|---|---|
+| **Information chatbot** | answers from public content or a decision tree | Ask Laura, El Paso, retired <sup class="cite"><a href="#src-8">8</a></sup> | does not cite a business corpus, does not abstain |
+| **General-purpose assistant** | writes, summarises, free conversation | Pair, Singapore <sup class="cite"><a href="#src-9">9</a></sup>; L'Assistant, France <sup class="cite"><a href="#src-10">10</a></sup> | does not guarantee grounding in documents |
+| **Semantic search** | finds passages close to a question | Jüri, Estonia, according to a secondary source <sup class="cite"><a href="#src-11">11</a></sup> | does not generate a written answer |
+| **Document RAG** | searches passages, gives them to the model, cites the sources | Assist <sup class="cite"><a href="#src-12">12</a></sup>, China Maritime <sup class="cite"><a href="#src-13">13</a></sup>, KIRA <sup class="cite"><a href="#src-3">3</a></sup> | does not make the model infallible |
+
+The most economical demonstration comes from Singapore. GovTech runs two products that everyone
+calls "AI chatbots": **AIBots** and **Pair**. AIBots is described as a retrieval-augmented
+generation system, on internal documents that can go up to the *Restricted / Sensitive* level
+<sup class="cite"><a href="#src-14">14</a></sup>. Pair is a generative assistant, with no document retrieval described <sup class="cite"><a href="#src-9">9</a></sup>. Both are useful; only
+one is a RAG. The difference is not cosmetic: it determines what you can demand of the system on
+citation, permissions and abstention.
+
+In Finland, *Hankintavälkky* illustrates another boundary. The assistant of the public
+procurement portal is indeed in service, with about 700 conversations a month at the end of 2024
+and favourable feedback <sup class="cite"><a href="#src-15">15</a></sup>. But no source describes its architecture as a RAG. Calling it "RAG" would
+be a convenience of language, not a fact. The same caution applies to *Jüri*: the figure of 83%
+of routine questions handled comes from a secondary source <sup class="cite"><a href="#src-11">11</a></sup>.
+
+This clarification is not an exercise in vocabulary. A chatbot that does not cite cannot be
+audited. A general-purpose assistant that does not abstain cannot be deployed on sensitive
+procedures. A RAG that does not filter rights is not a document tool: it is a leak waiting to
+happen. The requirements are not the same, and neither is the budget.
+
+## 3. Three models of organisation
+
+The panorama is not read as a maturity ladder, from the most advanced country to the least
+advanced. It is read according to three ways of organising the service. One country can practise
+all three.
+
+<ModelGrid lang="en" />
+
+**The shared platform.** A central operator provides the tooling, agencies bring their documents.
+AIBots, in Singapore, claims 40,000 users, 115 agencies, 12,000 bots and more than a million
+messages over the period August 2024 – February 2025 <sup class="cite"><a href="#src-14">14</a></sup>. North Carolina offers an information widget to
+State agencies, hosted and maintained by NCDIT <sup class="cite"><a href="#src-16">16</a></sup>. In France, Albert API exposes generation,
+RAG, vectorisation, reranking and OCR, with more than 70 public projects and more than 100,000
+requests per week. These figures are the operator's, not audited <sup class="cite"><a href="#src-17">17</a></sup>.
+
+**The business product.** One team, one corpus, one trade. Assist, in the United Kingdom, helps
+public communicators write and review, over five explicitly maintained reference documents <sup class="cite"><a href="#src-12">12</a></sup>.
+China Maritime answers regulatory questions for seafarers and companies, on a base of 5,488
+question-answer pairs <sup class="cite"><a href="#src-13">13</a></sup>. Seoul Data Hub queries municipal public data in natural language
+<sup class="cite"><a href="#src-18">18</a></sup>. KIRA analyses contracts of large IT projects, locally, on behalf of the ASDN <sup class="cite"><a href="#src-3">3</a></sup>.
+
+**The guide and the capabilities.** A document, not a system. GOV.UK AI Insights publishes two
+guides on RAG, one of them on agentic RAG <sup class="cite"><a href="#src-19">19</a>, <a href="#src-20">20</a></sup>. Brazil publishes an introductory guide to RAG in
+the public sector, which deals with revoked norms <sup class="cite"><a href="#src-5">5</a></sup>. Rwanda designed a Policy Navigator that won an
+award at the AI for Good 2026 summit, with no established entry into service <sup class="cite"><a href="#src-21">21</a></sup>.
+
+Each model solves one problem and leaves another untouched. The platform solves availability, not
+the quality of the corpora poured into it. The business product solves precision on a narrow
+perimeter, not reuse by other services. The guide solves the spread of practice, not execution.
+This is why a country can have, at the same time, a national platform, a business product that
+works and a guide: these are not three stages, they are three answers to three different
+constraints.
+
+The trap, when writing a panorama, is to rank countries. France has a platform (Albert API) and
+business experiments (Loiret, RAGaRenn) <sup class="cite"><a href="#src-17">17</a>, <a href="#src-22">22</a></sup>. The United Kingdom has a guide (GOV.UK) and a product
+(Assist). Singapore has a platform (AIBots) and a general-purpose assistant (Pair), which is not a
+RAG. A table by country would give a false impression of progress; a table by model gives a
+decision grid.
+
+## 4. What services in production show
+
+Six cases let us see what a public service in production actually publishes, and what it does
+not.
+
+**AIBots (Singapore).** The system is in production at government scale, on the government
+network, with classified documents. What it publishes: adoption volumes. What it does not publish:
+any measure of quality. We do not know what rate of correct answers it reaches, nor how permissions
+go down to the passages <sup class="cite"><a href="#src-14">14</a></sup>. This is the paradox of the most cited case in the corpus: its success is
+organisational, not technically documented.
+
+**Assist (United Kingdom).** This is the most complete case. The algorithmic transparency record
+describes a RAG combined with the GOV.UK Search API, with citations, over five reference
+documents <sup class="cite"><a href="#src-12">12</a></sup>. The service claims about three hours saved per week and 98% declared usefulness among
+8,500 civil servants in July 2026. The method is not published. Hosting relies on AWS Bedrock,
+with an "escrow" account that prevents the provider from accessing the data <sup class="cite"><a href="#src-12">12</a></sup>. It is better
+documented than average, and it is still not an evaluation: no question set, no recall, no exact
+citation rate.
+
+**China Maritime.** The Ministry of Transport publishes a rare figure: more than 90% announced
+accuracy, over 3,570 answers, since 25 June 2025 <sup class="cite"><a href="#src-13">13</a></sup>. The protocol is not published, the sample is not
+described, the abstention rate is absent. The system provides for double checking and a handover
+to a human. It is a real business service, with a figure, but a figure that allows no comparison.
+
+**Seoul Data Hub.** 67,300 consultations, 13,800 users, about 80% satisfaction, according to a
+city press release of February 2025 <sup class="cite"><a href="#src-18">18</a></sup>. The survey method is not published. Satisfaction measures the
+experience, not accuracy. A user can be satisfied with a wrong answer if it is fluent.
+
+**Ask the EP Archives.** The European Parliament makes more than 100,000 historical documents,
+from 1952 to 1994, searchable, with machine translation into 55 languages <sup class="cite"><a href="#src-23">23</a></sup>. No metric is
+published. It is a remarkable case for its language coverage and the age of the corpus; it says
+nothing about the quality of the answers.
+
+**ECBot (ECB).** The public chatbot combines predefined answers and a RAG layer for open
+questions; it displays three main sources, and the IBM Watson Discovery infrastructure is located
+in Germany and Romania <sup class="cite"><a href="#src-24">24</a></sup>. It is an example of a "second layer" RAG: the RAG is not the product, it
+catches the questions the decision tree does not cover.
+
+To which a useful counter-example is added: the American GSA declares a *Leasing Desk Guide Bot*
+deployed, a *Pricing Policy Chatbot* in pilot and *LaborMatch IQ* in pre-deployment (three
+statuses for three cases, none of which publishes a measured benefit) <sup class="cite"><a href="#src-25">25</a></sup>. The analytical mirror of
+the federal inventory fills in none of the eight governance questions it tracks <sup class="cite"><a href="#src-26">26</a></sup>.
+
+The American inventories illustrate the gap at federal scale. The GAO measures spectacular adoption
+(32 use cases recorded in 2023, 282 in 2024) and, in the same report, the obstacles: technical and
+budget resources, updating usage rules, privacy <sup class="cite"><a href="#src-27">27</a></sup>. NARA documents a natural-language search in
+production and an automatic labelling of about two million documents, with no RAG architecture
+described and no impact metric <sup class="cite"><a href="#src-28">28</a></sup>. The Department of Labor declares two tools deployed without
+publishing a single figure <sup class="cite"><a href="#src-29">29</a></sup>. **An inventory says that a system exists; it does not say that it works.**
+
+The common thread of all these cases fits in one sentence: **usage is proven, quality is not.** We
+know how many people use them, how many questions are asked, how many documents are indexed. We
+almost never know whether the answer is right, complete and applicable.
+
+## 5. What the pilots admit
+
+Pilots are more instructive than successes, because they say where the project stops.
+
+**Minnesota.** The nebulaONE platform was meant to let State agencies prototype chatbots and RAGs
+on data of *Low* and *Moderate* level. The project cost the TMF fund $64,000 and was **closed** on
+11 March 2025, with no result published <sup class="cite"><a href="#src-30">30</a></sup>. This is not a documented failure: it is a stop without a
+review. The difference matters to anyone looking for lessons learned.
+
+**KIRA (Germany).** The prototype was presented in March 2025, with an MVP planned for the end of
+August and daily use envisaged in the fourth quarter of 2025. No confirmation followed <sup class="cite"><a href="#src-3">3</a></sup>. The case
+is nonetheless interesting: it is *on-premise*, on sensitive contracts, with citations. It shows
+that the confidentiality constraint can be handled, not that it has been at scale.
+
+**Rwanda.** RISA's Policy Navigator received an international distinction in 2026, for an
+announced perimeter of 50 agents and 24 institutions. Entry into service is not established <sup class="cite"><a href="#src-21">21</a></sup>. An
+award is not a deployment; it is a recognition of design.
+
+**Kenya.** GovBot is a 2024–2026 pilot, with a detailed architecture: ChromaDB, LlamaIndex,
+PydanticAI, citations and confidence scores <sup class="cite"><a href="#src-31">31</a></sup>. It is one of the few cases where the architecture is
+public. No usage or quality metric is.
+
+**JRC (European Commission).** Two demonstrators: crisis analysis, in December 2024, and nuclear
+safeguards, in September 2026 <sup class="cite"><a href="#src-32">32</a>, <a href="#src-33">33</a></sup>. Both are aimed at analysts; the second provides for human review. These are
+demonstrators, not services.
+
+**Japan and India.** SEABIS, the assistant of Japan's Digital Agency, was shown in a demonstration
+on 25 June 2025, with citations and page numbers, without deployment <sup class="cite"><a href="#src-34">34</a></sup>. In India, the NFRA challenge
+is a call for proposals, not a system <sup class="cite"><a href="#src-35">35</a></sup>.
+
+**Network Rail (United Kingdom).** The case is technically accomplished and not yet in service.
+The lessons-learned chatbot rests on Azure AI Search and Azure OpenAI, with citations; the proof of
+concept took four to five weeks, the chatbot could be queried after two weeks, and nine weeks were
+spent consolidating security, infrastructure and formats <sup class="cite"><a href="#src-36">36</a></sup>. No gain, no adoption, no accuracy is
+published. A figure does circulate: the 29,000 hours a year and the roughly three million pounds
+attributed to Network Rail concern another initiative, on the data of the Wales & Western region,
+and must not be attached to the chatbot <sup class="cite"><a href="#src-37">37</a></sup>. This is the kind of confusion that turns a proof of
+concept into an industrial success in a presentation.
+
+The Norwegian case deserves a place of its own. Digdir does not publish a success: it publishes
+**five failures** observed on 58 strategic documents: wrong page references, a perimeter not
+respected, answers produced even when the base does not contain the information <sup class="cite"><a href="#src-4">4</a></sup>. It is the only
+public self-evaluation of this kind in the corpus. For a project manager it is worth more than ten
+deployment announcements.
+
+Two lessons emerge. First, **the move to service is a phase of its own**: a prototype that works
+does not become a service because someone decides it should. Second, **stops are documented, causes
+are not**. MILEVA was stopped on 31 January 2026 without publishing code, budget or usage
+statistics <sup class="cite"><a href="#src-6">6</a></sup>; Intelligence Entreprise, at the DGE, stopped in 2022 after trying a semantic
+engine on more than a million documents <sup class="cite"><a href="#src-6">6</a></sup>. These two stops say the same thing: the need was real,
+the industrialisation was not.
+
+## 6. The four missing pieces of evidence
+
+This is where the panorama stops being a catalogue. Of 23 systems or projects, four publish a
+quality or benefit figure: China Maritime, China NDA (a figure from a supplier file), Seoul and
+Assist <sup class="cite"><a href="#src-13">13</a>, <a href="#src-38">38</a>, <a href="#src-18">18</a>, <a href="#src-12">12</a></sup>. None publishes a reproducible protocol. None is evaluated by a third party.
+
+<ProofMatrix lang="en" />
+
+A fifth figure exists, French, outside the matrix: L'Assistant, a general-purpose assistant, with
+75% of civil servants finding it useful and gains of 12 to 16% observed in discussion groups
+<sup class="cite"><a href="#src-10">10</a></sup>. It does not change the finding, it confirms it: perception is measured, not document
+fidelity.
+
+**First missing piece: recall.** No case publishes the rate of relevant passages found on a set of
+real questions. Yet it is the measure that governs everything else: if the passage is not in the
+list of candidates, no model, no reranker can bring it back <sup class="cite"><a href="#src-39">39</a></sup>. A system can look excellent and
+silently miss half of the difficult questions.
+
+**Second missing piece: permissions.** Only one case explicitly mentions classified documents:
+AIBots, up to the *Restricted / Sensitive (Normal)* level <sup class="cite"><a href="#src-14">14</a></sup>. No source describes how rights are
+inherited down to the passages, nor the filtering at search time. Yet OWASP puts precisely this
+point at the centre of its sheet on RAG security <sup class="cite"><a href="#src-40">40</a></sup>. The gap between the importance of the subject
+and its public documentation is a result in itself, not a research gap.
+
+**Third missing piece: cost.** Only two elements: $64,000 for the Minnesota pilot <sup class="cite"><a href="#src-30">30</a></sup> and billing
+per million tokens in North Carolina, with no rate published <sup class="cite"><a href="#src-16">16</a></sup>. No cost per indexed document,
+per query or per active user. Any comparison between architectures would therefore be an estimate
+disguised as a result.
+
+**Fourth missing piece: evaluation.** Four cases out of 23 systems, no published question set, no
+exact citation rate, no abstention rate. Seven cases document citations, which is better than
+nothing, but a displayed citation is not a verified citation <sup class="cite"><a href="#src-12">12</a>, <a href="#src-24">24</a>, <a href="#src-3">3</a>, <a href="#src-31">31</a>, <a href="#src-18">18</a>, <a href="#src-34">34</a>, <a href="#src-13">13</a></sup>.
+
+A reading precaution is needed here: "not documented" does not mean "absent". The matrix records
+what the sources say, not what the systems do. An empty dot means that no public source describes
+the function, not that it does not exist. It is a difference that hurried readers often confuse,
+and that leads some to say that public systems have no permissions because nobody described them.
+
+
+
+The sentence to remember is not a condemnation: **the public sector knows how to count users; it
+does not yet know how to prove that an answer is right.** It is a work in progress, not a verdict.
+
+## 7. Why RAG remains the right answer
+
+If the evidence is missing, should we conclude that the technology is not worth the investment?
+No. RAG answers a real problem, and it does so better than the available alternatives for
+procedures that change.
+
+<Diagram {...principeRagEn} />
+
+**It makes the answer verifiable.** A model alone produces a plausible text; a RAG produces a text
+accompanied by the passages that grounded it. The civil servant can open the document, check the
+page, contest. This is the difference between an answer and an assertion <sup class="cite"><a href="#src-19">19</a></sup>.
+
+**It lets you add a document without retraining the model.** A procedure published today can be
+indexed tomorrow. This is what makes RAG suited to a living corpus, unlike fine-tuning, which
+changes the behaviour of the model without guaranteeing freshness <sup class="cite"><a href="#src-19">19</a></sup>.
+
+**It must not be confused with two other things.** RAG is not fine-tuning: one brings documents,
+the other changes behaviour. RAG is not agentic either: GOV.UK recommends classic RAG by default,
+and presents the agentic approach as longer, more expensive and harder to debug <sup class="cite"><a href="#src-20">20</a></sup>. These are
+architecture choices, not degrees of modernity.
+
+**The cases that work are bounded.** Assist works on five maintained documents <sup class="cite"><a href="#src-12">12</a></sup>; China
+Maritime on a base of 5,488 question-answer pairs <sup class="cite"><a href="#src-13">13</a></sup>; North Carolina on the public content of agency
+websites <sup class="cite"><a href="#src-16">16</a></sup>. None claims to cover "all the knowledge of the administration". The narrow perimeter is
+not a limit of RAG: it is its condition of success.
+
+
+
+One question remains that the panorama does not settle: is RAG the right answer for *every* need?
+No. For a question whose answer fits in a structured sheet, a classic search is enough. For a
+synthesis over an unstable corpus, a poorly governed RAG will add confidence to errors. The
+technology is suited when the answer must be grounded, cited and kept up to date, not when it
+merely has to be fluent.
+
+## 8. What this changes for a public project
+
+The IGF–IGAS–IGA report makes thirteen proposals for deploying AI in administrations: mapping use
+cases, integration into information systems, reversibility, training, governance <sup class="cite"><a href="#src-41">41</a></sup>. A well-designed
+document architecture directly serves several of them. It does not replace them.
+
+Five decisions weigh more than the choice of the model.
+
+**1. A narrow, business-oriented perimeter.** One corpus, one trade, a team that maintains it. The
+opposite, "all the knowledge of the local authority", produces an index with no authority and an
+answer with no one responsible.
+
+**2. A real question set, before the tool.** Fifty to two hundred questions asked by real
+civil servants, about 20% of which the corpus cannot answer <sup class="cite"><a href="#src-42">42</a></sup>. Without unanswerable questions, you do not
+measure abstention; you measure the politeness of the model.
+
+**3. Recall before generation.** Measure whether the right passages are found, separately from the
+quality of the writing. A system that answers well from the wrong passages is a confidence
+generator, not a document tool <sup class="cite"><a href="#src-39">39</a></sup>.
+
+**4. Human validation on sensitive uses.** The cases that mention it (China Maritime, JRC, Digdir)
+present it as necessary, not as a leftover of the transition <sup class="cite"><a href="#src-13">13</a></sup>
+<sup class="cite"><a href="#src-33">33</a>, <a href="#src-4">4</a></sup>. A RAG that produces a decision without review is no longer an assistant.
+
+**5. Stop criteria written in advance.** MILEVA and Intelligence Entreprise stopped <sup class="cite"><a href="#src-6">6</a></sup>; Minnesota
+closed its pilot without a review <sup class="cite"><a href="#src-30">30</a></sup>. A project must say, before it starts, what would make it stop:
+insufficient recall, a cost per query out of budget, unfunded document maintenance.
+
+> **The five questions to ask before signing**
+>
+> 1. Which exact corpus, maintained by whom, how often?
+> 2. On which real questions will you be evaluated, and how many are unanswerable?
+> 3. How are access rights carried by the passages and filtered at search time?
+> 4. What exact citation rate and what abstention rate do you accept?
+> 5. What is the cost per indexed document and per query, and who pays for the update?
+
+The fifth question is the one forgotten fastest. An index is not a one-off investment: it is a
+document subscription. Assist holds only because five documents are explicitly maintained <sup class="cite"><a href="#src-12">12</a></sup>;
+AIBots holds only because agencies contribute and update their corpora <sup class="cite"><a href="#src-14">14</a></sup>. Cutting the maintenance
+budget means scheduling an index that degrades without anyone noticing.
+
+None of these questions is about the model. That is the point: the model is the most visible and
+least decisive part of the project.
+
+## 9. What the series will show
+
+This article set the scene and the thesis. The next four open the hood, each with a single
+question.
+
+| Article | Question | What it will bring |
+|---|---|---|
+| **2. How does a document RAG really work?** | What happens between a PDF and a cited answer? | OCR, structure, chunking, hybrid search, reranking, citations |
+| **3. Securing a RAG: permissions, injections and confidentiality** | What must a system demonstrate before a security officer authorises it? | per-passage permissions, indirect injection, lifecycle, sovereignty |
+| **4. Why RAG projects fail in production** | What breaks, and how do you measure it before promising? | stops, document quality, evaluation, costs, observability |
+| **5. Building a reliable document assistant, from A to Z** | Which concrete choices, with which trade-offs? | corpus, repository, tests, demonstration, architecture decisions |
+
+The four missing pieces of evidence are not a condemnation of RAG. They are the four workstreams
+of the following articles: the mechanics (article 2), security (article 3), measurement (article 4)
+and construction (article 5).
+
+## 10. Conclusion
+
+RAG really does change access to knowledge in administrations: it makes searchable what was
+scattered, and it makes verifiable what was asserted. But the transformation is not where one
+expects it. It is not in the model, whose versions keep succeeding one another. It is in the
+documentation: an identified, versioned corpus, whose rights are known and whose quality is
+measured.
+
+That is the lesson of the 23 systems surveyed. The best documented are not the most spectacular;
+they are those of which one can say, precisely, what they do, on what, for whom, and with what
+limits. The others produce usage figures and leave the most important question unanswered: was the
+answer right?
+
+At Seshat, we apply this rule to our own work: distinguishing what is available, what is
+experimental and what is not measured. A document system that cannot say where its answer comes
+from is not progress; it is one more black box.
+
+## Sources
+
+The sources are cited with their original titles, in the language of the source.
+
+1. <span id="src-1"></span>Cour des comptes, *enquête sur les Archives nationales*. [link](https://www.ccomptes.fr/fr/publications/les-archives-nationales-les-voies-et-moyens-dune-nouvelle-ambition)
+2. <span id="src-2"></span>Archives nationales, *rapport d'activité 2025*. [link](https://www.archives-nationales.culture.gouv.fr/rapport-dactivite)
+3. <span id="src-3"></span>BDBOS / ASDN (Lower Saxony, Germany), *KIRA*. [link](https://www.bdbos.bund.de/SharedDocs/Kurzmeldungen/DE/2025/250710_wr-2025-1_kira.html)
+4. <span id="src-4"></span>Digdir (Norway), *KI-verktøy for identifisering av digitaliseringstiltak*. [link](https://www.digdir.no/digitalisering-og-samordning/ki-verktoy-identifisering-av-digitaliseringstiltak/7672)
+5. <span id="src-5"></span>Ministério da Gestão e da Inovação (Brazil), *Guia de introdução ao RAG no setor público*. [link](https://www.gov.br/governodigital/pt-br/infraestrutura-nacional-de-dados/inteligencia-artificial-1/publicacoes/guia-de-rag)
+6. <span id="src-6"></span>*Fiches beta.gouv.fr (project status sheets)*. [link](https://beta.gouv.fr/startups/inspecteur-augmente.html)
+7. <span id="src-7"></span>Cour des comptes, *Mieux suivre et valoriser les gains de productivité de l'État issus du numérique*. [link](https://www.ccomptes.fr/fr/publications/mieux-suivre-et-valoriser-les-gains-de-productivite-de-letat-issus-du-numerique)
+8. <span id="src-8"></span>El Paso, *Ask Laura chatbot*. [link](https://www.govtech.com/dc/Meet-El-Pasos-Chatbot-Ask-Laura-Shes-a-Real-Game-Changer.html)
+9. <span id="src-9"></span>GovTech Singapore, *Pair*. [link](https://www.tech.gov.sg/products-and-services/for-government-agencies/productivity-and-marketing/pair/)
+10. <span id="src-10"></span>DITP / DINUM, *L'Assistant IA : bilan de l'expérimentation menée auprès des agents*. [link](https://www.modernisation.gouv.fr/publications/lassistant-ia-bilan-de-lexperimentation-menee-aupres-des-agents)
+11. <span id="src-11"></span>Open Contracting Partnership, *AI in public procurement*. [link](https://www.open-contracting.org/2026/07/09/ai-in-public-procurement-between-experimentation-and-impact/)
+12. <span id="src-12"></span>Cabinet Office (United Kingdom), *Assist, algorithmic transparency record*. [link](https://www.gov.uk/algorithmic-transparency-records/cabinet-office-assist)
+13. <span id="src-13"></span>Ministry of Transport (China), *China Maritime Intelligent Customer Service*. [link](https://www.mot.gov.cn/zhuanti/2025Anlilx/202512/t20251205_4181025.html)
+14. <span id="src-14"></span>GovTech Singapore, *AIBots*. [link](https://www.tech.gov.sg/products-and-services/for-government-agencies/productivity-and-marketing/aibots/)
+15. <span id="src-15"></span>Hansel (Finland), *Hankintavälkky in the Hilma portal*. [link](https://annualreport2024.hansel.fi/renewing-procurement/digital-services-to-assist-customers-developed/)
+16. <span id="src-16"></span>NCDIT (North Carolina), *AI Chatbot*. [link](https://itservices.nc.gov/services/digital-services/ai-chatbot)
+17. <span id="src-17"></span>*Albert API (DINUM / Etalab)*. [link](https://ia.numerique.gouv.fr/outils-ia/albert-api/)
+18. <span id="src-18"></span>City of Seoul, *Seoul Data Hub*. [link](https://news.seoul.go.kr/gov/archives/564644)
+19. <span id="src-19"></span>GOV.UK / GDS, *AI Insights: RAG Systems*. [link](https://www.gov.uk/government/publications/ai-insights/ai-insights-rag-systems-html)
+20. <span id="src-20"></span>GOV.UK / GDS, *AI Insights: Agentic RAG*. [link](https://www.gov.uk/government/publications/ai-insights/ai-insights-agentic-rag-html)
+21. <span id="src-21"></span>RISA (Rwanda), *GoR AI-Powered Policy Navigator*. [link](https://www.risa.gov.rw/news-detail/risas-ai-powered-policy-navigator-receives-global-recognition-at-itus-ai-for-good-summit)
+22. <span id="src-22"></span>Localtis / Banque des Territoires, *collectivités et IA générative*. [link](https://www.banquedesterritoires.fr/ces-collectivites-qui-tentent-de-domestiquer-lia-generative)
+23. <span id="src-23"></span>European Parliament, *Ask the EP Archives*. [link](https://historicalarchives.europarl.europa.eu/en/sites/historicalarchive/home/cultural-heritage-collections/news/ai-dashboard.html)
+24. <span id="src-24"></span>ECB, *ECBot, privacy statement and technical description*. [link](https://www.ecb.europa.eu/services/data-protection/privacy-statements/html/ecb.privacy_statement_chatbot.en.html)
+25. <span id="src-25"></span>GSA (United States), *2025 GSA AI use cases*. [link](https://www.gsa.gov/artificial-intelligence/2025-gsa-ai-use-cases)
+26. <span id="src-26"></span>U.S. Federal AI Observatory, *analytical mirror of the OMB 2025 inventory*. [link](https://intel.petriashvili.com/use-cases/R1199)
+27. <span id="src-27"></span>GAO (United States), *Generative AI Use and Management at Federal Agencies*. [link](https://files.gao.gov/reports/GAO-25-107653/index.html)
+28. <span id="src-28"></span>NARA (United States), *AI use case inventory*. [link](https://www.archives.gov/ai)
+29. <span id="src-29"></span>US Department of Labor, *use case inventory*. [link](https://www.dol.gov/agencies/oasam/centers-offices/ocio/ai-inventory)
+30. <span id="src-30"></span>Minnesota IT Services (MNIT), *TMF nebulaONE project*. [link](https://mn.gov/mnit/about-mnit/tmf/state-employee-ai-chat-bot-tools.jsp)
+31. <span id="src-31"></span>GovStack, *GovBot, AI Chatbot for Discoverability of Government Services (Kenya)*. [link](https://govstack.gitbook.io/use-cases/use-cases/ai-chatbot-discoverability-government-services)
+32. <span id="src-32"></span>JRC (European Commission), *AI applied to disasters and crises management*. [link](https://publications.jrc.ec.europa.eu/repository/handle/JRC138914)
+33. <span id="src-33"></span>JRC (European Commission), *Applying Generative AI to Enhance Nuclear Safeguards Information Analysis*. [link](https://publications.jrc.ec.europa.eu/repository/handle/JRC146582)
+34. <span id="src-34"></span>Digital Agency of Japan, *Co-creation PF Camp workshop (SEABIS)*. [link](https://digital-agency-news.digital.go.jp/articles/2025-11-07)
+35. <span id="src-35"></span>IndiaAI / NFRA, *Financial Reporting Compliance Challenge*. [link](https://aikosh.indiaai.gov.in/home/competitions/details/b5ebae1e-73d1-4ba8-baa1-21beaabd1f6d)
+36. <span id="src-36"></span>Network Rail (United Kingdom), *RAG chatbot on lessons learned*. [link](https://weareoakland.com/case-studies/network-rail-revolutionising-knowledge-management-through-generative-ai/)
+37. <span id="src-37"></span>Network Rail, *Wales & Western data strategy (APM)*. [link](https://www.apm.org.uk/resources/find-a-resource/case-studies/case-study-network-rail-laying-the-groundwork-for-ai-adoption-with-a-data-first-strategy/)
+38. <span id="src-38"></span>National Data Administration (China), *RAG annotation case*. [link](https://www.nda.gov.cn/sjj/ywpd/szkjyjcss/0523/20250523133720718985312_pc.html)
+39. <span id="src-39"></span>*Late interaction and reranking*. [link](https://arxiv.org/abs/2004.12832)
+40. <span id="src-40"></span>OWASP, *Top 10 for LLM Applications 2026 and RAG Security Cheat Sheet*. [link](https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/)
+41. <span id="src-41"></span>IGF, IGAS and IGA (joint report), *Le déploiement de l'intelligence artificielle dans les administrations publiques : analyse comparée, enjeux et conditions de réussite*. [link](https://igas.gouv.fr/sites/igas/files/2026-07/Rapport%20IGF-IGAS-IGA%20D%C3%A9ploiement%20IA%20dans%20AP%20%28synth%C3%A8se%20et%20recommandations%29_0.pdf)
+42. <span id="src-42"></span>*Evaluation*. [link](https://arxiv.org/abs/2309.15217)
