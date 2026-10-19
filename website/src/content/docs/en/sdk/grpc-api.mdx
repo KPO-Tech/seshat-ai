@@ -61,7 +61,7 @@ More on the reasons in [Security and trust](/en/docs/concepts/security-and-trust
 ```bash
 grpcurl -plaintext \
   -import-path pkg/grpc/proto -proto seshat.proto \
-  -d '{"prompt":"hello","model":"anthropic:claude-sonnet-4-20250514"}' \
+  -d '{"prompt":"hello","model":"anthropic:claude-sonnet-5-5"}' \
   localhost:50051 seshat.SeshatService/Query
 ```
 
