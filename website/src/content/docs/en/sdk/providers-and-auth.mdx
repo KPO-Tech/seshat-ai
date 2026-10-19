@@ -26,7 +26,7 @@ The provider constants are `APIProviderAnthropic`, `APIProviderOpenAI`, `APIProv
 To discover what is available at run time, use the `github.com/KPO-Tech/seshat-runtime/pkg/providers` package:
 
 ```go
-info := providers.AllProvidersInfo()                 // every provider the runtime knows
+info := providers.AllProvidersInfo()                 // the built-in providers, each with the models of the catalog (default large first, small last)
 models, err := providers.FetchModels(ctx, "ollama", providers.DefaultBaseURL("ollama"), "")
 ```
 
@@ -126,7 +126,7 @@ The base URL decides who receives your API key. Never take it from a file or a r
 
 A provider configuration can name other models and providers to try when the first one fails. The loop tries the fallback models first (same provider), then the fallback providers. A circuit breaker stops calling a provider that keeps failing and tries it again after a delay.
 
-By default, only models of the **same** provider are tried: for Anthropic, `claude-3-5-sonnet` and then `claude-3-5-haiku`. A prompt is never sent to another vendor unless you list one in `Routing.FallbackProviders`, so picking a provider is enough to keep your data with that provider.
+By default, only models of the **same** provider are tried: for Anthropic, `claude-sonnet-5-5` and then `claude-haiku-5-5`. A prompt is never sent to another vendor unless you list one in `Routing.FallbackProviders`, so picking a provider is enough to keep your data with that provider.
 
 Cross-vendor fallback is opt-in. Start from the defaults and add the providers you accept, or set the list to empty for none:
 
@@ -134,7 +134,7 @@ Cross-vendor fallback is opt-in. Start from the defaults and add the providers y
 pc := providers.GetProviderConfig(sdk.APIProviderAnthropic)
 if pc.Routing != nil {
     pc.Routing.FallbackModels = []sdk.ModelIdentifier{
-        {Provider: sdk.APIProviderAnthropic, Model: "claude-3-5-haiku-20241022"},
+        {Provider: sdk.APIProviderAnthropic, Model: "claude-haiku-5-5"},
     }
     pc.Routing.FallbackProviders = []sdk.APIProvider{sdk.APIProviderOpenRouter}
 }
