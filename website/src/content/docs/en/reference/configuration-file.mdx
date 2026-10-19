@@ -155,6 +155,7 @@ General options.
 | `debug` | boolean | `false` | Enable debug logging |
 | `debug_lsp` | boolean | `false` | Enable debug logging for LSP servers |
 | `disable_auto_summarize` | boolean | `false` | Disable automatic conversation summarization |
+| `model_defaults` | object |  | Default large and small model per provider when none was chosen. Each entry is a models.dev family (claude-sonnet) or an exact model id. Takes effect at the next start |
 | `refresh_model_catalog` | boolean | `false` | Download the public models.dev catalog of providers and models in the background when the saved copy is a day old. Takes effect at the next start |
 | `memory_enabled` | boolean | `false` | Learn from conversations: store preferences and lessons and recall them in later sessions. Takes effect at the next start |
 | `data_directory` | string | `.seshat` | Directory for storing application data. Relative paths are resolved against the working directory; absolute paths are used as-is. |

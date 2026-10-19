@@ -21,7 +21,7 @@ cfg.Model = sdk.ModelIdentifier{
 }
 ```
 
-The provider constants are `APIProviderAnthropic`, `APIProviderOpenAI`, `APIProviderMistral`, `APIProviderGemini`, `APIProviderDeepSeek`, `APIProviderOllama`, `APIProviderBedrock`, `APIProviderFoundry`, `APIProviderCodex`, `APIProviderMiniMax`, `APIProviderOpenCode` and more. The full list of providers and models is in [Configuration](/en/docs/getting-started/configuration#supported-providers).
+The provider constants are `APIProviderAnthropic`, `APIProviderOpenAI`, `APIProviderMistral`, `APIProviderGemini`, `APIProviderDeepSeek`, `APIProviderOllama`, `APIProviderCodex`, `APIProviderMiniMax`, `APIProviderOpenCode` and more. The full list of providers and models is in [Configuration](/en/docs/getting-started/configuration#supported-providers).
 
 To discover what is available at run time, use the `github.com/KPO-Tech/seshat-runtime/pkg/providers` package:
 
@@ -73,11 +73,36 @@ client, err := sdk.NewClient(&sdk.ClientConfig{
 })
 ```
 
-`sdk.CatalogProviders()` lists them with their key variables. Three things to know:
+`sdk.CatalogProviders()` lists them with their key variables. Four things to know:
 
 - **The catalog never decides where a key goes.** The base URL and key variable of a provider come from the catalog embedded in the program. A catalog you download adds models, and adds providers marked `Unverified`: such a provider gets no configuration of its own, so show its URL to the user and build the `ProviderConfig` with the URL they confirmed.
-- **The built-in providers follow the catalog too.** For Anthropic, OpenAI, Gemini, Mistral, Z.ai and the other built-in providers, the models we describe by hand come first and last (they are the default large and small models), the catalog's newest models are listed between them, and a model we describe by hand is never replaced by the catalog's data. Updating the lists is rebuilding the embedded snapshot, not editing code. An output limit equal to the context window is treated as unknown.
+- **The built-in providers follow the catalog too, and no model is written by hand.** For Anthropic, OpenAI, Gemini, Mistral, Z.ai, Kimi, DeepSeek, OpenRouter, OpenCode and MiniMax, the list is the catalog's, newest first, without deprecated models and without models a chat client cannot use (speech, realtime, image, embeddings, deep-research agents). The first model is the default large one and the last the default small one. Updating the lists is rebuilding the embedded snapshot (`go run scripts/build_catalog_snapshot.go https://models.dev/api.json`), not editing code. An output limit equal to the context window is treated as unknown, and the prompt limit of a model, when the catalog gives one below its window, is what the window is counted against. A model the catalog says rejects a temperature never receives one.
+- **Some providers have no URL in the catalog**: Groq, xAI, Cerebras, Together AI, DeepInfra and Cohere are listed there under their own SDK. A small table reviewed by hand (`internal/catalog/overrides.go`) gives their OpenAI-compatible endpoint; it applies to the embedded catalog only, so a refresh never moves it.
 - **Refreshing is your choice.** `ClientConfig.CatalogCacheDir` reads a catalog downloaded earlier. `ClientConfig.RefreshCatalog` (or `sdk.RefreshCatalog(ctx, dir)` by hand) downloads the public one, at most once a day. It is off by default and sends nothing about the user.
+
+## Which model by default
+
+When the user has not chosen a model, the runtime picks one per provider. Its choice is a small table of families of the catalog (`claude-sonnet` and `claude-haiku` for Anthropic, `glm` and `glm-flash` for Z.ai...), never a model identifier: the newest stable model of the family is taken, so a new version is picked up by the next catalog. A provider the table does not cover gets the dearest of its ten newest stable models as the large one and the cheapest as the small one.
+
+Your application can complete or change that, and only has to write what it changes. A `ModelPolicy` maps a provider to its default large and small model, each entry a family or an exact model identifier, tried in order. Yours are tried first and the runtime's after them, so an entry that names a model the catalog no longer has falls back to the runtime's choice instead of failing.
+
+```go
+policy := providers.DefaultModelPolicy() // a copy of the runtime's own, to read
+policy["minimax"] = providers.ModelDefaults{
+    Large: []string{"MiniMax-M3"},
+    Small: []string{"MiniMax-M3.1-Flash"},
+}
+
+info, _ := providers.ProviderInfoWithPolicy("minimax", policy) // first model: large, last: small
+large, _ := providers.DefaultModelWithPolicy("minimax", policy)
+small, _ := providers.SmallModelWithPolicy("minimax", policy)
+```
+
+A policy is a plain value you pass in: the package keeps none, so two hosts, or two clients, in the same process never see each other's choices. The terminal application reads the same thing from `options.model_defaults` in its configuration file, at the next start.
+
+## Trying a provider with your own key
+
+`go run scripts/check_providers.go groq zai` (in the runtime repository) sends a short question to the cheapest model of each provider you name, with the key from its environment variable, and prints the answer, the reasoning when there is some, the time and any error. Without arguments it checks every provider whose key variable is set; `-all-models -limit 5` tries several models of each.
 
 ## Your own endpoint
 
@@ -111,7 +136,7 @@ if pc.Routing != nil {
     pc.Routing.FallbackModels = []sdk.ModelIdentifier{
         {Provider: sdk.APIProviderAnthropic, Model: "claude-3-5-haiku-20241022"},
     }
-    pc.Routing.FallbackProviders = []sdk.APIProvider{sdk.APIProviderBedrock}
+    pc.Routing.FallbackProviders = []sdk.APIProvider{sdk.APIProviderOpenRouter}
 }
 cfg.ProviderConfig = pc
 ```

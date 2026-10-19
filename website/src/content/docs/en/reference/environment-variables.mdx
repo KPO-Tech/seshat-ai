@@ -49,11 +49,6 @@ The variables that carry the key of each provider are in the table of [Configura
 | Variable | Default | Effect |
 |---|---|---|
 | `OLLAMA_HOST` | `http://localhost:11434` | The address of the Ollama server |
-| `AWS_PROFILE` | none | An AWS profile. With a region, it makes Bedrock available |
-| `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` | none | The rest of the AWS credentials used to sign Bedrock requests, with `AWS_ACCESS_KEY_ID` |
-| `AWS_DEFAULT_REGION` | none | Counts as a region when Seshat checks whether Bedrock is available. The requests themselves use `AWS_REGION`, so set that one too |
-| `AWS_BEARER_TOKEN_BEDROCK` | none | A bearer token for Bedrock. When set, the requests use it instead of the AWS signature |
-| `ANTHROPIC_VERTEX_API_KEY` | none | A bearer token for Vertex AI, used when no key was given another way |
 | `SESHAT_DISABLE_DEFAULT_PROVIDERS` | `false` | The same as `options.disable_default_providers` in the configuration file |
 | `SESHAT_DISABLE_PROVIDER_AUTO_UPDATE` | `false` | The same as `options.disable_provider_auto_update` in the configuration file |
 
