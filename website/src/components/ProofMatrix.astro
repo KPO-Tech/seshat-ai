@@ -4,6 +4,10 @@
 // signifie « la source n'en dit rien », jamais « la fonction est absente ».
 type Statut = 'service' | 'pilote' | 'demo' | 'projet';
 
+// The article exists in French (default) and in English: the texts below follow the language the page asks for.
+const { lang = 'fr' } = Astro.props as { lang?: 'fr' | 'en' };
+const en = lang === 'en';
+
 interface Row {
   system: string;
   org: string;
@@ -39,12 +43,78 @@ const rows: Row[] = [
   { system: 'SEABIS', org: 'Japon', statut: 'demo', citation: true, droits: false, evaluation: false },
 ];
 
-const statuts: Record<Statut, string> = {
-  service: 'Service',
-  pilote: 'Pilote',
-  demo: 'Démo',
-  projet: 'Projet',
+const statuts: Record<Statut, string> = en
+  ? { service: 'Service', pilote: 'Pilot', demo: 'Demo', projet: 'Project' }
+  : { service: 'Service', pilote: 'Pilote', demo: 'Démo', projet: 'Projet' };
+
+const orgEn: Record<string, string> = {
+  'Singapour': 'Singapore',
+  'Royaume-Uni': 'United Kingdom',
+  'GSA, États-Unis': 'GSA, United States',
+  'Caroline du Nord': 'North Carolina',
+  'Minnesota, États-Unis': 'Minnesota, United States',
+  'Parlement européen': 'European Parliament',
+  'BCE': 'ECB',
+  'Allemagne': 'Germany',
+  'Norvège': 'Norway',
+  'Corée du Sud': 'South Korea',
+  'Chine': 'China',
+  'Chine, NDA': 'China, NDA',
+  'Chine, Foshan': 'China, Foshan',
+  'Brésil': 'Brazil',
+  'Inde': 'India',
+  'Japon': 'Japan',
 };
+const systemEn: Record<string, string> = {
+  'RAG analyse de crises': 'RAG crisis analysis',
+  'RAG garanties nucléaires': 'RAG nuclear safeguards',
+  'Annotation RAG': 'RAG annotation',
+  'Outil Digdir': 'Digdir tool',
+};
+const orgOf = (o: string) => (en ? (orgEn[o] ?? o) : o);
+const systemOf = (n: string) => (en ? (systemEn[n] ?? n) : n);
+
+const T = en
+  ? {
+      title: 'What 23 public RAG systems and projects document',
+      statEval: 'publish a quality or benefit figure',
+      statRights: 'document how documents are classified',
+      statCost: 'publish a unit cost',
+      legendService: 'deployed or in use',
+      documented: 'documented',
+      undocumented: 'not documented',
+      system: 'System',
+      status: 'Status',
+      cites: 'Cites',
+      citesTitle: 'Citation documented',
+      rights: 'Rights',
+      rightsTitle: 'Access rights documented',
+      eval: 'Eval.',
+      evalTitle: 'Evaluation published',
+      srCitation: ['citation documented', 'citation not documented'],
+      srRights: ['rights documented', 'rights not documented'],
+      srEval: ['evaluation published', 'evaluation not published'],
+    }
+  : {
+      title: 'Ce que 23 systèmes et projets RAG publics documentent',
+      statEval: 'publient un chiffre de qualité ou de bénéfice',
+      statRights: 'documentent la classification des documents',
+      statCost: 'publient un coût unitaire',
+      legendService: 'déployé ou en usage',
+      documented: 'documenté',
+      undocumented: 'non documenté',
+      system: 'Système',
+      status: 'Statut',
+      cites: 'Cite',
+      citesTitle: 'Citation documentée',
+      rights: 'Droits',
+      rightsTitle: 'Droits d’accès documentés',
+      eval: 'Éval.',
+      evalTitle: 'Évaluation publiée',
+      srCitation: ['citation documentée', 'citation non documentée'],
+      srRights: ['droits documentés', 'droits non documentés'],
+      srEval: ['évaluation publiée', 'évaluation non publiée'],
+    };
 
 const total = rows.length;
 const nbEval = rows.filter((r) => r.evaluation).length;
@@ -53,60 +123,59 @@ const nbCitation = rows.filter((r) => r.citation).length;
 ---
 
 <figure class="pm" aria-labelledby="pm-title">
-  <p id="pm-title" class="pm-title">Ce que 23 systèmes et projets RAG publics documentent</p>
+  <p id="pm-title" class="pm-title">{T.title}</p>
 
   <div class="pm-stats">
     <div class="pm-stat pm-stat-eval">
       <strong>{nbEval} / {total}</strong>
-      <span>publient un chiffre de qualité ou de bénéfice</span>
+      <span>{T.statEval}</span>
     </div>
     <div class="pm-stat pm-stat-droits">
       <strong>{nbDroits} / {total}</strong>
-      <span>documentent la classification des documents</span>
+      <span>{T.statRights}</span>
     </div>
     <div class="pm-stat pm-stat-cout">
       <strong>0 / {total}</strong>
-      <span>publient un coût unitaire</span>
+      <span>{T.statCost}</span>
     </div>
   </div>
 
   <p class="pm-legend">
-    <span class="pm-status pm-service">Service</span> déployé ou en usage
-    <span class="pm-status pm-pilote">Pilote</span>
-    <span class="pm-status pm-demo">Démo</span>
-    <span class="pm-status pm-projet">Projet</span>
-    <span class="pm-dot on" aria-hidden="true"></span> documenté
-    <span class="pm-dot" aria-hidden="true"></span> non documenté
+    <span class="pm-status pm-service">{statuts.service}</span> {T.legendService}
+    <span class="pm-status pm-pilote">{statuts.pilote}</span>
+    <span class="pm-status pm-demo">{statuts.demo}</span>
+    <span class="pm-status pm-projet">{statuts.projet}</span>
+    <span class="pm-dot on" aria-hidden="true"></span> {T.documented}
+    <span class="pm-dot" aria-hidden="true"></span> {T.undocumented}
   </p>
 
   <div class="pm-scroll">
     <table class="pm-table">
       <caption class="sr-only">
-        Matrice de preuve de {total} systèmes et projets RAG publics. Quatre colonnes :
-        statut, citation documentée ({nbCitation} sur {total}), droits d’accès documentés
-        ({nbDroits} sur {total}) et évaluation publiée ({nbEval} sur {total}). Un point plein
-        signifie que la source publique le documente ; un point vide, qu’elle n’en dit rien.
+        {en
+          ? `Evidence matrix of ${total} public RAG systems and projects. Four columns: status, citation documented (${nbCitation} of ${total}), access rights documented (${nbDroits} of ${total}) and evaluation published (${nbEval} of ${total}). A filled dot means the public source documents it; an empty dot means the source says nothing about it.`
+          : `Matrice de preuve de ${total} systèmes et projets RAG publics. Quatre colonnes : statut, citation documentée (${nbCitation} sur ${total}), droits d’accès documentés (${nbDroits} sur ${total}) et évaluation publiée (${nbEval} sur ${total}). Un point plein signifie que la source publique le documente ; un point vide, qu’elle n’en dit rien.`}
       </caption>
       <thead>
         <tr>
-          <th scope="col">Système</th>
-          <th scope="col">Statut</th>
-          <th scope="col"><abbr title="Citation documentée">Cite</abbr></th>
-          <th scope="col"><abbr title="Droits d’accès documentés">Droits</abbr></th>
-          <th scope="col"><abbr title="Évaluation publiée">Éval.</abbr></th>
+          <th scope="col">{T.system}</th>
+          <th scope="col">{T.status}</th>
+          <th scope="col"><abbr title={T.citesTitle}>{T.cites}</abbr></th>
+          <th scope="col"><abbr title={T.rightsTitle}>{T.rights}</abbr></th>
+          <th scope="col"><abbr title={T.evalTitle}>{T.eval}</abbr></th>
         </tr>
       </thead>
       <tbody>
         {rows.map((r) => (
           <tr>
             <th scope="row" class="pm-name">
-              <strong>{r.system}</strong>
-              <small>{r.org}</small>
+              <strong>{systemOf(r.system)}</strong>
+              <small>{orgOf(r.org)}</small>
             </th>
             <td><span class={`pm-status pm-${r.statut}`}>{statuts[r.statut]}</span></td>
-            <td class="pm-c"><span class={`pm-dot${r.citation ? ' on' : ''}`} aria-hidden="true"></span><span class="sr-only">{r.citation ? 'citation documentée' : 'citation non documentée'}</span></td>
-            <td class="pm-c"><span class={`pm-dot${r.droits ? ' on' : ''}`} aria-hidden="true"></span><span class="sr-only">{r.droits ? 'droits documentés' : 'droits non documentés'}</span></td>
-            <td class="pm-c"><span class={`pm-dot${r.evaluation ? ' on' : ''}`} aria-hidden="true"></span><span class="sr-only">{r.evaluation ? 'évaluation publiée' : 'évaluation non publiée'}</span></td>
+            <td class="pm-c"><span class={`pm-dot${r.citation ? ' on' : ''}`} aria-hidden="true"></span><span class="sr-only">{r.citation ? T.srCitation[0] : T.srCitation[1]}</span></td>
+            <td class="pm-c"><span class={`pm-dot${r.droits ? ' on' : ''}`} aria-hidden="true"></span><span class="sr-only">{r.droits ? T.srRights[0] : T.srRights[1]}</span></td>
+            <td class="pm-c"><span class={`pm-dot${r.evaluation ? ' on' : ''}`} aria-hidden="true"></span><span class="sr-only">{r.evaluation ? T.srEval[0] : T.srEval[1]}</span></td>
           </tr>
         ))}
       </tbody>
@@ -114,9 +183,20 @@ const nbCitation = rows.filter((r) => r.citation).length;
   </div>
 
   <figcaption>
-    Le RAG public produit des systèmes ; il ne produit pas encore de preuves comparables.
-    Un point vide signifie qu’aucune source publique ne décrit la fonction, pas qu’elle
-    n’existe pas. <strong>{nbCitation} cas sur {total}</strong> documentent au moins une
-    citation, mais une citation affichée n’est pas une citation vérifiée.
+    {en ? (
+      <Fragment>
+        Public RAG produces systems; it does not yet produce comparable evidence. An empty dot means
+        that no public source describes the function, not that it does not exist.
+        <strong> {nbCitation} cases out of {total}</strong> document at least one citation, but a
+        displayed citation is not a verified citation.
+      </Fragment>
+    ) : (
+      <Fragment>
+        Le RAG public produit des systèmes ; il ne produit pas encore de preuves comparables.
+        Un point vide signifie qu’aucune source publique ne décrit la fonction, pas qu’elle
+        n’existe pas. <strong>{nbCitation} cas sur {total}</strong> documentent au moins une
+        citation, mais une citation affichée n’est pas une citation vérifiée.
+      </Fragment>
+    )}
   </figcaption>
 </figure>
