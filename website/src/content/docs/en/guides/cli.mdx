@@ -89,7 +89,7 @@ seshat sessions prune --older-than 30 --closed
 
 ## Providers and models in the interface
 
-Open the providers with `ctrl+p`, then Providers, then LLM. The list starts with the providers built into Seshat, the ones you have configured marked as such. The last entry, "More providers…", opens the rest of the [models.dev](https://models.dev) catalog, about 190 providers, with the ones you have configured first. Most of them have not been tried yet, so expect to meet a few rough edges. You do not have to open that list to find one: type in the search box and every provider is searched, the main ones and the others.
+Open the providers with `ctrl+p`, then Providers, then LLM. The list starts with the providers built into Seshat, the ones you have configured marked as such. The last entry, "More providers…", opens the rest of the [models.dev](https://models.dev) catalog, about 190 providers, with the ones you have configured first. Most of them have not been tried yet, so expect to meet a few rough edges, and tell us about them: the maintainers cannot test every provider, and [reports and fixes from the community](https://github.com/KPO-Tech/seshat-runtime/issues) are how this list gets reliable. You do not have to open that list to find one: type in the search box and every provider is searched, the main ones and the others.
 
 Choosing a provider asks for what it needs. Most take an API key. **Codex** is a ChatGPT account and has no key: the dialog shows an address and a code, opens your browser by itself, and waits while you enter the code there. The token is kept with its refresh token, and the next start renews it if it has expired. GitHub Copilot signs in with a code in the same way.
 
