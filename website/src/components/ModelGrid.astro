@@ -1,10 +1,13 @@
 ---
 // Les trois modèles d'organisation d'un RAG public, en cartes HTML plutôt qu'en SVG :
 // le texte reste lisible à toute largeur et chaque cas porte son statut écrit.
+const { lang = 'fr' } = Astro.props as { lang?: 'fr' | 'en' };
+const en = lang === 'en';
+
 interface Cas { name: string; detail: string; statut: 'Service' | 'Pilote' | 'Démo' | 'Projet' }
 interface Modele { n: number; title: string; role: string; cas: Cas[] }
 
-const modeles: Modele[] = [
+const modelesFr: Modele[] = [
   {
     n: 1,
     title: 'Plateforme mutualisée',
@@ -38,8 +41,46 @@ const modeles: Modele[] = [
     ],
   },
 ];
+const modelesEn: Modele[] = [
+  {
+    n: 1,
+    title: 'Shared platform',
+    role: 'An operator provides the tooling; agencies bring their corpora.',
+    cas: [
+      { name: 'AIBots · Singapore', detail: '115 agencies', statut: 'Service' },
+      { name: 'North Carolina', detail: 'agency widget', statut: 'Service' },
+      { name: 'Albert API · France', detail: '70+ projects', statut: 'Service' },
+    ],
+  },
+  {
+    n: 2,
+    title: 'Business product',
+    role: 'One team, one corpus, one job.',
+    cas: [
+      { name: 'Assist · United Kingdom', detail: '5 documents', statut: 'Service' },
+      { name: 'China Maritime', detail: '5,488 question-answer pairs', statut: 'Service' },
+      { name: 'Seoul Data Hub', detail: 'municipal data', statut: 'Service' },
+      { name: 'GSA Leasing Bot', detail: 'internal guide', statut: 'Service' },
+      { name: 'KIRA · Germany', detail: 'IT contracts', statut: 'Pilote' },
+    ],
+  },
+  {
+    n: 3,
+    title: 'Guide and capabilities',
+    role: 'A document, not a system: it spreads practice, it does not run anything.',
+    cas: [
+      { name: 'GOV.UK AI Insights', detail: 'two guides', statut: 'Service' },
+      { name: 'Brazil · MGI', detail: 'public guide', statut: 'Service' },
+      { name: 'Rwanda · Policy Navigator', detail: 'award-winning project, not deployed', statut: 'Projet' },
+    ],
+  },
+];
+const modeles = en ? modelesEn : modelesFr;
 
 const statutClass: Record<Cas['statut'], string> = { Service: 'pm-service', Pilote: 'pm-pilote', Démo: 'pm-demo', Projet: 'pm-projet' };
+const statutLabel: Record<Cas['statut'], string> = en
+  ? { Service: 'Service', Pilote: 'Pilot', Démo: 'Demo', Projet: 'Project' }
+  : { Service: 'Service', Pilote: 'Pilote', Démo: 'Démo', Projet: 'Projet' };
 const total = modeles.reduce((n, m) => n + m.cas.length, 0);
 ---
 
@@ -57,7 +98,7 @@ const total = modeles.reduce((n, m) => n + m.cas.length, 0);
                 <strong>{c.name}</strong>
                 <small>{c.detail}</small>
               </span>
-              <span class={`pm-status ${statutClass[c.statut]}`}>{c.statut}</span>
+              <span class={`pm-status ${statutClass[c.statut]}`}>{statutLabel[c.statut]}</span>
             </li>
           ))}
         </ul>
@@ -65,8 +106,8 @@ const total = modeles.reduce((n, m) => n + m.cas.length, 0);
     ))}
   </div>
   <figcaption>
-    Trois façons d’organiser un RAG public, {total} cas. Aucune n’est un stade de maturité :
-    un produit métier peut être en service pendant qu’une plateforme reste sans évaluation.
-    Un même pays peut pratiquer les trois modèles à la fois.
+    {en
+      ? `Three ways to organise a public RAG, ${total} cases. None is a stage of maturity: a business product can be in service while a platform is left without evaluation. One country can practise all three models at once.`
+      : `Trois façons d’organiser un RAG public, ${total} cas. Aucune n’est un stade de maturité : un produit métier peut être en service pendant qu’une plateforme reste sans évaluation. Un même pays peut pratiquer les trois modèles à la fois.`}
   </figcaption>
 </figure>
