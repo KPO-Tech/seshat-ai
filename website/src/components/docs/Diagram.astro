@@ -68,7 +68,7 @@ const paths = edges.map((e) => {
 const kinds: Kind[] = ['default', 'core', 'ok', 'bad', 'warn'];
 ---
 <figure class="dg" role="group" aria-label={label}>
-  <div class="dg-scroll">
+  <div class="dg-scroll" tabindex="0">
     <svg viewBox={`0 0 ${width} ${height}`} style={`min-width:${minWidth}px`} role="img" aria-label={label}>
       <defs>
         {kinds.map((k) => (

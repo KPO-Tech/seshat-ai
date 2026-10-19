@@ -1,4 +1,5 @@
 import type fr from '../fr/home';
+import type { ProofItem } from '../fr/home';
 
 const en: typeof fr = {
   meta: {
@@ -49,11 +50,30 @@ const en: typeof fr = {
   },
   proofs: {
     title: 'Seen in the field.',
+    provesLabel: 'What it proves',
+    levelPrefix: 'See level',
+    source: 'Both projects were carried out by the founder outside Seshat: at Allianz France as an employee, and at Lyne et Frères, the family business. They are not Seshat engagements, and we do not present them as such.',
     items: [
-      { sector: 'Insurance', who: 'Allianz France', text: 'Migration of a datamart from SAS to Python and PySpark (over 15,000 lines), Medallion architecture on Azure Databricks, over 150 business rules and regression tests.' },
-      { sector: 'Construction', who: 'Groupe Sylvagreg', text: 'Research and development in computer vision for 3D reconstruction, from images and plans.' },
-      { sector: 'Agriculture and trade', who: 'Lyne et Frères', text: 'Analyses, dashboards and internal open source AI tools, deployed with non-technical teams, with support.', note: "The founder's family business: a first deployment in real conditions." },
-    ],
+      {
+        sector: 'Insurance',
+        who: 'Allianz France',
+        logo: '/img/clients/allianz.svg',
+        level: 3,
+        levelName: 'Operation',
+        text: 'An insurance datamart already in production, migrated from SAS to Python and PySpark: over 15,000 lines rewritten, Medallion architecture on Azure Databricks, more than 150 business rules. Data quality checks and regression tests on every delivery.',
+        proves: 'Taking over a system that runs, changing it without breaking it, and proving it with tests. That is the standard we hold in operation.',
+      },
+      {
+        sector: 'Agriculture and trade',
+        who: 'Lyne et Frères',
+        wordmark: 'Lyne et Frères',
+        level: 2,
+        levelName: 'Pilot',
+        text: 'Internal self-hosted AI tools (OpenWebUI, open models) installed in a trading company: sales, delivery and order analysis, dashboards, and hands-on onboarding for the teams.',
+        proves: 'A real use case, in the hands of non-technical people, with someone to call when it breaks. That is what a pilot is for.',
+        note: "The founder's family business.",
+      },
+    ] as ProofItem[],
   },
   products: {
     title: 'What we deploy, you can inspect.',

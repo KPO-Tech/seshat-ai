@@ -68,7 +68,9 @@ The runtime emits these events:
 | `tool.progress` | The stages of a tool call |
 | `tool.permission_required` | A tool needs approval, just before your prompt function is called |
 | `prompt.request` | The agent asks you a question, just before your prompt function is called |
-| `context.compacted` | After a turn that compacted the context |
+| `context.usage` | How full the context window is: at the start of every round of model calls (an estimate) and when a response arrives (the provider's own figure). Carries `used_tokens`, `window_tokens`, `auto_compact_at_tokens`, `blocking_limit_tokens` and a `source` of `estimate` or `reported` |
+| `context.compacting` | A compaction starts, before its summary is requested |
+| `context.compacted` | The conversation was compacted, as soon as it was (not at the end of the turn) |
 | `plan.submitted`, `execution_mode.changed` | Plan mode |
 | `task.changed`, `goal.updated` | Tasks and goals |
 | `agent.spawn.*`, `agent.wait.*`, `agent.interaction.*`, `agent.close.*` | Sub-agents |

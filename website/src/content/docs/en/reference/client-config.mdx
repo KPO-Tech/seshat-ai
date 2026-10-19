@@ -23,7 +23,7 @@ This page lists every field of `ClientConfig` in `pkg/sdk/client_config.go`. The
 | `APIKey` | `string` | none | The provider key. A `CredentialResolver` wins over it |
 | `Model` | `ModelIdentifier` | Anthropic `claude-sonnet-5-5`, from `DefaultClientConfig()` | The model of the session: `{Provider, Model}` |
 | `TitleModel` | `ModelIdentifier` | none | A model for the automatic session titles. Both `Provider` and `Model` must be set |
-| `CompactSummaryModel` | `ModelIdentifier` | the session model | The model that writes compaction summaries. See [Memory and compaction](/en/docs/concepts/memory) |
+| `CompactSummaryModel` | `ModelIdentifier` | by rules | The model that writes compaction summaries. When set it wins over every rule. See [Memory and compaction](/en/docs/concepts/memory) |
 | `CredentialResolver` | `CredentialResolver` | none | Called when the client is created to find the key of the provider. Wins over `APIKey`. Use it on a server, with one key per user. **Go only** |
 | `ProviderConfig` | `*providers.Config` | none | Provider options such as a base URL, headers or model aliases. **Go only**. See [Providers and authentication](/en/docs/sdk/providers-and-auth) |
 | `TitleProviderConfig` | `*providers.Config` | none | A provider client used only for the titles, for example a small local model. **Go only** |
@@ -78,9 +78,19 @@ See [One runtime, one loop](/en/docs/concepts/mono-run) for what each limit does
 | Field | Type | Default | Effect |
 |---|---|---|---|
 | `AutoCompact` | `bool` | `true`, from `DefaultClientConfig()` | Compact the context when it gets full |
+| `CompactThreshold` | `float64` | `0.85` | Share of the window at which the conversation is compacted by itself. Below 1 |
+| `CompactTarget` | `float64` | `0.5` | Share of the window the recent messages kept as they are may take after a compaction. Below `CompactThreshold` |
+| `CompactModelRules` | `[]CompactModelRule` | none | Which model writes the summary, by the provider and model of the session (an exact name or a prefix such as `glm-*`), first match wins. A rule's model stays on the session's provider unless it names another. **Go only** |
+| `NoDefaultCompactModels` | `bool` | `false` | Switch off the built-in rules (`glm-4.5-air` for z.ai sessions, `claude-haiku-5-5` for Anthropic sessions) |
 | `EnableMemory` | `bool` | `true`, from `DefaultClientConfig()` | Long-term notes across sessions |
 | `MemoryFailFast` | `bool` | `false` | If the memory service cannot start, fail instead of going on without memory (a line is logged) |
 | `LongTermMemory` | `LongTermMemory` | none | Your own long-term memory. **Go only** |
+| `CatalogCacheDir` | `string` | none | Where the models.dev catalog downloaded earlier is read from, so the providers and models it added are known. Reading it never uses the network. See [Providers and authentication](/en/docs/sdk/providers-and-auth) |
+| `RefreshCatalog` | `bool` | `false` | Download the public models.dev catalog into `CatalogCacheDir` in the background when the cache is older than a day. The one call to the network the catalog makes. Needs `CatalogCacheDir` |
+| `ExtractMemories` | `bool` | `false` | When a session closes, read the conversation and store what a future assistant needs (preferences, procedures that worked, pitfalls). Needs `LongTermMemory`. Off by default: it stores facts from conversations without being asked |
+| `MemoryExtractionModel` | `ModelIdentifier` | the session model | The model that reads the conversation for `ExtractMemories` |
+| `RecallMemories` | `bool` | `false` | Put what memory knows about the user in the system prompt of each new session (about 1,500 tokens at most). Needs a `LongTermMemory` that can list entities, such as the SQLite one |
+| `ConsolidateMemories` | `bool` | `false` | Rewrite a user's memory smaller once it holds 60 observations, at most once a day. Needs `ExtractMemories` and a store that can be rewritten and can copy itself first (the SQLite one can). A copy is kept so the rewrite can be undone |
 | `PlanStore` | `PlanStore` | none | Where `submit_plan` saves plans. Without it, `submit_plan` is not available. **Go only** |
 
 ## Working folder, browser and sandbox
@@ -103,6 +113,7 @@ See [Integrating in your product](/en/docs/sdk/integration#run-commands-safely) 
 |---|---|---|---|
 | `MCPServers` | `[]MCPServerConfig` | none | MCP servers to connect. See [Skills and MCP](/en/docs/concepts/skills-and-mcp) |
 | `MainAgentTools` | `[]string` | none | When not empty, limits the tools the main agent sees to exactly these names (a host's general-purpose agent with a short, curated list). Sub-agents started through the agent tools are not limited by it. Empty offers every enabled tool |
+| `MainAgentDeferredTools` | `[]string` | none | Tools the main agent does not have loaded but can find with `tool_search` and then use. With `MainAgentTools` it makes three levels: always loaded, found on demand, and not offered. Sub-agents are not affected. Empty keeps every tool as it is |
 | `EnableToolSearch` | `bool` | `false` | Keep deferred tools (MCP tools, for example) out of the first tool list: the model finds them with `tool_search`. The environment variable `ENABLE_TOOL_SEARCH` can also turn it on |
 | `RAGService` | `*RAGService` | none | The knowledge service behind the RAG tools. **Go only** |
 | `DocumentReaderURL` | `string` | none | The address of a document-reader service, used to build the default converter |

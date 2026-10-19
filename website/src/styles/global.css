@@ -121,16 +121,20 @@ p { margin: 0; }
 .link { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: var(--accent-text); text-decoration: none; }
 .link:hover { text-decoration: underline; text-underline-offset: 4px; }
 
+/* Une seule largeur sur tout le site : le texte, les titres et les visuels prennent la colonne
+du conteneur (.wrap), sans plafond propre. Seules les grilles et les compositions animées
+ont leur propre échelle. */
+
 /* Hero : tout est centré en haut (titre sur une ligne, texte, boutons), puis le film en grand */
 .hero { padding: 64px 0 80px; }
 .hero .wrap { display: grid; justify-items: center; gap: 56px; text-align: center; }
 .hero-copy { display: grid; justify-items: center; }
 .hero h1 { font-size: clamp(1.7rem, 4.6vw, 3.6rem); max-width: none; white-space: nowrap; }
 .hero h1 em { font-style: normal; color: var(--accent-text); }
-.hero .lead { margin: 22px auto 0; max-width: 60ch; font-size: 1.2rem; color: var(--text2); }
+.hero .lead { margin: 22px auto 0; max-width: none; font-size: 1.2rem; color: var(--text2); }
 .hero .actions { justify-self: center; margin-top: 32px; display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
 
-.filmwrap { width: 100%; max-width: 1080px; margin: 0 auto; }
+.filmwrap { width: 100%; max-width: none; margin: 0 auto; }
 .film { position: relative; aspect-ratio: 16 / 9; border-radius: calc(var(--radius) + 6px); background: var(--panel); overflow: hidden; box-shadow: var(--shadow); }
 .film video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; background: var(--panel); }
 
@@ -138,7 +142,6 @@ p { margin: 0; }
 section.block { padding: 112px 0; }
 section.band { background: var(--band); }
 .block h2 { font-size: clamp(1.7rem, 3.2vw, 2.7rem); text-wrap: balance; }
-.why .sticky h2 { max-width: 14ch; }
 .block .intro { margin-top: 18px; color: var(--text2); }
 
 /* 1. Situations : tuiles asymétriques 1 + 2 */
@@ -209,14 +212,22 @@ section.band { background: var(--band); }
 .shield.live[data-active='0'] li[data-n='0'], .shield.live[data-active='1'] li[data-n='1'], .shield.live[data-active='2'] li[data-n='2'], .shield.live[data-active='3'] li[data-n='3'] { opacity: 1; background: color-mix(in srgb, var(--accent) 20%, transparent); border-color: var(--accent); transform: translateY(-3px); }
 @media (prefers-reduced-motion: reduce) { .perimeter li { transition: none; } .shield.live[data-active] li { transform: none !important; } }
 
-/* 4. Preuves : lignes de sujets */
-.proofs { margin-top: 56px; display: grid; gap: 0; }
-.proof { display: grid; grid-template-columns: 0.55fr 1.45fr; gap: 40px; padding: 32px 0; }
-.proof + .proof { border-top: 1px solid var(--line); }
-.proof h3 { font-size: 1.7rem; }
-.proof .who { margin-top: 6px; color: var(--accent-text); font-weight: 600; font-size: 0.95rem; }
-.proof p { color: var(--text2); }
-.proof .note { margin-top: 10px; font-size: 0.95rem; }
+/* 4. Preuves : deux travaux, chacun rattaché au niveau de service qu'il démontre */
+.proofs { margin-top: 48px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.proof { display: flex; flex-direction: column; padding: 26px 26px 24px; border-radius: calc(var(--radius) + 4px); border: 1px solid var(--line); background: var(--surface); }
+.proof h3 { font-size: 1.55rem; }
+/* Le logo garde un fond clair dans les deux thèmes : la marque du client reste lisible. */
+.proof-logo { display: inline-flex; align-items: center; align-self: flex-start; height: 64px; margin-top: 16px; padding: 0 18px; border-radius: 10px; background: #FFFCF8; border: 1px solid var(--line); }
+.proof-logo img { height: 24px; width: auto; }
+.proof-wordmark { font-family: var(--font-display); font-weight: 600; font-size: 1.02rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink); }
+.proof-wordmark em { font-style: normal; color: var(--orange-text); }
+.proof-text { margin-top: 18px; color: var(--text2); }
+.proof-note { margin-top: 10px; font-size: 0.92rem; color: var(--text2); }
+.proof-proves { margin: 18px 0 0; padding: 14px 16px; border-radius: var(--radius); background: color-mix(in srgb, var(--accent) 8%, var(--bg)); border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent); }
+.proof-proves strong { display: block; margin-bottom: 5px; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--accent-text); }
+.proof .link { margin-top: auto; padding-top: 20px; }
+.proofs-source { margin-top: 18px; max-width: 74ch; font-size: 0.9rem; color: var(--text2); }
+@media (max-width: 820px) { .proofs { grid-template-columns: 1fr; } }
 
 /* 5. Produits : colonnes décalées */
 .products { margin-top: 64px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; align-items: start; }
@@ -271,7 +282,7 @@ section.cta { padding: 16px 0 96px; }
 
 /* Pages intérieures : en-tête de page */
 .page-head { padding: 88px 0 40px; }
-.page-head h1 { font-size: clamp(2rem, 4.2vw, 3.6rem); max-width: 22ch; text-wrap: balance; }
+.page-head h1 { font-size: clamp(2rem, 4.2vw, 3.6rem); max-width: none; text-wrap: balance; }
 .page-head .lead { margin-top: 20px; font-size: 1.2rem; color: var(--text2); }
 
 /* Services : nid d'abeille 3D (une cellule s'allume par niveau atteint) */
@@ -280,7 +291,7 @@ section.cta { padding: 16px 0 96px; }
 .services-head h1 { font-size: clamp(1.9rem, 3.3vw, 2.9rem); max-width: none; text-wrap: initial; }
 .services-head h1 em { display: block; font-style: normal; color: var(--accent-text); }
 .services-head .lead { color: var(--text); opacity: 0.82; margin-top: 16px; font-size: 1.15rem; }
-section.quest-block { padding: 8px 0 96px; }
+section.quest-block { padding: 8px 0 96px; scroll-margin-top: 84px; }
 .hive { --rx: 58deg; --rz: -28deg; --w: 92px; --h: 106px; perspective: 1100px; width: 100%; max-width: 360px; justify-self: end; aspect-ratio: 1 / 0.78; --w: 78px; --h: 90px; display: grid; place-items: center; }
 .sway { transform-style: preserve-3d; }
 .plane { position: relative; width: 0; height: 0; transform-style: preserve-3d; transform: rotateX(var(--rx)) rotateZ(var(--rz)); transition: transform 0.35s var(--ease); }
@@ -483,10 +494,12 @@ a.scale-chip:hover { border-color: var(--accent); transform: translateY(-1px); }
 .t-o { color: var(--grey-on-dark); }
 .t-a { color: #9ed3a8; font-weight: 700; }
 .who-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
-.who { padding: 22px 24px; border-radius: calc(var(--radius) + 2px); border: 1px solid var(--line); background: var(--surface); }
-.who h3 { font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-text); margin-bottom: 8px; }
-.who.not h3 { color: var(--text2); }
-.who p { margin: 0; color: var(--text); line-height: 1.55; }
+/* La carte « qui / pas qui » n'existe que dans sa grille : un .who seul (accroche, panneau
+   des services) reste du texte, sans fond ni bordure hérités. */
+.who-grid .who { padding: 22px 24px; border-radius: calc(var(--radius) + 2px); border: 1px solid var(--line); background: var(--surface); }
+.who-grid .who h3 { font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-text); margin-bottom: 8px; }
+.who-grid .who.not h3 { color: var(--text2); }
+.who-grid .who p { margin: 0; color: var(--text); line-height: 1.55; }
 .give .badge { margin: 2px 0 6px; }
 @media (max-width: 720px) { .who-grid { grid-template-columns: 1fr; } }
 .tui-film { margin: 28px 0 0; }
@@ -731,7 +744,7 @@ a.scale-chip:hover { border-color: var(--accent); transform: translateY(-1px); }
 
 /* Pages légales */
 section.legal-block { padding: 16px 0 96px; }
-.legal { display: grid; gap: 20px; max-width: 1000px; }
+.legal { display: grid; gap: 20px; }
 .legal article { padding: 28px 32px; border-radius: calc(var(--radius) + 4px); background: var(--surface); border: 1px solid var(--line); }
 .legal h2 { font-size: 1.35rem; margin-bottom: 14px; max-width: none; }
 .legal p + p, .legal ul + p, .legal p + ul { margin-top: 12px; }

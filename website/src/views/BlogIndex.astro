@@ -13,9 +13,9 @@ const t = dict(lang).blog;
 const posts = await postsFor(lang);
 const other: Lang = lang === 'fr' ? 'en' : 'fr';
 const otherCount = (await allPosts()).filter((p) => p.lang === other).length;
-const cats = (['pme', 'dev', 'proof'] as const).filter((c) => posts.some((p) => p.entry.data.category === c));
+const cats = (['pme', 'dev', 'proof', 'public'] as const).filter((c) => posts.some((p) => p.entry.data.category === c));
 const count = (c: string) => posts.filter((p) => p.entry.data.category === c).length;
-const catIcon = { pme: 'buildings', dev: 'terminal-window', proof: 'seal-check' } as const;
+const catIcon = { pme: 'buildings', dev: 'terminal-window', proof: 'seal-check', public: 'bank' } as const;
 const feed = `${url(lang, 'blog')}/rss.xml`;
 ---
 <Base title={t.meta.title} description={t.meta.description} lang={lang} page="blog" feed={feed} noindex={posts.length === 0}>

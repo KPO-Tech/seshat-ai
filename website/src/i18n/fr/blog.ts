@@ -10,7 +10,7 @@ export default {
     post: ' en entreprise',
     lead: 'Retours terrain, ingénierie et guides pour adopter une IA souveraine, adaptée à votre entreprise et vérifiable.',
   },
-  categories: { pme: 'Pour les PME', dev: 'Pour les développeurs', proof: 'Preuves' },
+  categories: { pme: 'Pour les PME', dev: 'Pour les développeurs', proof: 'Preuves', public: 'Secteur public' },
   labels: {
     all: 'Tous',
     minutes: 'min de lecture',
@@ -50,6 +50,11 @@ export default {
       text: "Un runtime d'agents open source, installable en une commande. La documentation est en anglais.",
       button: 'Lire la documentation',
       second: 'Voir le code',
+    },
+    public: {
+      title: 'Un projet documentaire ?',
+      text: 'Un corpus, des droits, des questions réelles et un critère d’arrêt : nous cadrons le périmètre avant de parler d’outil.',
+      button: 'Décrire votre corpus',
     },
   },
 };

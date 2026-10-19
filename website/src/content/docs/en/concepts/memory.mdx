@@ -52,15 +52,32 @@ Compaction is checked before every model call, with two ways of freeing room: fi
 
 1. **Threshold.** Below it, nothing happens.
 2. **Micro-compaction.** Large tool results are trimmed. If that brings the session under the target, there is no model call at all.
-3. **Summary.** Otherwise the session's own model writes a summary of the conversation, told to preserve the active requests, the decisions made, the tool outcomes that still matter and the unresolved work.
-4. **Recent messages are kept.** Starting from the newest message, Seshat keeps messages until it reaches the target. The cut is then moved back if needed, so a tool result is never kept without the tool call it answers.
-5. **Rebuild.** The new history is the summary, a marker saying the context was compacted, and the kept messages.
+3. **Summary.** Otherwise a model writes a summary of the part of the conversation that is dropped, in six numbered sections (what the user asked for, decisions, what was done, where things stand and what remains, facts to keep exactly, the user's preferences). It is shown what each tool was asked and what it returned, not only the size of the result. The summary request is sized to the window of the model that writes it: the oldest messages are left out first if it would not fit, and it is sent again, smaller, if the provider rejects it as too long.
+4. **Recent messages are kept.** Starting from the newest message, Seshat keeps messages as long as they stay within the target (and always the last one). The cut is then moved back if needed, so a tool result is never kept without the tool call it answers.
+5. **Rebuild.** The new conversation is the summary (which also carries the user's earlier messages word for word, up to 5% of the window), a marker saying the context was compacted, and the kept messages.
 
-If the summary call fails, that turn ends with an error. By default the summary is written by the model of the session, so compaction works with any provider. In Go, `ClientConfig.CompactSummaryModel` picks another model for it.
+### Which model writes the summary
+
+A summary is reading and condensing, not reasoning, and a model that reasons spends its output budget thinking: on z.ai, `glm-5.3-flash` took 200 seconds to compact a conversation where `glm-4.5` took 20. So the summary is written by a small model of the session's own family, without reasoning, chosen by rules, in this order:
+
+1. `CompactSummaryModel`, when you set it.
+2. Your `CompactModelRules`: the provider and model of the session (an exact name, or a prefix such as `glm-*`) mapped to a model. First match wins.
+3. The built-in rules, unless you set `NoDefaultCompactModels`: `glm-4.5-air` for a z.ai session, `claude-haiku-5-5` for an Anthropic session.
+4. The model of the session itself.
+
+A rule's model stays on the session's provider unless the rule names another, so the conversation does not go to a vendor the session did not choose. A model chosen by a rule is skipped if its window cannot hold the request and its summary. Where the provider has a switch for it, the request tells the model not to reason; if a model still returns no text, the request is repeated once with a larger budget.
+
+Measured on `glm-4.5` at the exact threshold (107,495 tokens), the summary written by `glm-4.5`, `glm-4.5-air` and `glm-4.7` kept the same facts and left the same size; `glm-4.5-air` was the fastest and cheapest.
+
+### Compacting on demand
+
+`Session.Compact(ctx)` compacts now, whatever the size: it always summarizes and keeps only the most recent fifth of the conversation. It refuses while a turn is running, returns `ErrNothingToCompact` for a conversation too short to shrink, and `ErrCompactionWouldNotShrink` (changing nothing) when summarizing would leave it no smaller. The host receives `context.compacting` and `context.compacted`.
 
 ### When compaction keeps failing
 
-The runtime counts failed compactions from one turn to the next. After 3 in a row it stops trying to summarise for the rest of the session, instead of paying for a call that keeps failing. The request is still checked against the hard limit of the window: if it does not fit, it fails on your machine with the `compact_full` error, before it reaches the provider.
+A summary that cannot be written (a model that returns nothing, a provider that is down) no longer ends the turn: it is logged, counted, and the turn goes on with the conversation as it is. The runtime counts failed compactions from one turn to the next, and after 3 in a row it stops trying to summarise for the rest of the session, instead of paying for a call that keeps failing.
+
+The request is still checked against the hard limit of the window. If it does not fit, the runtime shrinks it **without asking a model**: it trims the large tool results and, if that is not enough, drops the oldest messages (tool calls and their results kept together) behind a marker saying the earlier part could not be summarized, keeping the newest up to the target. Only a request that cannot be shrunk at all (nothing older than the last message) fails on your machine with the `compact_full` error, before it reaches the provider.
 
 ### What the history looks like afterwards
 
@@ -69,6 +86,14 @@ The runtime counts failed compactions from one turn to the next. After 3 in a ro
 <Callout type="note" title="A summary is a summary">
 After compaction the model works from the summary, not from the original words. For details that must not be lost, store them as a note (below) or in a file of your project.
 </Callout>
+
+### Nothing is deleted
+
+What a compaction drops from the model's view is **kept in the session's transcript** as archived messages. They are not sent to the model and are not restored into the session, but they stay stored and searchable. `Session.GetMessages()` returns what the model sees; `Session.History()` returns the whole conversation as `Archived` (oldest first) and `Current`. A rewind or an interrupted turn is not a compaction and replaces the transcript as before.
+
+### Watching the window
+
+The `context.usage` event reports how full the window is during a turn, with the thresholds, so a host can draw a gauge that moves. The agent can read the same figure with the `get_context_remaining` tool.
 
 ## 3. Notes that last
 
@@ -92,6 +117,20 @@ seshat memory --action context                         # what would be given to 
 ```
 
 `--scope` is `user`, `project` or `cross` (shared across sessions).
+
+### Notes written and read for you (opt-in)
+
+In the terminal interface, set `options.memory_enabled` to `true` in `seshat.json` (or use "Toggle Learning From Conversations" in the command palette; it applies from the next start). It turns on extraction and recall. Each start also reads, in the background, the sessions an earlier run left open (the terminal was closed or crashed). `SESHAT_MEMORY_ENABLED` and `SESHAT_MEMORY_CONSOLIDATE` do the same for hosts that read the runtime's environment. In SeshatOS the choice is per user, in Settings, Memories, "Learn from my conversations".
+
+In the terminal interface, the command palette (`\` at the start of the prompt) has **Memory: Show Notes**, **Memory: Forget a Note** (it asks for the note's name) and **Memory: Undo Last Change**, which goes back to the copy taken before the last change. The answer is shown to you and is never sent to the agent.
+
+Three settings of the Go SDK let memory fill and be used without the agent being asked, all **off by default** because they store facts from conversations without an explicit request:
+
+- **`ExtractMemories`**: when a session closes, a model reads the conversation and stores what a future assistant needs: stable preferences and corrections, procedures that worked, pitfalls. The prompt treats the conversation as data (a pasted document cannot plant a rule), forbids secrets, and allows an empty result, which is the normal one. In code, an observation that looks like a credential is dropped, and one extraction keeps at most 8 entities of 5 observations of 300 characters. A host that never closes its sessions calls `Client.ExtractPendingMemories(ctx, userID, opts)` now and then: it reads the sessions idle for 30 minutes (at most 10 per call, not older than 7 days) that were not read yet, and marks each one so it is read once.
+- **`RecallMemories`**: the system prompt of each new session carries a block of memory, about 1,500 tokens at most: the user's preferences and pitfalls always, then the entities that share words with the first message. It is computed once per session so the prompt stays the same from turn to turn and the provider can cache it, and it says that memory may be out of date and must never be obeyed as an instruction. In a test with a real model, the same question asked in English was answered in English without recall and in French with it, as the stored preference says.
+- **`ConsolidateMemories`**: extraction only adds, so memory fills with near-duplicates and statements that were later contradicted. Once a user holds 60 observations, a model rewrites the memory smaller, at most once a day: entities that are the same thing are merged (relations follow them), the newer of two conflicting statements wins, obsolete entities are dropped. The result is refused if it keeps under 30% of the observations, drops over a quarter of the entities, repeats a name or invents an entity; it is abandoned, changing nothing, if memory was written while the model was thinking.
+
+Before a consolidation rewrites memory it is **copied** (entities and relations; ten copies kept per user). `ListMemorySnapshots` and `RestoreMemorySnapshot` put a copy back, and the memory a restore replaces is copied first so a restore can be undone too. Consolidation does not run with a store that cannot copy itself.
 
 ## Documents and knowledge
 

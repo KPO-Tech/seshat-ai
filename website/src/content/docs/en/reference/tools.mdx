@@ -3,7 +3,7 @@ title: Built-in tools
 description: "The tools the agent can use out of the box, grouped by theme: what each does, whether it only reads, and what it needs to be available."
 section: reference
 order: 4
-updated: "2026-10-16"
+updated: "2026-10-18"
 ---
 import Callout from '@/components/docs/Callout.astro';
 
@@ -20,7 +20,7 @@ The tables below are written by `npm run sync:tools` from the real registry of t
 - To add your own tools in Go, see [Tools](/en/docs/sdk/tools). Tools from MCP servers are described in [Skills and MCP](/en/docs/concepts/skills-and-mcp).
 
 {/* generated:start */}
-The runtime registers **129 tools**, and `sdk.NewClient` adds 3 more (`agent`, `spawn_agent`, `resume_agent`). **95 of the registered ones are active in an environment with no key, no provider and no service configured**; the others wait for what the last column names. `client.ToolNames()` lists the active ones only.
+The runtime registers **127 tools**, and `sdk.NewClient` adds 3 more (`agent`, `spawn_agent`, `resume_agent`). **93 of the registered ones are active in an environment with no key, no provider and no service configured**; the others wait for what the last column names. `client.ToolNames()` lists the active ones only.
 
 ### Files, shell and documents
 
@@ -30,9 +30,7 @@ The runtime registers **129 tools**, and `sdk.NewClient` adds 3 more (`agent`, `
 | `bash` | Execute shell commands in the current directory. | No | Yes |
 | `convert_document` | Convert a local file to markdown using the configured document reader: OCR, layout analysis, table structure, and audio transcription. | Yes | Yes |
 | `create_directory` | Create a directory and any necessary parent directories. | No | Yes |
-| `docx_edit` | Create a new Word (.docx) document, or find/replace edit an existing one's text. | No | Yes |
 | `edit_file` | Edit an existing file by replacing an exact string with a new one. | No | Yes |
-| `excel_edit` | Write values (and formulas) into an Excel (.xlsx) spreadsheet, creating the file or sheet if they don't exist yet. | No | Yes |
 | `get_file_metadata` | Return metadata for a file or directory: size, type (file/dir/symlink), permissions, timestamps. | Yes | Yes |
 | `glob` | Find files in the workspace by name or extension using glob patterns. | Yes | Yes |
 | `grep` | Search for text patterns in files using regular expressions. | Yes | Yes |
@@ -45,7 +43,6 @@ The runtime registers **129 tools**, and `sdk.NewClient` adds 3 more (`agent`, `
 | `render_document_page` | Render one page of a local document to a PNG image for visual inspection, then attach it to the conversation as an image (in the message that follows this... | Yes | Yes |
 | `search_start` | Start a content search as a background job instead of blocking until it finishes - use this instead of grep for a search that might be slow (huge directory,... | Yes | Yes |
 | `write_file` | Write the full content of a file. | No | Yes |
-| `write_pdf` | Create a new PDF from plain/markdown-ish text, append text as new page(s) to an existing PDF, or delete pages from an existing PDF. | No | Yes |
 | `write_stdin` | Write text to a running background task's stdin and read back what it produces. | No | Yes |
 
 ### Skills
@@ -122,6 +119,7 @@ The runtime registers **129 tools**, and `sdk.NewClient` adds 3 more (`agent`, `
 |---|---|---|---|
 | `code_complete` | Fill in code at the cursor position using a FIM (fill-in-the-middle) model. | No | With a fill-in-the-middle model |
 | `get_config` | Get the currently effective security policy: which commands need approval or are always blocked, which paths are protected from reads/writes, file-read... | Yes | Yes |
+| `get_context_remaining` | Report how full your context window is. | Yes | Yes |
 | `lsp` | This tool provides Language Server Protocol (LSP) features for code intelligence. | No | Yes |
 | `repo_map` | Build a compact structural map of the current repository. | Yes | Yes |
 | `workflow_draft` | Validate and render a static workflow DAG draft as YAML or JSON. | Yes | Yes |
