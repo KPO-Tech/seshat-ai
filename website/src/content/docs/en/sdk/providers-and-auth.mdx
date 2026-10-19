@@ -104,6 +104,10 @@ A policy is a plain value you pass in: the package keeps none, so two hosts, or 
 
 `go run scripts/check_providers.go groq zai` (in the runtime repository) sends a short question to the cheapest model of each provider you name, with the key from its environment variable, and prints the answer, the reasoning when there is some, the time and any error. Without arguments it checks every provider whose key variable is set; `-all-models -limit 5` tries several models of each.
 
+<Callout type="note" title="Most of these providers are untested, and we would like your help">
+A small team cannot hold a key for every provider of the catalog. The built-in providers are tried; the others are **not**: we know their address and their key variable from the catalog, and that is all. You may meet a wrong URL, a model that rejects a parameter, a stream that ends oddly or a response field we do not read yet. If you use one of them, please tell us whether it works, and if it does not, open an [issue](https://github.com/KPO-Tech/seshat-runtime/issues) or a pull request with the fix. To try a provider with your own key: `go run scripts/check_providers.go groq` in the runtime repository prints the answer, the reasoning and the error of one model, and `-all-models` tries several. Perplexity is not in the catalog as a chat provider (its API is now the Agent API) and is not supported yet; a contribution is welcome.
+</Callout>
+
 ## Your own endpoint
 
 Use `ProviderConfig` to point a provider at another base URL, add headers, or map model aliases. This is how you reach a gateway, a self-hosted server or an OpenAI-compatible service.
