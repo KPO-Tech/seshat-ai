@@ -39,7 +39,7 @@ func main() {
     cfg.APIKey = os.Getenv("ANTHROPIC_API_KEY")
     cfg.Model = sdk.ModelIdentifier{
         Provider: sdk.APIProviderAnthropic,
-        Model:    "claude-sonnet-4-20250514",
+        Model:    "claude-sonnet-5-5",
     }
 
     client, err := sdk.NewClient(cfg)

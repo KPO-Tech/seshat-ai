@@ -16,13 +16,13 @@ Seshat needs at least one model provider. You can set it up from the command lin
 
 ```bash
 seshat config --provider anthropic --api-key sk-ant-...   # set a provider and its key
-seshat config --model anthropic:claude-sonnet-4-20250514  # choose the model (provider:model)
+seshat config --model anthropic:claude-sonnet-5-5  # choose the model (provider:model)
 seshat config --print                                     # show the current configuration
 ```
 
-`seshat config` also takes `--region`, `--project-id`, `--base-url` and `--resource` for the cloud providers, `--cwd` for the default working directory, `--db` for the database path, and `--search` to set only the web search keys. The keys you save this way are stored **encrypted**, per provider, in the local database.
+`seshat config` also takes `--base-url` for a custom endpoint, `--cwd` for the default working directory, `--db` for the database path, and `--search` to set only the web search keys. The keys you save this way are stored **encrypted**, per provider, in the local database.
 
-In the terminal interface, press `ctrl+,` for providers and `ctrl+m` for models. A key entered in the providers screen is stored the same way, so it never reaches `seshat.json`: that file holds settings, not secrets. The key that protects the database is `secret.key`, next to it in the runtime folder.
+In the terminal interface, press `ctrl+,` for providers and `ctrl+m` for models (the models of the providers you have configured). A key entered in the providers screen is stored the same way, so it never reaches `seshat.json`: that file holds settings, not secrets. The key that protects the database is `secret.key`, next to it in the runtime folder.
 
 ## With environment variables
 
