@@ -1,0 +1,72 @@
+---
+// Les trois modèles d'organisation d'un RAG public, en cartes HTML plutôt qu'en SVG :
+// le texte reste lisible à toute largeur et chaque cas porte son statut écrit.
+interface Cas { name: string; detail: string; statut: 'Service' | 'Pilote' | 'Démo' | 'Projet' }
+interface Modele { n: number; title: string; role: string; cas: Cas[] }
+
+const modeles: Modele[] = [
+  {
+    n: 1,
+    title: 'Plateforme mutualisée',
+    role: 'Un opérateur outille ; les agences versent leurs corpus.',
+    cas: [
+      { name: 'AIBots · Singapour', detail: '115 agences', statut: 'Service' },
+      { name: 'Caroline du Nord', detail: 'widget d’agence', statut: 'Service' },
+      { name: 'Albert API · France', detail: '70+ projets', statut: 'Service' },
+    ],
+  },
+  {
+    n: 2,
+    title: 'Produit métier',
+    role: 'Une équipe, un corpus, un métier.',
+    cas: [
+      { name: 'Assist · Royaume-Uni', detail: '5 documents', statut: 'Service' },
+      { name: 'China Maritime', detail: '5 488 questions-réponses', statut: 'Service' },
+      { name: 'Seoul Data Hub', detail: 'données municipales', statut: 'Service' },
+      { name: 'GSA Leasing Bot', detail: 'guide interne', statut: 'Service' },
+      { name: 'KIRA · Allemagne', detail: 'contrats informatiques', statut: 'Pilote' },
+    ],
+  },
+  {
+    n: 3,
+    title: 'Guide et capacités',
+    role: 'Un document, pas un système : il diffuse, il n’exécute pas.',
+    cas: [
+      { name: 'GOV.UK AI Insights', detail: 'deux guides', statut: 'Service' },
+      { name: 'Brésil · MGI', detail: 'guide public', statut: 'Service' },
+      { name: 'Rwanda · Policy Navigator', detail: 'projet primé, non déployé', statut: 'Projet' },
+    ],
+  },
+];
+
+const statutClass: Record<Cas['statut'], string> = { Service: 'pm-service', Pilote: 'pm-pilote', Démo: 'pm-demo', Projet: 'pm-projet' };
+const total = modeles.reduce((n, m) => n + m.cas.length, 0);
+---
+
+<figure class="mg">
+  <div class="mg-grid">
+    {modeles.map((m) => (
+      <section class="mg-col" aria-label={m.title}>
+        <p class="mg-num">{m.n}</p>
+        <p class="mg-title">{m.title}</p>
+        <p class="mg-role">{m.role}</p>
+        <ul class="mg-list">
+          {m.cas.map((c) => (
+            <li>
+              <span class="mg-case">
+                <strong>{c.name}</strong>
+                <small>{c.detail}</small>
+              </span>
+              <span class={`pm-status ${statutClass[c.statut]}`}>{c.statut}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))}
+  </div>
+  <figcaption>
+    Trois façons d’organiser un RAG public, {total} cas. Aucune n’est un stade de maturité :
+    un produit métier peut être en service pendant qu’une plateforme reste sans évaluation.
+    Un même pays peut pratiquer les trois modèles à la fois.
+  </figcaption>
+</figure>

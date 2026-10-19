@@ -12,7 +12,7 @@ const en: typeof fr = {
     post: ' in business',
     lead: 'Field notes, engineering and guides to adopt sovereign AI that fits your company and can be checked.',
   },
-  categories: { pme: 'For SMEs', dev: 'For developers', proof: 'Evidence' },
+  categories: { pme: 'For SMEs', dev: 'For developers', proof: 'Evidence', public: 'Public sector' },
   labels: {
     all: 'All',
     minutes: 'min read',
@@ -52,6 +52,11 @@ const en: typeof fr = {
       text: 'An open source agent runtime, installed with one command.',
       button: 'Read the documentation',
       second: 'See the code',
+    },
+    public: {
+      title: 'A document project?',
+      text: 'A corpus, access rights, real questions and a stop criterion: we scope the perimeter before discussing tools.',
+      button: 'Describe your corpus',
     },
   },
 };

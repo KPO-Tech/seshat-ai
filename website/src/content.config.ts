@@ -24,12 +24,15 @@ const blog = defineCollection({
   loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/blog' }),
   schema: z.object({
     title: z.string(),
+    // Titre court pour la balise <title> quand le titre éditorial dépasse la limite SERP
+    seoTitle: z.string().optional(),
     description: z.string(),
     // Date de publication et de dernière révision, au format AAAA-MM-JJ
     date: z.string(),
     updated: z.string().optional(),
-    // pme = dirigeants de PME, dev = développeurs, proof = preuves (mesures, audits, captures)
-    category: z.enum(['pme', 'dev', 'proof']),
+    // pme = dirigeants de PME, dev = développeurs, proof = preuves (mesures, audits, captures),
+    // public = secteur public et administrations
+    category: z.enum(['pme', 'dev', 'proof', 'public']),
     // Brouillon : visible avec « npm run dev », absent du site publié
     draft: z.boolean().default(false),
     // Adresse (sans la langue) de la même page dans l'autre langue, quand elle existe

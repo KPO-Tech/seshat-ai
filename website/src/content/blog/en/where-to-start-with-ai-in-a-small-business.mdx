@@ -9,7 +9,8 @@ tags: ["AI in business", "sovereign AI", "assessment", "pilot"]
 ---
 import Callout from '@/components/docs/Callout.astro';
 import Flow from '@/components/docs/Flow.astro';
-import Figure from '@/components/docs/Figure.astro';
+import Diagram from '@/components/docs/Diagram.astro';
+import { reponseSourceeEn } from '@/components/docs/diagrams/sourcedAnswer';
 
 In a small or mid-sized company, AI rarely arrives through a precise need. It arrives through pressure: a competitor talking about it, a tool an employee already tried on their own, a salesperson promising gains. The temptation is to start with the tool. That is almost always the wrong door.
 
@@ -64,13 +65,7 @@ It will be wrong. The question is not "how often" but "what happens next". For e
 - what a human must always validate (emailing a customer, changing a reference document, committing spend);
 - how an error gets reported.
 
-<Figure
-  src="/img/blog/par-ou-commencer-avec-l-ia-pme/verification.webp"
-  alt="A document with a passage highlighted in orange, linked to an answer shown in a window, and a hand ticking a box to validate."
-  caption="A sourced answer can be checked in seconds: the original passage is visible, and a person validates (AI-generated illustration)."
-  width={1200}
-  height={800}
-/>
+<Diagram {...reponseSourceeEn} />
 
 A **sourced** answer, one that shows the passage of the document it came from, changes the game: the team checks in ten seconds instead of trusting blindly. It is the most useful criterion for judging a demo.
 
