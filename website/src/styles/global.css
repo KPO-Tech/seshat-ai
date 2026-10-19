@@ -226,8 +226,14 @@ section.band { background: var(--band); }
 .proof-proves { margin: 18px 0 0; padding: 14px 16px; border-radius: var(--radius); background: color-mix(in srgb, var(--accent) 8%, var(--bg)); border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent); }
 .proof-proves strong { display: block; margin-bottom: 5px; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--accent-text); }
 .proof .link { margin-top: auto; padding-top: 20px; }
-.proofs-source { margin-top: 18px; max-width: 74ch; font-size: 0.9rem; color: var(--text2); }
-@media (max-width: 820px) { .proofs { grid-template-columns: 1fr; } }
+/* La note de contexte ferme la section sur toute la largeur : alignée sur le bord gauche des
+   cartes, elle prend la place restante au lieu de flotter dans une demi-colonne. */
+.proofs-source { margin: 26px 0 0; padding-top: 18px; border-top: 1px solid var(--line); display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 4px 32px; align-items: start; font-size: 0.93rem; color: var(--text2); }
+.proofs-source strong { padding-top: 2px; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--text2); }
+@media (max-width: 820px) {
+  .proofs { grid-template-columns: 1fr; }
+  .proofs-source { grid-template-columns: 1fr; gap: 6px; }
+}
 
 /* 5. Produits : colonnes décalées */
 .products { margin-top: 64px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; align-items: start; }

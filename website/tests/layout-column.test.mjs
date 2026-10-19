@@ -87,6 +87,7 @@ test('les pages du site tiennent le même gabarit', () => {
     ['.hero .lead', 'texte d’accroche de l’accueil'],
     ['.filmwrap', 'film de l’accueil'],
     ['.page-head h1', 'titre des pages intérieures'],
+    ['.proofs-source', 'note de contexte des preuves'],
   ];
   for (const [selector, label] of shared) {
     const caps = declaredValues(site, selector, 'max-width').filter((v) => !OPEN.has(v));
