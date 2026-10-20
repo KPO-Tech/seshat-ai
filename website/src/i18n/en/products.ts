@@ -97,8 +97,8 @@ const en: typeof fr = {
     installLabelWindows: 'Windows (PowerShell)',
     copy: 'Copy',
     copied: 'Copied',
-    filmLabel: 'Film: Seshat at work, replayed from a real session of the terminal interface',
-    filmCaption: 'Seshat at work, about two minutes: two requests, eleven agents, two written reports. Replayed from a real session of the terminal interface; the pace is reconstructed.',
+    filmLabel: 'Film: Seshat in your terminal, install, model choice, plan mode, sub-agents and permissions (French audio, English subtitles)',
+    filmCaption: 'Seshat in your terminal, about four minutes: the install, choosing a model among the built-in providers and the models.dev catalog, plan mode, sub-agents and permissions. French audio with English subtitles. The demo task is an illustrative example on a fictional project; the sub-agent scene is replayed from a real session, at a reconstructed pace.',
     galleryAria: 'Screenshots of the terminal interface',
     shots: [
       { t: 'Home', d: 'Ready in seconds, with the essential shortcuts in view.' },

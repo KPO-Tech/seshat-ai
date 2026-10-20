@@ -95,8 +95,8 @@ export default {
     installLabelWindows: 'Windows (PowerShell)',
     copy: 'Copier',
     copied: 'Copié',
-    filmLabel: "Film : Seshat au travail, rejoué depuis une vraie session de l'interface en terminal",
-    filmCaption: "Seshat au travail, environ deux minutes : deux demandes, onze agents, deux rapports écrits. Rejoué depuis une vraie session de l'interface en terminal ; le rythme est reconstruit.",
+    filmLabel: "Film : Seshat dans votre terminal, installation, choix du modèle, mode plan, sous-agents et permissions",
+    filmCaption: "Seshat dans votre terminal, environ quatre minutes : l'installation, le choix du modèle parmi les fournisseurs intégrés et le catalogue models.dev, le mode plan, les sous-agents et les permissions. La tâche de démonstration est un exemple illustratif sur un projet fictif ; la scène des sous-agents est rejouée depuis une vraie session, au rythme reconstruit.",
     galleryAria: "Captures de l'interface en terminal",
     shots: [
       { t: 'Accueil', d: 'Prêt en quelques secondes, avec les raccourcis essentiels sous les yeux.' },
