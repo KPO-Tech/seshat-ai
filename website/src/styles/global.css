@@ -638,6 +638,10 @@ a.scale-chip:hover { border-color: var(--accent); transform: translateY(-1px); }
 
 /* À propos : cellules de compétences en 3D */
 .about-top .wrap { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 32px; align-items: center; }
+.founder { position: relative; margin: 0; justify-self: end; width: 100%; max-width: 340px; }
+.founder-photo { display: block; width: 100%; height: auto; aspect-ratio: 2 / 3; object-fit: cover; object-position: 50% 12%; border-radius: 28px; box-shadow: var(--shadow); border: 1px solid var(--line); background: var(--cream); }
+.founder-hive { position: absolute; left: -118px; bottom: -44px; width: 330px; transform: scale(0.62); transform-origin: left bottom; }
+.founder-hive .skills3d { max-width: none; }
 .about-top h1 { font-size: clamp(2.2rem, 4.4vw, 3.6rem); }
 .skills3d { max-width: 440px; --w: 86px; --h: 99px; aspect-ratio: 1 / 0.92; }
 .skills3d .cell { padding: 0; border: 0; background: none; cursor: pointer; }
@@ -733,6 +737,7 @@ a.scale-chip:hover { border-color: var(--accent); transform: translateY(-1px); }
 .edu-school { margin-top: 8px; color: var(--text2); }
 .edu-desc { margin-top: 8px; color: var(--text2); font-size: 0.95rem; }
 .certs { margin-top: 64px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.certs .cert:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .cert { display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; align-items: baseline; padding: 18px 20px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); text-decoration: none; color: inherit; transition: border-color 0.2s, transform 0.2s var(--ease); }
 .cert:hover { border-color: var(--accent); transform: translateY(-2px); }
 .cert-title { font-weight: 600; }
@@ -811,6 +816,8 @@ section.legal-block { padding: 16px 0 96px; }
   .form { grid-template-columns: 1fr; padding: 24px 20px; }
   .form .field.half { grid-column: 1 / -1; }
   .services-head .wrap { grid-template-columns: 1fr; }
+  .founder { justify-self: center; max-width: 300px; margin-bottom: 36px; }
+  .founder-hive { left: -34px; bottom: -48px; }
   .hive { justify-self: center; max-width: 320px; --w: 68px; --h: 78px; }
   .panel { grid-template-columns: 1fr; gap: 28px; padding: 28px 22px; }
   .node .hex { width: 52px; height: 58px; }

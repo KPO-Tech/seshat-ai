@@ -87,11 +87,13 @@ export default {
   projects: {
     title: 'Projets techniques.',
     github: 'Voir sur GitHub',
-    robot: {
-      title: 'Robot autonome de collecte de déchets',
-      text: "Conçu pour la collecte autonome de déchets dans des environnements comme les plages : détection, classement et suivi des déchets en les distinguant des obstacles, puis planification d'un itinéraire de collecte avec l'algorithme de Dijkstra.",
-      tags: ['YOLOv8', 'OpenCV', 'Dijkstra', 'Apprentissage par renforcement'],
-      note: "Projet AceObject. Une piste d'apprentissage par renforcement a été explorée pour la décision et l'évitement d'obstacles.",
+    seshat: {
+      title: "Seshat, le runtime d'agents open source",
+      text: "Un moteur d'agents écrit en Go : outils, bash en bac à sable, MCP, RAG, plus de 15 fournisseurs de modèles, sessions et permissions. SeshatOS (application de bureau locale) et SeshatCloud (multi-organisations) sont construits dessus.",
+      tags: ['Go', 'MCP', 'RAG hybride', 'Apache-2.0'],
+      note: "Mon projet le plus abouti : je conçois et développe l'ensemble, du moteur à l'application.",
+      more: 'Découvrir le projet',
+      code: 'Le code sur GitHub',
     },
     items: [
       { t: 'Tech Watch Agent', d: 'Plateforme de veille multi-agents : planification par sujet, collecte multi-sources, extraction des points clés, synthèses sourcées et rapports ciblés. Orchestration LangGraph, mémoire sémantique pgvector.' },

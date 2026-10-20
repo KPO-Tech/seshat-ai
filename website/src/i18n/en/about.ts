@@ -89,11 +89,13 @@ const en: typeof fr = {
   projects: {
     title: 'Technical projects.',
     github: 'See on GitHub',
-    robot: {
-      title: 'Autonomous waste collection robot',
-      text: "Designed for autonomous waste collection in environments such as beaches: detecting, classifying and tracking waste while telling it apart from obstacles, then planning a collection route with Dijkstra's algorithm.",
-      tags: ['YOLOv8', 'OpenCV', 'Dijkstra', 'Reinforcement learning'],
-      note: 'AceObject project. A reinforcement learning approach was explored for decision-making and obstacle avoidance.',
+    seshat: {
+      title: 'Seshat, the open-source agent runtime',
+      text: 'An agent engine written in Go: tools, sandboxed bash, MCP, RAG, 15+ model providers, sessions and permissions. SeshatOS (local desktop app) and SeshatCloud (multi-organization) are built on it.',
+      tags: ['Go', 'MCP', 'Hybrid RAG', 'Apache-2.0'],
+      note: 'My most complete project: I design and build all of it, from the engine to the application.',
+      more: 'Discover the project',
+      code: 'Code on GitHub',
     },
     items: [
       { t: 'Tech Watch Agent', d: 'Multi-agent monitoring platform: topic scheduling, multi-source collection, key point extraction, sourced summaries and targeted reports. LangGraph orchestration, pgvector semantic memory.' },
