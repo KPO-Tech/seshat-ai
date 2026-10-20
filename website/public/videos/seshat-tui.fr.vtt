@@ -1,0 +1,181 @@
+WEBVTT
+
+00:00:02.600 --> 00:00:03.790
+Noah : Alors, ces tests ?
+
+00:00:04.040 --> 00:00:09.112
+Maya : Quarante au rouge depuis ce matin. Je copie les erreurs dans un chat, je colle les réponses
+
+00:00:09.112 --> 00:00:12.578
+dans mon éditeur, et l'assistant ne connaît même pas mon projet.
+
+00:00:12.828 --> 00:00:16.364
+Noah : Et si l'agent vivait directement dans ton terminal ?
+
+00:00:16.614 --> 00:00:19.526
+Maya : Encore un outil enfermé chez un seul fournisseur de modèle ?
+
+00:00:19.776 --> 00:00:21.766
+Noah : Justement non. Regarde.
+
+00:00:22.516 --> 00:00:29.206
+Seshat est un agent IA dans le terminal. Open source, écrit en Go, livré en un seul
+
+00:00:29.206 --> 00:00:30.072
+binaire.
+
+00:00:30.322 --> 00:00:33.962
+Une commande suffit sous Linux, macOS ou Windows.
+
+00:00:33.962 --> 00:00:37.820
+Le téléchargement est vérifié par somme de contrôle.
+
+00:00:37.820 --> 00:00:39.498
+Puis on tape seshat.
+
+00:00:40.048 --> 00:00:41.463
+Maya : Et il parle à quel modèle ?
+
+00:00:41.613 --> 00:00:42.912
+Noah : À celui que tu choisis.
+
+00:00:43.562 --> 00:00:48.055
+Ctrl-P ouvre les réglages, puis les fournisseurs.
+
+00:00:48.055 --> 00:00:52.099
+Les fournisseurs intégrés viennent d'abord :
+
+00:00:52.099 --> 00:00:59.348
+Anthropic, OpenAI, Mistral, Gemini, DeepSeek, Ollama, OpenRouter, et d'autres.
+
+00:00:59.598 --> 00:01:04.052
+Derrière « plus de fournisseurs », le catalogue ouvert models.dev :
+
+00:01:04.052 --> 00:01:08.833
+environ cent quatre-vingt-dix fournisseurs, sans liste écrite à la main.
+
+00:01:08.833 --> 00:01:11.668
+On cherche, on choisit, on colle sa clé.
+
+00:01:12.118 --> 00:01:13.773
+Maya : Et si je n'ai pas de clé d'API ?
+
+00:01:13.923 --> 00:01:17.399
+Noah : Avec Codex, tu te connectes avec ton compte ChatGPT :
+
+00:01:17.399 --> 00:01:22.313
+un code, ton navigateur, c'est tout. Copilot fonctionne de la même façon.
+
+00:01:22.663 --> 00:01:27.308
+Pour garder le code chez soi, Ollama fait tourner un modèle local, sans clé.
+
+00:01:27.558 --> 00:01:31.389
+Ctrl-L ne liste que les modèles des fournisseurs configurés.
+
+00:01:31.389 --> 00:01:35.056
+On change de modèle en deux touches, en pleine session.
+
+00:01:35.306 --> 00:01:40.453
+Les fournisseurs principaux d'abord. Le reste du catalogue est ouvert, et les retours
+
+00:01:40.453 --> 00:01:42.237
+de la communauté le fiabilisent.
+
+00:01:42.987 --> 00:01:46.497
+Maya : D'accord. Mais est-ce qu'il comprend vraiment mon projet ?
+
+00:01:46.647 --> 00:01:47.435
+Noah : Demande-lui.
+
+00:01:47.885 --> 00:01:54.393
+Shift-Tab active le mode plan : l'agent lit, cherche et lance les tests, mais ne modifie
+
+00:01:54.393 --> 00:01:57.395
+rien. Puis il soumet un plan à relire.
+
+00:01:57.645 --> 00:02:00.765
+On peut le commenter ligne par ligne avant d'approuver.
+
+00:02:00.765 --> 00:02:03.044
+Alors seulement, il passe à l'action.
+
+00:02:03.394 --> 00:02:07.847
+Il corrige, relance les tests, et résume ce qu'il a changé.
+
+00:02:07.847 --> 00:02:10.649
+Ce projet est un exemple illustratif.
+
+00:02:11.399 --> 00:02:13.802
+Noah : Et quand la tâche est plus grosse, il délègue.
+
+00:02:14.052 --> 00:02:19.452
+Une demande, cinq sous-agents en parallèle, chacun avec ses outils et son contexte.
+
+00:02:19.452 --> 00:02:24.841
+Cette scène est rejouée depuis une vraie session de l'interface ; le rythme est reconstruit.
+
+00:02:25.591 --> 00:02:27.377
+Maya : Et s'il lance une commande dangereuse ?
+
+00:02:27.527 --> 00:02:29.434
+Noah : Il demande avant d'agir.
+
+00:02:29.784 --> 00:02:34.131
+Autoriser, autoriser pour la session, ou refuser :
+
+00:02:34.131 --> 00:02:37.844
+on voit la commande ou la modification avant qu'elle parte.
+
+00:02:37.844 --> 00:02:43.344
+Six modes de permission, de « demander d'abord » à « ne jamais rien demander » pour
+
+00:02:43.344 --> 00:02:45.133
+les exécutions automatiques.
+
+00:02:45.383 --> 00:02:48.796
+Les secrets ne passent pas aux commandes lancées par le modèle.
+
+00:02:48.796 --> 00:02:53.516
+La configuration d'un projet cloné est ignorée tant que vous ne l'avez pas approuvée.
+
+00:02:53.516 --> 00:02:58.312
+Et sous Linux, un bac à sable limite les écritures au dossier de travail.
+
+00:02:59.062 --> 00:03:04.475
+Dans le prompt, un point d'exclamation lance une commande dans un panneau à côté ; deux,
+
+00:03:04.475 --> 00:03:11.489
+et l'agent lit la sortie. Le slash appelle les skills, l'arobase joint un fichier, l'antislash
+
+00:03:11.489 --> 00:03:13.167
+ouvre la palette de commandes.
+
+00:03:13.417 --> 00:03:22.219
+On reprend une session avec --continue, on lance une tâche en arrière-plan avec seshat
+
+00:03:22.219 --> 00:03:27.732
+run --bg, et seshat doctor vérifie la configuration.
+
+00:03:28.482 --> 00:03:29.832
+Maya : Et tout ça reste à moi ?
+
+00:03:29.982 --> 00:03:36.028
+Noah : Le runtime est open source, Apache 2.0. Tes sessions restent sur ta machine, et la mémoire
+
+00:03:36.028 --> 00:03:37.972
+est désactivée par défaut.
+
+00:03:38.322 --> 00:03:45.996
+M C P pour brancher des outils, des skills pour les règles de l'équipe, un S D K Go
+
+00:03:45.996 --> 00:03:52.632
+pour l'embarquer. Le même moteur fait tourner SeshatOS et SeshatCloud.
+
+00:03:54.182 --> 00:03:55.904
+Maya : Bon. Mes tests ?
+
+00:03:56.054 --> 00:03:58.764
+Noah : Verts. Et tu as validé chaque changement.
+
+00:03:59.514 --> 00:04:05.824
+Seshat. Un runtime. N'importe quel modèle. N'importe quel langage.

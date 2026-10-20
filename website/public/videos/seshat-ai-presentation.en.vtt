@@ -1,0 +1,208 @@
+WEBVTT
+
+00:00:02.800 --> 00:00:05.864
+Noah: Good morning Maya! Were you able to prepare the weekly review?
+
+00:00:06.164 --> 00:00:12.152
+Maya: Not yet. I have three files to check, data to pull from two applications, and a report
+
+00:00:12.152 --> 00:00:12.848
+to finish.
+
+00:00:13.098 --> 00:00:14.462
+Noah: All of that, today?
+
+00:00:14.662 --> 00:00:16.540
+Maya: And it's only the start of the day.
+
+00:00:17.390 --> 00:00:23.091
+Companies already have tools to communicate, store their documents, manage their customers
+
+00:00:23.091 --> 00:00:24.801
+and track their activities.
+
+00:00:25.051 --> 00:00:30.862
+Yet much of the work still consists of looking for information, switching from one application
+
+00:00:30.862 --> 00:00:33.582
+to another, and redoing the same operations.
+
+00:00:33.832 --> 00:00:39.840
+According to a 2022 survey of more than a thousand knowledge workers, people spend about
+
+00:00:39.840 --> 00:00:41.342
+two hours a day on it.
+
+00:00:41.792 --> 00:00:46.262
+Maya: We already have all the tools we need. Why is it still so complicated?
+
+00:00:46.512 --> 00:00:48.340
+Noah: Because they don't really work together.
+
+00:00:49.190 --> 00:00:55.119
+Noah: Now imagine assistants able to use those tools, to understand what you ask them, and
+
+00:00:55.119 --> 00:00:57.660
+to coordinate the operations needed.
+
+00:00:57.910 --> 00:00:59.001
+Maya: Like a chatbot?
+
+00:00:59.151 --> 00:01:05.187
+Noah: Not just that. A chatbot answers you. An agent can also use tools and move a task forward,
+
+00:01:05.187 --> 00:01:07.199
+within the limits you give it.
+
+00:01:10.449 --> 00:01:17.038
+That is Seshat's ambition: AI agents that take part in a company's real processes, beyond
+
+00:01:17.038 --> 00:01:18.519
+simple conversation.
+
+00:01:19.169 --> 00:01:24.759
+Maya: Prepare the weekly review, check the pending files, and tell me what is blocking.
+
+00:01:25.209 --> 00:01:30.383
+A coordinating agent analyzes the request and prepares a work plan.
+
+00:01:30.533 --> 00:01:33.754
+It then hands each part to a specialized agent.
+
+00:01:33.904 --> 00:01:39.792
+The first explores the authorized files and procedures, spots the missing documents,
+
+00:01:39.792 --> 00:01:41.334
+and cites its sources.
+
+00:01:41.484 --> 00:01:47.090
+The second queries the data, computes the indicators, and identifies the files that
+
+00:01:47.090 --> 00:01:47.698
+are late.
+
+00:01:47.848 --> 00:01:53.860
+The third gathers the results, writes the summary, and flags what needs checking.
+
+00:01:54.410 --> 00:01:57.569
+Maya: Wait… they can work together on the same request?
+
+00:01:57.819 --> 00:02:03.361
+Noah: Yes. Each agent handles part of the work, with the tools and permissions it has been
+
+00:02:03.361 --> 00:02:03.889
+granted.
+
+00:02:04.239 --> 00:02:09.901
+The result comes back to Maya, with the sources, the proposed actions and what remains
+
+00:02:09.901 --> 00:02:13.851
+to be decided. The data in this demonstration is fictitious.
+
+00:02:13.851 --> 00:02:18.526
+It is our vision of multi-agent work, which we build with each company.
+
+00:02:19.276 --> 00:02:24.129
+Noah: And some tasks can even start on their own, following rules defined in advance.
+
+00:02:24.479 --> 00:02:30.923
+A new file arrives. The workflow detects it, reads the documents, extracts the information,
+
+00:02:30.923 --> 00:02:36.942
+checks the fields, updates the authorized system, prepares the notification, and asks
+
+00:02:36.942 --> 00:02:38.854
+for validation when needed.
+
+00:02:39.204 --> 00:02:42.651
+From repetitive tasks to more complex workflows:
+
+00:02:42.651 --> 00:02:46.887
+linking tools, agents and people in one controlled process.
+
+00:02:46.887 --> 00:02:51.483
+That is our vision, and its first building blocks already exist.
+
+00:02:52.233 --> 00:02:56.704
+Maya: This is all interesting… but where does our confidential data go?
+
+00:02:56.954 --> 00:02:58.129
+Noah: It can stay with us.
+
+00:02:58.579 --> 00:03:02.926
+Seshat favors architectures that fit the company's requirements.
+
+00:03:02.926 --> 00:03:08.563
+With a private deployment and a local model, documents, indexes and processing stay
+
+00:03:08.563 --> 00:03:10.329
+within its infrastructure.
+
+00:03:10.579 --> 00:03:16.384
+In a hybrid architecture, only the communications explicitly chosen leave, towards the
+
+00:03:16.384 --> 00:03:18.611
+model provider you have selected.
+
+00:03:18.861 --> 00:03:23.166
+The choice of models, connections and hosting remains yours.
+
+00:03:23.916 --> 00:03:26.901
+Maya: And what if an agent tries to do something it shouldn't?
+
+00:03:27.151 --> 00:03:31.781
+Noah: That's why we define what it can do, what it cannot do, and what must be validated.
+
+00:03:32.231 --> 00:03:38.446
+Permissions, supervision, traceability. A sensitive action is suspended until a person
+
+00:03:38.446 --> 00:03:43.578
+agrees, and the operation is recorded. No mechanism removes every risk:
+
+00:03:43.578 --> 00:03:46.541
+that is why the human keeps the decision.
+
+00:03:47.291 --> 00:03:50.441
+Maya: And if a company wants to start, does it have to change everything?
+
+00:03:50.691 --> 00:03:54.281
+Noah: No. We start by identifying a concrete problem.
+
+00:03:54.731 --> 00:04:00.818
+The diagnosis maps the process, the tools, the data and the constraints.
+
+00:04:00.818 --> 00:04:06.059
+The pilot tests a first, limited use, on representative cases.
+
+00:04:06.059 --> 00:04:13.921
+The evaluation measures quality, processing time, costs, human interventions and reliability.
+
+00:04:14.171 --> 00:04:20.317
+And this is essential: according to Gartner, more than forty percent of agentic AI projects
+
+00:04:20.317 --> 00:04:25.585
+will be abandoned by the end of 2027, for lack of clear value or risk control.
+
+00:04:25.835 --> 00:04:32.168
+Seshat starts from the need, measures, then decides with you whether to continue, improve,
+
+00:04:32.168 --> 00:04:33.505
+or change approach.
+
+00:04:35.455 --> 00:04:36.632
+Noah: So, how is your review?
+
+00:04:36.882 --> 00:04:44.632
+Maya: Ready to be checked. And this time, I know exactly where the information comes from.
+
+00:04:44.982 --> 00:04:48.437
+Noah: See? The goal was never to replace your tools.
+
+00:04:48.687 --> 00:04:50.569
+Maya: It was to make them work together.
+
+00:04:51.619 --> 00:04:55.745
+Seshat AI. Your tools. Your data. Your agents.
+
+00:04:55.745 --> 00:04:57.449
+Under your control.
