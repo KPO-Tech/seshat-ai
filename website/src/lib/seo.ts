@@ -45,6 +45,9 @@ export function founderNode() {
     '@id': ID.founder,
     name: legal.usageName,
     jobTitle: 'Data and AI engineer, founder of Seshat AI',
+    image: `${SITE}/img/stephane-kpoviessi.jpg`,
+    url: `${SITE}/a-propos`,
+    sameAs: ['https://linkedin.com/in/stephanekpoviessi', 'https://github.com/KPO-Tech', 'https://kpoviessi-stephane.vercel.app/'],
     worksFor: { '@id': ID.org },
   };
 }

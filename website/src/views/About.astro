@@ -5,6 +5,7 @@ import Arrow from '../components/Arrow.astro';
 import Check from '../components/Check.astro';
 import Icon from '../components/Icon.astro';
 import { dict, rich, url } from '../i18n';
+import { legal } from '../data/legal';
 import type { Lang } from '../i18n';
 
 interface Props { lang: Lang }
@@ -41,7 +42,7 @@ const projectMeta = [
 const flowIcons = ['database', 'lightning', 'warehouse', 'chart-bar'];
 const projects = t.projects.items.map((p, i) => ({ ...p, ...projectMeta[i] }));
 
-const years = ['2022', '2023', '2026'];
+const years = ['2020 – 2022', '2022 – 2023', '2023 – 2026'];
 const steps = t.education.steps.map((s, i) => ({ ...s, y: years[i] }));
 
 const certs = [
@@ -53,6 +54,7 @@ const certs = [
 ];
 
 const reach = [
+  { icon: 'envelope-simple', t: 'Email', d: legal.email, href: `mailto:${legal.email}` },
   { icon: 'linkedin-logo', t: 'LinkedIn', d: 'linkedin.com/in/stephanekpoviessi', href: 'https://linkedin.com/in/stephanekpoviessi' },
   { icon: 'github-logo', t: 'GitHub', d: 'github.com/KPO-Tech', href: 'https://github.com/KPO-Tech' },
   { icon: 'globe', t: 'Portfolio', d: 'kpoviessi-stephane.vercel.app', href: 'https://kpoviessi-stephane.vercel.app/' },
@@ -67,22 +69,27 @@ const reach = [
         <p class="portfolio-link"><a class="link" href="https://kpoviessi-stephane.vercel.app/" rel="noopener">{t.head.portfolio} <Icon name="arrow-up-right" /></a></p>
         <p class="sk-cap" data-skcap aria-live="polite"><strong>{t.head.capTitle}</strong><span>{t.head.capHint}</span></p>
       </div>
-      <div class="hive skills3d" data-sk>
-        <div class="sway">
-          <div class="plane">
-            <div class="cell core" style="--q:0;--r:0">
-              <i class="l l1"></i><i class="l l2"></i><i class="l l3"></i><i class="l top"></i>
-              <span class="ic mono" aria-hidden="true">SK</span>
+      <figure class="founder">
+        <img class="founder-photo" src="/img/stephane-kpoviessi.jpg" width="640" height="960" alt={lang === 'fr' ? 'Stéphane Kpoviessi, fondateur de Seshat AI, dans ses bureaux' : 'Stéphane Kpoviessi, founder of Seshat AI, in his office'} fetchpriority="high" decoding="async" />
+        <div class="founder-hive">
+        <div class="hive skills3d" data-sk>
+            <div class="sway">
+              <div class="plane">
+                <div class="cell core" style="--q:0;--r:0">
+                  <i class="l l1"></i><i class="l l2"></i><i class="l l3"></i><i class="l top"></i>
+                  <span class="ic mono" aria-hidden="true">SK</span>
+                </div>
+                {skills.map((s) => (
+                  <button class="cell sk" type="button" data-t={s.t} data-d={s.d} style={`--q:${s.q};--r:${s.r}`} aria-label={`${s.t}. ${s.d}`}>
+                    <i class="l l1"></i><i class="l l2"></i><i class="l l3"></i><i class="l top"></i>
+                    <span class="ic" aria-hidden="true"><Icon name={s.icon} /></span>
+                  </button>
+                ))}
+              </div>
             </div>
-            {skills.map((s) => (
-              <button class="cell sk" type="button" data-t={s.t} data-d={s.d} style={`--q:${s.q};--r:${s.r}`} aria-label={`${s.t}. ${s.d}`}>
-                <i class="l l1"></i><i class="l l2"></i><i class="l l3"></i><i class="l top"></i>
-                <span class="ic" aria-hidden="true"><Icon name={s.icon} /></span>
-              </button>
-            ))}
           </div>
         </div>
-      </div>
+      </figure>
     </div>
   </header>
 
@@ -92,7 +99,7 @@ const reach = [
       <div class="quest" data-quest style="--n:4;margin-top:40px">
         <div class="rail" role="tablist" aria-label={t.journey.railAria}>
           {stages.map((s, i) => (
-            <button class="node" role="tab" id={`tab-${i}`} aria-controls={`panel-${i}`} aria-selected={i === 0 ? 'true' : 'false'} type="button">
+            <button class="node" role="tab" id={`tab-${i}`} aria-controls={`panel-${i}`} aria-selected={i === stages.length - 1 ? 'true' : 'false'} type="button">
               <span class="hex" aria-hidden="true"><span>{i + 1}</span></span>
               <span class="node-name">{s.place}</span>
               <span class="node-when">{s.when}</span>
@@ -101,7 +108,7 @@ const reach = [
         </div>
         <div class="stage">
           {stages.map((s, i) => (
-            <article class="panel" role="tabpanel" id={`panel-${i}`} aria-labelledby={`tab-${i}`} hidden={i !== 0}>
+            <article class="panel" role="tabpanel" id={`panel-${i}`} aria-labelledby={`tab-${i}`} hidden={i !== stages.length - 1}>
               <div class="panel-head">
                 <p class="lvl">{t.journey.stepLabel.replace('{n}', String(i + 1)).replace('{total}', String(stages.length))}</p>
                 <h2>{s.place}</h2>
@@ -159,10 +166,14 @@ const reach = [
             </svg>
           </div>
           <div class="robot-text">
-            <h3>{t.projects.robot.title}</h3>
-            <p>{t.projects.robot.text}</p>
-            <ul class="tags">{t.projects.robot.tags.map((tag) => <li>{tag}</li>)}</ul>
-            <p class="stack">{t.projects.robot.note}</p>
+            <h3>{t.projects.seshat.title}</h3>
+            <p>{t.projects.seshat.text}</p>
+            <ul class="tags">{t.projects.seshat.tags.map((tag) => <li>{tag}</li>)}</ul>
+            <p class="stack">{t.projects.seshat.note}</p>
+            <p class="plinks">
+              <a class="link on-dark" href={url(lang, 'productSeshat')}>{t.projects.seshat.more} <Arrow /></a>
+              <a class="link on-dark" href="https://github.com/KPO-Tech/seshat-runtime" rel="noopener">{t.projects.seshat.code} <Arrow /></a>
+            </p>
           </div>
         </article>
         {projects.map((p, i) => (
@@ -304,7 +315,7 @@ const reach = [
             if (e.key === 'ArrowLeft') { e.preventDefault(); select(Math.max(i - 1, 0), true); }
           });
         });
-        select(0);
+        select(tabs.length - 1);
       }
 
       var hive = document.querySelector('[data-sk]');
