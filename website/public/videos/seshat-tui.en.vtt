@@ -1,0 +1,172 @@
+WEBVTT
+
+00:00:02.600 --> 00:00:03.790
+Noah: So, how are those tests?
+
+00:00:04.040 --> 00:00:09.163
+Maya: Forty failing since this morning. I copy the errors into a chat, paste the answers into
+
+00:00:09.163 --> 00:00:12.578
+my editor, and the assistant doesn't even know my project.
+
+00:00:12.828 --> 00:00:16.364
+Noah: What if the agent lived right in your terminal?
+
+00:00:16.614 --> 00:00:19.526
+Maya: Another tool locked into a single model provider?
+
+00:00:19.776 --> 00:00:21.766
+Noah: Quite the opposite. Look.
+
+00:00:22.516 --> 00:00:29.503
+Seshat is an AI agent in the terminal. Open source, written in Go, shipped as a single
+
+00:00:29.503 --> 00:00:30.072
+binary.
+
+00:00:30.322 --> 00:00:34.373
+One command is enough on Linux, macOS or Windows.
+
+00:00:34.373 --> 00:00:39.498
+The download is checked with a checksum. Then you type seshat.
+
+00:00:40.048 --> 00:00:41.463
+Maya: And which model does it talk to?
+
+00:00:41.613 --> 00:00:42.912
+Noah: The one you choose.
+
+00:00:43.562 --> 00:00:48.187
+Ctrl-P opens the settings, then the providers.
+
+00:00:48.187 --> 00:00:57.035
+The built-in providers come first: Anthropic, OpenAI, Mistral, Gemini, DeepSeek, Ollama,
+
+00:00:57.035 --> 00:00:59.348
+OpenRouter, and others.
+
+00:00:59.598 --> 00:01:03.547
+Behind “more providers”, the open models.dev catalog:
+
+00:01:03.547 --> 00:01:08.464
+about one hundred and ninety providers, with no hand-written list.
+
+00:01:08.464 --> 00:01:11.668
+You search, you choose, you paste your key.
+
+00:01:12.118 --> 00:01:13.773
+Maya: And if I don't have an API key?
+
+00:01:13.923 --> 00:01:17.702
+Noah: With Codex, you sign in with your ChatGPT account:
+
+00:01:17.702 --> 00:01:22.313
+a code, your browser, that's all. Copilot works the same way.
+
+00:01:22.663 --> 00:01:27.308
+To keep the code at home, Ollama runs a local model, no key needed.
+
+00:01:27.558 --> 00:01:31.899
+Ctrl-L lists only the models of the providers you have configured.
+
+00:01:31.899 --> 00:01:35.056
+You switch model in two keystrokes, mid-session.
+
+00:01:35.306 --> 00:01:41.397
+The main providers first. The rest of the catalog is open, and community feedback makes
+
+00:01:41.397 --> 00:01:42.237
+it reliable.
+
+00:01:42.987 --> 00:01:46.497
+Maya: OK. But does it really understand my project?
+
+00:01:46.647 --> 00:01:47.435
+Noah: Ask it.
+
+00:01:47.885 --> 00:01:54.249
+Shift-Tab turns on plan mode: the agent reads, searches and runs the tests, but changes
+
+00:01:54.249 --> 00:01:57.395
+nothing. Then it submits a plan for review.
+
+00:01:57.645 --> 00:02:01.439
+You can comment on it line by line before approving.
+
+00:02:01.439 --> 00:02:03.044
+Only then does it act.
+
+00:02:03.394 --> 00:02:07.718
+It fixes, reruns the tests, and summarizes what it changed.
+
+00:02:07.718 --> 00:02:10.649
+This project is an illustrative example.
+
+00:02:11.399 --> 00:02:13.802
+Noah: And when the task is bigger, it delegates.
+
+00:02:14.052 --> 00:02:19.415
+One request, five sub-agents working in parallel, each with its own tools and context.
+
+00:02:19.415 --> 00:02:24.841
+This scene is replayed from a real session of the interface; the pace is reconstructed.
+
+00:02:25.591 --> 00:02:27.377
+Maya: And what if it runs a dangerous command?
+
+00:02:27.527 --> 00:02:29.434
+Noah: It asks before it acts.
+
+00:02:29.784 --> 00:02:37.877
+Allow, allow for the session, or deny: you see the command or the change before it goes
+
+00:02:37.877 --> 00:02:45.133
+out. Six permission modes, from “ask first” to “never ask” for automated runs.
+
+00:02:45.383 --> 00:02:49.283
+Secrets are not passed to the commands the model runs.
+
+00:02:49.283 --> 00:02:53.978
+A cloned project's configuration is ignored until you approve it.
+
+00:02:53.978 --> 00:02:58.312
+And on Linux, a sandbox limits writes to the working folder.
+
+00:02:59.062 --> 00:03:05.614
+In the prompt, an exclamation mark runs a command in a side panel; two, and the agent
+
+00:03:05.614 --> 00:03:12.550
+reads the output. Slash calls your skills, at attaches a file, backslash opens the command
+
+00:03:12.550 --> 00:03:13.167
+palette.
+
+00:03:13.417 --> 00:03:23.438
+Resume a session with --continue, run a task in the background with seshat run --bg,
+
+00:03:23.438 --> 00:03:27.732
+and seshat doctor checks your setup.
+
+00:03:28.482 --> 00:03:29.832
+Maya: And all of this stays mine?
+
+00:03:29.982 --> 00:03:36.589
+Noah: The runtime is open source, Apache 2.0. Your sessions stay on your machine, and memory
+
+00:03:36.589 --> 00:03:37.972
+is off by default.
+
+00:03:38.322 --> 00:03:46.908
+MCP to plug in tools, skills for the team's rules, a Go SDK to embed it.
+
+00:03:46.908 --> 00:03:52.632
+The same engine powers SeshatOS and SeshatCloud.
+
+00:03:54.182 --> 00:03:55.904
+Maya: Well. My tests?
+
+00:03:56.054 --> 00:03:58.764
+Noah: Green. And you approved every change.
+
+00:03:59.514 --> 00:04:05.824
+Seshat. One runtime. Any model. Any language.

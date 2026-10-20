@@ -23,10 +23,14 @@ export default {
     lead: 'Diagnostic chiffré, pilote en 30 à 90 jours, solutions auto-hébergées. Conseil en IA pour PME et ETI.',
     primary: 'Demander un diagnostic',
     secondary: "Voir l'offre",
-    videoAria: 'Film : vos données restent chez vous',
+    videoAria: 'Film : Seshat AI, vos outils, vos données, vos agents, sous votre contrôle',
     videoFallback: 'Votre navigateur ne lit pas cette vidéo.',
-    videoSrc: '/videos/data-chez-vous.mp4',
-    poster: '/videos/data-chez-vous-poster.jpg',
+    videoSrc: '/videos/seshat-ai-presentation.mp4',
+    poster: '/videos/seshat-ai-presentation-poster.jpg',
+    tracks: [
+      { lang: 'fr', label: 'Français', src: '/videos/seshat-ai-presentation.fr.vtt' },
+      { lang: 'en', label: 'English', src: '/videos/seshat-ai-presentation.en.vtt' },
+    ],
   },
   situations: {
     title: "Par où commencer avec l'IA ?",

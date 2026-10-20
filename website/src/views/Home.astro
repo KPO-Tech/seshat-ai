@@ -22,7 +22,7 @@ const productMeta = [
   description={t.meta.description}
   lang={lang}
   page="home"
-  schema={[videoNode({ name: videoName, description: t.meta.description, contentPath: t.hero.videoSrc, thumbnailPath: t.hero.poster, seconds: 44, uploadDate: '2026-10-16', lang })]}
+  schema={[videoNode({ name: videoName, description: t.meta.description, contentPath: t.hero.videoSrc, thumbnailPath: t.hero.poster, seconds: 304, uploadDate: '2026-10-20', lang })]}
 >
   <section class="hero">
     <div class="wrap">
@@ -38,6 +38,9 @@ const productMeta = [
         <div class="film">
           <video controls playsinline preload="metadata" poster={t.hero.poster} aria-label={t.hero.videoAria}>
             <source src={t.hero.videoSrc} type="video/mp4" />
+            {t.hero.tracks.map((tr) => (
+              <track kind="subtitles" src={tr.src} srclang={tr.lang} label={tr.label} default={tr.lang === lang && lang === 'en'} />
+            ))}
             {t.hero.videoFallback}
           </video>
         </div>
