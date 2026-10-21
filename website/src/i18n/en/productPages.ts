@@ -109,6 +109,8 @@ const en: typeof fr = {
         { id: 'windows', label: 'Windows', detail: 'Installer (.exe)' },
         { id: 'appimage', label: 'Linux', detail: 'AppImage' },
         { id: 'deb', label: 'Debian and Ubuntu', detail: 'Package (.deb)' },
+        { id: 'macos-arm64', label: 'macOS, Apple silicon', detail: 'Disk image (.dmg), experimental: not tested on a Mac yet, and macOS asks you to confirm the first launch' },
+        { id: 'macos-x64', label: 'macOS, Intel', detail: 'Disk image (.dmg), experimental: not tested on a Mac yet, and macOS asks you to confirm the first launch' },
       ],
       checksums: 'SHA-256 checksums',
       allReleases: 'All releases and notes',
