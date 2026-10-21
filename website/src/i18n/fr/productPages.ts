@@ -109,6 +109,8 @@ export default {
         { id: 'windows', label: 'Windows', detail: 'Installeur (.exe)' },
         { id: 'appimage', label: 'Linux', detail: 'AppImage' },
         { id: 'deb', label: 'Debian et Ubuntu', detail: 'Paquet (.deb)' },
+        { id: 'macos-arm64', label: 'macOS, Apple silicon', detail: "Image disque (.dmg), expérimental : pas encore testé sur un Mac, et macOS demande de confirmer le premier lancement" },
+        { id: 'macos-x64', label: 'macOS, Intel', detail: "Image disque (.dmg), expérimental : pas encore testé sur un Mac, et macOS demande de confirmer le premier lancement" },
       ],
       checksums: 'Sommes de contrôle SHA-256',
       allReleases: 'Toutes les versions et les notes',
