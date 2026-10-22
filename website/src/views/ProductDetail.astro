@@ -51,6 +51,7 @@ const grpcCode = `SeshatService
   skills · MCP · models · health`;
 const codes = [termCode, goCode, grpcCode];
 
+const releasesUrl = 'https://github.com/KPO-Tech/SeshatOS/releases/latest';
 const home = url(lang, 'home');
 const crumbs = [
   { name: 'Seshat AI', path: home },
@@ -121,6 +122,31 @@ const crumbs = [
             </article>
           ))}
         </div>
+      </div>
+    </section>
+  )}
+
+  {page === 'productSeshatOS' && (
+    <section class="block" style="padding-top:24px" id="download">
+      <div class="wrap">
+        <h2 class="reveal">{pp.seshatos.download.title}</h2>
+        <p class="intro reveal">{pp.seshatos.download.lead}</p>
+        <div class="kta" data-download data-loading={pp.seshatos.download.loading} data-unavailable={pp.seshatos.download.unavailable} data-version-label={pp.seshatos.download.versionLabel}>
+          {pp.seshatos.download.files.map((f, i) => (
+            <article class="pilot plain reveal" style={`--d:${i * 80}ms`} hidden={f.id.startsWith('macos')} data-card={f.id}>
+              <h3>{f.label}</h3>
+              <p>{f.detail}</p>
+              <a class="btn btn-primary btn-sm" data-asset={f.id} href={releasesUrl} rel="noopener">{pp.seshatos.download.title} <Arrow /></a>
+            </article>
+          ))}
+        </div>
+        <p class="intro reveal" data-download-status role="status">{pp.seshatos.download.loading}</p>
+        <p class="intro reveal">{pp.seshatos.download.note}</p>
+        <p class="reveal">
+          <a class="link" data-asset="checksums" href={releasesUrl} rel="noopener">{pp.seshatos.download.checksums}</a>
+          {' · '}
+          <a class="link" href={releasesUrl} rel="noopener">{pp.seshatos.download.allReleases}</a>
+        </p>
       </div>
     </section>
   )}
@@ -375,6 +401,41 @@ const crumbs = [
           var done = function () { var old = cp.textContent; cp.textContent = cp.getAttribute('data-copied'); setTimeout(function () { cp.textContent = old; }, 1600); };
           if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, function () {});
         });
+      })();
+    </script>
+  )}
+
+  {page === 'productSeshatOS' && (
+    <script is:inline>
+      // Points each button at the file of the latest release. Without JavaScript, or if GitHub cannot be reached, the buttons keep
+      // their link to the releases page.
+      (function () {
+        var box = document.querySelector('[data-download]');
+        var status = document.querySelector('[data-download-status]');
+        if (!box || !status) return;
+        fetch('https://api.github.com/repos/KPO-Tech/SeshatOS/releases/latest', { headers: { Accept: 'application/vnd.github+json' } })
+          .then(function (r) { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+          .then(function (release) {
+            var assets = release.assets || [];
+            function find(test) { return assets.filter(function (a) { return test(a.name); })[0]; }
+            var picks = {
+              windows: find(function (n) { return /[.]exe$/i.test(n); }),
+              appimage: find(function (n) { return /[.]AppImage$/i.test(n); }),
+              deb: find(function (n) { return /[.]deb$/i.test(n); }),
+              'macos-arm64': find(function (n) { return /mac-arm64[.]dmg$/i.test(n); }),
+              'macos-x64': find(function (n) { return /mac-x64[.]dmg$/i.test(n); }),
+              checksums: find(function (n) { return n === 'SHA256SUMS.txt'; })
+            };
+            document.querySelectorAll('[data-asset]').forEach(function (link) {
+              var asset = picks[link.getAttribute('data-asset')];
+              if (!asset) return;
+              link.setAttribute('href', asset.browser_download_url);
+              var card = link.closest('[data-card]');
+              if (card) card.hidden = false;
+            });
+            status.textContent = box.getAttribute('data-version-label') + ' : ' + release.tag_name;
+          })
+          .catch(function () { status.textContent = box.getAttribute('data-unavailable'); });
       })();
     </script>
   )}

@@ -98,6 +98,23 @@ export default {
     head: { title: "SeshatOS, l'IA qui tourne chez vous.", lead: 'Un environnement local et auto-hébergé, organisé en plateformes. Chaque plateforme porte son propre niveau de maturité.' },
     who: "Pour une personne ou une petite équipe qui veut un assistant IA sur son poste ou son serveur, sans envoyer ses documents chez un tiers.",
     not: "Ce n'est pas encore un produit complet : seuls le Chat et les Projets sont utilisables. Il n'est pas multi-utilisateurs, et les tâches planifiées sont dans SeshatCloud.",
+    download: {
+      title: 'Télécharger SeshatOS',
+      lead: "L'application de bureau pour Windows et Linux. Elle tourne sur votre machine et vérifie elle-même les mises à jour.",
+      note: "Le Chat et les Projets sont la partie utilisable aujourd'hui ; les autres plateformes ci-dessous ne le sont pas. L'installeur Windows n'est pas toujours signé pour l'instant : Windows peut vous demander de confirmer avant le premier lancement.",
+      loading: 'Recherche de la dernière version…',
+      versionLabel: 'Dernière version',
+      unavailable: "La liste des téléchargements n'a pas pu être chargée. Tous les fichiers sont sur la page des versions.",
+      files: [
+        { id: 'windows', label: 'Windows', detail: 'Installeur (.exe)' },
+        { id: 'appimage', label: 'Linux', detail: 'AppImage' },
+        { id: 'deb', label: 'Debian et Ubuntu', detail: 'Paquet (.deb)' },
+        { id: 'macos-arm64', label: 'macOS, Apple silicon', detail: "Image disque (.dmg), expérimental : pas encore testé sur un Mac, et macOS demande de confirmer le premier lancement" },
+        { id: 'macos-x64', label: 'macOS, Intel', detail: "Image disque (.dmg), expérimental : pas encore testé sur un Mac, et macOS demande de confirmer le premier lancement" },
+      ],
+      checksums: 'Sommes de contrôle SHA-256',
+      allReleases: 'Toutes les versions et les notes',
+    },
     platformsTitle: 'Les plateformes de SeshatOS',
     platformsLead: "Une plateforme est un espace de travail dédié à un métier, à l'intérieur du produit. Nous n'en présentons aucune comme prête si elle ne l'est pas.",
     platforms: [

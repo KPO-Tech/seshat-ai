@@ -98,6 +98,23 @@ const en: typeof fr = {
     head: { title: 'SeshatOS, AI that runs on your premises.', lead: 'A local, self-hosted environment organised in platforms. Each platform carries its own level of maturity.' },
     who: 'For one person or a small team who wants an AI assistant on their own machine or server, without sending documents to a third party.',
     not: 'It is not a complete product yet: only Chat and Projects are usable. It is not multi-user, and scheduled tasks are in SeshatCloud.',
+    download: {
+      title: 'Download SeshatOS',
+      lead: 'The desktop app for Windows and Linux. It runs on your machine and checks for updates itself.',
+      note: 'Chat and Projects are the usable part today; the other platforms below are not. The Windows installer is not always signed yet, so Windows may ask you to confirm before the first launch.',
+      loading: 'Looking for the latest version…',
+      versionLabel: 'Latest version',
+      unavailable: 'The list of downloads could not be loaded. Every file is on the releases page.',
+      files: [
+        { id: 'windows', label: 'Windows', detail: 'Installer (.exe)' },
+        { id: 'appimage', label: 'Linux', detail: 'AppImage' },
+        { id: 'deb', label: 'Debian and Ubuntu', detail: 'Package (.deb)' },
+        { id: 'macos-arm64', label: 'macOS, Apple silicon', detail: 'Disk image (.dmg), experimental: not tested on a Mac yet, and macOS asks you to confirm the first launch' },
+        { id: 'macos-x64', label: 'macOS, Intel', detail: 'Disk image (.dmg), experimental: not tested on a Mac yet, and macOS asks you to confirm the first launch' },
+      ],
+      checksums: 'SHA-256 checksums',
+      allReleases: 'All releases and notes',
+    },
     platformsTitle: 'SeshatOS platforms',
     platformsLead: 'A platform is a workspace dedicated to one job, inside the product. We do not present any of them as ready if it is not.',
     platforms: [
