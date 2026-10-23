@@ -1022,3 +1022,10 @@ section.legal-block { padding: 16px 0 96px; }
 @media (max-width: 960px) {
   .surf, .gives { grid-template-columns: 1fr; }
 }
+
+/* Télécharger : le bouton de l'en-tête (le menu mobile a son propre lien) et celui des pages produits */
+.hd-download { white-space: nowrap; }
+.prod-download { margin-top: 6px; }
+.prod-download .pi { width: 16px; height: 16px; }
+@media (max-width: 720px) { .hd-download { display: none; } }
+@media (max-width: 880px) { .mnav .m-download { color: var(--accent-text); } }

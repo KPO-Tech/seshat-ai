@@ -27,6 +27,7 @@ export default {
     { label: 'Blog', page: 'blog' },
     { label: 'Entreprise', items: [{ page: 'about', label: 'À propos' }, { page: 'contact', label: 'Contact' }] },
   ] as { label: string; page?: string; wide?: boolean; items?: { page?: string; label: string; note?: string; badge?: string; tone?: string; logo?: string; cta?: string }[] }[],
+  download: 'Télécharger',
   cta: 'Demander un diagnostic',
   ctaShort: 'Diagnostic',
   menu: 'Menu',

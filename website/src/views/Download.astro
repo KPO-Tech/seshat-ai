@@ -1,0 +1,346 @@
+---
+import Base from '../layouts/Base.astro';
+import Arrow from '../components/Arrow.astro';
+import Icon from '../components/Icon.astro';
+import { dict, url } from '../i18n';
+import type { Lang } from '../i18n';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const t = dict(lang).download;
+const common = dict(lang).common;
+
+const desktopReleases = 'https://github.com/KPO-Tech/SeshatOS/releases/latest';
+const runtimeReleases = 'https://github.com/KPO-Tech/seshat-runtime/releases/latest';
+const osIcon: Record<string, string> = { windows: 'monitor', 'macos-arm64': 'apple-logo', 'macos-x64': 'apple-logo', appimage: 'linux-logo', deb: 'package' };
+
+// What the script needs to write in the visitor's language, read from one attribute instead of a copy of each text.
+const i18n = JSON.stringify({
+  button: t.hero.button,
+  systems: t.hero.systems,
+  detail: t.hero.detail,
+  version: t.hero.versionLabel,
+  terminalVersion: t.terminal.versionLabel,
+  loading: t.hero.loading,
+  unavailable: t.hero.unavailable,
+  mobile: t.hero.mobile,
+  experimental: t.hero.experimental,
+  copied: t.terminal.copied,
+  copy: t.terminal.copy,
+});
+
+const crumbs = [
+  { name: 'Seshat AI', path: url(lang, 'home') },
+  { name: common.download, path: url(lang, 'download') },
+];
+---
+<Base title={t.meta.title} description={t.meta.description} lang={lang} page="download" crumbs={crumbs}>
+  <header class="page-head dl-head">
+    <div class="wrap">
+      <h1>{t.head.title}</h1>
+      <p class="lead">{t.head.lead}</p>
+      <nav class="dl-jump" aria-label={t.jump.aria}>
+        <a href="#desktop"><Icon name="desktop" /> {t.jump.desktop}</a>
+        <a href="#terminal"><Icon name="terminal-window" /> {t.jump.terminal}</a>
+        <a href="#developers"><Icon name="code" /> {t.jump.developers}</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="block dl-block" id="desktop" data-download data-i18n={i18n}>
+    <div class="wrap">
+      <article class="dl-hero reveal">
+        <div class="dl-hero-id">
+          <img src="/brand/seshatos.svg" alt="" width="72" height="72" />
+          <div>
+            <p class="dl-eyebrow">{t.hero.productLabel}</p>
+            <h2>{t.desktop.title}</h2>
+            <p class="dl-lead">{t.desktop.lead}</p>
+          </div>
+        </div>
+        <div class="dl-hero-cta">
+          <a class="btn btn-primary dl-big" data-primary href={desktopReleases} rel="noopener">
+            <Icon name="download-simple" /> <span data-primary-label>{t.hero.buttonGeneric}</span>
+          </a>
+          <p class="dl-meta" data-primary-meta role="status">{t.hero.loading}</p>
+          <p class="dl-warn" data-primary-note hidden></p>
+          <p class="dl-sub"><a class="link" href="#platforms">{t.hero.other}</a><a class="link" href="#terminal">{t.hero.terminalLink}</a></p>
+        </div>
+      </article>
+
+      <ul class="dl-list reveal" id="platforms">
+        {t.desktop.files.map((f) => (
+          <li class="dl-row" data-card={f.id} hidden={f.id.startsWith('macos')}>
+            <span class="dl-ico"><Icon name={osIcon[f.id]} /></span>
+            <span class="dl-what">
+              <span class="dl-name"><strong>{f.label}</strong>{f.badge && <span class="badge wip">{f.badge}</span>}</span>
+              <span class="dl-detail">{f.detail}</span>
+            </span>
+            <span class="dl-size" data-size></span>
+            <a class="btn btn-ghost btn-sm" data-asset={f.id} href={desktopReleases} rel="noopener">{f.button} <Arrow /></a>
+          </li>
+        ))}
+      </ul>
+
+      <details class="dl-help reveal">
+        <summary>{t.desktop.helpTitle}</summary>
+        <p>{t.desktop.helpText}</p>
+      </details>
+
+      <p class="dl-foot reveal">
+        <a class="link" data-asset="checksums" href={desktopReleases} rel="noopener">{t.desktop.checksums}</a>
+        {' · '}
+        <a class="link" href={desktopReleases} rel="noopener">{t.desktop.allReleases}</a>
+        {' · '}
+        <a class="link" href={url(lang, 'productSeshatOS')}>{t.desktop.learn}</a>
+      </p>
+      <p class="dl-foot reveal">{t.desktop.maturity}</p>
+    </div>
+  </section>
+
+  <section class="block band dl-block" id="terminal">
+    <div class="wrap">
+      <div class="dl-terminal reveal">
+        <div class="dl-terminal-copy">
+          <img src="/brand/seshat.svg" alt="" width="56" height="56" />
+          <p class="dl-eyebrow"><span class="badge ok">{t.terminal.badge}</span></p>
+          <h2>{t.terminal.title}</h2>
+          <p class="dl-lead">{t.terminal.lead}</p>
+          <p class="dl-meta" data-runtime-version></p>
+          <p class="dl-sub"><a class="link" href="/en/docs/getting-started/installation">{t.terminal.guide} <Arrow /></a><a class="link" href={url(lang, 'productSeshat')}>{t.terminal.learn}</a></p>
+        </div>
+        <div class="dl-console" data-tabs>
+          <div class="dl-tabs" role="tablist">
+            {t.terminal.tabs.map((tab, i) => (
+              <button type="button" role="tab" id={`tab-${tab.id}`} aria-selected={i === 0 ? 'true' : 'false'} aria-controls={`panel-${tab.id}`} data-tab={tab.id}>{tab.label}</button>
+            ))}
+          </div>
+          {t.terminal.tabs.map((tab, i) => (
+            <div role="tabpanel" id={`panel-${tab.id}`} aria-labelledby={`tab-${tab.id}`} hidden={i !== 0}>
+              <div class="dl-cmd">
+                <code>{tab.command}</code>
+                <button type="button" class="dl-copy" data-copy={tab.command} aria-label={t.terminal.copy}>{t.terminal.copy}</button>
+              </div>
+            </div>
+          ))}
+          <p class="dl-then">{t.terminal.checkLabel}</p>
+          <div class="dl-cmd">
+            <code>{t.terminal.checkCommand}</code>
+            <button type="button" class="dl-copy" data-copy={t.terminal.checkCommand} aria-label={t.terminal.copy}>{t.terminal.copy}</button>
+          </div>
+          <p class="dl-note">{t.terminal.note}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block dl-block" id="developers">
+    <div class="wrap dl-two">
+      <article class="dl-card reveal">
+        <span class="dl-ico"><Icon name="code" /></span>
+        <h3>{t.developers.title}</h3>
+        <p>{t.developers.lead}</p>
+        <div class="dl-cmd">
+          <code>{t.developers.command}</code>
+          <button type="button" class="dl-copy" data-copy={t.developers.command} aria-label={t.terminal.copy}>{t.terminal.copy}</button>
+        </div>
+        <p class="dl-sub"><a class="link" href="/en/docs">{t.developers.docs} <Arrow /></a><a class="link" href="https://github.com/KPO-Tech/seshat-runtime" rel="noopener">{t.developers.source}</a></p>
+      </article>
+      <article class="dl-card reveal" style="--d:80ms">
+        <span class="dl-ico"><Icon name="cloud" /></span>
+        <h3>{t.cloud.title}</h3>
+        <p>{t.cloud.text}</p>
+        <p class="dl-sub"><a class="btn btn-ghost btn-sm" href={url(lang, 'contact')}>{t.cloud.cta} <Arrow /></a></p>
+      </article>
+    </div>
+  </section>
+
+  <script is:inline>
+    // Points the buttons at the files of the latest releases, shows what suits the visitor's system first, and drives the terminal tabs.
+    // Without JavaScript, or if GitHub cannot be reached, every button keeps its link to the releases page.
+    (function () {
+      var box = document.querySelector('[data-download]');
+      if (!box) return;
+      var T = JSON.parse(box.getAttribute('data-i18n'));
+      var meta = box.querySelector('[data-primary-meta]');
+      var primary = box.querySelector('[data-primary]');
+      var label = box.querySelector('[data-primary-label]');
+      var note = box.querySelector('[data-primary-note]');
+
+      function size(bytes) { return bytes >= 1e9 ? (bytes / 1e9).toFixed(1) + ' GB' : Math.round(bytes / 1e6) + ' MB'; }
+
+      function detect() {
+        var ua = navigator.userAgent || '';
+        var platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
+        if (/Android|iPhone|iPad|iPod/i.test(ua)) return 'mobile';
+        if (/Win/i.test(platform) || /Windows/i.test(ua)) return 'windows';
+        if (/Mac/i.test(platform) || /Macintosh/i.test(ua)) return 'macos';
+        if (/Linux|X11|CrOS/i.test(platform + ua)) return 'linux';
+        return null;
+      }
+
+      function pickMacArch(done) {
+        // Apple silicon is the common case; ask the browser when it can tell.
+        var data = navigator.userAgentData;
+        if (data && data.getHighEntropyValues) {
+          data.getHighEntropyValues(['architecture']).then(function (v) { done(v.architecture === 'x86' ? 'macos-x64' : 'macos-arm64'); }, function () { done('macos-arm64'); });
+        } else { done('macos-arm64'); }
+      }
+
+      fetch('https://api.github.com/repos/KPO-Tech/SeshatOS/releases/latest', { headers: { Accept: 'application/vnd.github+json' } })
+        .then(function (r) { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+        .then(function (release) {
+          var assets = release.assets || [];
+          function find(test) { return assets.filter(function (a) { return test(a.name); })[0]; }
+          var picks = {
+            windows: find(function (n) { return /[.]exe$/i.test(n); }),
+            appimage: find(function (n) { return /[.]AppImage$/i.test(n); }),
+            deb: find(function (n) { return /[.]deb$/i.test(n); }),
+            'macos-arm64': find(function (n) { return /mac-arm64[.]dmg$/i.test(n); }),
+            'macos-x64': find(function (n) { return /mac-x64[.]dmg$/i.test(n); }),
+            checksums: find(function (n) { return n === 'SHA256SUMS.txt'; })
+          };
+          document.querySelectorAll('[data-asset]').forEach(function (link) {
+            var asset = picks[link.getAttribute('data-asset')];
+            if (!asset) return;
+            link.setAttribute('href', asset.browser_download_url);
+            var row = link.closest('[data-card]');
+            if (row) {
+              row.hidden = false;
+              var cell = row.querySelector('[data-size]');
+              if (cell) cell.textContent = size(asset.size);
+            }
+          });
+
+          function show(id) {
+            var asset = picks[id];
+            if (!asset) { meta.textContent = release.tag_name; return; }
+            primary.setAttribute('href', asset.browser_download_url);
+            label.textContent = T.button + ' ' + T.systems[id];
+            meta.textContent = T.version + ' ' + release.tag_name + ' · ' + T.detail[id] + ' · ' + size(asset.size);
+            if (id.indexOf('macos') === 0) { note.textContent = T.experimental; note.hidden = false; }
+            var row = box.querySelector('[data-card="' + id + '"]');
+            if (row) row.classList.add('is-yours');
+          }
+
+          var os = detect();
+          if (os === 'mobile') { meta.textContent = T.mobile; primary.hidden = true; }
+          else if (os === 'windows') show('windows');
+          else if (os === 'linux') show('appimage');
+          else if (os === 'macos') pickMacArch(show);
+          else meta.textContent = T.version + ' ' + release.tag_name;
+        })
+        .catch(function () { meta.textContent = T.unavailable; });
+
+      fetch('https://api.github.com/repos/KPO-Tech/seshat-runtime/releases/latest', { headers: { Accept: 'application/vnd.github+json' } })
+        .then(function (r) { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+        .then(function (release) {
+          var el = document.querySelector('[data-runtime-version]');
+          if (el) el.textContent = T.terminalVersion + ' : ' + release.tag_name;
+        })
+        .catch(function () {});
+
+      // The tabs of the terminal: a Windows visitor starts on PowerShell.
+      var tabs = document.querySelector('[data-tabs]');
+      if (tabs) {
+        var buttons = tabs.querySelectorAll('[data-tab]');
+        function select(id) {
+          buttons.forEach(function (b) {
+            var on = b.getAttribute('data-tab') === id;
+            b.setAttribute('aria-selected', on ? 'true' : 'false');
+            var panel = document.getElementById(b.getAttribute('aria-controls'));
+            if (panel) panel.hidden = !on;
+          });
+        }
+        buttons.forEach(function (b) { b.addEventListener('click', function () { select(b.getAttribute('data-tab')); }); });
+        if (detect() === 'windows') select('windows');
+      }
+
+      document.querySelectorAll('[data-copy]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var text = btn.getAttribute('data-copy');
+          var done = function () { btn.textContent = T.copied; setTimeout(function () { btn.textContent = T.copy; }, 1600); };
+          if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, function () {});
+        });
+      });
+    })();
+  </script>
+</Base>
+
+<style>
+  .dl-head { padding: 64px 0 8px; }
+  .dl-jump { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+  .dl-jump a { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border: 1px solid var(--line); border-radius: 999px; text-decoration: none; color: var(--text); font-weight: 600; font-size: 0.95rem; background: var(--surface); transition: border-color 0.2s, transform 0.2s; }
+  .dl-jump a:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .dl-jump .pi { width: 18px; height: 18px; color: var(--accent-text); }
+  .dl-block { padding-top: 40px; padding-bottom: 40px; }
+  .dl-eyebrow { margin: 0 0 6px; font-size: 0.9rem; font-weight: 600; color: var(--accent-text); letter-spacing: 0.01em; }
+  .dl-lead { margin: 10px 0 0; color: var(--text2); max-width: 46ch; }
+  .dl-meta { margin: 12px 0 0; color: var(--text2); font-size: 0.95rem; }
+  .dl-warn { margin: 10px 0 0; font-size: 0.9rem; color: var(--accent-text); max-width: 44ch; }
+  .dl-sub { margin: 14px 0 0; font-size: 0.95rem; color: var(--text2); display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; }
+
+  .dl-hero { display: grid; grid-template-columns: 1.15fr 1fr; gap: 36px; align-items: center; padding: 34px 38px; border-radius: 22px; background: var(--panel); color: var(--on-panel); box-shadow: var(--shadow); position: relative; overflow: hidden; }
+  .dl-hero::before { content: ''; position: absolute; inset: -40% -10% auto auto; width: 60%; aspect-ratio: 1; background: radial-gradient(circle, color-mix(in srgb, var(--orange) 34%, transparent), transparent 65%); pointer-events: none; }
+  .dl-hero h2 { color: var(--on-panel); font-size: clamp(1.6rem, 2.6vw, 2.2rem); }
+  .dl-hero .dl-lead, .dl-hero .dl-meta, .dl-hero .dl-sub { color: var(--on-panel2); }
+  .dl-hero .dl-eyebrow { color: var(--orange-light); }
+  .dl-hero .link { color: var(--orange-light); }
+  .dl-hero .dl-warn { color: var(--orange-light); }
+  .dl-hero-id { display: flex; gap: 22px; align-items: flex-start; position: relative; }
+  .dl-hero-id img { border-radius: 18px; flex: none; }
+  .dl-hero-cta { position: relative; justify-self: start; }
+  .dl-big { padding: 18px 30px; font-size: 1.1rem; border-radius: 14px; box-shadow: 0 10px 30px -10px color-mix(in srgb, var(--orange) 70%, transparent); }
+  .dl-big .pi { width: 22px; height: 22px; }
+  .dl-big[hidden] { display: none; }
+
+  .dl-list { list-style: none; margin: 22px 0 0; padding: 0; display: grid; gap: 10px; }
+  .dl-row { display: grid; grid-template-columns: 44px 1fr auto auto; gap: 16px; align-items: center; padding: 14px 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); transition: border-color 0.2s, box-shadow 0.2s; }
+  .dl-row[hidden] { display: none; }
+  .dl-row:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); box-shadow: var(--shadow); }
+  .dl-row.is-yours { border-color: var(--accent); }
+  .dl-ico { width: 44px; height: 44px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent-text); }
+  .dl-ico .pi { width: 22px; height: 22px; }
+  .dl-what { display: grid; gap: 2px; }
+  .dl-what strong { font-size: 1.02rem; }
+  .dl-name { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .dl-what .badge { font-size: 0.75rem; padding: 2px 9px; }
+  .dl-detail { color: var(--text2); font-size: 0.92rem; }
+  .dl-size { color: var(--text2); font-size: 0.92rem; min-width: 56px; text-align: right; }
+
+  .dl-help { margin-top: 18px; border: 1px solid var(--line); border-radius: 14px; padding: 14px 18px; background: var(--surface); }
+  .dl-help summary { cursor: pointer; font-weight: 600; }
+  .dl-help p { margin: 10px 0 0; color: var(--text2); max-width: 70ch; }
+  .dl-foot { margin: 16px 0 0; color: var(--text2); font-size: 0.95rem; }
+
+  .dl-terminal { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 44px; align-items: start; }
+  .dl-terminal h2 { margin-top: 10px; }
+  .dl-terminal-copy img { border-radius: 14px; }
+  .dl-console { background: var(--panel); color: var(--on-panel); border-radius: 20px; padding: 20px; box-shadow: var(--shadow); }
+  .dl-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+  .dl-tabs button { font: inherit; font-weight: 600; font-size: 0.9rem; cursor: pointer; padding: 8px 14px; border-radius: 10px; border: 1px solid transparent; background: transparent; color: var(--on-panel2); }
+  .dl-tabs button[aria-selected='true'] { background: color-mix(in srgb, var(--orange) 22%, transparent); color: var(--on-panel); border-color: color-mix(in srgb, var(--orange) 45%, transparent); }
+  .dl-cmd { display: flex; align-items: center; gap: 12px; padding: 12px 12px 12px 16px; border-radius: 12px; background: color-mix(in srgb, var(--black) 35%, var(--panel)); }
+  .dl-cmd code { flex: 1; font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 0.85rem; overflow-x: auto; white-space: nowrap; color: var(--on-panel); background: none; padding: 0; }
+  .dl-copy { font: inherit; font-size: 0.82rem; font-weight: 600; cursor: pointer; border: 1px solid color-mix(in srgb, var(--on-panel) 25%, transparent); background: transparent; color: var(--on-panel); border-radius: 8px; padding: 6px 12px; }
+  .dl-copy:hover { border-color: var(--orange-light); color: var(--orange-light); }
+  .dl-then { margin: 16px 0 8px; font-size: 0.9rem; color: var(--on-panel2); }
+  .dl-note { margin: 16px 0 0; font-size: 0.9rem; color: var(--on-panel2); }
+
+  .dl-two { display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; }
+  .dl-card { padding: 28px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); display: grid; gap: 12px; align-content: start; }
+  .dl-card h3 { margin: 4px 0 0; }
+  .dl-card p { margin: 0; color: var(--text2); }
+  .dl-card .dl-cmd { background: var(--code-bg); }
+  .dl-card .dl-cmd code { color: var(--text); }
+  .dl-card .dl-copy { color: var(--text); border-color: var(--line); }
+
+  @media (max-width: 880px) {
+    .dl-hero { grid-template-columns: 1fr; padding: 26px 22px; }
+    .dl-terminal, .dl-two { grid-template-columns: 1fr; gap: 24px; }
+    .dl-row { grid-template-columns: 44px 1fr; }
+    .dl-row .dl-size { text-align: left; grid-column: 2; }
+    .dl-row .btn { grid-column: 1 / -1; justify-content: center; }
+    .dl-hero-id { flex-direction: column; }
+  }
+</style>
