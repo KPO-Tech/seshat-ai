@@ -8,5 +8,6 @@ import about from './en/about';
 import contact from './en/contact';
 import docs from './en/docs';
 import blog from './en/blog';
+import download from './en/download';
 
-export default { common, home, services, products, productPages, openSource, about, contact, docs, blog };
+export default { common, home, services, products, productPages, openSource, about, contact, docs, blog, download };

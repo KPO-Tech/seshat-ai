@@ -147,6 +147,7 @@ const nodes: object[] = [
           ) : <a href={url(lang, g.page as PageKey)} aria-current={navPage === g.page ? 'page' : undefined}>{g.label}</a>)}
         </nav>
         <div class="actions">
+          <a class="btn btn-ghost btn-sm hd-download" href={url(lang, 'download')}>{c.download}</a>
           <a class="btn btn-primary btn-sm" href={url(lang, 'contact')}><span class="cta-long">{c.cta}</span><span class="cta-short">{c.ctaShort}</span></a>
           {others.length === 1 && (
             <a class="lang-btn" href={others[0].href} hreflang={others[0].lang} lang={others[0].lang} title={langNames[others[0].lang]} aria-label={`${c.langSwitch} : ${langNames[others[0].lang]}`}>
@@ -184,6 +185,7 @@ const nodes: object[] = [
                 ))}
         </div>
       ) : <a href={url(lang, g.page as PageKey)} aria-current={navPage === g.page ? 'page' : undefined}>{g.label}</a>)}
+      <a class="m-download" href={url(lang, 'download')} aria-current={page === 'download' ? 'page' : undefined}>{c.download}</a>
     </nav>)}
     <main id="contenu"><slot /></main>
     {!shell && (<footer class="site-footer">

@@ -23,6 +23,7 @@ export default {
     lead: 'Diagnostic chiffré, pilote en 30 à 90 jours, solutions auto-hébergées. Conseil en IA pour PME et ETI.',
     primary: 'Demander un diagnostic',
     secondary: "Voir l'offre",
+    download: 'Télécharger',
     videoAria: 'Film : Seshat AI, vos outils, vos données, vos agents, sous votre contrôle',
     videoFallback: 'Votre navigateur ne lit pas cette vidéo.',
     videoSrc: '/videos/seshat-ai-presentation.mp4',
