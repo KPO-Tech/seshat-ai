@@ -8,11 +8,12 @@ import OpenSource from '../views/OpenSource.astro';
 import About from '../views/About.astro';
 import Contact from '../views/Contact.astro';
 import ProductDetail from '../views/ProductDetail.astro';
+import Download from '../views/Download.astro';
 
-const views = { home: Home, services: Services, products: Products, openSource: OpenSource, about: About, contact: Contact, productSeshat: ProductDetail, productSeshatOS: ProductDetail, productSeshatCloud: ProductDetail } as const;
+const views = { home: Home, services: Services, products: Products, openSource: OpenSource, about: About, contact: Contact, productSeshat: ProductDetail, productSeshatOS: ProductDetail, productSeshatCloud: ProductDetail, download: Download } as const;
 
 export function getStaticPaths() {
-  return allRoutes().filter((r) => ['home', 'services', 'products', 'openSource', 'about', 'contact', 'productSeshat', 'productSeshatOS', 'productSeshatCloud'].includes(r.page)).map((r) => ({ params: { slug: r.slug }, props: { lang: r.lang, page: r.page } }));
+  return allRoutes().filter((r) => ['home', 'services', 'products', 'openSource', 'about', 'contact', 'productSeshat', 'productSeshatOS', 'productSeshatCloud', 'download'].includes(r.page)).map((r) => ({ params: { slug: r.slug }, props: { lang: r.lang, page: r.page } }));
 }
 
 const { lang, page } = Astro.props;

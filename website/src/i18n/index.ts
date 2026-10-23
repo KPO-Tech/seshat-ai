@@ -30,7 +30,7 @@ export function dict(lang: Lang) {
 
 // Pages traduites et leur adresse dans chaque langue. Ajouter une langue : ajouter sa colonne.
 // L'adresse de la page d'accueil de la langue par défaut est vide (`/`).
-export type PageKey = 'home' | 'services' | 'products' | 'openSource' | 'about' | 'contact' | 'docs' | 'blog' | 'productSeshat' | 'productSeshatOS' | 'productSeshatCloud';
+export type PageKey = 'home' | 'services' | 'products' | 'openSource' | 'about' | 'contact' | 'docs' | 'blog' | 'productSeshat' | 'productSeshatOS' | 'productSeshatCloud' | 'download';
 
 export const slugs: Record<PageKey, Record<Lang, string>> = {
   home: { fr: '', en: 'en' },
@@ -39,6 +39,7 @@ export const slugs: Record<PageKey, Record<Lang, string>> = {
   productSeshat: { fr: 'produits/seshat', en: 'en/products/seshat' },
   productSeshatOS: { fr: 'produits/seshatos', en: 'en/products/seshatos' },
   productSeshatCloud: { fr: 'produits/seshatcloud', en: 'en/products/seshatcloud' },
+  download: { fr: 'telechargement', en: 'en/download' },
   openSource: { fr: 'open-source', en: 'en/open-source' },
   about: { fr: 'a-propos', en: 'en/about' },
   contact: { fr: 'contact', en: 'en/contact' },

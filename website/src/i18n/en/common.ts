@@ -29,6 +29,7 @@ const en: typeof fr = {
     { label: 'Blog', page: 'blog' },
     { label: 'Company', items: [{ page: 'about', label: 'About' }, { page: 'contact', label: 'Contact' }] },
   ],
+  download: 'Download',
   cta: 'Request an assessment',
   ctaShort: 'Assessment',
   menu: 'Menu',

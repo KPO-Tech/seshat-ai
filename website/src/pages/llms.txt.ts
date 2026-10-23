@@ -30,6 +30,7 @@ export const GET: APIRoute = async () => {
     `- [Products (EN)](${abs(url('en', 'products'))}): ${en.products.meta.description}`,
     `- [Open source and licenses (EN)](${abs(url('en', 'openSource'))}): ${en.openSource.meta.description}`,
     `- [About (EN)](${abs(url('en', 'about'))}): ${en.about.meta.description}`,
+    `- [Download (EN)](${abs(url('en', 'download'))}): ${en.download.meta.description}`,
     `- [Contact (EN)](${abs(url('en', 'contact'))}): ${en.contact.meta.description}`,
     '',
     '## Documentation',
