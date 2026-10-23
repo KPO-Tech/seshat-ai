@@ -12,7 +12,6 @@ const en: typeof fr = {
     lead: 'Fixed-price assessment, 30 to 90 day pilot, self-hosted solutions. AI consulting for SMEs and mid-sized companies.',
     primary: 'Request an assessment',
     secondary: 'See the offer',
-    download: 'Download',
     videoAria: 'Film: Seshat AI, your tools, your data, your agents, under your control (French audio, English subtitles)',
     videoFallback: 'Your browser cannot play this video.',
     videoSrc: '/videos/seshat-ai-presentation.mp4',
