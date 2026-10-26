@@ -40,11 +40,22 @@ Chaque décision est prise pour sa valeur, pas pour sa facilité. Là où l'opti
 - *Pourquoi pas une copie dans chaque produit :* deux versions du regroupement divergeraient.
 - *Lecture de la décision 0003 :* « aucun nouveau connecteur » vise les services distants. Un dossier de l'ordinateur est « les fichiers d'une personne », ce que 0003 donne à SeshatOS. **C'est ma lecture; à confirmer.**
 
-**D2. Le critère de regroupement.** Le but est le regroupement **par contenu**, parce que c'est lui qui sert une archive en vrac, le cas visé. L'arborescence sert de **plan rapide** (instantané, sans rien lire) et de **référence de mesure**.
+**D2. Le critère de regroupement.** Retenu après une première mesure : **l'arborescence donne le plan rapide, le contenu est une suggestion**, pas encore le moyen principal. L'objectif reste d'aider une archive en vrac, mais la mesure ne montre pas que le contenu y suffit.
 - Plan rapide : un dossier de premier niveau devient une collection, les petits dossiers vont sous « Divers », les très gros sont scindés.
-- Plan par contenu : après lecture, regroupement par similarité des embeddings, avec l'arborescence comme indice et non comme règle.
-- **Porte de qualité :** le plan par contenu n'est livré que s'il place mieux les fichiers que l'arborescence sur l'archive de référence (voir « Comment vérifier »). Sinon il reste une suggestion.
-- *Pourquoi pas l'arborescence seule :* elle ne dit rien d'une archive en désordre. *Pourquoi pas le contenu seul :* il oblige à tout lire (les scans sont lents) avant de montrer quoi que ce soit, et ignore une information gratuite.
+- Suggestions par contenu : pour les fichiers que l'arborescence ne place pas, et pour proposer de scinder un dossier trop gros. Jamais appliquées sans validation.
+- **Porte de qualité :** le contenu ne devient le moyen principal que s'il place mieux les fichiers que l'arborescence sur l'archive de référence. Ce n'est pas le cas aujourd'hui (mesures ci-dessous).
+- *Pourquoi pas le contenu seul :* il oblige à tout lire avant de montrer quoi que ce soit (les scans sont lents) et, mesuré, il ne bat pas toujours une arborescence même médiocre.
+
+*Première mesure (pilote jetable, 2026-10-26, non conservé; l'étape 1 de l'ordre de construction fait le vrai banc d'essai).* Embedding du début de chaque document par `bge-small-en-v1.5` servi par `llama-server` (modèle anglais, 36 Mo), regroupement hiérarchique en distance cosinus. Une arborescence est simulée : un fichier est dans le dossier de son type avec la probabilité *p*, sinon dans l'un de 8 dossiers génériques. Score NMI (0 = aucun lien, 1 = identique aux types).
+
+| Corpus | Contenu | Arborescence *p* = 0,5 | Arborescence *p* = 0,8 |
+|---|---|---|---|
+| 252 formulaires, 39 types (schéma des valeurs attendues) | NMI 0,93 à 79 groupes (pureté 0,99); 0,84 à 43 groupes (pureté 0,64) | 0,64 | 0,87 |
+| 407 contrats, 25 types (nom de fichier CUAD) | NMI 0,71 mais à 160 groupes ou plus; 0,62 à 48 groupes (pureté 0,55); **0,40 à 25 groupes (pureté 0,30)** | 0,57 | 0,82 |
+
+Lecture : sur des formulaires, le contenu bat une arborescence moyenne; sur des contrats, il n'égale qu'une arborescence qui range la moitié des fichiers. Les groupes très fins sont presque purs, ce qui est la bonne direction pour un plan que la personne fusionne ensuite. Le résultat est très sensible au seuil.
+
+*Limites :* l'arborescence est simulée, avec un *p* arbitraire; le type de contrat vient de noms de fichiers (bruyant, et « stratégique » et « coopération » se recouvrent); un embedding capte plutôt les parties et le secteur que le type d'accord, donc le type n'est peut-être pas la bonne cible; un seul petit modèle anglais, aucun réglage. *Non testés :* un modèle multilingue plus gros, le texte entier, la combinaison avec l'arborescence, un regroupement hiérarchique présenté à la personne.
 
 **D3. Les noms.** Plan rapide : les noms des dossiers. Plan par contenu : les termes les plus distinctifs du groupe, extraits **localement, sans modèle de langage**. Un modèle de langage ne nomme qu'avec l'accord de la personne, en local si un modèle l'est. *Pourquoi pas toujours un modèle :* il lirait du contenu, et un distant le sortirait de la machine.
 
@@ -68,7 +79,7 @@ Chaque étape a une porte : on ne passe à la suivante que si la précédente es
 2. **Le planificateur rapide** dans le runtime.
 3. **La source dossier local** et l'écran du plan modifiable.
 4. **L'embeddeur local** par `llama-server`, avec le modèle multilingue choisi par mesure.
-5. **Le regroupement par contenu**, livré seulement s'il passe la porte de qualité de D2.
+5. **Le regroupement par contenu**, proposé comme suggestion, et amélioré par mesure (modèle multilingue, texte entier, mélange avec l'arborescence). Il ne devient le moyen principal que s'il passe la porte de qualité de D2.
 6. **Le test réseau** et l'intégrité des originaux.
 
 ## Comment vérifier que cela marche
