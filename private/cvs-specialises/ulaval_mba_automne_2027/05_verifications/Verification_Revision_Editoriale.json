@@ -1,0 +1,26 @@
+[
+  {
+    "fichier": "D:\\Documents\\PROJECTS\\ai\\seshat-ai\\private\\cvs-specialises\\ulaval_mba_automne_2027\\02_cv\\cv-stephane-kpoviessi-ulaval-analytique-affaires.pdf",
+    "source": "D:\\Documents\\PROJECTS\\ai\\seshat-ai\\private\\cvs-specialises\\ulaval_mba_automne_2027\\02_cv\\cv-stephane-kpoviessi-ulaval-analytique-affaires.tex",
+    "pages": 1,
+    "sha256": "c15c243b0a6dbca6254998160ad3b72329393ef819bd4de3553803a657520be0",
+    "polices": [
+      "QPSRLR+NimbusSanL-Bold",
+      "ZMLVMC+NimbusSanL-Regu"
+    ],
+    "controle_visuel": "Toutes les pages rendues et inspectées après la dernière modification.",
+    "debordement_LaTeX": false
+  },
+  {
+    "fichier": "D:\\Documents\\PROJECTS\\ai\\seshat-ai\\private\\cvs-specialises\\ulaval_mba_automne_2027\\03_lettre_motivation\\lettre-motivation-stephane-kpoviessi-ulaval-analytique-affaires.pdf",
+    "source": "D:\\Documents\\PROJECTS\\ai\\seshat-ai\\private\\cvs-specialises\\ulaval_mba_automne_2027\\03_lettre_motivation\\lettre-motivation-stephane-kpoviessi-ulaval-analytique-affaires.tex",
+    "pages": 2,
+    "sha256": "4aa700cdb4ec1a51537072e5124c062d9f0890809760ff4b1b4da04479d7e69f",
+    "polices": [
+      "HBKKWX+NimbusSanL-Regu",
+      "LYESJD+NimbusSanL-Bold"
+    ],
+    "controle_visuel": "Toutes les pages rendues et inspectées après la dernière modification.",
+    "debordement_LaTeX": false
+  }
+]

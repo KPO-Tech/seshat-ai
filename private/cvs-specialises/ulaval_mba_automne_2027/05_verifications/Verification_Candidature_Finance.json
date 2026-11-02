@@ -1,0 +1,51 @@
+{
+  "sources_existantes": [
+    {
+      "fichier": "D:\\Documents\\PROJECTS\\ai\\seshat-ai\\private\\cvs-specialises\\ulaval_mba_automne_2027\\02_cv\\cv-stephane-kpoviessi-ulaval-analytique-affaires.tex",
+      "sha256": "478e7a4bf38ff5d5f855241238c3b84b3ad06311abe0187cf34f45a4a21e71d7"
+    },
+    {
+      "fichier": "D:\\Documents\\PROJECTS\\ai\\seshat-ai\\private\\cvs-specialises\\ulaval_mba_automne_2027\\03_lettre_motivation\\lettre-motivation-stephane-kpoviessi-ulaval-analytique-affaires.tex",
+      "sha256": "f7541af4f81c66cd63a3541ac110b864e0d4d9fe1b922e4b37622645f2d5525b"
+    },
+    {
+      "fichier": "D:\\Documents\\PROJECTS\\ai\\seshat-ai\\private\\cvs-specialises\\finance_sherbrook\\cv-stephane-kpoviessi-finance-sherbrooke.tex",
+      "sha256": "aa2b1c38b5284b80a2199dae5811d3871be9f179ba4e633d24ce6e1e052ff5a2"
+    },
+    {
+      "fichier": "D:\\Documents\\PROJECTS\\ai\\seshat-ai\\private\\cvs-specialises\\hec_montreal_strategie\\cv-stephane-kpoviessi-hec-montreal-strategie.tex",
+      "sha256": "17b1ca7ba286b9afe13cafa6b08103c815b33f81ee4fb818115bcc0a3db0004e"
+    },
+    {
+      "fichier": "D:\\Documents\\PROJECTS\\ai\\seshat-ai\\private\\cvs-specialises\\hec_montreal_strategie\\lettre-motivation-stephane-kpoviessi-hec-montreal-strategie.tex",
+      "sha256": "90864fd47908068d571676b17d4be33e088877b8a747252b5771ba534988fab9"
+    }
+  ],
+  "livrables": [
+    {
+      "pdf": "D:\\Documents\\PROJECTS\\ai\\seshat-ai\\private\\cvs-specialises\\ulaval_mba_automne_2027\\02_cv\\cv-stephane-kpoviessi-ulaval-finance.pdf",
+      "source_modifiable": "D:\\Documents\\PROJECTS\\ai\\seshat-ai\\private\\cvs-specialises\\ulaval_mba_automne_2027\\02_cv\\cv-stephane-kpoviessi-ulaval-finance.tex",
+      "pages": 1,
+      "sha256": "55844993ce3daa6c3ecc25efe472566df96eb04c4acafbedb8b92d2113d81a16",
+      "polices": [
+        "QPSRLR+NimbusSanL-Bold",
+        "ZMLVMC+NimbusSanL-Regu"
+      ],
+      "controle_visuel": "Toutes les pages finales rendues et inspectées.",
+      "debordement": false
+    },
+    {
+      "pdf": "D:\\Documents\\PROJECTS\\ai\\seshat-ai\\private\\cvs-specialises\\ulaval_mba_automne_2027\\03_lettre_motivation\\lettre-motivation-stephane-kpoviessi-ulaval-finance.pdf",
+      "source_modifiable": "D:\\Documents\\PROJECTS\\ai\\seshat-ai\\private\\cvs-specialises\\ulaval_mba_automne_2027\\03_lettre_motivation\\lettre-motivation-stephane-kpoviessi-ulaval-finance.tex",
+      "pages": 2,
+      "sha256": "9f4578d4622b469df565fba6a1d22e673adbf267cca1935205b89ea4b3cf2359",
+      "polices": [
+        "FXRHDL+NimbusSanL-Regu",
+        "QOQXVF+NimbusSanL-Bold"
+      ],
+      "controle_visuel": "Toutes les pages finales rendues et inspectées.",
+      "debordement": false
+    }
+  ],
+  "statut": "Préparé pour validation du candidat ; aucun dépôt effectué."
+}
