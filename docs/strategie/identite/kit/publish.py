@@ -90,6 +90,8 @@ def plan() -> list[Op]:
     desktop = os_repo / "seshat-desktop"
     ops.append(_tight("seshatos", LIGHT, desktop / "public" / "brand" / "mark-on-light.svg"))
     ops.append(_tight("seshatos", DARK, desktop / "public" / "brand" / "mark-on-dark.svg"))
+    ops.append(Op(desktop / "public" / "brand" / "knowledge-icon.svg", "svg", source="seshatos-knowledge/icon-orange.svg"))
+    ops.append(Op(desktop / "public" / "brand" / "automation-icon.svg", "svg", source="seshatos-automation/icon-orange.svg"))
     ops.append(Op(desktop / "build" / "icon.png", "png", source="seshatos/icon-dark.svg", size=1024))
     ops.append(Op(desktop / "build" / "icon.ico", "ico", source="seshatos/icon-dark.svg"))
 
