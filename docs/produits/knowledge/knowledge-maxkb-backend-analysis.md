@@ -1,5 +1,7 @@
 # Knowledge MVP - Analyse backend MaxKB
 
+> **Mise à jour 2026-10-23.** Les noms de dépôts de ce document datent d'avant la séparation du 2026-10-01 : `seshat/` est devenu `seshat-runtime`, `seshat-server`, `seshat-console` et le service d'intelligence sont dans `SeshatCloud`, `seshat-backend` et `seshat-ui` dans `SeshatOS`. Étude d'un projet externe. L'analyse elle-même reste valable. État réel : [`knowledge-etat-des-lieux.md`](./knowledge-etat-des-lieux.md).
+
 Date : 2026-09-07
 
 Source etudiee :
