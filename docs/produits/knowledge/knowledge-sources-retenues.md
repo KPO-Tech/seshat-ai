@@ -1,5 +1,7 @@
 # Knowledge - Sources open source retenues
 
+> **Mise à jour 2026-10-23.** Les noms de dépôts de ce document datent d'avant la séparation du 2026-10-01 : `seshat/` est devenu `seshat-runtime`, `seshat-server`, `seshat-console` et le service d'intelligence sont dans `SeshatCloud`, `seshat-backend` et `seshat-ui` dans `SeshatOS`. Liste de projets à étudier ; ceux déjà étudiés (Onyx, MaxKB, RAGFlow) y sont à marquer. L'analyse elle-même reste valable. État réel : [`knowledge-etat-des-lieux.md`](./knowledge-etat-des-lieux.md).
+
 Ce document liste les projets open source retenus comme références pour améliorer l'application Knowledge de SeshatOS.
 
 Ces sources ne définissent pas à elles seules les pages ou le produit. Elles servent surtout à inspirer le socle RAG, recherche, graph, agents, connecteurs et gouvernance.

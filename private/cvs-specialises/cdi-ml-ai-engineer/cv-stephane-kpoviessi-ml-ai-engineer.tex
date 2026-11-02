@@ -34,7 +34,7 @@
 \titlespacing*{\section}{0pt}{10pt}{5pt}
 
 \newcommand{\smallsection}[2]{%
-  \vspace{9pt}
+  \vspace{8pt}
   {\fontsize{8.9pt}{10.45pt}\selectfont\bfseries\color{accentdark}%
   {\scriptsize\color{accent}#1}\hspace{3.5pt}#2}\par
   \vspace{3.2pt}
@@ -51,7 +51,7 @@
 \newcommand{\sideitem}[2]{%
   \textbf{#1}\par
   #2\par
-  \vspace{5.7pt}
+  \vspace{2pt}
 }
 
 \newcommand{\certitem}[2]{%
@@ -94,11 +94,9 @@
 \begin{minipage}[t]{0.42\textwidth}
 \raggedleft
 \vspace{2pt}
-{\normalsize\bfseries\color{accent}Machine Learning \textbullet{} Agents IA \textbullet{} RAG}\par
+\makebox[\linewidth][r]{{\normalsize\bfseries\color{accent}Machine Learning \textbullet{} Agents IA \textbullet{} RAG}}\par
 \vspace{3pt}
-{\small\color{muted}
-Des modèles aux applications IA intégrées aux usages métier.
-}
+\makebox[\linewidth][r]{{\small\color{muted}Des modèles aux applications IA intégrées aux usages métier.}}
 \end{minipage}
 
 \vspace{6pt}
@@ -111,48 +109,48 @@ Des modèles aux applications IA intégrées aux usages métier.
 \raggedright
 
 \section{Profil}
-Ingénieur diplômé en Big Data \& Data Science, je conçois des solutions ML/IA de la préparation des données à l'intégration applicative. Expérience en vision par ordinateur et modèles génératifs chez Sylvagreg, en ingénierie Data chez Allianz, et en développement d'agents IA et de RAG hybride avec Seshat.
+Ingénieur diplômé en Big Data \& Data Science, je transforme des modèles ML en applications testables. Chez Sylvagreg, j'ai développé une solution expérimentale de reconstruction 3D ; chez Allianz, j'ai accéléré des traitements et fiabilisé les résultats. Avec Seshat, je conçois des agents pour automatiser des tâches et exploiter les documents.
 
 \section{Expériences}
 \role{Seshat - Fondateur \& AI Engineer}{Sept. 2026 - Aujourd'hui}{Plateforme open source d'IA agentique et d'automatisation}
 \begin{itemize}
-  \item Conception de services Python/Go, backend local/cloud et application desktop Electron/React pour des agents et workflows métier.
-  \item RAG hybride : ingestion documentaire, chunking, embeddings, recherche PostgreSQL/pgvector et Chroma, restitution sourcée.
-  \item Orchestration d'agents avec tool calling, MCP, human-in-the-loop et tâches planifiées ; intégration de plusieurs fournisseurs LLM et contrôle des accès.
+  \item Conception d'un runtime d'agents Go intégrable par SDK et API gRPC pour connecter les applications à des modèles locaux et plusieurs fournisseurs LLM.
+  \item Automatisation de tâches par sous-agents parallèles et outils MCP, avec permissions et validation humaine pour encadrer leurs actions.
+  \item Développement d'une chaîne documentaire : ingestion, recherche hybride et restitution sourcée pour exploiter les documents dans les réponses des agents.
 \end{itemize}
 {\footnotesize\color{accent}\faIcon{globe}\ \href{https://seshat-ai.com}{seshat-ai.com}\enspace\textbullet\enspace\faIcon{github}\ \href{https://github.com/KPO-Tech/seshat}{github.com/KPO-Tech/seshat}}\par
 
 \vspace{8pt}
 \role{Allianz France - Ingénieur Data / Data Scientist}{Nov. 2025 - Avr. 2026}{Direction P4D, Advanced Data \& Climate - Paris}
 \begin{itemize}
-  \item Migration d'un datamart Assurance de SAS vers Python/PySpark, avec validation sur plus de 15 000 lignes de code ; architecture Médaillon sur Azure Databricks intégrant plus de 150 règles métier.
-  \item Pipeline de Data Quality géospatiale et tests automatisés SAS/Python pour valider les KPI et sécuriser la non-régression.
+  \item Modernisation d'un datamart d'assurance : analyse de plus de 15 000 lignes SAS et migration vers Python/PySpark sur Azure Databricks, avec plus de 150 règles métier en architecture Médaillon.
+  \item Accélération de plus de \textbf{8\texttimes{} du workflow mesuré} après migration de SAS vers Azure Databricks, à capacité mémoire identique.
+  \item Fiabilisation des indicateurs métier par des contrôles qualité géospatiaux et des tests automatisés de parité SAS/Python et de non-régression.
 \end{itemize}
 
 \vspace{8pt}
 \role{Groupe Sylvagreg - Machine Learning Engineer}{Mai 2024 - Août 2024}{Lille, France}
 \begin{itemize}
-  \item R\&D d'une solution de reconstruction 3D à partir d'images 2D, combinant vision par ordinateur, photogrammétrie et modèles génératifs sous PyTorch.
-  \item Automatisation des pipelines de prétraitement, augmentation de données et inférence pour fiabiliser les expérimentations et la génération 3D.
-  \item Conteneurisation Docker, déploiement AWS et interface de visualisation pour inspecter les reconstructions et faciliter les tests utilisateurs.
+  \item Développement d'une solution expérimentale de reconstruction 3D à partir d'images 2D, par photogrammétrie et modèles génératifs PyTorch.
+  \item Automatisation du prétraitement et de l'inférence ; déploiement AWS/Docker et interface de visualisation pour tester et examiner les reconstructions.
 \end{itemize}
 {\fontsize{7.5pt}{9pt}\selectfont\color{accent}\faIcon{github}\ \href{https://github.com/EngineerProjects/Sylva3dGUI}{github.com/EngineerProjects/Sylva3dGUI}\enspace\textbullet\enspace\href{https://github.com/EngineerProjects/sylva3D}{github.com/EngineerProjects/sylva3D}}\par
 
 \vspace{8pt}
 \role{LYNE ET FRERES SARL - Data Analyst}{2023 - 2025}{Missions d'appui stratégique - Bénin / À distance}
 \begin{itemize}
-  \item Analyse de données métiers avec Python/Pandas et restitution via rapports et interfaces Streamlit / web.
-  \item Déploiement d'automatisations et d'outils IA internes open source (OpenWebUI, modèles ouverts), avec accompagnement des employés.
+  \item Automatisation d'activités internes par le déploiement d'outils IA open source, dont OpenWebUI, avec accompagnement des utilisateurs.
+  \item Développement de rapports et tableaux de bord Python/Pandas et Streamlit pour suivre les données commerciales et opérationnelles.
 \end{itemize}
 
 \section{Projets sélectionnés}
 \projectline{SOLAR IRRADIANCE FORECASTING}{Scikit-learn, Pandas, FastAPI}
-Préparation de données météo, feature engineering temporel et évaluation de modèles de prévision ; API REST FastAPI pour exposer les résultats.
+Développement d'une chaîne de prévision de l'irradiance solaire à partir de données météo : variables temporelles, évaluation des modèles et API FastAPI pour exposer les prédictions.
 \githublink{https://github.com/EngineerProjects/solar-forecasting}{github.com/EngineerProjects/solar-forecasting}
 
-\vspace{9pt}
+\vspace{8pt}
 \projectline{ROBOT AUTONOME DE COLLECTE DE DÉCHETS}{AceObject - YOLOv8, OpenCV, Dijkstra}
-Pipeline Python/YOLOv8/OpenCV pour détecter, classifier et suivre les déchets en les distinguant des obstacles. Navigation par Dijkstra pour planifier la collecte ; exploration de l'apprentissage par renforcement pour la décision et l'évitement d'obstacles.
+Développement d'un pipeline YOLOv8/OpenCV pour détecter et suivre les déchets en les distinguant des obstacles, avec planification de collecte par Dijkstra. Exploration de l'apprentissage par renforcement pour la navigation.
 
 \end{minipage}
 \end{lrbox}
@@ -174,6 +172,7 @@ Pipeline Python/YOLOv8/OpenCV pour détecter, classifier et suivre les déchets 
   \contactline{\faIcon{phone}}{+33 7 48 59 47 13}
   \contactline{\faIcon{envelope}}{\href{mailto:oastephanekpoviessi@gmail.com}{oastephanekpoviessi@gmail.com}}
   \contactline{\faIcon{link}}{\href{https://linkedin.com/in/stephanekpoviessi}{linkedin.com/in/stephanekpoviessi}}
+  \contactline{\faIcon{link}}{\href{https://kpoviessi-stephane.vercel.app}{kpoviessi-stephane.vercel.app}}
   \contactline{\faIcon{github}}{\href{https://github.com/KPO-Tech}{github.com/KPO-Tech}}
   \contactline{\faIcon{globe}}{\href{https://seshat-ai.com}{seshat-ai.com}}
 
@@ -186,6 +185,7 @@ Pipeline Python/YOLOv8/OpenCV pour détecter, classifier et suivre les déchets 
   \smallsection{\faIcon{graduation-cap}}{Formation}
   \sideitem{JUNIA ISEN Lille}{Diplôme d'Ingénieur - Big Data \& Data Science, 2026.}
   \sideitem{JUNIA ISEN Rabat}{Licence - Électronique \& Systèmes Numériques, 2023.}
+  \sideitem{CPMS}{Maths, Physique et Sciences de l'ingénieur, 2020 - 2022.}
 
   \smallsection{\faIcon{certificate}}{Certifications}
   \certitem{\href{https://learn.microsoft.com/fr-fr/training/career-paths/ai-engineer}{Microsoft AI Engineer Career Path}}{Microsoft Learn \textbullet{} \textbf{En cours}}

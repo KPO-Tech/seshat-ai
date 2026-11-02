@@ -1,5 +1,7 @@
 # Application Knowledge - Pages et fonctionnalités
 
+> **Mise à jour 2026-10-23.** Les noms de dépôts de ce document datent d'avant la séparation du 2026-10-01 : `seshat/` est devenu `seshat-runtime`, `seshat-server`, `seshat-console` et le service d'intelligence sont dans `SeshatCloud`, `seshat-backend` et `seshat-ui` dans `SeshatOS`. Les neuf pages décrites sont une intention : aucune n'existe encore telle quelle ; le premier périmètre se décide à l'étape de conception de [`knowledge-roadmap.md`](./knowledge-roadmap.md). L'analyse elle-même reste valable. État réel : [`knowledge-etat-des-lieux.md`](./knowledge-etat-des-lieux.md).
+
 Ce document détaille l'application Knowledge comme premier produit complet du MVP SeshatOS.
 
 Le document [mvp-knowledge-to-action.md](./mvp-knowledge-to-action.md) décrit le positionnement, la problématique et la promesse. Celui-ci descend d'un niveau : il aide à penser les pages, les parcours utilisateur et les fonctionnalités attendues.

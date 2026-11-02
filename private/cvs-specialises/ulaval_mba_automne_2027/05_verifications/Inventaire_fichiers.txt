@@ -1,0 +1,52 @@
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\01_documents_academiques\Diplome_ou_Attestation_Ingenieur.pdf
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\01_documents_academiques\Releve_Baccalaureat_Benin.pdf
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\01_documents_academiques\Releves_JUNIA_Annees_1_a_3_Benin_Maroc.pdf
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\01_documents_academiques\Releves_JUNIA_Annees_4_et_5_France.pdf
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\02_cv\cv-stephane-kpoviessi-ulaval-analytique-affaires.pdf
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\02_cv\cv-stephane-kpoviessi-ulaval-analytique-affaires.tex
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\02_cv\cv-stephane-kpoviessi-ulaval-finance.pdf
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\02_cv\cv-stephane-kpoviessi-ulaval-finance.tex
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\03_lettre_motivation\lettre-motivation-stephane-kpoviessi-ulaval-analytique-affaires.pdf
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\03_lettre_motivation\lettre-motivation-stephane-kpoviessi-ulaval-analytique-affaires.tex
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\03_lettre_motivation\lettre-motivation-stephane-kpoviessi-ulaval-finance.pdf
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\03_lettre_motivation\lettre-motivation-stephane-kpoviessi-ulaval-finance.tex
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\04_bulletins_individuels\Benin\KPOVIESSI Stéphane 1ère année S1.pdf
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\04_bulletins_individuels\Benin\KPOVIESSI Stéphane 1ère année S2.pdf
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\04_bulletins_individuels\Benin\KPOVIESSI Stéphane 2eme année S1.pdf
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\04_bulletins_individuels\Benin\KPOVIESSI Stéphane 2eme année S2.pdf
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\04_bulletins_individuels\France\Bulletin_2023-2024_A4.pdf
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\04_bulletins_individuels\France\Bulletin_2024-2025_A5.pdf
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\04_bulletins_individuels\Maroc\KPOVIESSI_O_A_Stéphane_2022-2023.pdf
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\05_verifications\Guide_Depot_et_Sources_ULaval.md
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\05_verifications\Inventaire_fichiers.txt
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\05_verifications\Rapport_Verification_PDF.md
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\05_verifications\Structure_CV_et_Choix_Editoriaux.md
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\05_verifications\Synthese_Academique.md
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\05_verifications\Verification_Candidature_Finance.json
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\05_verifications\Verification_Candidature_Finance.md
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\05_verifications\Verification_Finale_CV_Lettre.md
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\05_verifications\Verification_PDF.json
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\05_verifications\Verification_Revision_Editoriale.json
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\old\2026-10-21-avant-ajustement-competences\02_cv\cv-stephane-kpoviessi-ulaval-analytique-affaires.pdf
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\old\2026-10-21-avant-ajustement-competences\02_cv\cv-stephane-kpoviessi-ulaval-analytique-affaires.tex
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\old\2026-10-21-avant-ajustement-competences\03_lettre_motivation\lettre-motivation-stephane-kpoviessi-ulaval-analytique-affaires.pdf
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\old\2026-10-21-avant-ajustement-competences\03_lettre_motivation\lettre-motivation-stephane-kpoviessi-ulaval-analytique-affaires.tex
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\old\2026-10-21-avant-alignement-cv\cv-stephane-kpoviessi-ulaval-analytique-affaires.pdf
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\old\2026-10-21-avant-alignement-cv\cv-stephane-kpoviessi-ulaval-analytique-affaires.tex
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\old\2026-10-21-avant-precision-ml-ia\02_cv\cv-stephane-kpoviessi-ulaval-analytique-affaires.pdf
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\old\2026-10-21-avant-precision-ml-ia\02_cv\cv-stephane-kpoviessi-ulaval-analytique-affaires.tex
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\old\2026-10-21-avant-precision-ml-ia\03_lettre_motivation\lettre-motivation-stephane-kpoviessi-ulaval-analytique-affaires.pdf
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\old\2026-10-21-avant-precision-ml-ia\03_lettre_motivation\lettre-motivation-stephane-kpoviessi-ulaval-analytique-affaires.tex
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\old\2026-10-21-avant-revision-editoriale\02_cv\cv-stephane-kpoviessi-ulaval-analytique-affaires.pdf
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\old\2026-10-21-avant-revision-editoriale\02_cv\cv-stephane-kpoviessi-ulaval-analytique-affaires.tex
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\old\2026-10-21-avant-revision-editoriale\03_lettre_motivation\lettre-motivation-stephane-kpoviessi-ulaval-analytique-affaires.pdf
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\old\2026-10-21-avant-revision-editoriale\03_lettre_motivation\lettre-motivation-stephane-kpoviessi-ulaval-analytique-affaires.tex
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\old\2026-10-21-avant-revision-finale\02_cv\cv-stephane-kpoviessi-ulaval-analytique-affaires.pdf
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\old\2026-10-21-avant-revision-finale\02_cv\cv-stephane-kpoviessi-ulaval-analytique-affaires.tex
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\old\2026-10-21-avant-revision-finale\03_lettre_motivation\lettre-motivation-stephane-kpoviessi-ulaval-analytique-affaires.pdf
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\old\2026-10-21-avant-revision-finale\03_lettre_motivation\lettre-motivation-stephane-kpoviessi-ulaval-analytique-affaires.tex
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\old\2026-10-21-premiere-version\02_cv\CV_Stephane_KPOVIESSI_MBA_Analytique_ULaval.html
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\old\2026-10-21-premiere-version\02_cv\CV_Stephane_KPOVIESSI_MBA_Analytique_ULaval.pdf
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\old\2026-10-21-premiere-version\03_lettre_motivation\Lettre_Motivation_Stephane_KPOVIESSI_ULaval.html
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\old\2026-10-21-premiere-version\03_lettre_motivation\Lettre_Motivation_Stephane_KPOVIESSI_ULaval.pdf
+D:\Documents\PROJECTS\ai\seshat-ai\private\cvs-specialises\ulaval_mba_automne_2027\README.md

@@ -34,7 +34,7 @@
 \titlespacing*{\section}{0pt}{10pt}{5pt}
 
 \newcommand{\smallsection}[2]{%
-  \vspace{9pt}
+  \vspace{8pt}
   {\fontsize{8.9pt}{10.45pt}\selectfont\bfseries\color{accentdark}%
   {\scriptsize\color{accent}#1}\hspace{3.5pt}#2}\par
   \vspace{3.2pt}
@@ -46,7 +46,7 @@
   \end{minipage}\par
   \vspace{1pt}
 }
-\newcommand{\sideitem}[2]{\textbf{#1}\par#2\par\vspace{5.7pt}}
+\newcommand{\sideitem}[2]{\textbf{#1}\par#2\par\vspace{3.5pt}}
 \newcommand{\certitem}[2]{\textbf{#1}\par{\fontsize{7.15pt}{8.1pt}\selectfont\color{muted}#2}\par\vspace{4.4pt}}
 \newcommand{\role}[3]{%
   \vspace{3pt}
@@ -77,9 +77,9 @@
 \begin{minipage}[t]{0.42\textwidth}
 \raggedleft
 \vspace{2pt}
-{\normalsize\bfseries\color{accent}SQL \textbullet{} Python \textbullet{} Power BI \textbullet{} Databricks}\par
+\makebox[\linewidth][r]{{\normalsize\bfseries\color{accent}SQL \textbullet{} Python \textbullet{} Power BI \textbullet{} Databricks}}\par
 \vspace{3pt}
-{\small\color{muted}Commercial performance, KPIs, BI and data quality.}
+\makebox[\linewidth][r]{{\small\color{muted}Commercial performance, KPIs, BI and data quality.}}
 \end{minipage}
 
 \vspace{6pt}
@@ -92,48 +92,49 @@
 \raggedright
 
 \section{Profile}
-Engineering graduate in Big Data \& Data Science, with experience in commercial performance analysis, KPI monitoring and data reliability. At Lyne et Frères, I contributed to business activity analysis and decision-oriented reporting. At Allianz France, I worked on modernizing data processing and automating quality controls. I use SQL, Python and Business Intelligence to turn data into useful indicators for business decisions.
+Engineering graduate in Big Data \& Data Science, building data pipelines that produce reliable business indicators. At Allianz, I modernized SAS processing on Azure Databricks and achieved a speedup of over 8\texttimes{} on the measured workflow with identical memory capacity. I combine Python/PySpark, SQL, quality controls and reporting to make data usable by business teams.
 
 \section{Experience}
 \role{Allianz France - Data Engineer / Data Scientist}{Nov. 2025 - Apr. 2026}{P4D, Advanced Data \& Climate - Paris}
 \begin{itemize}
-  \item Migrated an Insurance datamart from SAS to Python/PySpark, validating functional parity across 15,000+ lines of code.
-  \item Built a Medallion architecture on Azure Databricks integrating 150+ business rules, consistency checks and industrialized processing.
-  \item Built Data Quality pipelines and SAS/Python automated tests to detect anomalies, compare KPIs, track gaps and secure regression control before production.
+  \item Modernized an insurance datamart: analyzed 15,000+ lines of SAS and migrated processing to Python/PySpark on Azure Databricks, with 150+ business rules in a Medallion architecture.
+  \item Achieved a \textbf{speedup of over 8\texttimes{} on the measured workflow} after migration from SAS to Azure Databricks, with identical memory capacity.
+  \item Validated business indicators through geospatial data quality checks and automated SAS/Python parity and regression tests.
 \end{itemize}
 
 \vspace{8pt}
 \role{LYNE ET FRERES SARL - Data Analyst}{2023 - 2025}{Strategic support assignments - Benin / Remote}
 \begin{itemize}
-  \item Structured and analyzed commercial, operational and agricultural data with Python/Pandas to monitor activity KPIs, volumes, trends and gaps.
-  \item Produced performance reports to support decision-making: result interpretation, identification of attention points and business-facing restitution.
-  \item Automated recurring processing and delivered analyses through reports, Streamlit/web interfaces and regular exchanges with teams.
+  \item Structured commercial, operational and agricultural data with Python/Pandas to track activity KPIs, volumes and trends.
+  \item Developed reports and Streamlit dashboards to help business teams interpret results and identify discrepancies.
+  \item Automated recurring data processing and supported users in reviewing and interpreting their reports.
 \end{itemize}
 
 \vspace{8pt}
 \role{Groupe Sylvagreg - Machine Learning Engineer}{May 2024 - Aug. 2024}{Lille, France}
 \begin{itemize}
-  \item R\&D for a 3D reconstruction solution from 2D images, combining computer vision, photogrammetry and generative models in PyTorch.
-  \item Automated preprocessing, data augmentation and inference pipelines; Docker containerization, AWS deployment and visualization interface.
+  \item Developed an experimental 3D reconstruction solution from 2D images using photogrammetry and PyTorch generative models.
+  \item Automated preprocessing and inference; deployed with AWS/Docker and a visualization interface to test and inspect reconstructions.
 \end{itemize}
 
 \section{BI \& Data Projects}
 \projectline{BI RETAIL SOLUTION}{PySpark, Airflow, PostgreSQL, Power BI, Docker}
-Sales/supply-chain data pipeline: ingestion, PySpark transformations, loading into a PostgreSQL warehouse and Airflow orchestration. Commercial data modeling and Power BI dashboards to analyze sales, product monitoring, trends and business indicators.
+Built a sales and supply-chain reporting pipeline: PySpark transformations orchestrated by Airflow, a PostgreSQL warehouse and Power BI dashboards to track sales and product trends.
 \githublink{https://github.com/EngineerProjects/BI_Retail}{github.com/EngineerProjects/BI\_Retail}
 
 \vspace{7pt}
 \projectline{Seshat}{Python/Go, PostgreSQL/pgvector, RAG, Electron/React}
-Open-source AI and automation platform: document ingestion, embeddings, hybrid search, local/cloud backend services, access control and business workflow-oriented agents.
+Built an open-source Go agent runtime and a document retrieval pipeline to automate tasks and return source-backed answers, with access controls.
 {\footnotesize\color{accent}\faIcon{globe}\ \href{https://seshat-ai.com}{seshat-ai.com}}\par
 
 \vspace{7pt}
 \projectline{WASTE-COLLECTION ROBOT}{AceObject - YOLOv8, OpenCV, Dijkstra}
-Python/YOLOv8/OpenCV pipeline to detect, classify and track waste while distinguishing it from obstacles. Dijkstra navigation for collection planning; reinforcement learning exploration for decision-making and obstacle avoidance.
+Developed a YOLOv8/OpenCV pipeline to detect and track waste separately from obstacles, with Dijkstra route planning for collection. Explored reinforcement learning for navigation decisions.
 
 \end{minipage}
 \end{lrbox}
 \setlength{\maincolumnheight}{\dimexpr\ht\maincolumnbox+\dp\maincolumnbox\relax}
+\addtolength{\maincolumnheight}{45pt}
 
 \begin{minipage}[t]{0.285\textwidth}
 \vspace{0pt}
@@ -150,6 +151,7 @@ Python/YOLOv8/OpenCV pipeline to detect, classify and track waste while distingu
   \contactline{\faIcon{phone}}{+33 7 48 59 47 13}
   \contactline{\faIcon{envelope}}{\href{mailto:oastephanekpoviessi@gmail.com}{oastephanekpoviessi@gmail.com}}
   \contactline{\faIcon{link}}{\href{https://linkedin.com/in/stephanekpoviessi}{linkedin.com/in/stephanekpoviessi}}
+  \contactline{\faIcon{link}}{\href{https://kpoviessi-stephane.vercel.app}{kpoviessi-stephane.vercel.app}}
   \contactline{\faIcon{github}}{\href{https://github.com/EngineerProjects}{github.com/EngineerProjects}}
 
   \smallsection{\faIcon{layer-group}}{Skills}
@@ -161,6 +163,7 @@ Python/YOLOv8/OpenCV pipeline to detect, classify and track waste while distingu
   \smallsection{\faIcon{graduation-cap}}{Education}
   \sideitem{JUNIA ISEN Lille}{Engineering degree - Big Data \& Data Science, 2026.}
   \sideitem{JUNIA ISEN Rabat}{Bachelor's degree - Electronics \& Digital Systems, 2023.}
+  \sideitem{CPMS}{Mathematics, Physics and Engineering Sciences, 2020 - 2022.}
 
   \smallsection{\faIcon{certificate}}{Certifications}
   \certitem{\href{https://www.linkedin.com/learning/certificates/fed380ef1713eb9d1633ac7cd02b74bf58cf5f4bcf7e5fd47cb39bce19649bae}{Data Analyst Career Preparation}}{Microsoft / LinkedIn Learning \textbullet{} 2024}

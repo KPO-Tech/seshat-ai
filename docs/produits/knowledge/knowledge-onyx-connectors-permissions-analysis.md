@@ -1,5 +1,7 @@
 # Knowledge - Analyse Onyx (connecteurs + permissions)
 
+> **Mise à jour 2026-10-23.** Les noms de dépôts de ce document datent d'avant la séparation du 2026-10-01 : `seshat/` est devenu `seshat-runtime`, `seshat-server`, `seshat-console` et le service d'intelligence sont dans `SeshatCloud`, `seshat-backend` et `seshat-ui` dans `SeshatOS`. Elle a nourri les décisions 0001, 0002 et 0005 de `SeshatCloud/docs/decisions/`. L'analyse elle-même reste valable. État réel : [`knowledge-etat-des-lieux.md`](./knowledge-etat-des-lieux.md).
+
 Ce document capture l'analyse technique d'Onyx (ex-Danswer, https://github.com/onyx-dot-app/onyx, cloné dans `D:\Documents\PROJECTS\ai\helps\onyx`) comme référence prioritaire pour étendre les connecteurs et le modèle de permissions de `seshat-server` - voir `knowledge-sources-retenues.md` pour le contexte de priorisation.
 
 ## Rappel de licence - à respecter strictement

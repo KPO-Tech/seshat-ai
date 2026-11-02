@@ -34,7 +34,7 @@
 \titlespacing*{\section}{0pt}{10pt}{5pt}
 
 \newcommand{\smallsection}[2]{%
-  \vspace{9pt}
+  \vspace{8pt}
   {\fontsize{8.9pt}{10.45pt}\selectfont\bfseries\color{accentdark}%
   {\scriptsize\color{accent}#1}\hspace{3.5pt}#2}\par
   \vspace{3.2pt}
@@ -51,7 +51,7 @@
 \newcommand{\sideitem}[2]{%
   \textbf{#1}\par
   #2\par
-  \vspace{5.7pt}
+  \vspace{3.5pt}
 }
 
 \newcommand{\certitem}[2]{%
@@ -94,11 +94,9 @@
 \begin{minipage}[t]{0.42\textwidth}
 \raggedleft
 \vspace{2pt}
-{\normalsize\bfseries\color{accent}SQL \textbullet{} Python \textbullet{} Power BI \textbullet{} Databricks}\par
+\makebox[\linewidth][r]{{\normalsize\bfseries\color{accent}SQL \textbullet{} Python \textbullet{} Power BI \textbullet{} Databricks}}\par
 \vspace{3pt}
-{\small\color{muted}
-Performance commerciale, KPI, BI et qualité de données.
-}
+\makebox[\linewidth][r]{{\small\color{muted}Performance commerciale, KPI, BI et qualité de données.}}
 \end{minipage}
 
 \vspace{6pt}
@@ -111,48 +109,49 @@ Performance commerciale, KPI, BI et qualité de données.
 \raggedright
 
 \section{Profil}
-Ingénieur diplômé en Big Data \& Data Science, avec une expérience en analyse de performance commerciale, suivi des KPI et fiabilisation des données. Chez Lyne et Frères, j'ai contribué à l'analyse des activités et à la production de reportings décisionnels. Chez Allianz France, j'ai travaillé sur la modernisation de traitements data et l'automatisation des contrôles qualité. Je mobilise SQL, Python et la Business Intelligence pour transformer les données en indicateurs utiles aux décisions métiers.
+Ingénieur diplômé en Big Data \& Data Science, je développe des pipelines produisant des indicateurs métier fiables. Chez Allianz, j'ai modernisé des traitements SAS sur Azure Databricks, avec un gain supérieur à 8\texttimes{} sur le workflow mesuré, à capacité mémoire identique. J'associe Python/PySpark, SQL, contrôles qualité et reporting pour rendre les données exploitables par les équipes.
 
 \section{Expériences}
 \role{Allianz France - Ingénieur Data / Data Scientist}{Nov. 2025 - Avr. 2026}{Direction P4D, Advanced Data \& Climate - Paris}
 \begin{itemize}
-  \item Migration d'un datamart Assurance de SAS vers Python/PySpark, avec validation de la parité fonctionnelle sur plus de 15 000 lignes de code.
-  \item Architecture Médaillon sur Azure Databricks intégrant plus de 150 règles de gestion métier, contrôles de cohérence et traitements industrialisés.
-  \item Pipeline de Data Quality et tests automatisés SAS/Python pour détecter les anomalies, comparer les KPI, tracer les écarts et sécuriser la non-régression avant production.
+  \item Modernisation d'un datamart d'assurance : analyse de plus de 15 000 lignes SAS et migration vers Python/PySpark sur Azure Databricks, avec plus de 150 règles métier en architecture Médaillon.
+  \item Accélération de plus de \textbf{8\texttimes{} du workflow mesuré} après migration de SAS vers Azure Databricks, à capacité mémoire identique.
+  \item Fiabilisation des indicateurs métier par des contrôles qualité géospatiaux et des tests automatisés de parité SAS/Python et de non-régression.
 \end{itemize}
 
 \vspace{8pt}
 \role{LYNE ET FRERES SARL - Data Analyst}{2023 - 2025}{Missions d'appui stratégique - Bénin / À distance}
 \begin{itemize}
-  \item Structuration et analyse de données commerciales, opérationnelles et agricoles avec Python/Pandas pour suivre les KPI d'activité, les volumes, les tendances et les écarts.
-  \item Production de reportings de performance pour appuyer les décisions de pilotage : lecture des résultats, identification des points d'attention et restitution aux interlocuteurs métier.
-  \item Automatisation de traitements récurrents et restitution des analyses via rapports, interfaces Streamlit / web et échanges réguliers avec les équipes.
+  \item Structuration de données commerciales, opérationnelles et agricoles avec Python/Pandas pour suivre les KPI d'activité, volumes et tendances.
+  \item Développement de rapports et tableaux de bord Streamlit pour aider les équipes à interpréter les résultats et repérer les écarts.
+  \item Automatisation des traitements récurrents et accompagnement des utilisateurs dans la lecture et l'exploitation des reportings.
 \end{itemize}
 
 \vspace{8pt}
 \role{Groupe Sylvagreg - Machine Learning Engineer}{Mai 2024 - Août 2024}{Lille, France}
 \begin{itemize}
-  \item R\&D d'une solution de reconstruction 3D à partir d'images 2D, combinant vision par ordinateur, photogrammétrie et modèles génératifs sous PyTorch.
-  \item Automatisation des pipelines de prétraitement, augmentation de données et inférence ; conteneurisation Docker, déploiement AWS et interface de visualisation.
+  \item Développement d'une solution expérimentale de reconstruction 3D à partir d'images 2D, par photogrammétrie et modèles génératifs PyTorch.
+  \item Automatisation du prétraitement et de l'inférence ; déploiement AWS/Docker et interface de visualisation pour tester et examiner les reconstructions.
 \end{itemize}
 
 \section{Projets BI \& Data}
 \projectline{BI RETAIL SOLUTION}{PySpark, Airflow, PostgreSQL, Power BI, Docker}
-Chaîne data ventes/supply chain : ingestion, transformations PySpark, chargement dans un entrepôt PostgreSQL et orchestration Airflow. Modélisation des données commerciales et tableaux de bord Power BI pour analyser les ventes, le suivi produit, les tendances et les indicateurs métier.
+Développement d'une chaîne de reporting ventes et supply chain : transformations PySpark orchestrées par Airflow, entrepôt PostgreSQL et tableaux de bord Power BI pour suivre les ventes et tendances produit.
 \githublink{https://github.com/EngineerProjects/BI_Retail}{github.com/EngineerProjects/BI\_Retail}
 
 \vspace{7pt}
 \projectline{Seshat}{Python/Go, PostgreSQL/pgvector, RAG, Electron/React}
-Plateforme open source d'IA et d'automatisation : ingestion documentaire, embeddings, recherche hybride, services backend local/cloud, contrôles d'accès et agents orientés workflows métier.
+Conception d'un runtime open source d'agents Go et d'une chaîne de recherche documentaire pour automatiser les tâches et produire des réponses sourcées, avec contrôle des accès.
 {\footnotesize\color{accent}\faIcon{globe}\ \href{https://seshat-ai.com}{seshat-ai.com}}\par
 
 \vspace{7pt}
 \projectline{ROBOT COLLECTEUR DE DÉCHETS}{AceObject - YOLOv8, OpenCV, Dijkstra}
-Pipeline Python/YOLOv8/OpenCV pour détecter, classifier et suivre les déchets en les distinguant des obstacles. Navigation par Dijkstra pour planifier la collecte ; exploration de l'apprentissage par renforcement pour la décision et l'évitement d'obstacles.
+Développement d'un pipeline YOLOv8/OpenCV pour détecter et suivre les déchets en les distinguant des obstacles, avec planification de collecte par Dijkstra. Exploration de l'apprentissage par renforcement pour la navigation.
 
 \end{minipage}
 \end{lrbox}
 \setlength{\maincolumnheight}{\dimexpr\ht\maincolumnbox+\dp\maincolumnbox\relax}
+\addtolength{\maincolumnheight}{45pt}
 
 \begin{minipage}[t]{0.285\textwidth}
 \vspace{0pt}
@@ -170,6 +169,7 @@ Pipeline Python/YOLOv8/OpenCV pour détecter, classifier et suivre les déchets 
   \contactline{\faIcon{phone}}{+33 7 48 59 47 13}
   \contactline{\faIcon{envelope}}{\href{mailto:oastephanekpoviessi@gmail.com}{oastephanekpoviessi@gmail.com}}
   \contactline{\faIcon{link}}{\href{https://linkedin.com/in/stephanekpoviessi}{linkedin.com/in/stephanekpoviessi}}
+  \contactline{\faIcon{link}}{\href{https://kpoviessi-stephane.vercel.app}{kpoviessi-stephane.vercel.app}}
   \contactline{\faIcon{github}}{\href{https://github.com/EngineerProjects}{github.com/EngineerProjects}}
 
   \smallsection{\faIcon{layer-group}}{Compétences}
@@ -181,6 +181,7 @@ Pipeline Python/YOLOv8/OpenCV pour détecter, classifier et suivre les déchets 
   \smallsection{\faIcon{graduation-cap}}{Formation}
   \sideitem{JUNIA ISEN Lille}{Diplôme d'Ingénieur - Big Data \& Data Science, 2026.}
   \sideitem{JUNIA ISEN Rabat}{Licence - Électronique \& Systèmes Numériques, 2023.}
+  \sideitem{CPMS}{Maths, Physique et Sciences de l'ingénieur, 2020 - 2022.}
 
   \smallsection{\faIcon{certificate}}{Certifications}
   \certitem{\href{https://www.linkedin.com/learning/certificates/fed380ef1713eb9d1633ac7cd02b74bf58cf5f4bcf7e5fd47cb39bce19649bae}{Se préparer au métier d'analyste de données}}{Microsoft / LinkedIn Learning \textbullet{} 2024}

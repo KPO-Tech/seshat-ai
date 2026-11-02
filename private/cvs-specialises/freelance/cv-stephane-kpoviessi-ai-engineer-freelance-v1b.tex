@@ -34,7 +34,7 @@
 \titlespacing*{\section}{0pt}{9pt}{4.5pt}
 
 \newcommand{\smallsection}[2]{%
-  \vspace{9pt}
+  \vspace{8pt}
   {\fontsize{8.9pt}{10.45pt}\selectfont\bfseries\color{accentdark}%
   {\scriptsize\color{accent}#1}\hspace{3.5pt}#2}\par
   \vspace{3.2pt}
@@ -51,7 +51,7 @@
 \newcommand{\sideitem}[2]{%
   \textbf{#1}\par
   #2\par
-  \vspace{5.7pt}
+  \vspace{3.5pt}
 }
 
 \newcommand{\certitem}[2]{%
@@ -94,11 +94,9 @@
 \begin{minipage}[t]{0.42\textwidth}
 \raggedleft
 \vspace{2pt}
-{\normalsize\bfseries\color{accent}Agents IA \textbullet{} RAG \textbullet{} Automatisation}\par
+\makebox[\linewidth][r]{{\normalsize\bfseries\color{accent}Agents IA \textbullet{} RAG \textbullet{} Automatisation}}\par
 \vspace{3pt}
-{\small\color{muted}
-Conception d'agents IA, systèmes RAG et automatisations intégrables aux environnements métier.
-}
+\makebox[\linewidth][r]{{\small\color{muted}Conception d'agents IA, systèmes RAG et automatisations intégrables aux environnements métier.}}
 \end{minipage}
 
 \vspace{6pt}
@@ -111,7 +109,7 @@ Conception d'agents IA, systèmes RAG et automatisations intégrables aux enviro
 \raggedright
 
 \section{AI Engineering \& Automatisation}
-J'aide les entreprises à identifier leurs besoins d'automatisation, d'outillage interne et d'intégration IA, puis à les concrétiser en workflows, outils open source, assistants, systèmes RAG et agents IA. Du cadrage au POC, puis à l'intégration métier.
+J'aide les entreprises à automatiser leurs tâches récurrentes et à exploiter leurs documents internes grâce aux agents IA, au RAG et aux intégrations API. Du cadrage du besoin au prototype testable, puis à l'intégration métier, avec des contrôles sur les actions des agents.
 
 \textbf{\color{accent}Processus métier -> Opportunité -> POC / Solution -> Intégration}
 
@@ -120,47 +118,45 @@ J'aide les entreprises à identifier leurs besoins d'automatisation, d'outillage
 \role{Fondateur \& AI Engineer}{Sept. 2026 - Aujourd'hui}{Plateforme open source d'IA agentique et d'automatisation}
 {\footnotesize \href{https://seshat-ai.com}{seshat-ai.com} \textbullet{} \href{https://github.com/KPO-Tech/seshat}{github.com/KPO-Tech/seshat}}\par
 \begin{itemize}
-  \item Conception d'une plateforme d'IA agentique et d'automatisation pour créer des agents et workflows intégrables aux environnements d'entreprise.
-  \item Architecture Python/Go, services backend local/cloud et application desktop Electron/React.
-  \item Orchestration d'agents : tool calling, MCP, human-in-the-loop, tâches planifiées et workflows.
-  \item RAG hybride et multi-LLM : ingestion documentaire, embeddings, PostgreSQL/pgvector, Chroma, OpenAI, Mistral, Gemini et Ollama.
+  \item Conception d'un runtime d'agents Go intégrable par SDK et API gRPC pour connecter les applications à des modèles locaux et plusieurs fournisseurs LLM.
+  \item Automatisation de tâches par sous-agents parallèles et outils MCP, avec permissions et validation humaine pour encadrer leurs actions.
+  \item Développement d'une chaîne documentaire : ingestion, recherche hybride et restitution sourcée pour exploiter les documents dans les réponses des agents.
 \end{itemize}
-{\footnotesize\textbf{Entreprise :} permissions, auditabilité, sécurité. \quad \textbf{Usages :} assistants, RAG, automatisation.}
 
 \section{Expériences}
 \role{Allianz France - Ingénieur Data / Data Scientist}{Nov. 2025 - Avr. 2026}{Paris, France}
 \begin{itemize}
-  \item Migration d'un datamart Assurance de SAS vers Python/PySpark, avec validation de parité fonctionnelle sur plus de 15 000 lignes de code.
-  \item Architecture Médaillon sur Azure Databricks intégrant plus de 150 règles de gestion métier.
-  \item Pipeline de Data Quality géospatiale et framework de tests automatisés SAS/Python pour validation de KPI et non-régression.
+  \item Modernisation d'un datamart d'assurance : analyse de plus de 15 000 lignes SAS et migration vers Python/PySpark sur Azure Databricks, avec plus de 150 règles métier en architecture Médaillon.
+  \item Accélération de plus de \textbf{8\texttimes{} du workflow mesuré} après migration de SAS vers Azure Databricks, à capacité mémoire identique.
+  \item Fiabilisation des indicateurs métier par des contrôles qualité géospatiaux et des tests automatisés de parité SAS/Python et de non-régression.
 \end{itemize}
 
 \vspace{4pt}
 \role{LYNE ET FRERES SARL - Data Analyst}{2023 - 2025}{Missions d'appui stratégique - Bénin / À distance}
 \begin{itemize}
-  \item Analyse de données commerciales, opérationnelles et agricoles avec Python/Pandas pour suivre les KPI et soutenir les décisions.
-  \item Création de rapports, tableaux de bord et interfaces Streamlit / web pour restituer les analyses aux utilisateurs métier.
-  \item Déploiement d'automatisations et d'outils IA internes open source (OpenWebUI, modèles ouverts), avec accompagnement des employés.
+  \item Automatisation d'activités internes par le déploiement d'outils IA open source, dont OpenWebUI, avec accompagnement des utilisateurs.
+  \item Développement de rapports et tableaux de bord Python/Pandas et Streamlit pour suivre les données commerciales et opérationnelles.
 \end{itemize}
 
 \vspace{4pt}
 \role{Groupe Sylvagreg - Machine Learning Engineer}{Mai 2024 - Août 2024}{Lille, France}
-R\&D computer vision pour la reconstruction 3D à partir d'images 2D : modèles PyTorch, pipelines de prétraitement/inférence, Docker, AWS et visualisation métier.\par
+Développement d'une solution expérimentale de reconstruction 3D à partir d'images 2D, par photogrammétrie et modèles génératifs PyTorch. Automatisation du prétraitement et de l'inférence ; déploiement AWS/Docker et interface de visualisation pour tester et examiner les reconstructions.\par
 {\fontsize{7.5pt}{9pt}\selectfont\color{accent}\faIcon{github}\ \href{https://github.com/EngineerProjects/Sylva3dGUI}{github.com/EngineerProjects/Sylva3dGUI}\enspace\textbullet\enspace\href{https://github.com/EngineerProjects/sylva3D}{github.com/EngineerProjects/sylva3D}}\par
 
-\section{Projets techniques}
+\section{Projets sélectionnés}
 \projectline{TECH WATCH AGENT}{LangGraph, RAG, FastAPI, pgvector, Docker}
-Plateforme de veille multi-agents : planification de sujets, collecte multi-source, extraction d'éléments clés, synthèse sourcée, rapports ciblés, workflows LangGraph et mémoire vectorielle pgvector.
+Automatisation de la veille par agents LangGraph : planification des recherches, collecte multi-source et synthèses sourcées, avec mémoire pgvector et APIs de suivi des exécutions.
 \githublink{https://github.com/EngineerProjects/tech-watch-agent}{github.com/EngineerProjects/tech-watch-agent}
 
 \vspace{4pt}
 \projectline{BI RETAIL SOLUTION}{PySpark, Airflow, PostgreSQL, Power BI, Docker}
-Pipeline Data ventes/supply chain : ingestion, transformations PySpark, orchestration Airflow, DWH PostgreSQL et tableaux de bord Power BI.
+Développement d'une chaîne de reporting ventes et supply chain : transformations PySpark orchestrées par Airflow, entrepôt PostgreSQL et tableaux de bord Power BI pour suivre les ventes et tendances produit.
 \githublink{https://github.com/EngineerProjects/BI_Retail}{github.com/EngineerProjects/BI\_Retail}
 
 \end{minipage}
 \end{lrbox}
 \setlength{\maincolumnheight}{\dimexpr\ht\maincolumnbox+\dp\maincolumnbox\relax}
+\addtolength{\maincolumnheight}{40pt}
 
 \begin{minipage}[t]{0.285\textwidth}
 \vspace{0pt}
@@ -178,6 +174,7 @@ Pipeline Data ventes/supply chain : ingestion, transformations PySpark, orchestr
   \contactline{\faIcon{phone}}{+33 7 48 59 47 13}
   \contactline{\faIcon{envelope}}{\href{mailto:oastephanekpoviessi@gmail.com}{oastephanekpoviessi@gmail.com}}
   \contactline{\faIcon{link}}{\href{https://linkedin.com/in/stephanekpoviessi}{linkedin.com/in/stephanekpoviessi}}
+  \contactline{\faIcon{link}}{\href{https://kpoviessi-stephane.vercel.app}{kpoviessi-stephane.vercel.app}}
   \contactline{\faIcon{globe}}{\href{https://seshat-ai.com}{seshat-ai.com}}
   \contactline{\faIcon{code-branch}}{\href{https://github.com/KPO-Tech}{github.com/KPO-Tech}}
 
@@ -196,6 +193,7 @@ Pipeline Data ventes/supply chain : ingestion, transformations PySpark, orchestr
   \smallsection{\faIcon{graduation-cap}}{Formation}
   \sideitem{JUNIA ISEN Lille}{Diplôme d'Ingénieur - Big Data \& Data Science, 2026.}
   \sideitem{JUNIA ISEN Rabat}{Licence - Électronique \& Systèmes Numériques, 2023.}
+  \sideitem{CPMS}{Maths, Physique et Sciences de l'ingénieur, 2020 - 2022.}
 
   \smallsection{\faIcon{certificate}}{Certifications}
   \certitem{\href{https://learn.microsoft.com/fr-fr/training/career-paths/ai-engineer}{Microsoft AI Engineer Career Path}}{Microsoft Learn \textbullet{} \textbf{En cours}}

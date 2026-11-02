@@ -4,7 +4,7 @@ Cadrage produit des plateformes SeshatOS, une par une : objectif, utilisateur ci
 
 Principe : chaque produit s'explique par le problème métier qu'il résout, pas par la liste de ses fonctionnalités techniques.
 
-> **Statut.** Ces documents datent d'avant la séparation des dépôts et le pivot « Chat d'abord ». La vision reste valable, les détails sont à réviser. Pour l'offre commerciale actuelle, voir [`../strategie/positionnement-commercial.md`](../strategie/positionnement-commercial.md). Pour l'ordre MVP actif, voir `Discussions/mvp/` (hors dépôt).
+> **Statut.** Ces documents datent d'avant la séparation des dépôts et le pivot « Chat d'abord ». La vision reste valable, les détails sont à réviser. Pour l'offre commerciale actuelle, voir [`../strategie/positionnement-commercial.md`](../strategie/positionnement-commercial.md). Pour l'ordre MVP actif, voir [`../mvp/`](../mvp/).
 
 ## Structure
 
@@ -29,7 +29,9 @@ Un dossier de plateforme peut contenir : le cadrage produit, `<plateforme>-app-p
 | Knowledge | [`knowledge/mvp-knowledge-to-action.md`](./knowledge/mvp-knowledge-to-action.md) | Premier périmètre vendable : documentation intelligente, Knowledge Intelligence, ASK / DISCOVER / ACT. |
 | Knowledge | [`knowledge/knowledge-app-pages.md`](./knowledge/knowledge-app-pages.md) | Structure de l'app Knowledge en pages et fonctionnalités. |
 | Knowledge | [`knowledge/design/prd_seshatos_knowledge.md`](./knowledge/design/prd_seshatos_knowledge.md) | PRD complet. |
-| Knowledge | [`knowledge/knowledge-roadmap.md`](./knowledge/knowledge-roadmap.md) | Suivi du chantier Knowledge MVP. |
+| Knowledge | [`knowledge/knowledge-etat-des-lieux.md`](./knowledge/knowledge-etat-des-lieux.md) | Ce qui existe réellement dans `SeshatCloud` (relevé du 2026-10-23). |
+| Knowledge | [`knowledge/knowledge-pages-v1.md`](./knowledge/knowledge-pages-v1.md) | Plan des pages de la première version (Ask, Search, Collections, Sources, Settings). |
+| Knowledge | [`knowledge/knowledge-roadmap.md`](./knowledge/knowledge-roadmap.md) | Décisions en vigueur, méthode (interface avant serveur), questions de conception, reste à faire. L'ancienne version est dans `knowledge/archive/`. |
 | Knowledge | [`knowledge/knowledge-sources-retenues.md`](./knowledge/knowledge-sources-retenues.md) | Projets open source à étudier pour le RAG, la recherche et le graphe. |
 | Knowledge | [`knowledge/knowledge-rag-improvements.md`](./knowledge/knowledge-rag-improvements.md) | Analyse OpenSearch Go et piste d'intégration. |
 | Knowledge | [`knowledge/knowledge-maxkb-backend-analysis.md`](./knowledge/knowledge-maxkb-backend-analysis.md) | Étude du backend MaxKB. |

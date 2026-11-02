@@ -1,0 +1,133 @@
+% CV Université Laval - révision éditoriale
+% Police Helvetica uniforme ; modèle HEC conservé et allégé.
+\documentclass[10pt,a4paper]{article}
+\usepackage[a4paper,left=1cm,right=1cm,top=0.7cm,bottom=0.7cm]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[scaled=1.0]{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{titlesec}
+\definecolor{accent}{HTML}{1F4E79}
+\definecolor{muted}{HTML}{555F67}
+\definecolor{rule}{HTML}{D5E2EC}
+\definecolor{sidebg}{HTML}{F2F7FB}
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{2pt}
+\setlist[itemize]{leftmargin=12pt,topsep=2pt,itemsep=2pt,parsep=0pt,partopsep=0pt}
+\titleformat{\section}{\fontsize{11pt}{13pt}\selectfont\bfseries\color{accent}}{}{0pt}{}[\vspace{2pt}{\color{rule}\titlerule}]
+\titlespacing*{\section}{0pt}{8pt}{5pt}
+\newcommand{\sideheading}[1]{\vspace{11pt}{\bfseries\color{accent}#1}\par\vspace{4pt}}
+\newcommand{\sideitem}[2]{\textbf{#1}\par #2\par\vspace{6pt}}
+\newcommand{\role}[3]{\vspace{4pt}\textbf{#1}\par {\color{muted}#2\enspace\textbullet\enspace #3}\par}
+\begin{document}
+\fontsize{10pt}{12.6pt}\selectfont
+\begin{minipage}[t]{0.55\textwidth}
+{\fontsize{22pt}{25pt}\selectfont\bfseries\color{accent}Stéphane KPOVIESSI}\par
+Ingénieur diplômé en Big Data \& Data Science\par
+{\color{muted}MBA -- Analytique d'affaires\\Université Laval \textbullet{} Automne 2027}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.40\textwidth}
+\raggedleft
+{\bfseries\color{accent}Analyser les données\\Éclairer les décisions}\par
+\vspace{4pt}
+{\color{muted}Gestion, stratégie et performance}
+\end{minipage}
+\vspace{7pt}
+{\color{rule}\hrule height 1pt}
+\vspace{8pt}
+
+
+% Mesure des deux colonnes et fond bleu de hauteur commune, sans décalage de padding.
+\newsavebox{\rightcolumn}
+\newsavebox{\leftcolumn}
+\newlength{\columnheight}
+\sbox{\rightcolumn}{\begin{minipage}[t]{0.68\textwidth}
+\vspace{0pt}\raggedright
+{\fontsize{11pt}{13pt}\selectfont\bfseries\color{accent}Profil}\par\vspace{2pt}{\color{rule}\hrule}\vspace{6pt}
+Ingénieur spécialisé en données, avec des expériences en assurance, en analyse d'activité et en intelligence artificielle. Je souhaite compléter ce parcours par une formation en gestion pour relier les analyses aux choix stratégiques et financiers, puis piloter des projets de transformation et de performance.
+
+\section{Expériences}
+\role{Seshat -- Fondateur et ingénieur IA}{Sept. 2026 -- Aujourd'hui}{Projet entrepreneurial}
+\begin{itemize}
+\item Définition d'une offre de solutions d'IA, d'automatisation et de logiciels métiers destinée aux besoins des entreprises ; développement du produit jusqu'à sa mise en ligne.
+\item Comparaison des fournisseurs de modèles d'IA, des solutions de recherche et d'hébergement pour arbitrer les choix de développement.
+\item Conception de la plateforme : ingestion documentaire et automatisation de tâches, avec une offre et un produit en construction.
+\end{itemize}
+
+\role{Allianz France -- Ingénieur Data / Data Scientist}{Nov. 2025 -- Avr. 2026}{Paris}
+{\color{muted}Direction P4D, Advanced Data \& Climate}\par
+\begin{itemize}
+\item Migration d'un datamart d'assurance de SAS vers Python/PySpark : cadrage avec les équipes métier et validation de parité sur plus de 15\,000 lignes de code.
+\item Architecture Médaillon sur Azure Databricks intégrant plus de 150 règles métier de l'assurance, pour des traitements reproductibles et auditables.
+\item Contrôles qualité et tests automatisés de non-régression pour détecter les écarts et sécuriser la reprise des indicateurs de pilotage.
+\end{itemize}
+
+\role{LYNE ET FRERES SARL -- Analyste de données}{2023 -- 2025}{Bénin / À distance}
+\begin{itemize}
+\item Analyses commerciales, opérationnelles et agricoles : suivi de l'activité, analyse des écarts et restitution à la direction.
+\item Rapports et tableaux de bord Streamlit/web pour présenter les indicateurs aux décideurs et mettre en évidence les points de tension.
+\item Automatisation de traitements avec Python/Pandas et outils internes pour fiabiliser les données utilisées par les équipes.
+\end{itemize}
+
+\role{Groupe Sylvagreg -- Machine Learning Engineer}{Mai -- Août 2024}{Lille}
+\begin{itemize}
+\item R\&D en vision par ordinateur : reconstruction 3D à partir d'images 2D avec PyTorch, préparation des données et évaluation des expérimentations.
+\item Cadrage du besoin avec les équipes et déploiement des traitements avec Docker et AWS.
+\end{itemize}
+
+\section{Engagements et leadership}
+\textbf{JUNIA ALUMNI}\par
+\begin{itemize}
+\item \textbf{Vice-président | 2024--2025} : coordination du bureau et des bénévoles, préparation des décisions et relations avec l'école.
+\item \textbf{Responsable communication | 2023--2024} : animation de la communauté et organisation d'événements alumni.
+\end{itemize}
+
+\section{Certifications et intérêts}
+\href{https://www.coursera.org/account/accomplishments/verify/MWJS4Q3S2C3L}{\textbf{Supervised Machine Learning}} -- DeepLearning.AI / Stanford Online, 2023.\par
+\href{https://www.freecodecamp.org/certification/amiche/data-analysis-with-python-v7}{\textbf{Data Analysis with Python}} -- freeCodeCamp, 2023.\par
+\vspace{3pt}
+\textbf{Intérêts} : stratégie, finance d'entreprise, pilotage de la performance et entrepreneuriat technologique.
+\end{minipage}}
+\sbox{\leftcolumn}{\begin{minipage}[t]{0.29\textwidth}
+\vspace{0pt}\hspace*{8pt}\begin{minipage}[t]{\dimexpr\linewidth-16pt\relax}
+\vspace{0pt}\fontsize{9.5pt}{12.1pt}\selectfont\raggedright
+\sideheading{Contact}
+Cergy / Île-de-France\par
++33 7 48 59 47 13\par
+\href{mailto:oastephanekpoviessi@gmail.com}{oastephanekpoviessi@\\gmail.com}\par
+\vspace{3pt}
+\href{https://linkedin.com/in/stephanekpoviessi}{LinkedIn : stephanekpoviessi}\par
+\href{https://github.com/KPO-Tech}{GitHub : KPO-Tech}\par
+\href{https://seshat-ai.com}{seshat-ai.com}\par
+
+\sideheading{Formation}
+\sideitem{JUNIA ISEN -- Ingénieur}{Un seul cursus de cinq ans, 2020--2025. Attestation délivrée en 2026, jury de septembre 2025.}
+\sideitem{Lille, France | 2023--2025}{4\textsuperscript{e} et 5\textsuperscript{e} années. Domaine Big Data.}
+\sideitem{Rabat, Maroc | 2022--2023}{3\textsuperscript{e} année. Électronique et numérique.}
+\sideitem{Bénin | 2020--2022}{1\textsuperscript{re} et 2\textsuperscript{e} années. Prépa scientifique Sainte Marie-Stella, Cotonou.}
+
+\sideheading{Distinction}
+\textbf{Major de promotion} pendant les deux années préparatoires, 2020--2022.\par
+
+\sideheading{Compétences techniques}
+\sideitem{Analyse des données}{Traitement, visualisation, contrôle qualité et tableaux de bord.}
+\sideitem{Données et outils}{Python, SQL, Pandas, PySpark, PostgreSQL, Azure Databricks, Docker, Git.}
+\sideitem{Collaboration}{Échanges avec les équipes métier, présentation des analyses, travail en projet.}
+
+\sideheading{Langues}
+\textbf{Français} : langue maternelle\par
+\textbf{Anglais} : B2\\Linguaskill Business\par
+\vspace{7pt}
+\end{minipage}\end{minipage}}
+\setlength{\columnheight}{\dimexpr\ht\rightcolumn+\dp\rightcolumn\relax}
+\ifdim\dimexpr\ht\leftcolumn+\dp\leftcolumn\relax>\columnheight
+\setlength{\columnheight}{\dimexpr\ht\leftcolumn+\dp\leftcolumn\relax}
+\fi
+\noindent\begin{minipage}[t]{0.29\textwidth}
+\vspace{0pt}\rlap{\raisebox{-\columnheight}[0pt][0pt]{\color{sidebg}\rule{\linewidth}{\columnheight}}}\usebox{\leftcolumn}
+\end{minipage}\hfill\usebox{\rightcolumn}
+\end{document}

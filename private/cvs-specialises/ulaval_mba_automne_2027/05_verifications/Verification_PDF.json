@@ -1,0 +1,102 @@
+[
+  {
+    "sortie": "D:\\Documents\\PROJECTS\\ai\\seshat-ai\\private\\cvs-specialises\\ulaval_mba_automne_2027\\01_documents_academiques\\Releves_JUNIA_Annees_1_a_3_Benin_Maroc.pdf",
+    "pages": 15,
+    "sources": [
+      {
+        "source": "D:\\canada\\Detail\\KPOVIESSI_O_A_Stéphane_2022-2023.pdf",
+        "copie": "D:\\Documents\\PROJECTS\\ai\\seshat-ai\\private\\cvs-specialises\\ulaval_mba_automne_2027\\04_bulletins_individuels\\Maroc\\KPOVIESSI_O_A_Stéphane_2022-2023.pdf",
+        "pages": 1,
+        "pages_fusion": [
+          1,
+          1
+        ],
+        "sha256": "c22bce9e8fbcd55ae2106258c9104957555c8d1de173bceac59608ffafc53391"
+      },
+      {
+        "source": "D:\\canada\\Detail\\KPOVIESSI Stéphane 2eme année S2.pdf",
+        "copie": "D:\\Documents\\PROJECTS\\ai\\seshat-ai\\private\\cvs-specialises\\ulaval_mba_automne_2027\\04_bulletins_individuels\\Benin\\KPOVIESSI Stéphane 2eme année S2.pdf",
+        "pages": 4,
+        "pages_fusion": [
+          2,
+          5
+        ],
+        "sha256": "1caa64e93400c2c814ad15c5122acd0969588e65cfe51893e1ce3a18a746ed5d"
+      },
+      {
+        "source": "D:\\canada\\Detail\\KPOVIESSI Stéphane 2eme année S1.pdf",
+        "copie": "D:\\Documents\\PROJECTS\\ai\\seshat-ai\\private\\cvs-specialises\\ulaval_mba_automne_2027\\04_bulletins_individuels\\Benin\\KPOVIESSI Stéphane 2eme année S1.pdf",
+        "pages": 4,
+        "pages_fusion": [
+          6,
+          9
+        ],
+        "sha256": "929a781b84ce060c5a91b55b1cdc3c641f36da002b6d32e8d80879ae318f45e0"
+      },
+      {
+        "source": "D:\\canada\\Detail\\KPOVIESSI Stéphane 1ère année S2.pdf",
+        "copie": "D:\\Documents\\PROJECTS\\ai\\seshat-ai\\private\\cvs-specialises\\ulaval_mba_automne_2027\\04_bulletins_individuels\\Benin\\KPOVIESSI Stéphane 1ère année S2.pdf",
+        "pages": 3,
+        "pages_fusion": [
+          10,
+          12
+        ],
+        "sha256": "61fff0f5cb78d8ad3618f67d0d44d3bb03017c2e307bcab840a0b1514cf33e0f"
+      },
+      {
+        "source": "D:\\canada\\Detail\\KPOVIESSI Stéphane 1ère année S1.pdf",
+        "copie": "D:\\Documents\\PROJECTS\\ai\\seshat-ai\\private\\cvs-specialises\\ulaval_mba_automne_2027\\04_bulletins_individuels\\Benin\\KPOVIESSI Stéphane 1ère année S1.pdf",
+        "pages": 3,
+        "pages_fusion": [
+          13,
+          15
+        ],
+        "sha256": "5f0184498644ac6a67fb0c3201cea828e4b5a78fff7c93311461efdd9cd7d24a"
+      }
+    ],
+    "rendu_identique_page_par_page": true,
+    "sha256": "efcf2c0b9f8240c0b58bf237687298b189bebfe36cc06aa71a97fe8e951199c9"
+  },
+  {
+    "sortie": "D:\\Documents\\PROJECTS\\ai\\seshat-ai\\private\\cvs-specialises\\ulaval_mba_automne_2027\\01_documents_academiques\\Releves_JUNIA_Annees_4_et_5_France.pdf",
+    "pages": 6,
+    "sources": [
+      {
+        "source": "D:\\canada\\Detail\\Bulletin_2024-2025_A5.pdf",
+        "copie": "D:\\Documents\\PROJECTS\\ai\\seshat-ai\\private\\cvs-specialises\\ulaval_mba_automne_2027\\04_bulletins_individuels\\France\\Bulletin_2024-2025_A5.pdf",
+        "pages": 3,
+        "pages_fusion": [
+          1,
+          3
+        ],
+        "sha256": "802e51d5a2e691a96a71061fcfa9ed337e36e7d7adc87e9e0a0f972b0f7dd52d"
+      },
+      {
+        "source": "D:\\canada\\Detail\\Bulletin_2023-2024_A4.pdf",
+        "copie": "D:\\Documents\\PROJECTS\\ai\\seshat-ai\\private\\cvs-specialises\\ulaval_mba_automne_2027\\04_bulletins_individuels\\France\\Bulletin_2023-2024_A4.pdf",
+        "pages": 3,
+        "pages_fusion": [
+          4,
+          6
+        ],
+        "sha256": "cc02163f215a2ed8c59c57da450f67a9ed6c56c1733925a86a626460326574bb"
+      }
+    ],
+    "rendu_identique_page_par_page": true,
+    "sha256": "dbc21ade91bfdeecafd24e5b1bae4e266b993febe116f03d2a9795182d88a652"
+  },
+  {
+    "source": "D:\\canada\\relevé de notes bac.pdf",
+    "sortie": "D:\\Documents\\PROJECTS\\ai\\seshat-ai\\private\\cvs-specialises\\ulaval_mba_automne_2027\\01_documents_academiques\\Releve_Baccalaureat_Benin.pdf",
+    "pages": 1,
+    "copie_identique_sha256": true,
+    "sha256": "36d1c918bafe01f4005174cb7028520776fd28391fa4e508cded49c251d48f16"
+  },
+  {
+    "source": "D:\\canada\\certificate_engineer_202604209172.pdf",
+    "sortie": "D:\\Documents\\PROJECTS\\ai\\seshat-ai\\private\\cvs-specialises\\ulaval_mba_automne_2027\\01_documents_academiques\\Diplome_ou_Attestation_Ingenieur.pdf",
+    "pages": 1,
+    "copie_identique_sha256": true,
+    "sha256": "54a79a26d0d116598aba233376ab581a21b184dd3ec50f4a9f4592f8d7c535fa"
+  }
+]
